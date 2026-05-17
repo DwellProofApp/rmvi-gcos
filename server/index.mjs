@@ -135,6 +135,7 @@ function operationalStatus() {
       maxBodyBytes: MAX_BODY_BYTES,
       devResetEnabled: DEV_RESET_ENABLED
     },
+    sessions: sessionSummary(),
     counts: {
       stations: state.stations.length,
       messages: state.messages.length,
@@ -156,9 +157,32 @@ function operationalStatus() {
 
 function createSession(email) {
   const token = `gcos.${randomUUID()}`;
+  const startedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString();
-  sessions.set(token, { email, expiresAt });
-  return { token, expiresAt };
+  sessions.set(token, { email, startedAt, expiresAt });
+  return { token, startedAt, expiresAt };
+}
+
+function sessionSummary() {
+  const now = Date.now();
+  const active = [];
+  for (const [token, session] of sessions.entries()) {
+    if (Date.parse(session.expiresAt) <= now) {
+      sessions.delete(token);
+      continue;
+    }
+    active.push({
+      email: session.email,
+      startedAt: session.startedAt,
+      expiresAt: session.expiresAt,
+      minutesRemaining: Math.max(0, Math.round((Date.parse(session.expiresAt) - now) / 60000))
+    });
+  }
+  return {
+    active: active.length,
+    expiringSoon: active.filter((session) => session.minutesRemaining <= 30).length,
+    stations: active
+  };
 }
 
 function authenticateRequest(request, pathname) {

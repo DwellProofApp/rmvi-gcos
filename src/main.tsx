@@ -86,6 +86,16 @@ type ApiStatus = {
     maxBodyBytes: number;
     devResetEnabled: boolean;
   };
+  sessions: {
+    active: number;
+    expiringSoon: number;
+    stations: {
+      email: string;
+      startedAt: string;
+      expiresAt: string;
+      minutesRemaining: number;
+    }[];
+  };
   counts: {
     stations: number;
     messages: number;
@@ -1560,7 +1570,7 @@ function App() {
           />
         )}
         {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} onArchiveDocument={archiveDocument} />}
-        {activeSection === "Audit" && <Audit auditRows={auditRows} />}
+        {activeSection === "Audit" && <Audit auditRows={auditRows} apiStatus={apiStatus} session={session} />}
       </section>
     </main>
   );
@@ -3506,7 +3516,7 @@ function Archive({
   );
 }
 
-function Audit({ auditRows }: { auditRows: AuditRow[] }) {
+function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiStatus: ApiStatus | null; session: Session }) {
   const [query, setQuery] = React.useState("");
   const [eventFilter, setEventFilter] = React.useState("All events");
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
@@ -3518,6 +3528,14 @@ function Audit({ auditRows }: { auditRows: AuditRow[] }) {
       return eventMatches && queryMatches;
     });
   }, [auditRows, eventFilter, query]);
+  const sessionEntries = apiStatus?.sessions?.stations.length ? apiStatus.sessions.stations : [{
+    email: session.email,
+    startedAt: new Date().toISOString(),
+    expiresAt: session.expiresAt ?? new Date().toISOString(),
+    minutesRemaining: session.expiresAt ? Math.max(0, Math.round((Date.parse(session.expiresAt) - Date.now()) / 60000)) : 0
+  }];
+  const activeSessionCount = Math.max(apiStatus?.sessions?.active ?? 0, sessionEntries.length);
+  const expiringSoonCount = apiStatus?.sessions?.expiringSoon ?? sessionEntries.filter((item) => item.minutesRemaining <= 30).length;
 
   function exportAuditPacket() {
     const headers = ["Event", "Actor", "Object", "Result", "Time"];
@@ -3574,8 +3592,31 @@ function Audit({ auditRows }: { auditRows: AuditRow[] }) {
           </div>
         ))}
       </div>
+      <div className="panel module-side">
+        <PanelHeader icon={Server} title="Session Monitor" action={`${activeSessionCount} active`} />
+        <div className="office-summary-grid">
+          <Insight label="Active sessions" value={String(activeSessionCount)} />
+          <Insight label="Expiring soon" value={String(expiringSoonCount)} />
+          <Insight label="Current station" value={session.email} />
+        </div>
+        <div className="source-map-list">
+          {sessionEntries.map((item) => (
+            <article className="source-map-item" key={`${item.email}-${item.startedAt}`}>
+              <span>{item.email}</span>
+              <strong>{item.minutesRemaining} minutes remaining</strong>
+              <small>Started {formatDateTime(item.startedAt)} - expires {formatDateTime(item.expiresAt)}</small>
+            </article>
+          ))}
+        </div>
+      </div>
     </section>
   );
+}
+
+function formatDateTime(value: string) {
+  const parsed = Date.parse(value);
+  if (!Number.isFinite(parsed)) return value;
+  return new Date(parsed).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function HierarchyPanel({ compact = false }: { compact?: boolean }) {

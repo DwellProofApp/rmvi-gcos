@@ -28,6 +28,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(status.serveWeb, true);
     assert.equal(status.limits.maxBodyBytes, 4096);
     assert.equal(status.limits.devResetEnabled, true);
+    assert.equal(status.sessions.active, 0);
+    assert.deepEqual(status.sessions.stations, []);
     assert.equal(status.counts.stations > 0, true);
     assert.equal(status.counts.tasks > 0, true);
     assert.equal(status.counts.policies > 0, true);
@@ -56,11 +58,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(Boolean(login.expiresAt), true);
     const nationalToken = login.token;
 
+    const statusAfterLogin = await getJson("/api/status");
+    assert.equal(statusAfterLogin.sessions.active, 1);
+    assert.equal(statusAfterLogin.sessions.stations[0].email, "np@rmvi.org");
+    assert.equal(statusAfterLogin.sessions.stations[0].minutesRemaining > 0, true);
+
     const localLogin = await postJson("/api/auth/login", {
       email: "local_branch_017@gcos.org",
       password: "gcos-local"
     });
     const localToken = localLogin.token;
+
+    const statusAfterSecondLogin = await getJson("/api/status");
+    assert.equal(statusAfterSecondLogin.sessions.active, 2);
 
     const denied = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
