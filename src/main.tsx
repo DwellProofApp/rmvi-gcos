@@ -146,6 +146,13 @@ type ReadinessReport = {
     detail: string;
   }[];
 };
+type ArchiveManifest = {
+  generatedAt: string;
+  total: number;
+  byStatus: Record<string, number>;
+  bySource: Record<string, number>;
+  permanent: number;
+};
 type CommandBriefing = {
   title: string;
   generatedAt: string;
@@ -542,6 +549,7 @@ function App() {
   const [apiStatus, setApiStatus] = React.useState<ApiStatus | null>(null);
   const [apiStatusError, setApiStatusError] = React.useState("");
   const [commandBriefing, setCommandBriefing] = React.useState<CommandBriefing | null>(null);
+  const [archiveManifest, setArchiveManifest] = React.useState<ArchiveManifest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -734,6 +742,7 @@ function App() {
       setAuditRows(data.audit);
       setEvents(data.events);
       void apiRequest<CommandBriefing>("/api/command-center/briefing").then(setCommandBriefing).catch(() => undefined);
+      void apiRequest<ArchiveManifest>("/api/archive/manifest").then(setArchiveManifest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1937,6 +1946,79 @@ function App() {
     }
   }
 
+  function sealDocument(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, status: "Sealed" } : item));
+    recordAudit("DocumentSealed", document.name, "Archive record sealed");
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/seal`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Sealed from archive console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function placeDocumentHold(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, status: "Legal Hold" } : item));
+    recordAudit("DocumentHoldPlaced", document.name, "Legal hold placed");
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/hold`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Legal hold from archive console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateDocumentRetention(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const retainedUntil = document.retainedUntil === "Permanent" ? "Review in 2031" : "Permanent";
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, retainedUntil } : item));
+    recordAudit("DocumentRetentionUpdated", document.name, retainedUntil);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/retention`, {
+        method: "POST",
+        body: JSON.stringify({ retainedUntil })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function duplicateDocument(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    archiveDocument({
+      name: `Copy of ${document.name}`,
+      classification: document.classification,
+      source: document.source,
+      owner: document.owner,
+      fileType: document.fileType,
+      status: "Archived"
+    });
+    recordAudit("DocumentDuplicated", document.name, "Evidence packet copied");
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ name: `Copy of ${document.name}`, owner: document.owner })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshArchiveManifest() {
+    if (offlineMode) {
+      recordAudit("ArchiveManifestRefreshed", "Archive", "Local manifest refreshed");
+      return;
+    }
+    void apiRequest<ArchiveManifest>("/api/archive/manifest")
+      .then((manifest) => {
+        setArchiveManifest(manifest);
+        recordAudit("ArchiveManifestRefreshed", "Archive", `${manifest.total} documents indexed`);
+      })
+      .catch(() => undefined);
+  }
+
   return (
     <main className="app-shell">
       <aside className="sidebar">
@@ -2244,7 +2326,7 @@ function App() {
             onExecuteTransfer={executeTransfer}
           />
         )}
-        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} />}
+        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onRefreshManifest={refreshArchiveManifest} />}
         {activeSection === "Audit" && (
           <Audit
             auditRows={auditRows}
@@ -4399,20 +4481,32 @@ function Archive({
   documents,
   station,
   offlineMode,
+  manifest,
   onArchiveDocument,
   onUpdateClassification,
   onUpdateOwner,
   onMarkReview,
-  onMarkArchived
+  onMarkArchived,
+  onSealDocument,
+  onPlaceHold,
+  onUpdateRetention,
+  onDuplicateDocument,
+  onRefreshManifest
 }: {
   documents: DocumentRecord[];
   station: StationCard;
   offlineMode: boolean;
+  manifest: ArchiveManifest | null;
   onArchiveDocument: (record: Omit<DocumentRecord, "id" | "storageKey" | "retainedUntil" | "createdAt">) => void;
   onUpdateClassification: (id: string, classification: string) => void;
   onUpdateOwner: (id: string, owner: string) => void;
   onMarkReview: (id: string) => void;
   onMarkArchived: (id: string) => void;
+  onSealDocument: (id: string) => void;
+  onPlaceHold: (id: string) => void;
+  onUpdateRetention: (id: string) => void;
+  onDuplicateDocument: (id: string) => void;
+  onRefreshManifest: () => void;
 }) {
   const [name, setName] = React.useState("Signed mission authorization.pdf");
   const [classification, setClassification] = React.useState("Signed document");
@@ -4434,6 +4528,9 @@ function Archive({
   const archivedCount = documents.filter((document) => document.status === "Archived").length;
   const inReviewCount = documents.filter((document) => document.status === "In Review").length;
   const fileTypeCount = new Set(documents.map((document) => document.fileType)).size;
+  const sealedCount = documents.filter((document) => document.status === "Sealed").length;
+  const holdCount = documents.filter((document) => document.status === "Legal Hold").length;
+  const permanentCount = manifest?.permanent ?? documents.filter((document) => document.retainedUntil === "Permanent").length;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -4458,6 +4555,11 @@ function Archive({
           <Insight label="In review" value={String(inReviewCount)} />
           <Insight label="File types" value={String(fileTypeCount)} />
         </div>
+        <div className="office-summary-grid">
+          <Insight label="Sealed" value={String(sealedCount)} />
+          <Insight label="Legal holds" value={String(holdCount)} />
+          <Insight label="Permanent" value={String(permanentCount)} />
+        </div>
         <div className="archive-toolbar">
           <label>
             <span>Source</span>
@@ -4477,6 +4579,7 @@ function Archive({
               {ownerOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <button type="button" onClick={onRefreshManifest}><RefreshCw size={14} /> Manifest</button>
         </div>
         <div className="data-table document-table">
           <div className="table-row table-head">
@@ -4494,6 +4597,10 @@ function Archive({
                 <button onClick={() => onUpdateOwner(document.id, station.email)}><Users size={14} /> Owner</button>
                 <button onClick={() => onMarkReview(document.id)}><FileClock size={14} /> Review</button>
                 <button onClick={() => onMarkArchived(document.id)}><Files size={14} /> Archive</button>
+                <button onClick={() => onSealDocument(document.id)}><LockKeyhole size={14} /> Seal</button>
+                <button onClick={() => onPlaceHold(document.id)}><ShieldCheck size={14} /> Hold</button>
+                <button onClick={() => onUpdateRetention(document.id)}><TimerReset size={14} /> Retain</button>
+                <button onClick={() => onDuplicateDocument(document.id)}><Files size={14} /> Copy</button>
               </div>
             </div>
           ))}

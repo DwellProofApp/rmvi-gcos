@@ -567,6 +567,32 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(archivedDocument.status, "Archived");
 
+    const sealedDocument = await postJson(`/api/documents/${document.id}/seal`, {
+      reason: "Automated seal test"
+    }, nationalToken);
+    assert.equal(sealedDocument.status, "Sealed");
+
+    const heldDocument = await postJson(`/api/documents/${document.id}/hold`, {
+      reason: "Automated hold test"
+    }, nationalToken);
+    assert.equal(heldDocument.status, "Legal Hold");
+
+    const retainedDocument = await postJson(`/api/documents/${document.id}/retention`, {
+      retainedUntil: "Review in 2031"
+    }, nationalToken);
+    assert.equal(retainedDocument.retainedUntil, "Review in 2031");
+
+    const duplicatedDocument = await postJson(`/api/documents/${document.id}/duplicate`, {
+      name: "Automated duplicate packet.pdf",
+      owner: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(duplicatedDocument.name, "Automated duplicate packet.pdf");
+    assert.equal(duplicatedDocument.classification, classifiedDocument.classification);
+
+    const archiveManifest = await getJson("/api/archive/manifest", nationalToken);
+    assert.equal(archiveManifest.total >= 1, true);
+    assert.equal(archiveManifest.byStatus["Legal Hold"] >= 1, true);
+
     const auditNote = await postJson("/api/audit/note", {
       object: "Automated audit test",
       note: "Manual test note"
@@ -662,6 +688,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "DocumentClassificationUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentOwnerUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentSealed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentHoldPlaced"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentRetentionUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentDuplicated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditNote"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditRowFlagged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ManualEventRecorded"), true);

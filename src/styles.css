@@ -720,13 +720,22 @@ h1 {
 }
 
 .registry-toolbar select,
-.archive-toolbar select {
+.archive-toolbar select,
+.archive-toolbar button {
   min-height: 38px;
   border: 1px solid #d8e0d9;
   border-radius: 7px;
   background: #ffffff;
   color: #13201a;
   padding: 0 10px;
+}
+
+.archive-toolbar button {
+  align-self: end;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-weight: 750;
 }
 
 .provision-summary {

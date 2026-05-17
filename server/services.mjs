@@ -524,6 +524,53 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    sealDocument(id, body) {
+      const item = findById(state.documents, id);
+      item.status = "Sealed";
+      record("DocumentSealed", body.actor, item.name, body.reason ?? "Document sealed");
+      return item;
+    },
+
+    placeDocumentHold(id, body) {
+      const item = findById(state.documents, id);
+      item.status = "Legal Hold";
+      record("DocumentHoldPlaced", body.actor, item.name, body.reason ?? "Legal hold placed");
+      return item;
+    },
+
+    updateDocumentRetention(id, body) {
+      const item = findById(state.documents, id);
+      item.retainedUntil = body.retainedUntil ?? "Permanent";
+      record("DocumentRetentionUpdated", body.actor, item.name, item.retainedUntil);
+      return item;
+    },
+
+    duplicateDocument(id, body) {
+      const item = findById(state.documents, id);
+      const created = documentRecord(body.name ?? `Copy of ${item.name}`, item.classification, item.source, body.owner ?? item.owner, item.fileType, "Archived");
+      state.documents.unshift(created);
+      record("DocumentDuplicated", body.actor, created.name, item.name);
+      return created;
+    },
+
+    archiveManifest() {
+      const byStatus = state.documents.reduce((counts, item) => {
+        counts[item.status] = (counts[item.status] ?? 0) + 1;
+        return counts;
+      }, {});
+      const bySource = state.documents.reduce((counts, item) => {
+        counts[item.source] = (counts[item.source] ?? 0) + 1;
+        return counts;
+      }, {});
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.documents.length,
+        byStatus,
+        bySource,
+        permanent: state.documents.filter((item) => item.retainedUntil === "Permanent").length
+      };
+    },
+
     createAuditNote(body) {
       record("AuditNote", body.actor, body.object ?? "Audit console", body.note ?? "Manual audit note recorded");
       return state.audit[0];

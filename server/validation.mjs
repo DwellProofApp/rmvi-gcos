@@ -237,6 +237,23 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/documents/:id/seal": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/documents/:id/hold": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/documents/:id/retention": (body) => {
+    if (body.retainedUntil !== undefined) requireString(body.retainedUntil, "retainedUntil");
+  },
+
+  "POST /api/documents/:id/duplicate": (body) => {
+    if (body.name !== undefined) requireString(body.name, "name");
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
   "POST /api/audit/note": (body) => {
     if (body.object !== undefined) requireString(body.object, "object");
     if (body.note !== undefined) requireString(body.note, "note");
