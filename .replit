@@ -1,0 +1,8 @@
+entrypoint = "server/index.mjs"
+run = "npm run replit:run"
+
+[nix]
+channel = "stable-24_05"
+
+[deployment]
+run = ["sh", "-c", "npm run replit:run"]

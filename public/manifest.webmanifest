@@ -1,0 +1,52 @@
+{
+  "name": "GCOS - Global Church Operating System",
+  "short_name": "GCOS",
+  "description": "Station-based governance operating system for church administration.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#f4f6f2",
+  "theme_color": "#173d32",
+  "categories": ["business", "productivity"],
+  "icons": [
+    {
+      "src": "/icons/gcos-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/gcos-maskable.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/brand/lion-of-judah-logo.jpg",
+      "sizes": "225x225",
+      "type": "image/jpeg",
+      "purpose": "any"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "ChurchMail",
+      "short_name": "Mail",
+      "description": "Open the governance communication center.",
+      "url": "/?section=ChurchMail"
+    },
+    {
+      "name": "Reports",
+      "short_name": "Reports",
+      "description": "Open the reporting workstation.",
+      "url": "/?section=Reports"
+    },
+    {
+      "name": "Approvals",
+      "short_name": "Approvals",
+      "description": "Open approval workflows.",
+      "url": "/?section=Approvals"
+    }
+  ]
+}
