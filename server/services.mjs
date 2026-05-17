@@ -1454,6 +1454,73 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateAuditSeverity(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.audit, id);
+      item.severity = body.severity ?? "High";
+      record("AuditSeverityUpdated", body.actor, item.object, item.severity);
+      return item;
+    },
+
+    updateAuditCategory(id, body) {
+      const item = findById(state.audit, id);
+      item.category = body.category ?? "Governance";
+      record("AuditCategoryUpdated", body.actor, item.object, item.category);
+      return item;
+    },
+
+    assignAuditReviewer(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.audit, id);
+      item.reviewer = body.reviewer ?? body.actor;
+      record("AuditReviewerAssigned", body.actor, item.object, item.reviewer);
+      return item;
+    },
+
+    appendAuditComment(id, body) {
+      const item = findById(state.audit, id);
+      item.comments = [...(item.comments ?? []), `${body.actor}: ${body.comment ?? "Review comment added"}`];
+      record("AuditCommentAdded", body.actor, item.object, body.comment ?? "Review comment added");
+      return item;
+    },
+
+    openAuditInvestigation(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.audit, id);
+      item.investigation = "Open";
+      item.investigationReason = body.reason ?? "Investigation opened";
+      item.severity = item.severity ?? "High";
+      record("AuditInvestigationOpened", body.actor, item.object, item.investigationReason);
+      return item;
+    },
+
+    closeAuditInvestigation(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.audit, id);
+      item.investigation = "Closed";
+      item.investigationResult = body.result ?? "Investigation closed";
+      record("AuditInvestigationClosed", body.actor, item.object, item.investigationResult);
+      return item;
+    },
+
+    placeAuditHold(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.audit, id);
+      item.holdReason = body.reason ?? "Audit hold placed";
+      item.hold = true;
+      record("AuditHoldPlaced", body.actor, item.object, item.holdReason);
+      return item;
+    },
+
+    releaseAuditHold(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.audit, id);
+      item.hold = false;
+      item.holdReleaseReason = body.reason ?? "Audit hold released";
+      record("AuditHoldReleased", body.actor, item.object, item.holdReleaseReason);
+      return item;
+    },
+
     bulkFlagAuditRows(body) {
       const ids = body.ids?.length ? body.ids : state.audit.slice(0, 3).map((item) => item.id);
       const updated = state.audit.filter((item) => ids.includes(item.id)).map((item) => {
@@ -1464,10 +1531,38 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { count: updated.length, updated };
     },
 
+    bulkSealAuditRows(body) {
+      requirePermission(body.actor, "canApprove");
+      const ids = body.ids?.length ? body.ids : state.audit.slice(0, 3).map((item) => item.id);
+      const updated = state.audit.filter((item) => ids.includes(item.id)).map((item) => {
+        item.sealed = true;
+        item.chainHash = item.chainHash ?? `sha256:${Buffer.from(`${item.id}:${item.event}:${item.actor}:${item.object}:${item.time}`).toString("base64url").slice(0, 32)}`;
+        item.result = item.result.startsWith("Sealed:") ? item.result : `Sealed: ${item.result}`;
+        return item;
+      });
+      record("AuditRowsBulkSealed", body.actor, "Audit ledger", `${updated.length} rows sealed`);
+      return { count: updated.length, updated };
+    },
+
+    bulkVerifyAuditRows(body) {
+      const ids = body.ids?.length ? body.ids : state.audit.slice(0, 3).map((item) => item.id);
+      const updated = state.audit.filter((item) => ids.includes(item.id)).map((item) => {
+        item.verified = true;
+        item.verification = body.result ?? "Integrity verified";
+        return item;
+      });
+      record("AuditRowsBulkVerified", body.actor, "Audit ledger", `${updated.length} rows verified`);
+      return { count: updated.length, updated };
+    },
+
     auditDigest() {
       const flagged = state.audit.filter((item) => /^Flagged:/i.test(item.result));
       const sealed = state.audit.filter((item) => item.sealed || /^Sealed:/i.test(item.result));
       const verified = state.audit.filter((item) => item.verified);
+      const investigations = state.audit.filter((item) => item.investigation === "Open");
+      const holds = state.audit.filter((item) => item.hold);
+      const critical = state.audit.filter((item) => item.severity === "Critical");
+      const reviewers = new Set(state.audit.map((item) => item.reviewer).filter(Boolean));
       const eventCounts = state.audit.reduce((counts, item) => {
         counts[item.event] = (counts[item.event] ?? 0) + 1;
         return counts;
@@ -1479,6 +1574,10 @@ export function createServices({ state, record, requirePermission, findById }) {
         flagged: flagged.length,
         sealed: sealed.length,
         verified: verified.length,
+        investigations: investigations.length,
+        holds: holds.length,
+        critical: critical.length,
+        reviewers: reviewers.size,
         topEvent,
         latestObject: state.audit[0]?.object ?? "No audit rows"
       };

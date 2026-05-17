@@ -65,7 +65,7 @@ type Policy = { id: string; title: string; category: string; owner: string; stat
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[] };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string };
-type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string };
+type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
 type OfflineAction = AuditRow & { queuedAt: string };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string };
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string };
@@ -217,6 +217,10 @@ type AuditDigest = {
   flagged: number;
   sealed: number;
   verified: number;
+  investigations: number;
+  holds: number;
+  critical: number;
+  reviewers: number;
   topEvent: string;
   latestObject: string;
 };
@@ -3273,6 +3277,137 @@ function App() {
     }
   }
 
+  function updateAuditSeverity(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    const severity: AuditRow["severity"] = row.severity === "Critical" ? "Medium" : "Critical";
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, severity } : item));
+    recordAudit("AuditSeverityUpdated", row.object, severity);
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/severity`, {
+        method: "POST",
+        body: JSON.stringify({ severity })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateAuditCategory(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    const category = row.category === "Security" ? "Governance" : "Security";
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, category } : item));
+    recordAudit("AuditCategoryUpdated", row.object, category);
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/category`, {
+        method: "POST",
+        body: JSON.stringify({ category })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function assignAuditReviewer(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, reviewer: activeStation.email } : item));
+    recordAudit("AuditReviewerAssigned", row.object, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/reviewer`, {
+        method: "POST",
+        body: JSON.stringify({ reviewer: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function appendAuditComment(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    const comment = "Review note added from audit desk";
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, comments: [...(item.comments ?? []), `${activeStation.email}: ${comment}`] } : item));
+    recordAudit("AuditCommentAdded", row.object, comment);
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/comment`, {
+        method: "POST",
+        body: JSON.stringify({ comment })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function openAuditInvestigation(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, investigation: "Open", investigationReason: "Opened from audit desk", severity: item.severity ?? "High" } : item));
+    recordAudit("AuditInvestigationOpened", row.object, "Opened from audit desk");
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/investigate`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Opened from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function closeAuditInvestigation(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, investigation: "Closed", investigationResult: "Closed from audit desk" } : item));
+    recordAudit("AuditInvestigationClosed", row.object, "Closed from audit desk");
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/close`, {
+        method: "POST",
+        body: JSON.stringify({ result: "Closed from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function placeAuditHold(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, hold: true, holdReason: "Held from audit desk" } : item));
+    recordAudit("AuditHoldPlaced", row.object, "Held from audit desk");
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/hold`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Held from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function releaseAuditHold(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, hold: false, holdReleaseReason: "Released from audit desk" } : item));
+    recordAudit("AuditHoldReleased", row.object, "Released from audit desk");
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/release-hold`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Released from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkSealAuditRows(ids: string[]) {
+    const targetIds = ids.length ? ids : auditRows.slice(0, 3).map((item) => item.id);
+    setAuditRows((rows) => rows.map((item) => targetIds.includes(item.id) ? { ...item, sealed: true, chainHash: item.chainHash ?? `sha256:${btoa(`${item.id}:${item.event}:${item.actor}:${item.object}`).replaceAll("=", "").slice(0, 24)}`, result: item.result.startsWith("Sealed:") ? item.result : `Sealed: ${item.result}` } : item));
+    recordAudit("AuditRowsBulkSealed", "Audit ledger", `${targetIds.length} rows sealed`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: AuditRow[] }>("/api/audit/bulk/seal", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, reason: "Bulk sealed from audit console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkVerifyAuditRows(ids: string[]) {
+    const targetIds = ids.length ? ids : auditRows.slice(0, 3).map((item) => item.id);
+    setAuditRows((rows) => rows.map((item) => targetIds.includes(item.id) ? { ...item, verified: true, verification: "Bulk integrity verified" } : item));
+    recordAudit("AuditRowsBulkVerified", "Audit ledger", `${targetIds.length} rows verified`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: AuditRow[] }>("/api/audit/bulk/verify", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, result: "Bulk integrity verified" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function refreshAuditDigest() {
     if (offlineMode) {
       recordAudit("AuditDigestRefreshed", "Audit digest", "Local audit digest refreshed");
@@ -3991,6 +4126,16 @@ function App() {
             onSealAuditRow={sealAuditRow}
             onVerifyAuditRow={verifyAuditRow}
             onBulkFlagAuditRows={bulkFlagAuditRows}
+            onUpdateAuditSeverity={updateAuditSeverity}
+            onUpdateAuditCategory={updateAuditCategory}
+            onAssignAuditReviewer={assignAuditReviewer}
+            onAppendAuditComment={appendAuditComment}
+            onOpenAuditInvestigation={openAuditInvestigation}
+            onCloseAuditInvestigation={closeAuditInvestigation}
+            onPlaceAuditHold={placeAuditHold}
+            onReleaseAuditHold={releaseAuditHold}
+            onBulkSealAuditRows={bulkSealAuditRows}
+            onBulkVerifyAuditRows={bulkVerifyAuditRows}
             onRefreshAuditDigest={refreshAuditDigest}
             digest={auditDigest}
           />
@@ -6834,6 +6979,16 @@ function Audit({
   onSealAuditRow,
   onVerifyAuditRow,
   onBulkFlagAuditRows,
+  onUpdateAuditSeverity,
+  onUpdateAuditCategory,
+  onAssignAuditReviewer,
+  onAppendAuditComment,
+  onOpenAuditInvestigation,
+  onCloseAuditInvestigation,
+  onPlaceAuditHold,
+  onReleaseAuditHold,
+  onBulkSealAuditRows,
+  onBulkVerifyAuditRows,
   onRefreshAuditDigest,
   digest
 }: {
@@ -6852,6 +7007,16 @@ function Audit({
   onSealAuditRow: (id: string) => void;
   onVerifyAuditRow: (id: string) => void;
   onBulkFlagAuditRows: (ids: string[]) => void;
+  onUpdateAuditSeverity: (id: string) => void;
+  onUpdateAuditCategory: (id: string) => void;
+  onAssignAuditReviewer: (id: string) => void;
+  onAppendAuditComment: (id: string) => void;
+  onOpenAuditInvestigation: (id: string) => void;
+  onCloseAuditInvestigation: (id: string) => void;
+  onPlaceAuditHold: (id: string) => void;
+  onReleaseAuditHold: (id: string) => void;
+  onBulkSealAuditRows: (ids: string[]) => void;
+  onBulkVerifyAuditRows: (ids: string[]) => void;
   onRefreshAuditDigest: () => void;
   digest: AuditDigest | null;
 }) {
@@ -6880,6 +7045,9 @@ function Audit({
   const sealedCount = digest?.sealed ?? auditRows.filter((row) => row.sealed || row.result.startsWith("Sealed:")).length;
   const verifiedCount = digest?.verified ?? auditRows.filter((row) => row.verified).length;
   const flaggedCount = digest?.flagged ?? auditRows.filter((row) => row.result.startsWith("Flagged:")).length;
+  const investigationCount = digest?.investigations ?? auditRows.filter((row) => row.investigation === "Open").length;
+  const holdCount = digest?.holds ?? auditRows.filter((row) => row.hold).length;
+  const criticalCount = digest?.critical ?? auditRows.filter((row) => row.severity === "Critical").length;
 
   React.useEffect(() => {
     void apiRequest<ReadinessReport>("/api/readiness").then(setReadiness).catch(() => undefined);
@@ -6932,6 +7100,8 @@ function Audit({
           <button disabled={!visibleRows[0]} onClick={() => visibleRows[0] && onSealAuditRow(visibleRows[0].id)}><LockKeyhole size={15} /> Seal</button>
           <button disabled={!visibleRows[0]} onClick={() => visibleRows[0] && onVerifyAuditRow(visibleRows[0].id)}><FileCheck2 size={15} /> Verify</button>
           <button disabled={!visibleRows.length} onClick={() => onBulkFlagAuditRows(visibleRows.slice(0, 3).map((row) => row.id))}><AlertTriangle size={15} /> Bulk flag</button>
+          <button disabled={!visibleRows.length} onClick={() => onBulkSealAuditRows(visibleRows.slice(0, 3).map((row) => row.id))}><LockKeyhole size={15} /> Bulk seal</button>
+          <button disabled={!visibleRows.length} onClick={() => onBulkVerifyAuditRows(visibleRows.slice(0, 3).map((row) => row.id))}><ShieldCheck size={15} /> Bulk verify</button>
           <button onClick={onRefreshAuditDigest}><RefreshCw size={15} /> Digest</button>
           <button onClick={exportAuditPacket}><Download size={15} /> Export CSV</button>
           <button onClick={() => void exportGovernanceSnapshot()}><Files size={15} /> Export snapshot</button>
@@ -6941,6 +7111,10 @@ function Audit({
           <Insight label="Flagged" value={String(flaggedCount)} />
           <Insight label="Sealed" value={String(sealedCount)} />
           <Insight label="Verified" value={String(verifiedCount)} />
+          <Insight label="Critical" value={String(criticalCount)} />
+          <Insight label="Investigations" value={String(investigationCount)} />
+          <Insight label="Holds" value={String(holdCount)} />
+          <Insight label="Reviewers" value={String(digest?.reviewers ?? 0)} />
           <Insight label="Top event" value={digest?.topEvent ?? eventTypes[1] ?? "Boot"} />
         </div>
         <div className="data-table audit-table">
@@ -6951,12 +7125,20 @@ function Audit({
             <div className="table-row" key={row.id}>
               <strong>{row.event}</strong>
               <span>{row.actor}</span>
-              <span>{row.object}</span>
-              <span>{row.sealed || row.result.startsWith("Sealed:") ? "Sealed" : row.verified ? "Verified" : row.result.startsWith("Flagged:") ? "Flagged" : "Open"}</span>
+              <span>{row.object}<small>{row.category ?? "Unclassified"} - {row.reviewer ?? "No reviewer"}</small></span>
+              <span>{row.sealed || row.result.startsWith("Sealed:") ? "Sealed" : row.verified ? "Verified" : row.result.startsWith("Flagged:") ? "Flagged" : row.hold ? "Hold" : row.investigation === "Open" ? "Investigation" : "Open"}<small>{row.severity ?? "Info"} - {row.comments?.length ?? 0} notes</small></span>
               <span className="table-actions">
                 <button onClick={() => onFlagAuditRow(row.id)}><AlertTriangle size={14} /> Flag</button>
                 <button onClick={() => onSealAuditRow(row.id)}><LockKeyhole size={14} /> Seal</button>
                 <button onClick={() => onVerifyAuditRow(row.id)}><FileCheck2 size={14} /> Verify</button>
+                <button onClick={() => onUpdateAuditSeverity(row.id)}><AlertTriangle size={14} /> Severity</button>
+                <button onClick={() => onUpdateAuditCategory(row.id)}><Files size={14} /> Category</button>
+                <button onClick={() => onAssignAuditReviewer(row.id)}><Users size={14} /> Reviewer</button>
+                <button onClick={() => onAppendAuditComment(row.id)}><MessageSquareText size={14} /> Comment</button>
+                <button onClick={() => onOpenAuditInvestigation(row.id)}><Search size={14} /> Investigate</button>
+                <button onClick={() => onCloseAuditInvestigation(row.id)}><CheckCircle2 size={14} /> Close</button>
+                <button onClick={() => onPlaceAuditHold(row.id)}><ShieldCheck size={14} /> Hold</button>
+                <button onClick={() => onReleaseAuditHold(row.id)}><TimerReset size={14} /> Release</button>
               </span>
               <span>{row.time}</span>
             </div>

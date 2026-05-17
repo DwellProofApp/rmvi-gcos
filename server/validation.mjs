@@ -20,6 +20,7 @@ const calendarPriorities = ["Low", "Medium", "High", "Critical"];
 const calendarStatuses = ["Scheduled", "At Risk", "Complete"];
 const personnelStatuses = ["Active", "Transfer Pending", "Assigned", "Inactive", "Onboarding", "On Leave"];
 const officeStatuses = ["Provisioned", "Suspended", "Active"];
+const auditSeverities = ["Info", "Low", "Medium", "High", "Critical"];
 
 const validators = {
   "POST /api/auth/login": (body) => {
@@ -555,9 +556,51 @@ const validators = {
     if (body.result !== undefined) requireString(body.result, "result");
   },
 
+  "POST /api/audit/:id/severity": (body) => {
+    if (body.severity !== undefined) requireEnum(body.severity, auditSeverities, "severity");
+  },
+
+  "POST /api/audit/:id/category": (body) => {
+    if (body.category !== undefined) requireString(body.category, "category");
+  },
+
+  "POST /api/audit/:id/reviewer": (body) => {
+    if (body.reviewer !== undefined) requireString(body.reviewer, "reviewer");
+  },
+
+  "POST /api/audit/:id/comment": (body) => {
+    if (body.comment !== undefined) requireString(body.comment, "comment");
+  },
+
+  "POST /api/audit/:id/investigate": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/audit/:id/close": (body) => {
+    if (body.result !== undefined) requireString(body.result, "result");
+  },
+
+  "POST /api/audit/:id/hold": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/audit/:id/release-hold": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/audit/bulk/flag": (body) => {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
     if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/audit/bulk/seal": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/audit/bulk/verify": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.result !== undefined) requireString(body.result, "result");
   },
 
   "POST /api/events": (body) => {

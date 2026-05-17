@@ -1124,16 +1124,82 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(verifiedAudit.verified, true);
     assert.equal(verifiedAudit.verification, "Automated integrity verified");
 
+    const invalidAuditSeverity = await rawPost(`/api/audit/${auditNote.id}/severity`, {
+      severity: "Severe"
+    }, nationalToken);
+    assert.equal(invalidAuditSeverity.status, 400);
+
+    const forbiddenAuditSeverity = await rawPost(`/api/audit/${auditNote.id}/severity`, {
+      severity: "Critical"
+    }, localToken);
+    assert.equal(forbiddenAuditSeverity.status, 403);
+
+    const severityAudit = await postJson(`/api/audit/${auditNote.id}/severity`, {
+      severity: "Critical"
+    }, nationalToken);
+    assert.equal(severityAudit.severity, "Critical");
+
+    const categoryAudit = await postJson(`/api/audit/${auditNote.id}/category`, {
+      category: "Security"
+    }, nationalToken);
+    assert.equal(categoryAudit.category, "Security");
+
+    const reviewerAudit = await postJson(`/api/audit/${auditNote.id}/reviewer`, {
+      reviewer: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(reviewerAudit.reviewer, "np@rmvi.org");
+
+    const commentedAudit = await postJson(`/api/audit/${auditNote.id}/comment`, {
+      comment: "Automated comment test"
+    }, nationalToken);
+    assert.equal(commentedAudit.comments.some((comment) => comment.includes("Automated comment test")), true);
+
+    const investigatedAudit = await postJson(`/api/audit/${auditNote.id}/investigate`, {
+      reason: "Automated investigation test"
+    }, nationalToken);
+    assert.equal(investigatedAudit.investigation, "Open");
+
+    const heldAudit = await postJson(`/api/audit/${auditNote.id}/hold`, {
+      reason: "Automated hold test"
+    }, nationalToken);
+    assert.equal(heldAudit.hold, true);
+
+    const releasedAudit = await postJson(`/api/audit/${auditNote.id}/release-hold`, {
+      reason: "Automated hold release test"
+    }, nationalToken);
+    assert.equal(releasedAudit.hold, false);
+
+    const closedAudit = await postJson(`/api/audit/${auditNote.id}/close`, {
+      result: "Automated investigation close test"
+    }, nationalToken);
+    assert.equal(closedAudit.investigation, "Closed");
+
     const bulkAuditFlag = await postJson("/api/audit/bulk/flag", {
       ids: [auditNote.id],
       reason: "Automated bulk flag test"
     }, nationalToken);
     assert.equal(bulkAuditFlag.count, 1);
 
+    const bulkAuditSeal = await postJson("/api/audit/bulk/seal", {
+      ids: [auditNote.id],
+      reason: "Automated bulk seal test"
+    }, nationalToken);
+    assert.equal(bulkAuditSeal.count, 1);
+    assert.equal(bulkAuditSeal.updated[0].sealed, true);
+
+    const bulkAuditVerify = await postJson("/api/audit/bulk/verify", {
+      ids: [auditNote.id],
+      result: "Automated bulk verify test"
+    }, nationalToken);
+    assert.equal(bulkAuditVerify.count, 1);
+    assert.equal(bulkAuditVerify.updated[0].verified, true);
+
     const auditDigest = await getJson("/api/audit/digest", nationalToken);
     assert.equal(auditDigest.total > 0, true);
     assert.equal(auditDigest.sealed >= 1, true);
     assert.equal(auditDigest.verified >= 1, true);
+    assert.equal(auditDigest.critical >= 1, true);
+    assert.equal(auditDigest.reviewers >= 1, true);
 
     const manualEvent = await postJson("/api/events", {
       object: "Automated event test",
@@ -1362,6 +1428,16 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "AuditRowSealed"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditRowVerified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditRowsBulkFlagged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditSeverityUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditCategoryUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditReviewerAssigned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditCommentAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditInvestigationOpened"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditInvestigationClosed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditHoldPlaced"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditHoldReleased"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditRowsBulkSealed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditRowsBulkVerified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ManualEventRecorded"), true);
     assert.equal(persisted.audit.some((row) => row.event === "GovernanceSnapshotArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EventLogCleared"), true);
