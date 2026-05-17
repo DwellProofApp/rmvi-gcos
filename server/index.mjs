@@ -30,6 +30,11 @@ const routes = {
   "GET /health": () => ok({ status: "ok", service: "gcos-api", time: new Date().toISOString() }),
   "GET /api/readiness": () => ok(readinessReport()),
   "GET /api/status": () => ok(operationalStatus()),
+  "GET /api/sessions": () => ok(sessionSummary()),
+  "POST /api/sessions/renew": ({ session }) => ok(renewSession(session.token, session.email)),
+  "POST /api/sessions/station/revoke": ({ session, body }) => ok(revokeStationSessions(body.email ?? session.email, session.token, session.email)),
+  "POST /api/sessions/:id/revoke": ({ params, session }) => ok(revokeSession(params.id, session.email)),
+  "POST /api/sessions/:id/flag": ({ params, session, body }) => ok(flagSession(params.id, session.email, body.reason)),
   "GET /api/bootstrap": () => ok(services.publicState()),
   "GET /api/command-center/briefing": () => ok(services.commandBriefing()),
   "POST /api/command-center/briefing/archive": ({ session, body }) => createdResponse(services.archiveCommandBriefing({ ...body, actor: session.email })),
@@ -236,8 +241,46 @@ function createSession(email) {
   const token = `gcos.${randomUUID()}`;
   const startedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString();
-  sessions.set(token, { email, startedAt, expiresAt });
+  sessions.set(token, { token, email, startedAt, expiresAt, status: "Active", flags: [] });
   return { token, startedAt, expiresAt };
+}
+
+function renewSession(token, actor) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  session.expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString();
+  session.status = "Renewed";
+  record("SessionRenewed", actor, session.email, session.expiresAt);
+  return { session: summarizeSession(token, session), sessions: sessionSummary() };
+}
+
+function revokeSession(token, actor) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  sessions.delete(token);
+  record("SessionRevoked", actor, session.email, "Session revoked");
+  return { revoked: token, sessions: sessionSummary() };
+}
+
+function revokeStationSessions(email, currentToken, actor) {
+  let revoked = 0;
+  for (const [token, session] of sessions.entries()) {
+    if (session.email === email && token !== currentToken) {
+      sessions.delete(token);
+      revoked += 1;
+    }
+  }
+  record("StationSessionsRevoked", actor, email, `${revoked} sessions revoked`);
+  return { revoked, sessions: sessionSummary() };
+}
+
+function flagSession(token, actor, reason) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  session.status = "Flagged";
+  session.flags = [...(session.flags ?? []), reason ?? "Suspicious session flagged"];
+  record("SessionFlagged", actor, session.email, reason ?? "Suspicious session flagged");
+  return { session: summarizeSession(token, session), sessions: sessionSummary() };
 }
 
 function sessionSummary() {
@@ -249,16 +292,31 @@ function sessionSummary() {
       continue;
     }
     active.push({
+      id: token,
       email: session.email,
       startedAt: session.startedAt,
       expiresAt: session.expiresAt,
-      minutesRemaining: Math.max(0, Math.round((Date.parse(session.expiresAt) - now) / 60000))
+      minutesRemaining: Math.max(0, Math.round((Date.parse(session.expiresAt) - now) / 60000)),
+      status: session.status ?? "Active",
+      flags: session.flags ?? []
     });
   }
   return {
     active: active.length,
     expiringSoon: active.filter((session) => session.minutesRemaining <= 30).length,
     stations: active
+  };
+}
+
+function summarizeSession(token, session) {
+  return {
+    id: token,
+    email: session.email,
+    startedAt: session.startedAt,
+    expiresAt: session.expiresAt,
+    minutesRemaining: Math.max(0, Math.round((Date.parse(session.expiresAt) - Date.now()) / 60000)),
+    status: session.status ?? "Active",
+    flags: session.flags ?? []
   };
 }
 
@@ -278,7 +336,7 @@ function authenticateRequest(request, pathname) {
     sessions.delete(token);
     throw new HttpError(401, "Expired session token");
   }
-  return session;
+  return { ...session, token };
 }
 
 function readBearerToken(header) {

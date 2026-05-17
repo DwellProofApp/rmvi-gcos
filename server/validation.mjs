@@ -27,6 +27,14 @@ const validators = {
     requireString(body.password, "password");
   },
 
+  "POST /api/sessions/station/revoke": (body) => {
+    if (body.email !== undefined) requireEmail(body.email, "email");
+  },
+
+  "POST /api/sessions/:id/flag": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/command-center/briefing/archive": (body) => {
     if (body.title !== undefined) requireString(body.title, "title");
   },

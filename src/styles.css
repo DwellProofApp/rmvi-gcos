@@ -1403,6 +1403,16 @@ h1 {
   font-size: 12px;
 }
 
+.compact-actions {
+  margin-top: 4px;
+}
+
+.compact-actions button {
+  min-height: 30px;
+  padding: 0 8px;
+  font-size: 12px;
+}
+
 .mail-layout {
   display: grid;
   grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.35fr);

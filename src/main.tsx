@@ -90,10 +90,13 @@ type ApiStatus = {
     active: number;
     expiringSoon: number;
     stations: {
+      id?: string;
       email: string;
       startedAt: string;
       expiresAt: string;
       minutesRemaining: number;
+      status?: string;
+      flags?: string[];
     }[];
   };
   counts: {
@@ -1813,6 +1816,55 @@ function App() {
     }
   }
 
+  function renewCurrentSession() {
+    if (!session?.token || offlineMode) {
+      recordAudit("SessionRenewed", activeStation.email, "Local session renewal noted");
+      return;
+    }
+    void apiRequest<{ session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }>("/api/sessions/renew", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setSession((current) => current ? { ...current, expiresAt: result.session.expiresAt } : current);
+      setApiStatus((status) => status ? { ...status, sessions: result.sessions } : status);
+      recordAudit("SessionRenewed", result.session.email, `${result.session.minutesRemaining} minutes remaining`);
+    }).catch(() => undefined);
+  }
+
+  function revokeSession(id: string) {
+    if (!id || offlineMode) return;
+    void apiRequest<{ revoked: string; sessions: ApiStatus["sessions"] }>(`/api/sessions/${encodeURIComponent(id)}/revoke`, {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setApiStatus((status) => status ? { ...status, sessions: result.sessions } : status);
+      recordAudit("SessionRevoked", id, "Session revoked from audit console");
+      if (session?.token === id) setSession(null);
+    }).catch(() => undefined);
+  }
+
+  function revokeStationSessions(email: string) {
+    if (offlineMode) return;
+    void apiRequest<{ revoked: number; sessions: ApiStatus["sessions"] }>("/api/sessions/station/revoke", {
+      method: "POST",
+      body: JSON.stringify({ email })
+    }).then((result) => {
+      setApiStatus((status) => status ? { ...status, sessions: result.sessions } : status);
+      recordAudit("StationSessionsRevoked", email, `${result.revoked} sessions revoked`);
+    }).catch(() => undefined);
+  }
+
+  function flagSession(id: string) {
+    if (!id || offlineMode) return;
+    void apiRequest<{ session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }>(`/api/sessions/${encodeURIComponent(id)}/flag`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Flagged from audit session monitor" })
+    }).then((result) => {
+      setApiStatus((status) => status ? { ...status, sessions: result.sessions } : status);
+      recordAudit("SessionFlagged", result.session.email, "Flagged from audit session monitor");
+    }).catch(() => undefined);
+  }
+
   function archiveGovernanceSnapshot() {
     archiveDocument({
       name: `Governance snapshot ${new Date().toISOString().slice(0, 10)}.json`,
@@ -2337,6 +2389,10 @@ function App() {
             onRecordManualEvent={recordManualEvent}
             onClearEventLog={clearEventLog}
             onArchiveGovernanceSnapshot={archiveGovernanceSnapshot}
+            onRenewSession={renewCurrentSession}
+            onRevokeSession={revokeSession}
+            onRevokeStationSessions={revokeStationSessions}
+            onFlagSession={flagSession}
           />
         )}
       </section>
@@ -4667,7 +4723,11 @@ function Audit({
   onFlagAuditRow,
   onRecordManualEvent,
   onClearEventLog,
-  onArchiveGovernanceSnapshot
+  onArchiveGovernanceSnapshot,
+  onRenewSession,
+  onRevokeSession,
+  onRevokeStationSessions,
+  onFlagSession
 }: {
   auditRows: AuditRow[];
   apiStatus: ApiStatus | null;
@@ -4677,6 +4737,10 @@ function Audit({
   onRecordManualEvent: () => void;
   onClearEventLog: () => void;
   onArchiveGovernanceSnapshot: () => void;
+  onRenewSession: () => void;
+  onRevokeSession: (id: string) => void;
+  onRevokeStationSessions: (email: string) => void;
+  onFlagSession: (id: string) => void;
 }) {
   const [query, setQuery] = React.useState("");
   const [eventFilter, setEventFilter] = React.useState("All events");
@@ -4694,7 +4758,9 @@ function Audit({
     email: session.email,
     startedAt: new Date().toISOString(),
     expiresAt: session.expiresAt ?? new Date().toISOString(),
-    minutesRemaining: session.expiresAt ? Math.max(0, Math.round((Date.parse(session.expiresAt) - Date.now()) / 60000)) : 0
+    minutesRemaining: session.expiresAt ? Math.max(0, Math.round((Date.parse(session.expiresAt) - Date.now()) / 60000)) : 0,
+    id: session.token,
+    status: "Local"
   }];
   const activeSessionCount = Math.max(apiStatus?.sessions?.active ?? 0, sessionEntries.length);
   const expiringSoonCount = apiStatus?.sessions?.expiringSoon ?? sessionEntries.filter((item) => item.minutesRemaining <= 30).length;
@@ -4778,6 +4844,10 @@ function Audit({
       </div>
       <div className="panel module-side">
         <PanelHeader icon={Server} title="Session Monitor" action={`${activeSessionCount} active`} />
+        <div className="action-row">
+          <button onClick={onRenewSession}><RefreshCw size={15} /> Renew current</button>
+          <button onClick={() => onRevokeStationSessions(session.email)}><LockKeyhole size={15} /> Revoke station</button>
+        </div>
         <div className="office-summary-grid">
           <Insight label="Active sessions" value={String(activeSessionCount)} />
           <Insight label="Expiring soon" value={String(expiringSoonCount)} />
@@ -4788,7 +4858,11 @@ function Audit({
             <article className="source-map-item" key={`${item.email}-${item.startedAt}`}>
               <span>{item.email}</span>
               <strong>{item.minutesRemaining} minutes remaining</strong>
-              <small>Started {formatDateTime(item.startedAt)} - expires {formatDateTime(item.expiresAt)}</small>
+              <small>{item.status ?? "Active"} - started {formatDateTime(item.startedAt)} - expires {formatDateTime(item.expiresAt)}</small>
+              <div className="action-row compact-actions">
+                <button disabled={!item.id} onClick={() => item.id && onFlagSession(item.id)}><AlertTriangle size={14} /> Flag</button>
+                <button disabled={!item.id || item.id === session.token} onClick={() => item.id && onRevokeSession(item.id)}><LockKeyhole size={14} /> Revoke</button>
+              </div>
             </article>
           ))}
         </div>

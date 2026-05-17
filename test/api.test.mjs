@@ -75,6 +75,37 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const statusAfterSecondLogin = await getJson("/api/status");
     assert.equal(statusAfterSecondLogin.sessions.active, 2);
+    assert.equal(Boolean(statusAfterSecondLogin.sessions.stations[0].id), true);
+
+    const renewedSession = await postJson("/api/sessions/renew", {}, nationalToken);
+    assert.equal(renewedSession.session.email, "np@rmvi.org");
+    assert.equal(renewedSession.session.status, "Renewed");
+
+    const flaggedSession = await postJson(`/api/sessions/${renewedSession.session.id}/flag`, {
+      reason: "Automated suspicious session test"
+    }, nationalToken);
+    assert.equal(flaggedSession.session.status, "Flagged");
+    assert.equal(flaggedSession.session.flags.includes("Automated suspicious session test"), true);
+
+    const spareLocalLogin = await postJson("/api/auth/login", {
+      email: "local_branch_017@gcos.org",
+      password: "gcos-local"
+    });
+
+    const revokedLocalSession = await postJson(`/api/sessions/${spareLocalLogin.token}/revoke`, {}, nationalToken);
+    assert.equal(revokedLocalSession.revoked, spareLocalLogin.token);
+    assert.equal(revokedLocalSession.sessions.active, 2);
+
+    const extraLogin = await postJson("/api/auth/login", {
+      email: "np@rmvi.org",
+      password: "gcos-national"
+    });
+    assert.match(extraLogin.token, /^gcos\./);
+
+    const revokedStationSessions = await postJson("/api/sessions/station/revoke", {
+      email: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(revokedStationSessions.revoked >= 1, true);
 
     const commandBriefing = await getJson("/api/command-center/briefing");
     assert.equal(commandBriefing.title, "Executive command briefing");
@@ -654,6 +685,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const persisted = JSON.parse(await readFile(dataPath, "utf8"));
     assert.equal(persisted.messages[0].subject, "Automated API test notice");
     assert.equal(persisted.audit.some((row) => row.event === "OfflineActionTest"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionRenewed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionFlagged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionRevoked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationSessionsRevoked"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandBriefingArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandDirectiveIssued"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandTaskCreated"), true);
