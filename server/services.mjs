@@ -461,6 +461,36 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    createAuditNote(body) {
+      record("AuditNote", body.actor, body.object ?? "Audit console", body.note ?? "Manual audit note recorded");
+      return state.audit[0];
+    },
+
+    flagAuditRow(id, body) {
+      const item = findById(state.audit, id);
+      item.result = `Flagged: ${body.reason ?? item.result}`;
+      record("AuditRowFlagged", body.actor, item.object, item.result);
+      return item;
+    },
+
+    recordManualEvent(body) {
+      record("ManualEventRecorded", body.actor, body.object ?? "Event bus", body.result ?? "Manual event recorded");
+      return { event: state.events[0], audit: state.audit[0] };
+    },
+
+    clearEventLog(body) {
+      state.events.length = 0;
+      record("EventLogCleared", body.actor, "Event bus", body.reason ?? "Event log cleared");
+      return { events: state.events };
+    },
+
+    archiveGovernanceSnapshot(body) {
+      const created = documentRecord(`Governance snapshot ${new Date().toISOString().slice(0, 10)}.json`, "Governance snapshot", "Audit", body.actor, "JSON", "Archived");
+      state.documents.unshift(created);
+      record("GovernanceSnapshotArchived", body.actor, created.name, created.storageKey);
+      return created;
+    },
+
     createAiDraft(body) {
       const draft = generateDraft(body.kind ?? "Executive Summary", body.focus ?? "Governance summary", body.actor);
       state.aiDrafts.unshift(draft);

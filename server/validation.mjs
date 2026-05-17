@@ -213,6 +213,28 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/audit/note": (body) => {
+    if (body.object !== undefined) requireString(body.object, "object");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/audit/:id/flag": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/events": (body) => {
+    if (body.object !== undefined) requireString(body.object, "object");
+    if (body.result !== undefined) requireString(body.result, "result");
+  },
+
+  "POST /api/events/clear": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/export/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/transfers": (body) => {
     requireString(body.person, "person");
     requireString(body.from, "from");

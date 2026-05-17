@@ -1733,6 +1733,78 @@ function App() {
     }
   }
 
+  function createAuditNote() {
+    const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const row: AuditRow = {
+      id: `aud-${Date.now()}`,
+      event: "AuditNote",
+      actor: activeStation.email,
+      object: activeSection,
+      result: "Manual audit note recorded",
+      time
+    };
+    setAuditRows((rows) => [row, ...rows]);
+    setEvents((items) => [`AuditNote: ${activeSection}`, ...items].slice(0, 8));
+    if (!offlineMode) {
+      void apiRequest<AuditRow>("/api/audit/note", {
+        method: "POST",
+        body: JSON.stringify({ object: activeSection, note: "Manual audit note recorded" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function flagAuditRow(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, result: `Flagged: ${item.result}` } : item));
+    setEvents((items) => [`AuditRowFlagged: ${row.object}`, ...items].slice(0, 8));
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/flag`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Flagged from audit console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function recordManualEvent() {
+    setEvents((items) => ["ManualEventRecorded: Audit console", ...items].slice(0, 8));
+    recordAudit("ManualEventRecorded", "Audit console", "Manual event recorded");
+    if (!offlineMode) {
+      void apiRequest("/api/events", {
+        method: "POST",
+        body: JSON.stringify({ object: "Audit console", result: "Manual event recorded" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function clearEventLog() {
+    setEvents(["EventLogCleared: Event bus"]);
+    recordAudit("EventLogCleared", "Event bus", "Event log cleared");
+    if (!offlineMode) {
+      void apiRequest("/api/events/clear", {
+        method: "POST",
+        body: JSON.stringify({ reason: "Cleared from audit console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveGovernanceSnapshot() {
+    archiveDocument({
+      name: `Governance snapshot ${new Date().toISOString().slice(0, 10)}.json`,
+      classification: "Governance snapshot",
+      source: "Audit",
+      owner: activeStation.email,
+      fileType: "JSON",
+      status: offlineMode ? "Queued" : "Archived"
+    });
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>("/api/export/archive", {
+        method: "POST",
+        body: JSON.stringify({ reason: "Archived from audit console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function markDocumentReview(id: string) {
     const document = documents.find((item) => item.id === id);
     if (!document) return;
@@ -2061,7 +2133,18 @@ function App() {
           />
         )}
         {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} />}
-        {activeSection === "Audit" && <Audit auditRows={auditRows} apiStatus={apiStatus} session={session} />}
+        {activeSection === "Audit" && (
+          <Audit
+            auditRows={auditRows}
+            apiStatus={apiStatus}
+            session={session}
+            onCreateAuditNote={createAuditNote}
+            onFlagAuditRow={flagAuditRow}
+            onRecordManualEvent={recordManualEvent}
+            onClearEventLog={clearEventLog}
+            onArchiveGovernanceSnapshot={archiveGovernanceSnapshot}
+          />
+        )}
       </section>
     </main>
   );
@@ -4260,7 +4343,25 @@ function Archive({
   );
 }
 
-function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiStatus: ApiStatus | null; session: Session }) {
+function Audit({
+  auditRows,
+  apiStatus,
+  session,
+  onCreateAuditNote,
+  onFlagAuditRow,
+  onRecordManualEvent,
+  onClearEventLog,
+  onArchiveGovernanceSnapshot
+}: {
+  auditRows: AuditRow[];
+  apiStatus: ApiStatus | null;
+  session: Session;
+  onCreateAuditNote: () => void;
+  onFlagAuditRow: (id: string) => void;
+  onRecordManualEvent: () => void;
+  onClearEventLog: () => void;
+  onArchiveGovernanceSnapshot: () => void;
+}) {
   const [query, setQuery] = React.useState("");
   const [eventFilter, setEventFilter] = React.useState("All events");
   const [readiness, setReadiness] = React.useState<ReadinessReport | null>(null);
@@ -4285,6 +4386,10 @@ function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiSt
   React.useEffect(() => {
     void apiRequest<ReadinessReport>("/api/readiness").then(setReadiness).catch(() => undefined);
   }, []);
+
+  function refreshReadiness() {
+    void apiRequest<ReadinessReport>("/api/readiness").then(setReadiness).catch(() => undefined);
+  }
 
   function exportAuditPacket() {
     const headers = ["Event", "Actor", "Object", "Result", "Time"];
@@ -4324,8 +4429,11 @@ function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiSt
               <option key={event} value={event}>{event}</option>
             ))}
           </select>
+          <button onClick={onCreateAuditNote}><Plus size={15} /> Note</button>
+          <button disabled={!visibleRows[0]} onClick={() => visibleRows[0] && onFlagAuditRow(visibleRows[0].id)}><AlertTriangle size={15} /> Flag</button>
           <button onClick={exportAuditPacket}><Download size={15} /> Export CSV</button>
           <button onClick={() => void exportGovernanceSnapshot()}><Files size={15} /> Export snapshot</button>
+          <button onClick={onArchiveGovernanceSnapshot}><Files size={15} /> Archive snapshot</button>
         </div>
         <div className="data-table audit-table">
           <div className="table-row table-head">
@@ -4371,6 +4479,11 @@ function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiSt
       </div>
       <div className="panel module-side">
         <PanelHeader icon={ClipboardCheck} title="Readiness Checks" action={readiness?.status ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshReadiness}><RefreshCw size={15} /> Refresh</button>
+          <button onClick={onRecordManualEvent}><RadioTower size={15} /> Record event</button>
+          <button onClick={onClearEventLog}><TimerReset size={15} /> Clear events</button>
+        </div>
         <div className="source-map-list">
           {(readiness?.checks ?? []).map((check) => (
             <article className="source-map-item" key={check.name}>

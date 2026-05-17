@@ -531,6 +531,34 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(archivedDocument.status, "Archived");
 
+    const auditNote = await postJson("/api/audit/note", {
+      object: "Automated audit test",
+      note: "Manual test note"
+    }, nationalToken);
+    assert.equal(auditNote.event, "AuditNote");
+
+    const flaggedAudit = await postJson(`/api/audit/${auditNote.id}/flag`, {
+      reason: "Automated flag test"
+    }, nationalToken);
+    assert.match(flaggedAudit.result, /^Flagged:/);
+
+    const manualEvent = await postJson("/api/events", {
+      object: "Automated event test",
+      result: "Manual event test"
+    }, nationalToken);
+    assert.match(manualEvent.event, /^ManualEventRecorded:/);
+
+    const archivedSnapshotDocument = await postJson("/api/export/archive", {
+      reason: "Automated snapshot archive test"
+    }, nationalToken);
+    assert.equal(archivedSnapshotDocument.classification, "Governance snapshot");
+    assert.equal(archivedSnapshotDocument.source, "Audit");
+
+    const clearedEvents = await postJson("/api/events/clear", {
+      reason: "Automated event clear test"
+    }, nationalToken);
+    assert.equal(clearedEvents.events[0], "EventLogCleared: Event bus");
+
     const draft = await postJson("/api/ai-drafts", {
       kind: "Executive Summary",
       focus: "Automated workflow test"
@@ -594,6 +622,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "DocumentClassificationUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentOwnerUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditNote"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditRowFlagged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ManualEventRecorded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "GovernanceSnapshotArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventLogCleared"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AIDraftRefreshed"), true);
 
     await stopApi(api);
