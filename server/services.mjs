@@ -100,6 +100,13 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateTaskPriority(id, body) {
+      const item = findById(state.tasks, id);
+      item.priority = body.priority ?? "High";
+      record("TaskPriorityUpdated", body.actor, item.title, item.priority);
+      return item;
+    },
+
     createPolicy(body) {
       requirePermission(body.actor, "canApprove");
       const created = policy(body.title, body.category, body.owner ?? body.actor, body.status ?? "Draft", body.summary, body.acknowledgements ?? 0);
@@ -159,6 +166,14 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    deactivatePerson(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.status = "Inactive";
+      record("PersonDeactivated", body.actor, item.name, body.reason ?? "Personnel record deactivated");
+      return item;
+    },
+
     submitReport(id, body) {
       const item = findById(state.reports, id);
       item.state = "Approved";
@@ -205,6 +220,14 @@ export function createServices({ state, record, requirePermission, findById }) {
       const item = findById(state.escalations, id);
       item.status = "Upward";
       record("EscalationRouted", body.actor, item.item, "Forwarded to supervising authority");
+      return item;
+    },
+
+    updateEscalationSeverity(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.severity = body.severity ?? "High";
+      record("EscalationSeverityUpdated", body.actor, item.item, item.severity);
       return item;
     },
 
@@ -264,11 +287,33 @@ export function createServices({ state, record, requirePermission, findById }) {
       return created;
     },
 
+    markDocumentInReview(id, body) {
+      const item = findById(state.documents, id);
+      item.status = "In Review";
+      record("DocumentReviewStarted", body.actor, item.name, body.reason ?? "Document marked for review");
+      return item;
+    },
+
+    markDocumentArchived(id, body) {
+      const item = findById(state.documents, id);
+      item.status = "Archived";
+      record("DocumentArchived", body.actor, item.name, body.reason ?? "Document archived");
+      return item;
+    },
+
     createAiDraft(body) {
       const draft = generateDraft(body.kind ?? "Executive Summary", body.focus ?? "Governance summary", body.actor);
       state.aiDrafts.unshift(draft);
       record("AIDraftGenerated", body.actor, draft.title, `${draft.sourceCount} governance records summarized`);
       return draft;
+    },
+
+    archiveAiDraft(id, body) {
+      const draft = findById(state.aiDrafts, id);
+      const created = documentRecord(`${draft.title}.txt`, "AI draft", "AI Desk", body.actor ?? "GCOS AI", "Text", "Archived");
+      state.documents.unshift(created);
+      record("AIDraftArchived", body.actor, draft.title, created.storageKey);
+      return created;
     },
 
     syncOfflineActions(body) {

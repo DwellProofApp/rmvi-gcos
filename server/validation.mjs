@@ -64,6 +64,10 @@ const validators = {
     if (body.status !== undefined) requireEnum(body.status, taskStatuses, "status");
   },
 
+  "POST /api/tasks/:id/priority": (body) => {
+    if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
+  },
+
   "POST /api/policies": (body) => {
     requireString(body.title, "title");
     requireString(body.category, "category");
@@ -94,12 +98,20 @@ const validators = {
     if (body.status !== undefined) requireEnum(body.status, personnelStatuses, "status");
   },
 
+  "POST /api/personnel/:id/deactivate": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/escalations": (body) => {
     requireString(body.source, "source");
     requireString(body.item, "item");
     requireString(body.reason, "reason");
     if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
     if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
+  "POST /api/escalations/:id/severity": (body) => {
+    if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
   },
 
   "POST /api/offices": (body) => {
@@ -119,6 +131,14 @@ const validators = {
     if (body.status !== undefined) requireEnum(body.status, documentStatuses, "status");
   },
 
+  "POST /api/documents/:id/review": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/documents/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/transfers": (body) => {
     requireString(body.person, "person");
     requireString(body.from, "from");
@@ -130,6 +150,10 @@ const validators = {
   "POST /api/ai-drafts": (body) => {
     if (body.kind !== undefined) requireEnum(body.kind, aiKinds, "kind");
     if (body.focus !== undefined) requireString(body.focus, "focus");
+  },
+
+  "POST /api/ai-drafts/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
   "POST /api/offline-sync": (body) => {

@@ -1005,6 +1005,19 @@ function App() {
     }
   }
 
+  function updateTaskPriority(id: string, priority: GovernanceTask["priority"]) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, priority } : item));
+    recordAudit("TaskPriorityUpdated", task.title, priority);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/priority`, {
+        method: "POST",
+        body: JSON.stringify({ priority })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function createPolicy(draft: Omit<Policy, "id" | "acknowledgements">) {
     const policy: Policy = {
       ...draft,
@@ -1112,6 +1125,19 @@ function App() {
       void apiRequest<PersonRecord>(`/api/personnel/${id}/status`, {
         method: "POST",
         body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function deactivatePerson(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, status: "Inactive" } : item));
+    recordAudit("PersonDeactivated", person.name, "Personnel record deactivated");
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/deactivate`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Deactivated from personnel directory" })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1313,6 +1339,19 @@ function App() {
     }
   }
 
+  function updateEscalationSeverity(id: string, severity: Escalation["severity"]) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, severity } : item));
+    recordAudit("EscalationSeverityUpdated", escalation.item, severity);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/severity`, {
+        method: "POST",
+        body: JSON.stringify({ severity })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function resolveEscalation(id: string) {
     const escalation = escalations.find((item) => item.id === id);
     if (!escalation) return;
@@ -1358,6 +1397,25 @@ function App() {
     }
   }
 
+  function archiveAiDraft(id: string) {
+    const draft = aiDrafts.find((item) => item.id === id);
+    if (!draft) return;
+    archiveDocument({
+      name: `${draft.title}.txt`,
+      classification: "AI draft",
+      source: "AI Desk",
+      owner: activeStation.email,
+      fileType: "Text",
+      status: offlineMode ? "Queued" : "Archived"
+    });
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/ai-drafts/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Archived from AI Desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function archiveDocument(record: Omit<DocumentRecord, "id" | "storageKey" | "retainedUntil" | "createdAt">) {
     const safeName = record.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/(^-|-$)/g, "");
     const createdAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -1374,6 +1432,32 @@ function App() {
       void apiRequest<DocumentRecord>("/api/documents", {
         method: "POST",
         body: JSON.stringify(record)
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function markDocumentReview(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, status: "In Review" } : item));
+    recordAudit("DocumentReviewStarted", document.name, "Document marked for review");
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/review`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Review started from archive" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function markDocumentArchived(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, status: "Archived" } : item));
+    recordAudit("DocumentArchived", document.name, "Document archived from review");
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Archived from archive console" })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1586,6 +1670,7 @@ function App() {
             offlineMode={offlineMode}
             onCreateTask={createTask}
             onAdvanceTask={advanceTask}
+            onUpdateTaskPriority={updateTaskPriority}
             onEscalateTask={triggerEscalation}
           />
         )}
@@ -1619,6 +1704,7 @@ function App() {
             offlineMode={offlineMode}
             onCreatePerson={createPerson}
             onUpdatePersonStatus={updatePersonStatus}
+            onDeactivatePerson={deactivatePerson}
             onCreateTransfer={createTransferRequest}
           />
         )}
@@ -1628,6 +1714,7 @@ function App() {
             permissions={permissions}
             events={events}
             onCreateEscalation={triggerEscalation}
+            onUpdateSeverity={updateEscalationSeverity}
             onEscalateUpward={escalateUpward}
             onResolveEscalation={resolveEscalation}
           />
@@ -1644,6 +1731,7 @@ function App() {
             escalations={escalations}
             messages={messages}
             onGenerateDraft={generateAiDraft}
+            onArchiveDraft={archiveAiDraft}
           />
         )}
         {activeSection === "Hierarchy" && <Hierarchy stationDirectory={stationDirectory} offices={offices} />}
@@ -1658,7 +1746,7 @@ function App() {
             onExecuteTransfer={executeTransfer}
           />
         )}
-        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} onArchiveDocument={archiveDocument} />}
+        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} onArchiveDocument={archiveDocument} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} />}
         {activeSection === "Audit" && <Audit auditRows={auditRows} apiStatus={apiStatus} session={session} />}
       </section>
     </main>
@@ -2410,6 +2498,7 @@ function Tasks({
   offlineMode,
   onCreateTask,
   onAdvanceTask,
+  onUpdateTaskPriority,
   onEscalateTask
 }: {
   tasks: GovernanceTask[];
@@ -2417,6 +2506,7 @@ function Tasks({
   offlineMode: boolean;
   onCreateTask: (task: Omit<GovernanceTask, "id" | "status">) => void;
   onAdvanceTask: (id: string, status: GovernanceTask["status"]) => void;
+  onUpdateTaskPriority: (id: string, priority: GovernanceTask["priority"]) => void;
   onEscalateTask: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
 }) {
   const [title, setTitle] = React.useState("Follow up on branch reporting corrections");
@@ -2425,6 +2515,7 @@ function Tasks({
   const [priority, setPriority] = React.useState<GovernanceTask["priority"]>("High");
   const [due, setDue] = React.useState("Today");
   const [statusFilter, setStatusFilter] = React.useState<GovernanceTask["status"] | "All statuses">("All statuses");
+  const [priorityFilter, setPriorityFilter] = React.useState<GovernanceTask["priority"] | "All priorities">("All priorities");
   const [feedback, setFeedback] = React.useState("");
 
   React.useEffect(() => {
@@ -2433,8 +2524,11 @@ function Tasks({
   }, [station.email, station.level]);
 
   const visibleTasks = React.useMemo(() => (
-    statusFilter === "All statuses" ? tasks : tasks.filter((task) => task.status === statusFilter)
-  ), [statusFilter, tasks]);
+    tasks.filter((task) => (
+      (statusFilter === "All statuses" || task.status === statusFilter)
+      && (priorityFilter === "All priorities" || task.priority === priorityFilter)
+    ))
+  ), [priorityFilter, statusFilter, tasks]);
   const blockedCount = tasks.filter((task) => task.status === "Blocked").length;
   const completeCount = tasks.filter((task) => task.status === "Complete").length;
   const completionRate = tasks.length ? Math.round((completeCount / tasks.length) * 100) : 100;
@@ -2462,6 +2556,12 @@ function Tasks({
               {["All statuses", "Queued", "In Progress", "Blocked", "Complete"].map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <label>
+            <span>Priority</span>
+            <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value as GovernanceTask["priority"] | "All priorities")}>
+              {["All priorities", "Low", "Medium", "High", "Critical"].map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
         </div>
         <div className="task-board">
           {visibleTasks.map((task) => (
@@ -2475,6 +2575,7 @@ function Tasks({
               <div className="action-row">
                 <button onClick={() => onAdvanceTask(task.id, "In Progress")}><TimerReset size={15} /> Start</button>
                 <button onClick={() => onAdvanceTask(task.id, "Complete")}><CheckCircle2 size={15} /> Complete</button>
+                <button onClick={() => onUpdateTaskPriority(task.id, task.priority === "Critical" ? "High" : "Critical")}><AlertTriangle size={15} /> Priority</button>
                 <button onClick={() => onEscalateTask("Task", task.title, `${task.due} task is ${task.status.toLowerCase()}`, task.owner, task.priority === "Critical" ? "Critical" : "High")}>
                   <AlertTriangle size={15} /> Escalate
                 </button>
@@ -2799,6 +2900,7 @@ function PersonnelDirectory({
   offlineMode,
   onCreatePerson,
   onUpdatePersonStatus,
+  onDeactivatePerson,
   onCreateTransfer
 }: {
   personnel: PersonRecord[];
@@ -2807,6 +2909,7 @@ function PersonnelDirectory({
   offlineMode: boolean;
   onCreatePerson: (person: Omit<PersonRecord, "id">) => void;
   onUpdatePersonStatus: (id: string, status: PersonRecord["status"]) => void;
+  onDeactivatePerson: (id: string) => void;
   onCreateTransfer: (transfer: Omit<Transfer, "id" | "step" | "risk">) => void;
 }) {
   const [name, setName] = React.useState("Rev. Grace Walker");
@@ -2871,6 +2974,7 @@ function PersonnelDirectory({
               <p>{person.currentStation} to {person.assignedStation}</p>
               <div className="action-row">
                 <button onClick={() => onUpdatePersonStatus(person.id, "Assigned")}><CheckCircle2 size={15} /> Mark assigned</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onDeactivatePerson(person.id)}><LockKeyhole size={15} /> Deactivate</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => createTransfer(person)}><Signature size={15} /> Create transfer</button>
               </div>
             </article>
@@ -2931,6 +3035,7 @@ function Escalations({
   permissions,
   events,
   onCreateEscalation,
+  onUpdateSeverity,
   onEscalateUpward,
   onResolveEscalation
 }: {
@@ -2938,6 +3043,7 @@ function Escalations({
   permissions: Permissions;
   events: string[];
   onCreateEscalation: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
+  onUpdateSeverity: (id: string, severity: Escalation["severity"]) => void;
   onEscalateUpward: (id: string) => void;
   onResolveEscalation: (id: string) => void;
 }) {
@@ -2947,7 +3053,11 @@ function Escalations({
   const [reason, setReason] = React.useState("Deadline risk requires supervisory attention");
   const [owner, setOwner] = React.useState("Workflow Engine");
   const [severity, setSeverity] = React.useState<Escalation["severity"]>("High");
+  const [severityFilter, setSeverityFilter] = React.useState<Escalation["severity"] | "All severities">("All severities");
   const [feedback, setFeedback] = React.useState("");
+  const visibleEscalations = React.useMemo(() => (
+    severityFilter === "All severities" ? escalations : escalations.filter((escalation) => escalation.severity === severityFilter)
+  ), [escalations, severityFilter]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2966,8 +3076,16 @@ function Escalations({
             <span>This station can observe escalations, but cannot route or resolve them.</span>
           </div>
         )}
+        <div className="archive-toolbar">
+          <label>
+            <span>Severity</span>
+            <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as Escalation["severity"] | "All severities")}>
+              {["All severities", "Medium", "High", "Critical"].map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+        </div>
         <div className="escalation-list">
-          {escalations.map((escalation) => (
+          {visibleEscalations.map((escalation) => (
             <article className="escalation-card" key={escalation.id}>
               <div className="escalation-head">
                 <div>
@@ -2991,6 +3109,13 @@ function Escalations({
                   <ArrowUpFromLine size={15} /> Route upward
                 </button>
                 <button
+                  aria-label={`Mark ${escalation.item} critical`}
+                  disabled={!permissions.canApprove || escalation.status === "Resolved"}
+                  onClick={() => onUpdateSeverity(escalation.id, escalation.severity === "Critical" ? "High" : "Critical")}
+                >
+                  <AlertTriangle size={15} /> Severity
+                </button>
+                <button
                   aria-label={`Resolve ${escalation.item}: ${escalation.reason}`}
                   disabled={!permissions.canApprove || escalation.status === "Resolved"}
                   onClick={() => onResolveEscalation(escalation.id)}
@@ -3000,6 +3125,7 @@ function Escalations({
               </div>
             </article>
           ))}
+          {visibleEscalations.length === 0 && <div className="empty-state">No escalations match the current severity filter.</div>}
         </div>
       </div>
       <div className="panel module-side">
@@ -3050,9 +3176,11 @@ function AiDesk({
   tasks,
   policies,
   calendarEvents,
+  personnel,
   escalations,
   messages,
-  onGenerateDraft
+  onGenerateDraft,
+  onArchiveDraft
 }: {
   drafts: AiDraft[];
   reports: Report[];
@@ -3060,9 +3188,11 @@ function AiDesk({
   tasks: GovernanceTask[];
   policies: Policy[];
   calendarEvents: CalendarEvent[];
+  personnel: PersonRecord[];
   escalations: Escalation[];
   messages: Message[];
   onGenerateDraft: (kind: AiDraft["kind"], focus: string) => void;
+  onArchiveDraft: (id: string) => void;
 }) {
   const [kind, setKind] = React.useState<AiDraft["kind"]>("Executive Summary");
   const [focus, setFocus] = React.useState("National operations and escalation review");
@@ -3144,6 +3274,9 @@ function AiDesk({
               </div>
               <h2>{draft.title}</h2>
               <pre>{draft.body}</pre>
+              <div className="action-row">
+                <button onClick={() => onArchiveDraft(draft.id)}><Files size={15} /> Archive draft</button>
+              </div>
             </article>
           ))}
         </div>
@@ -3514,12 +3647,16 @@ function Archive({
   documents,
   station,
   offlineMode,
-  onArchiveDocument
+  onArchiveDocument,
+  onMarkReview,
+  onMarkArchived
 }: {
   documents: DocumentRecord[];
   station: StationCard;
   offlineMode: boolean;
   onArchiveDocument: (record: Omit<DocumentRecord, "id" | "storageKey" | "retainedUntil" | "createdAt">) => void;
+  onMarkReview: (id: string) => void;
+  onMarkArchived: (id: string) => void;
 }) {
   const [name, setName] = React.useState("Signed mission authorization.pdf");
   const [classification, setClassification] = React.useState("Signed document");
@@ -3586,7 +3723,11 @@ function Archive({
               <span>{document.classification}</span>
               <span>{document.source}</span>
               <span>{document.owner}</span>
-              <StatusPill status={document.status} />
+              <div className="table-actions">
+                <StatusPill status={document.status} />
+                <button onClick={() => onMarkReview(document.id)}><FileClock size={14} /> Review</button>
+                <button onClick={() => onMarkArchived(document.id)}><Files size={14} /> Archive</button>
+              </div>
             </div>
           ))}
           {visibleDocuments.length === 0 && <div className="empty-state">No documents match the current archive filters.</div>}

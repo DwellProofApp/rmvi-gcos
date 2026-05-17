@@ -71,7 +71,17 @@ export function createSeedState() {
       documentRecord("Construction progress photos.zip", "Report evidence", "Report", "Buchanan District Office", "Images", "In Review"),
       documentRecord("Official reassignment letter.pdf", "Transfer letter", "Transfer", "Mission Office", "PDF", "Archived")
     ],
-    aiDrafts: [],
+    aiDrafts: [
+      aiDraft(
+        "Executive Summary",
+        "Executive Summary: Daily governance control brief",
+        [
+          "National operations show active report movement, pending approval chains, and two escalation items requiring supervisory review.",
+          "Priority attention should remain on construction reporting, regional conference logistics, and transfer acknowledgements."
+        ].join("\n"),
+        8
+      )
+    ],
     audit: [
       audit("System", "Boot", "GCOS API", "Seeded in-memory governance state")
     ],

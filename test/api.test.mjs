@@ -199,6 +199,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(advancedTask.status, "Complete");
 
+    const priorityTask = await postJson(`/api/tasks/${tasks[1].id}/priority`, {
+      priority: "Critical"
+    }, nationalToken);
+    assert.equal(priorityTask.priority, "Critical");
+
     const policies = await getJson("/api/policies");
     const invalidPolicy = await rawPost("/api/policies", {
       category: "Finance",
@@ -287,6 +292,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(updatedPerson.status, "Assigned");
 
+    const deactivatedPerson = await postJson(`/api/personnel/${personnel[1].id}/deactivate`, {
+      reason: "Automated deactivation test"
+    }, nationalToken);
+    assert.equal(deactivatedPerson.status, "Inactive");
+
     const escalation = await postJson("/api/escalations", {
       source: "Report",
       item: "Automated escalation test",
@@ -301,6 +311,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const routedEscalation = await postJson(`/api/escalations/${escalation.id}/route`, {}, nationalToken);
     assert.equal(routedEscalation.status, "Upward");
+
+    const severityEscalation = await postJson(`/api/escalations/${escalation.id}/severity`, {
+      severity: "Critical"
+    }, nationalToken);
+    assert.equal(severityEscalation.severity, "Critical");
 
     const resolvedEscalation = await postJson(`/api/escalations/${escalation.id}/resolve`, {}, nationalToken);
     assert.equal(resolvedEscalation.status, "Resolved");
@@ -407,12 +422,28 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(document.status, "Archived");
     assert.match(document.storageKey, /^gcos-object-vault\//);
 
+    const reviewDocument = await postJson(`/api/documents/${document.id}/review`, {
+      reason: "Automated review test"
+    }, nationalToken);
+    assert.equal(reviewDocument.status, "In Review");
+
+    const archivedDocument = await postJson(`/api/documents/${document.id}/archive`, {
+      reason: "Automated archive test"
+    }, nationalToken);
+    assert.equal(archivedDocument.status, "Archived");
+
     const draft = await postJson("/api/ai-drafts", {
       kind: "Executive Summary",
       focus: "Automated workflow test"
     }, nationalToken);
     assert.equal(draft.title, "Executive Summary: Automated workflow test");
     assert.equal(draft.sourceCount > 0, true);
+
+    const archivedDraft = await postJson(`/api/ai-drafts/${draft.id}/archive`, {
+      reason: "Automated AI archive test"
+    }, nationalToken);
+    assert.equal(archivedDraft.classification, "AI draft");
+    assert.equal(archivedDraft.source, "AI Desk");
 
     const sync = await postJson("/api/offline-sync", {
       actions: [
@@ -471,7 +502,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(officesAfterRestart.some((item) => item.email === "automated_district@gcos.org"), true);
 
     const documentsAfterRestart = await getJson("/api/documents");
-    assert.equal(documentsAfterRestart[0].name, "Automated signed packet.pdf");
+    assert.equal(documentsAfterRestart.some((item) => item.name === "Automated signed packet.pdf"), true);
+    assert.equal(documentsAfterRestart.some((item) => item.classification === "AI draft"), true);
 
     const reset = await postJson("/api/dev/reset", {});
     assert.equal(reset.messages[0].subject, "Q2 governance reporting directive");
