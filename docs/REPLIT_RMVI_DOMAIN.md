@@ -59,12 +59,23 @@ Only set `VITE_GCOS_API_BASE` if the API is deployed on a different origin. For 
 
 ## Domain Verification
 
-1. In Replit, keep the custom domain set to `rmvi.org`.
-2. In the DNS provider for `rmvi.org`, add the records Replit provides.
-3. Wait until Replit changes the domain state from `Verifying` to active.
-4. Open `https://rmvi.org`.
-5. Run `GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck`.
-6. Run `npm run domain:check` for DNS plus GCOS endpoint verification.
+Current deployment state as of May 17, 2026:
+
+- `rmvi.org` was removed from the unrelated Asset Manager / DwellProof Replit deployment.
+- The GCOS source is published to `https://github.com/DwellProofApp/rmvi-gcos`.
+- Replit imported the repository into a new `rmvi-gcos` project.
+- The remaining step is to attach `rmvi.org` to the `rmvi-gcos` deployment in Replit and publish it.
+
+1. Open the Replit `rmvi-gcos` project.
+2. Run the app once and confirm Replit can build it.
+3. Publish/deploy the app using `npm run replit:run`.
+4. Open the deployment Domains panel.
+5. Connect `rmvi.org` to this `rmvi-gcos` deployment.
+6. In the DNS provider for `rmvi.org`, add the records Replit provides if Replit requests changes.
+7. Wait until Replit changes the domain state from `Verifying` to active.
+8. Open `https://rmvi.org`.
+9. Run `GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck`.
+10. Run `npm run domain:check` for DNS plus GCOS endpoint verification.
 
 ## Launch Checks
 
