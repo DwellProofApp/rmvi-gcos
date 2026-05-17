@@ -69,7 +69,7 @@ type AuditRow = { id: string; event: string; actor: string; object: string; resu
 type OfflineAction = AuditRow & { queuedAt: string };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string };
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string };
-type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved"; owner: string };
+type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[] };
 type AiDraft = { id: string; kind: "Executive Summary" | "Memo" | "Report Brief"; title: string; body: string; sourceCount: number; createdAt: string };
 type DocumentRecord = { id: string; name: string; classification: string; source: string; owner: string; fileType: string; status: string; storageKey: string; retainedUntil: string; createdAt: string };
 type SearchResult = { id: string; section: Section; title: string; meta: string; status: string };
@@ -164,6 +164,15 @@ type WorkflowDigest = {
   escalatedApprovals: number;
   nextReport: string;
   nextApproval: string;
+};
+type EscalationDigest = {
+  generatedAt: string;
+  open: number;
+  critical: number;
+  watched: number;
+  resolved: number;
+  primary: string;
+  owner: string;
 };
 type CommandBriefing = {
   title: string;
@@ -563,6 +572,7 @@ function App() {
   const [commandBriefing, setCommandBriefing] = React.useState<CommandBriefing | null>(null);
   const [archiveManifest, setArchiveManifest] = React.useState<ArchiveManifest | null>(null);
   const [workflowDigest, setWorkflowDigest] = React.useState<WorkflowDigest | null>(null);
+  const [escalationDigest, setEscalationDigest] = React.useState<EscalationDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -757,6 +767,7 @@ function App() {
       void apiRequest<CommandBriefing>("/api/command-center/briefing").then(setCommandBriefing).catch(() => undefined);
       void apiRequest<ArchiveManifest>("/api/archive/manifest").then(setArchiveManifest).catch(() => undefined);
       void apiRequest<WorkflowDigest>("/api/workflows/digest").then(setWorkflowDigest).catch(() => undefined);
+      void apiRequest<EscalationDigest>("/api/escalations/digest").then(setEscalationDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1703,6 +1714,73 @@ function App() {
     }
   }
 
+  function triageEscalation(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, owner: activeStation.email, severity: "Critical", status: "Open" } : item));
+    recordAudit("EscalationTriaged", escalation.item, `${activeStation.email} triaged as Critical`);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/triage`, {
+        method: "POST",
+        body: JSON.stringify({ owner: activeStation.email, severity: "Critical" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateEscalationSla(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const sla = escalation.sla === "24 hours" ? "4 hours" : "24 hours";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, sla } : item));
+    recordAudit("EscalationSlaUpdated", escalation.item, sla);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/sla`, {
+        method: "POST",
+        body: JSON.stringify({ sla })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchEscalation(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, status: item.status === "Resolved" ? item.status : "Watching", watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("EscalationWatcherAdded", escalation.item, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function mergeEscalation(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const target = escalations.find((item) => item.id !== id && item.status !== "Resolved")?.item ?? "primary escalation";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, status: "Merged", reason: `${item.reason} | Merged into ${target}` } : item));
+    recordAudit("EscalationMerged", escalation.item, target);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/merge`, {
+        method: "POST",
+        body: JSON.stringify({ target })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshEscalationDigest() {
+    if (offlineMode) {
+      recordAudit("EscalationDigestRefreshed", "Escalation digest", "Local escalation digest refreshed");
+      return;
+    }
+    void apiRequest<EscalationDigest>("/api/escalations/digest")
+      .then((digest) => {
+        setEscalationDigest(digest);
+        recordAudit("EscalationDigestRefreshed", "Escalation digest", `${digest.open} open, ${digest.critical} critical`);
+      })
+      .catch(() => undefined);
+  }
+
   function generateAiDraft(kind: AiDraft["kind"], focus: string) {
     const openEscalations = escalations.filter((item) => item.status !== "Resolved");
     const pendingApprovals = approvals.filter((item) => item.state !== "Approved");
@@ -2426,6 +2504,12 @@ function App() {
             onUpdateSeverity={updateEscalationSeverity}
             onEscalateUpward={escalateUpward}
             onResolveEscalation={resolveEscalation}
+            onTriageEscalation={triageEscalation}
+            onUpdateSla={updateEscalationSla}
+            onWatchEscalation={watchEscalation}
+            onMergeEscalation={mergeEscalation}
+            onRefreshDigest={refreshEscalationDigest}
+            digest={escalationDigest}
           />
         )}
         {activeSection === "AI Desk" && (
@@ -3983,7 +4067,13 @@ function Escalations({
   onUpdateOwner,
   onUpdateSeverity,
   onEscalateUpward,
-  onResolveEscalation
+  onResolveEscalation,
+  onTriageEscalation,
+  onUpdateSla,
+  onWatchEscalation,
+  onMergeEscalation,
+  onRefreshDigest,
+  digest
 }: {
   escalations: Escalation[];
   station: StationCard;
@@ -3994,6 +4084,12 @@ function Escalations({
   onUpdateSeverity: (id: string, severity: Escalation["severity"]) => void;
   onEscalateUpward: (id: string) => void;
   onResolveEscalation: (id: string) => void;
+  onTriageEscalation: (id: string) => void;
+  onUpdateSla: (id: string) => void;
+  onWatchEscalation: (id: string) => void;
+  onMergeEscalation: (id: string) => void;
+  onRefreshDigest: () => void;
+  digest: EscalationDigest | null;
 }) {
   const openCount = escalations.filter((item) => item.status !== "Resolved").length;
   const [source, setSource] = React.useState<Escalation["source"]>("Report");
@@ -4041,7 +4137,15 @@ function Escalations({
               {["All sources", "Report", "Approval", "Transfer", "Audit", "Calendar", "Task"].map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
         </div>
+        {digest && (
+          <div className="workflow-digest">
+            <Insight label="Open" value={String(digest.open)} />
+            <Insight label="Critical" value={String(digest.critical)} />
+            <Insight label="Primary" value={digest.primary} />
+          </div>
+        )}
         <div className="escalation-list">
           {visibleEscalations.map((escalation) => (
             <article className="escalation-card" key={escalation.id}>
@@ -4056,9 +4160,30 @@ function Escalations({
               <p>{escalation.reason}</p>
               <div className="route-box">
                 <strong>Owner</strong>
-                <span>{escalation.owner}</span>
+                <span>{escalation.owner}{escalation.sla ? ` | SLA ${escalation.sla}` : ""}{escalation.watchers?.length ? ` | ${escalation.watchers.length} watching` : ""}</span>
               </div>
               <div className="action-row">
+                <button
+                  aria-label={`Triage ${escalation.item}`}
+                  disabled={!permissions.canApprove || escalation.status === "Resolved"}
+                  onClick={() => onTriageEscalation(escalation.id)}
+                >
+                  <ClipboardCheck size={15} /> Triage
+                </button>
+                <button
+                  aria-label={`Set SLA for ${escalation.item}`}
+                  disabled={!permissions.canApprove || escalation.status === "Resolved"}
+                  onClick={() => onUpdateSla(escalation.id)}
+                >
+                  <TimerReset size={15} /> SLA
+                </button>
+                <button
+                  aria-label={`Watch ${escalation.item}`}
+                  disabled={escalation.status === "Resolved"}
+                  onClick={() => onWatchEscalation(escalation.id)}
+                >
+                  <Bell size={15} /> Watch
+                </button>
                 <button
                   aria-label={`Route ${escalation.item}: ${escalation.reason} upward`}
                   disabled={!permissions.canApprove || escalation.status === "Resolved"}
@@ -4086,6 +4211,13 @@ function Escalations({
                   onClick={() => onResolveEscalation(escalation.id)}
                 >
                   <CheckCircle2 size={15} /> Resolve
+                </button>
+                <button
+                  aria-label={`Merge ${escalation.item}`}
+                  disabled={!permissions.canApprove || escalation.status === "Resolved" || escalation.status === "Merged"}
+                  onClick={() => onMergeEscalation(escalation.id)}
+                >
+                  <GitBranch size={15} /> Merge
                 </button>
               </div>
             </article>

@@ -479,6 +479,57 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    triageEscalation(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.owner = body.owner ?? body.actor ?? item.owner;
+      item.severity = body.severity ?? item.severity;
+      item.status = "Open";
+      record("EscalationTriaged", body.actor, item.item, `${item.owner} triaged as ${item.severity}`);
+      return item;
+    },
+
+    updateEscalationSla(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.sla = body.sla ?? "24 hours";
+      record("EscalationSlaUpdated", body.actor, item.item, item.sla);
+      return item;
+    },
+
+    watchEscalation(id, body) {
+      const item = findById(state.escalations, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
+      item.status = item.status === "Resolved" ? item.status : "Watching";
+      record("EscalationWatcherAdded", body.actor, item.item, watcher);
+      return item;
+    },
+
+    mergeEscalation(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.status = "Merged";
+      item.reason = `${item.reason} | Merged into ${body.target ?? "primary escalation"}`;
+      record("EscalationMerged", body.actor, item.item, body.target ?? "primary escalation");
+      return item;
+    },
+
+    escalationDigest() {
+      const open = state.escalations.filter((item) => item.status !== "Resolved" && item.status !== "Merged");
+      const critical = open.filter((item) => item.severity === "Critical");
+      const watched = open.filter((item) => item.watchers?.length);
+      return {
+        generatedAt: new Date().toISOString(),
+        open: open.length,
+        critical: critical.length,
+        watched: watched.length,
+        resolved: state.escalations.filter((item) => item.status === "Resolved").length,
+        primary: critical[0]?.item ?? open[0]?.item ?? "No open escalations",
+        owner: critical[0]?.owner ?? open[0]?.owner ?? "None"
+      };
+    },
+
     createOffice(body) {
       requirePermission(body.actor, "canCreateOffices");
       if (state.stations.some((entry) => entry.email === body.email) || state.offices.some((entry) => entry.email === body.email)) {

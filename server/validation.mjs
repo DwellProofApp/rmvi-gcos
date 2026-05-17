@@ -222,6 +222,23 @@ const validators = {
     if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
   },
 
+  "POST /api/escalations/:id/triage": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+    if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
+  },
+
+  "POST /api/escalations/:id/sla": (body) => {
+    if (body.sla !== undefined) requireString(body.sla, "sla");
+  },
+
+  "POST /api/escalations/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/escalations/:id/merge": (body) => {
+    if (body.target !== undefined) requireString(body.target, "target");
+  },
+
   "POST /api/offices": (body) => {
     requireString(body.name, "name");
     requireEmail(body.email, "email");

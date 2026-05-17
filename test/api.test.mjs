@@ -506,6 +506,32 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(severityEscalation.severity, "Critical");
 
+    const triagedEscalation = await postJson(`/api/escalations/${escalation.id}/triage`, {
+      owner: "National Triage Desk",
+      severity: "Critical"
+    }, nationalToken);
+    assert.equal(triagedEscalation.owner, "National Triage Desk");
+    assert.equal(triagedEscalation.status, "Open");
+
+    const slaEscalation = await postJson(`/api/escalations/${escalation.id}/sla`, {
+      sla: "4 hours"
+    }, nationalToken);
+    assert.equal(slaEscalation.sla, "4 hours");
+
+    const watchedEscalation = await postJson(`/api/escalations/${escalation.id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedEscalation.watchers.includes("np@rmvi.org"), true);
+
+    const escalationDigest = await getJson("/api/escalations/digest");
+    assert.equal(escalationDigest.open >= 1, true);
+    assert.equal(escalationDigest.critical >= 1, true);
+
+    const mergedEscalation = await postJson(`/api/escalations/${escalation.id}/merge`, {
+      target: "Automated primary escalation"
+    }, nationalToken);
+    assert.equal(mergedEscalation.status, "Merged");
+
     const resolvedEscalation = await postJson(`/api/escalations/${escalation.id}/resolve`, {}, nationalToken);
     assert.equal(resolvedEscalation.status, "Resolved");
 
@@ -773,6 +799,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "OfficeSupervisorUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationOwnerUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationTriaged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationSlaUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationMerged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferRiskUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferExecuted"), true);
