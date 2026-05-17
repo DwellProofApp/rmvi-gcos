@@ -521,6 +521,45 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(atRiskCalendarEvent.status, "At Risk");
 
+    const ownerCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/owner`, {
+      owner: "National Calendar Desk"
+    }, nationalToken);
+    assert.equal(ownerCalendarEvent.owner, "National Calendar Desk");
+
+    const categoryCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/category`, {
+      category: "Governance"
+    }, nationalToken);
+    assert.equal(categoryCalendarEvent.category, "Governance");
+
+    const rescheduledCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/reschedule`, {
+      date: "2026-06-07"
+    }, nationalToken);
+    assert.equal(rescheduledCalendarEvent.date, "2026-06-07");
+    assert.equal(rescheduledCalendarEvent.status, "Scheduled");
+
+    const watchedCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedCalendarEvent.watchers.includes("np@rmvi.org"), true);
+
+    const duplicatedCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/duplicate`, {
+      title: "Automated duplicate calendar review",
+      date: "2026-06-14"
+    }, nationalToken);
+    assert.equal(duplicatedCalendarEvent.title, "Automated duplicate calendar review");
+    assert.equal(duplicatedCalendarEvent.status, "Scheduled");
+
+    const bulkCompletedCalendarEvents = await postJson("/api/calendar-events/bulk/complete", {
+      ids: [createdCalendarEvent.id]
+    }, nationalToken);
+    assert.equal(bulkCompletedCalendarEvents.count, 1);
+    assert.equal(bulkCompletedCalendarEvents.updated[0].status, "Complete");
+
+    const calendarDigest = await getJson("/api/calendar-events/digest", nationalToken);
+    assert.equal(calendarDigest.total > 0, true);
+    assert.equal(calendarDigest.watched >= 1, true);
+    assert.equal(calendarDigest.complete >= 1, true);
+
     const personnel = await getJson("/api/personnel");
     const invalidPerson = await rawPost("/api/personnel", {
       role: "Coordinator",
@@ -985,6 +1024,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCompleted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarDateUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarPriorityUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarEventAtRisk"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarOwnerUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarCategoryUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarEventRescheduled"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarEventDuplicated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarEventsBulkCompleted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonRegistered"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonAssignmentUpdated"), true);
@@ -1049,7 +1095,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(policiesAfterRestart.some((item) => item.title === "Automated duplicate policy revision"), true);
 
     const calendarEventsAfterRestart = await getJson("/api/calendar-events");
-    assert.equal(calendarEventsAfterRestart[0].title, "Automated calendar event test");
+    assert.equal(calendarEventsAfterRestart.some((item) => item.title === "Automated calendar event test"), true);
+    assert.equal(calendarEventsAfterRestart.some((item) => item.title === "Automated duplicate calendar review"), true);
 
     const personnelAfterRestart = await getJson("/api/personnel");
     assert.equal(personnelAfterRestart[0].name, "Automated personnel registry test");

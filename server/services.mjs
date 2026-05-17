@@ -413,6 +413,73 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateCalendarEventOwner(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.owner = body.owner ?? body.actor ?? item.owner;
+      record("CalendarOwnerUpdated", body.actor, item.title, item.owner);
+      return item;
+    },
+
+    updateCalendarEventCategory(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.category = body.category ?? item.category;
+      record("CalendarCategoryUpdated", body.actor, item.title, item.category);
+      return item;
+    },
+
+    rescheduleCalendarEvent(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.date = body.date ?? item.date;
+      item.status = "Scheduled";
+      record("CalendarEventRescheduled", body.actor, item.title, item.date);
+      return item;
+    },
+
+    watchCalendarEvent(id, body) {
+      const item = findById(state.calendarEvents, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
+      record("CalendarWatcherAdded", body.actor, item.title, watcher);
+      return item;
+    },
+
+    duplicateCalendarEvent(id, body) {
+      const item = findById(state.calendarEvents, id);
+      const created = calendarEvent(body.title ?? `${item.title} follow-up`, item.category, body.owner ?? item.owner, body.date ?? item.date, item.priority, "Scheduled");
+      state.calendarEvents.unshift(created);
+      record("CalendarEventDuplicated", body.actor, item.title, created.title);
+      return created;
+    },
+
+    bulkCompleteCalendarEvents(body) {
+      const ids = body.ids?.length ? body.ids : state.calendarEvents.filter((item) => item.status !== "Complete").slice(0, 3).map((item) => item.id);
+      const updated = state.calendarEvents.filter((item) => ids.includes(item.id)).map((item) => {
+        item.status = "Complete";
+        return item;
+      });
+      record("CalendarEventsBulkCompleted", body.actor, "Governance calendar", `${updated.length} events completed`);
+      return { count: updated.length, updated };
+    },
+
+    calendarDigest() {
+      const scheduled = state.calendarEvents.filter((item) => item.status === "Scheduled");
+      const atRisk = state.calendarEvents.filter((item) => item.status === "At Risk");
+      const complete = state.calendarEvents.filter((item) => item.status === "Complete");
+      const critical = state.calendarEvents.filter((item) => item.priority === "Critical" && item.status !== "Complete");
+      const watched = state.calendarEvents.filter((item) => item.watchers?.length);
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.calendarEvents.length,
+        scheduled: scheduled.length,
+        atRisk: atRisk.length,
+        complete: complete.length,
+        critical: critical.length,
+        watched: watched.length,
+        nextEvent: atRisk[0]?.title ?? critical[0]?.title ?? scheduled[0]?.title ?? "No scheduled events",
+        owner: atRisk[0]?.owner ?? critical[0]?.owner ?? scheduled[0]?.owner ?? "None"
+      };
+    },
+
     createPerson(body) {
       requirePermission(body.actor, "canExecuteTransfers");
       const created = person(body.name, body.role, body.currentStation, body.assignedStation, body.status ?? "Active");

@@ -239,6 +239,32 @@ const validators = {
     if (body.date !== undefined) requireString(body.date, "date");
   },
 
+  "POST /api/calendar-events/:id/owner": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
+  "POST /api/calendar-events/:id/category": (body) => {
+    if (body.category !== undefined) requireString(body.category, "category");
+  },
+
+  "POST /api/calendar-events/:id/reschedule": (body) => {
+    if (body.date !== undefined) requireString(body.date, "date");
+  },
+
+  "POST /api/calendar-events/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/calendar-events/:id/duplicate": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+    if (body.date !== undefined) requireString(body.date, "date");
+  },
+
+  "POST /api/calendar-events/bulk/complete": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
   "POST /api/personnel": (body) => {
     requireString(body.name, "name");
     requireString(body.role, "role");

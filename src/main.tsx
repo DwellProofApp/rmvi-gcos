@@ -62,7 +62,7 @@ type Report = { id: string; name: string; owner: string; path: string; due: stri
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string };
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[] };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[] };
-type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete" };
+type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[] };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string };
@@ -229,6 +229,17 @@ type PolicyDigest = {
   watched: number;
   acknowledgements: number;
   nextPolicy: string;
+};
+type CalendarDigest = {
+  generatedAt: string;
+  total: number;
+  scheduled: number;
+  atRisk: number;
+  complete: number;
+  critical: number;
+  watched: number;
+  nextEvent: string;
+  owner: string;
 };
 type CommandBriefing = {
   title: string;
@@ -635,6 +646,7 @@ function App() {
   const [auditDigest, setAuditDigest] = React.useState<AuditDigest | null>(null);
   const [taskDigest, setTaskDigest] = React.useState<TaskDigest | null>(null);
   const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
+  const [calendarDigest, setCalendarDigest] = React.useState<CalendarDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -836,6 +848,7 @@ function App() {
       void apiRequest<AuditDigest>("/api/audit/digest").then(setAuditDigest).catch(() => undefined);
       void apiRequest<TaskDigest>("/api/tasks/digest").then(setTaskDigest).catch(() => undefined);
       void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
+      void apiRequest<CalendarDigest>("/api/calendar-events/digest").then(setCalendarDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1510,6 +1523,100 @@ function App() {
         body: JSON.stringify({ reason: "Risk flagged from calendar control" })
       }).then(refreshFromApi).catch(() => undefined);
     }
+  }
+
+  function updateCalendarEventOwner(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const owner = activeStation.title;
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, owner } : item));
+    recordAudit("CalendarOwnerUpdated", event.title, owner);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/owner`, {
+        method: "POST",
+        body: JSON.stringify({ owner })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateCalendarEventCategory(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const category = event.category === "Audit" ? "Review" : "Audit";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, category } : item));
+    recordAudit("CalendarCategoryUpdated", event.title, category);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/category`, {
+        method: "POST",
+        body: JSON.stringify({ category })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function rescheduleCalendarEvent(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const date = event.date === "2026-06-07" ? "2026-06-14" : "2026-06-07";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, date, status: "Scheduled" } : item));
+    recordAudit("CalendarEventRescheduled", event.title, date);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/reschedule`, {
+        method: "POST",
+        body: JSON.stringify({ date })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchCalendarEvent(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("CalendarWatcherAdded", event.title, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function duplicateCalendarEvent(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const duplicate: CalendarEvent = { ...event, id: `cal-${Date.now()}`, title: `${event.title} follow-up`, status: "Scheduled" };
+    setCalendarEvents((items) => [duplicate, ...items]);
+    recordAudit("CalendarEventDuplicated", event.title, duplicate.title);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ title: duplicate.title, owner: event.owner, date: event.date })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkCompleteCalendarEvents(ids: string[]) {
+    const targetIds = ids.length ? ids : calendarEvents.filter((event) => event.status !== "Complete").slice(0, 3).map((event) => event.id);
+    setCalendarEvents((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, status: "Complete" } : item));
+    recordAudit("CalendarEventsBulkCompleted", "Governance calendar", `${targetIds.length} events completed`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: CalendarEvent[] }>("/api/calendar-events/bulk/complete", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshCalendarDigest() {
+    if (offlineMode) {
+      recordAudit("CalendarDigestRefreshed", "Calendar digest", "Local calendar digest refreshed");
+      return;
+    }
+    void apiRequest<CalendarDigest>("/api/calendar-events/digest")
+      .then((digest) => {
+        setCalendarDigest(digest);
+        recordAudit("CalendarDigestRefreshed", "Calendar digest", `${digest.scheduled} scheduled, ${digest.atRisk} at risk`);
+      })
+      .catch(() => undefined);
   }
 
   function createPerson(record: Omit<PersonRecord, "id">) {
@@ -3027,6 +3134,14 @@ function App() {
             onUpdateCalendarEventDate={updateCalendarEventDate}
             onUpdateCalendarEventPriority={updateCalendarEventPriority}
             onMarkCalendarEventAtRisk={markCalendarEventAtRisk}
+            onUpdateCalendarEventOwner={updateCalendarEventOwner}
+            onUpdateCalendarEventCategory={updateCalendarEventCategory}
+            onRescheduleCalendarEvent={rescheduleCalendarEvent}
+            onWatchCalendarEvent={watchCalendarEvent}
+            onDuplicateCalendarEvent={duplicateCalendarEvent}
+            onBulkCompleteCalendarEvents={bulkCompleteCalendarEvents}
+            onRefreshDigest={refreshCalendarDigest}
+            digest={calendarDigest}
             onEscalateCalendarEvent={triggerEscalation}
           />
         )}
@@ -4411,6 +4526,14 @@ function GovernanceCalendar({
   onUpdateCalendarEventDate,
   onUpdateCalendarEventPriority,
   onMarkCalendarEventAtRisk,
+  onUpdateCalendarEventOwner,
+  onUpdateCalendarEventCategory,
+  onRescheduleCalendarEvent,
+  onWatchCalendarEvent,
+  onDuplicateCalendarEvent,
+  onBulkCompleteCalendarEvents,
+  onRefreshDigest,
+  digest,
   onEscalateCalendarEvent
 }: {
   calendarEvents: CalendarEvent[];
@@ -4421,6 +4544,14 @@ function GovernanceCalendar({
   onUpdateCalendarEventDate: (id: string, date: string) => void;
   onUpdateCalendarEventPriority: (id: string, priority: CalendarEvent["priority"]) => void;
   onMarkCalendarEventAtRisk: (id: string) => void;
+  onUpdateCalendarEventOwner: (id: string) => void;
+  onUpdateCalendarEventCategory: (id: string) => void;
+  onRescheduleCalendarEvent: (id: string) => void;
+  onWatchCalendarEvent: (id: string) => void;
+  onDuplicateCalendarEvent: (id: string) => void;
+  onBulkCompleteCalendarEvents: (ids: string[]) => void;
+  onRefreshDigest: () => void;
+  digest: CalendarDigest | null;
   onEscalateCalendarEvent: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
 }) {
   const [title, setTitle] = React.useState("Monthly compliance review");
@@ -4447,6 +4578,8 @@ function GovernanceCalendar({
   const atRiskCount = calendarEvents.filter((event) => event.status === "At Risk").length;
   const scheduledCount = calendarEvents.filter((event) => event.status === "Scheduled").length;
   const completeCount = calendarEvents.filter((event) => event.status === "Complete").length;
+  const criticalCount = calendarEvents.filter((event) => event.priority === "Critical" && event.status !== "Complete").length;
+  const watchedCount = calendarEvents.filter((event) => event.watchers?.length).length;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -4460,9 +4593,12 @@ function GovernanceCalendar({
       <div className="panel module-primary">
         <PanelHeader icon={CalendarDays} title="Governance Calendar" action={`${visibleEvents.length} visible`} />
         <div className="office-summary-grid">
-          <Insight label="Scheduled" value={String(scheduledCount)} />
-          <Insight label="At risk" value={String(atRiskCount)} />
-          <Insight label="Complete" value={String(completeCount)} />
+          <Insight label="Scheduled" value={String(digest?.scheduled ?? scheduledCount)} />
+          <Insight label="At risk" value={String(digest?.atRisk ?? atRiskCount)} />
+          <Insight label="Complete" value={String(digest?.complete ?? completeCount)} />
+          <Insight label="Critical" value={String(digest?.critical ?? criticalCount)} />
+          <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Next event" value={digest?.nextEvent ?? visibleEvents[0]?.title ?? "None"} />
         </div>
         <div className="archive-toolbar">
           <label>
@@ -4477,6 +4613,8 @@ function GovernanceCalendar({
               {["All statuses", "Scheduled", "At Risk", "Complete"].map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <button onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
+          <button disabled={!visibleEvents.length} onClick={() => onBulkCompleteCalendarEvents(visibleEvents.slice(0, 3).map((event) => event.id))}><CheckCircle2 size={15} /> Bulk complete</button>
         </div>
         <div className="calendar-list">
           {visibleEvents.map((event) => (
@@ -4487,11 +4625,20 @@ function GovernanceCalendar({
               </div>
               <h2>{event.title}</h2>
               <p>{event.category} owned by {event.owner}. Date: {event.date}.</p>
+              <div className="approval-meta">
+                <small>{event.watchers?.length ?? 0} watchers</small>
+                <small>{event.status}</small>
+              </div>
               <div className="action-row">
                 <button onClick={() => onCompleteCalendarEvent(event.id)}><CheckCircle2 size={15} /> Complete</button>
                 <button onClick={() => onUpdateCalendarEventDate(event.id, event.date === "2026-05-24" ? "2026-05-31" : "2026-05-24")}><CalendarDays size={15} /> Date</button>
+                <button onClick={() => onRescheduleCalendarEvent(event.id)}><TimerReset size={15} /> Reschedule</button>
                 <button onClick={() => onUpdateCalendarEventPriority(event.id, event.priority === "Critical" ? "High" : "Critical")}><AlertTriangle size={15} /> Priority</button>
                 <button onClick={() => onMarkCalendarEventAtRisk(event.id)}><TimerReset size={15} /> Mark risk</button>
+                <button onClick={() => onUpdateCalendarEventOwner(event.id)}><Landmark size={15} /> Owner</button>
+                <button onClick={() => onUpdateCalendarEventCategory(event.id)}><ScrollText size={15} /> Category</button>
+                <button onClick={() => onWatchCalendarEvent(event.id)}><Bell size={15} /> Watch</button>
+                <button onClick={() => onDuplicateCalendarEvent(event.id)}><Files size={15} /> Duplicate</button>
                 <button onClick={() => onEscalateCalendarEvent("Calendar", event.title, `${event.date} calendar item is ${event.status.toLowerCase()}`, event.owner, event.priority === "Critical" ? "Critical" : "High")}>
                   <AlertTriangle size={15} /> Escalate
                 </button>
