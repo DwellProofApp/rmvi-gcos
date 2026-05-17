@@ -436,6 +436,56 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(retiredPolicy.status, "Retired");
 
+    const ownerPolicy = await postJson(`/api/policies/${policies[0].id}/owner`, {
+      owner: "National Policy Desk"
+    }, nationalToken);
+    assert.equal(ownerPolicy.owner, "National Policy Desk");
+
+    const categoryPolicy = await postJson(`/api/policies/${policies[0].id}/category`, {
+      category: "Governance"
+    }, nationalToken);
+    assert.equal(categoryPolicy.category, "Governance");
+
+    const summaryPolicy = await postJson(`/api/policies/${policies[0].id}/summary`, {
+      summary: "Automated updated policy summary."
+    }, nationalToken);
+    assert.equal(summaryPolicy.summary, "Automated updated policy summary.");
+
+    const versionPolicy = await postJson(`/api/policies/${policies[0].id}/version`, {
+      version: "v2",
+      status: "Review"
+    }, nationalToken);
+    assert.equal(versionPolicy.version, "v2");
+    assert.equal(versionPolicy.status, "Review");
+
+    const reviewPolicy = await postJson(`/api/policies/${policies[0].id}/review`, {
+      reviewBy: "2026-06-30"
+    }, nationalToken);
+    assert.equal(reviewPolicy.reviewBy, "2026-06-30");
+    assert.equal(reviewPolicy.status, "Review");
+
+    const watchedPolicy = await postJson(`/api/policies/${policies[0].id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedPolicy.watchers.includes("np@rmvi.org"), true);
+
+    const duplicatedPolicy = await postJson(`/api/policies/${policies[0].id}/duplicate`, {
+      title: "Automated duplicate policy revision"
+    }, nationalToken);
+    assert.equal(duplicatedPolicy.title, "Automated duplicate policy revision");
+    assert.equal(duplicatedPolicy.status, "Draft");
+
+    const bulkActivatedPolicies = await postJson("/api/policies/bulk/activate", {
+      ids: [duplicatedPolicy.id]
+    }, nationalToken);
+    assert.equal(bulkActivatedPolicies.count, 1);
+    assert.equal(bulkActivatedPolicies.updated[0].status, "Active");
+
+    const policyDigest = await getJson("/api/policies/digest", nationalToken);
+    assert.equal(policyDigest.total > 0, true);
+    assert.equal(policyDigest.active >= 1, true);
+    assert.equal(policyDigest.watched >= 1, true);
+
     const calendarEvents = await getJson("/api/calendar-events");
     const invalidCalendarEvent = await rawPost("/api/calendar-events", {
       category: "Audit",
@@ -923,6 +973,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "PolicyPublished"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyOwnerUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyCategoryUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicySummaryUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyVersionBumped"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyReviewScheduled"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyDuplicated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PoliciesBulkActivated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCompleted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarDateUpdated"), true);
@@ -987,7 +1045,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(tasksAfterRestart.some((item) => item.title === "Automated duplicate task follow-up"), true);
 
     const policiesAfterRestart = await getJson("/api/policies");
-    assert.equal(policiesAfterRestart[0].title, "Automated policy registry test");
+    assert.equal(policiesAfterRestart.some((item) => item.title === "Automated policy registry test"), true);
+    assert.equal(policiesAfterRestart.some((item) => item.title === "Automated duplicate policy revision"), true);
 
     const calendarEventsAfterRestart = await getJson("/api/calendar-events");
     assert.equal(calendarEventsAfterRestart[0].title, "Automated calendar event test");

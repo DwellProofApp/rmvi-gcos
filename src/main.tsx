@@ -61,7 +61,7 @@ type Message = { id: string; kind: MessageKind; subject: string; from: string; a
 type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number };
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string };
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[] };
-type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number };
+type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[] };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete" };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string };
@@ -218,6 +218,17 @@ type TaskDigest = {
   watched: number;
   nextTask: string;
   owner: string;
+};
+type PolicyDigest = {
+  generatedAt: string;
+  total: number;
+  active: number;
+  review: number;
+  draft: number;
+  retired: number;
+  watched: number;
+  acknowledgements: number;
+  nextPolicy: string;
 };
 type CommandBriefing = {
   title: string;
@@ -623,6 +634,7 @@ function App() {
   const [officeDigest, setOfficeDigest] = React.useState<OfficeDigest | null>(null);
   const [auditDigest, setAuditDigest] = React.useState<AuditDigest | null>(null);
   const [taskDigest, setTaskDigest] = React.useState<TaskDigest | null>(null);
+  const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -823,6 +835,7 @@ function App() {
       void apiRequest<OfficeDigest>("/api/offices/digest").then(setOfficeDigest).catch(() => undefined);
       void apiRequest<AuditDigest>("/api/audit/digest").then(setAuditDigest).catch(() => undefined);
       void apiRequest<TaskDigest>("/api/tasks/digest").then(setTaskDigest).catch(() => undefined);
+      void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1307,6 +1320,129 @@ function App() {
         body: JSON.stringify({ reason: "Retired from policy registry" })
       }).then(refreshFromApi).catch(() => undefined);
     }
+  }
+
+  function updatePolicyOwner(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const owner = activeStation.title;
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, owner } : item));
+    recordAudit("PolicyOwnerUpdated", policy.title, owner);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/owner`, {
+        method: "POST",
+        body: JSON.stringify({ owner })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updatePolicyCategory(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const category = policy.category === "Governance" ? "Compliance" : "Governance";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, category } : item));
+    recordAudit("PolicyCategoryUpdated", policy.title, category);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/category`, {
+        method: "POST",
+        body: JSON.stringify({ category })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updatePolicySummary(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const summary = `${policy.summary} Reviewed by ${activeStation.email}.`;
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, summary } : item));
+    recordAudit("PolicySummaryUpdated", policy.title, "Summary updated");
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/summary`, {
+        method: "POST",
+        body: JSON.stringify({ summary })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bumpPolicyVersion(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const current = Number.parseInt(String(policy.version ?? "1").replace(/\D/g, ""), 10) || 1;
+    const version = `v${current + 1}`;
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, version, status: "Review" } : item));
+    recordAudit("PolicyVersionBumped", policy.title, version);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/version`, {
+        method: "POST",
+        body: JSON.stringify({ version, status: "Review" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function schedulePolicyReview(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const reviewBy = "Next governance review";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, status: "Review", reviewBy } : item));
+    recordAudit("PolicyReviewScheduled", policy.title, reviewBy);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/review`, {
+        method: "POST",
+        body: JSON.stringify({ reviewBy })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchPolicy(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("PolicyWatcherAdded", policy.title, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function duplicatePolicy(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const duplicate: Policy = { ...policy, id: `pol-${Date.now()}`, title: `${policy.title} revision`, status: "Draft", acknowledgements: 0, version: "v1" };
+    setPolicies((items) => [duplicate, ...items]);
+    recordAudit("PolicyDuplicated", policy.title, duplicate.title);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ title: duplicate.title })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkActivatePolicies(ids: string[]) {
+    const targetIds = ids.length ? ids : policies.filter((policy) => policy.status !== "Active").slice(0, 3).map((policy) => policy.id);
+    setPolicies((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, status: "Active" } : item));
+    recordAudit("PoliciesBulkActivated", "Policy registry", `${targetIds.length} policies activated`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: Policy[] }>("/api/policies/bulk/activate", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshPolicyDigest() {
+    if (offlineMode) {
+      recordAudit("PolicyDigestRefreshed", "Policy digest", "Local policy digest refreshed");
+      return;
+    }
+    void apiRequest<PolicyDigest>("/api/policies/digest")
+      .then((digest) => {
+        setPolicyDigest(digest);
+        recordAudit("PolicyDigestRefreshed", "Policy digest", `${digest.active} active, ${digest.review} in review`);
+      })
+      .catch(() => undefined);
   }
 
   function createCalendarEvent(draft: Omit<CalendarEvent, "id">) {
@@ -2869,6 +3005,16 @@ function App() {
             onAcknowledgePolicy={acknowledgePolicy}
             onUpdatePolicyStatus={updatePolicyStatus}
             onRetirePolicy={retirePolicy}
+            onUpdatePolicyOwner={updatePolicyOwner}
+            onUpdatePolicyCategory={updatePolicyCategory}
+            onUpdatePolicySummary={updatePolicySummary}
+            onBumpPolicyVersion={bumpPolicyVersion}
+            onSchedulePolicyReview={schedulePolicyReview}
+            onWatchPolicy={watchPolicy}
+            onDuplicatePolicy={duplicatePolicy}
+            onBulkActivatePolicies={bulkActivatePolicies}
+            onRefreshDigest={refreshPolicyDigest}
+            digest={policyDigest}
           />
         )}
         {activeSection === "Calendar" && (
@@ -4083,7 +4229,17 @@ function Policies({
   onCreatePolicy,
   onAcknowledgePolicy,
   onUpdatePolicyStatus,
-  onRetirePolicy
+  onRetirePolicy,
+  onUpdatePolicyOwner,
+  onUpdatePolicyCategory,
+  onUpdatePolicySummary,
+  onBumpPolicyVersion,
+  onSchedulePolicyReview,
+  onWatchPolicy,
+  onDuplicatePolicy,
+  onBulkActivatePolicies,
+  onRefreshDigest,
+  digest
 }: {
   policies: Policy[];
   station: StationCard;
@@ -4093,6 +4249,16 @@ function Policies({
   onAcknowledgePolicy: (id: string) => void;
   onUpdatePolicyStatus: (id: string, status: Policy["status"]) => void;
   onRetirePolicy: (id: string) => void;
+  onUpdatePolicyOwner: (id: string) => void;
+  onUpdatePolicyCategory: (id: string) => void;
+  onUpdatePolicySummary: (id: string) => void;
+  onBumpPolicyVersion: (id: string) => void;
+  onSchedulePolicyReview: (id: string) => void;
+  onWatchPolicy: (id: string) => void;
+  onDuplicatePolicy: (id: string) => void;
+  onBulkActivatePolicies: (ids: string[]) => void;
+  onRefreshDigest: () => void;
+  digest: PolicyDigest | null;
 }) {
   const [title, setTitle] = React.useState("Branch reporting compliance policy");
   const [category, setCategory] = React.useState("Reports");
@@ -4115,6 +4281,9 @@ function Policies({
     ))
   ), [categoryFilter, policies, statusFilter]);
   const activeCount = policies.filter((policy) => policy.status === "Active").length;
+  const reviewCount = policies.filter((policy) => policy.status === "Review").length;
+  const draftCount = policies.filter((policy) => policy.status === "Draft").length;
+  const watchedCount = policies.filter((policy) => policy.watchers?.length).length;
   const acknowledgementTotal = policies.reduce((total, policy) => total + policy.acknowledgements, 0);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -4129,8 +4298,12 @@ function Policies({
       <div className="panel module-primary">
         <PanelHeader icon={ScrollText} title="Policy Registry" action={`${visiblePolicies.length} visible`} />
         <div className="office-summary-grid">
-          <Insight label="Active policies" value={String(activeCount)} />
-          <Insight label="Acknowledgements" value={String(acknowledgementTotal)} />
+          <Insight label="Active policies" value={String(digest?.active ?? activeCount)} />
+          <Insight label="Review" value={String(digest?.review ?? reviewCount)} />
+          <Insight label="Draft" value={String(digest?.draft ?? draftCount)} />
+          <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Acknowledgements" value={String(digest?.acknowledgements ?? acknowledgementTotal)} />
+          <Insight label="Next policy" value={digest?.nextPolicy ?? visiblePolicies[0]?.title ?? "None"} />
           <Insight label="Authority" value={permissions.canApprove ? "Publisher" : "Reader"} />
         </div>
         <div className="archive-toolbar">
@@ -4146,6 +4319,8 @@ function Policies({
               {["All statuses", "Draft", "Active", "Review", "Retired"].map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <button onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
+          <button disabled={!permissions.canApprove || !visiblePolicies.length} onClick={() => onBulkActivatePolicies(visiblePolicies.slice(0, 3).map((policy) => policy.id))}><CheckCircle2 size={15} /> Bulk active</button>
         </div>
         <div className="policy-list">
           {visiblePolicies.map((policy) => (
@@ -4159,10 +4334,19 @@ function Policies({
               <div className="approval-meta">
                 <small>{policy.owner}</small>
                 <small>{policy.acknowledgements} acknowledgements</small>
+                <small>{policy.version ?? "v1"}</small>
+                <small>{policy.watchers?.length ?? 0} watchers</small>
               </div>
               <div className="action-row">
                 <button onClick={() => onAcknowledgePolicy(policy.id)}><CheckCircle2 size={15} /> Acknowledge</button>
                 <button disabled={!permissions.canApprove} onClick={() => onUpdatePolicyStatus(policy.id, policy.status === "Active" ? "Review" : "Active")}><ShieldCheck size={15} /> Status</button>
+                <button disabled={!permissions.canApprove} onClick={() => onBumpPolicyVersion(policy.id)}><FileClock size={15} /> Version</button>
+                <button disabled={!permissions.canApprove} onClick={() => onSchedulePolicyReview(policy.id)}><TimerReset size={15} /> Review</button>
+                <button disabled={!permissions.canApprove} onClick={() => onUpdatePolicyOwner(policy.id)}><Landmark size={15} /> Owner</button>
+                <button disabled={!permissions.canApprove} onClick={() => onUpdatePolicyCategory(policy.id)}><ScrollText size={15} /> Category</button>
+                <button disabled={!permissions.canApprove} onClick={() => onUpdatePolicySummary(policy.id)}><MessageSquareText size={15} /> Summary</button>
+                <button onClick={() => onWatchPolicy(policy.id)}><Bell size={15} /> Watch</button>
+                <button disabled={!permissions.canApprove} onClick={() => onDuplicatePolicy(policy.id)}><Files size={15} /> Duplicate</button>
                 <button disabled={!permissions.canApprove} onClick={() => onRetirePolicy(policy.id)}><FileClock size={15} /> Retire</button>
               </div>
             </article>

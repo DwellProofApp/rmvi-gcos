@@ -189,6 +189,39 @@ const validators = {
     if (body.status !== undefined) requireEnum(body.status, policyStatuses, "status");
   },
 
+  "POST /api/policies/:id/owner": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
+  "POST /api/policies/:id/category": (body) => {
+    if (body.category !== undefined) requireString(body.category, "category");
+  },
+
+  "POST /api/policies/:id/summary": (body) => {
+    if (body.summary !== undefined) requireString(body.summary, "summary");
+  },
+
+  "POST /api/policies/:id/version": (body) => {
+    if (body.version !== undefined) requireString(body.version, "version");
+    if (body.status !== undefined) requireEnum(body.status, policyStatuses, "status");
+  },
+
+  "POST /api/policies/:id/review": (body) => {
+    if (body.reviewBy !== undefined) requireString(body.reviewBy, "reviewBy");
+  },
+
+  "POST /api/policies/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/policies/:id/duplicate": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+  },
+
+  "POST /api/policies/bulk/activate": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
   "POST /api/calendar-events": (body) => {
     requireString(body.title, "title");
     requireString(body.category, "category");

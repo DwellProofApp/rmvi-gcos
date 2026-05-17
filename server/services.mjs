@@ -287,6 +287,97 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updatePolicyOwner(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.owner = body.owner ?? body.actor ?? item.owner;
+      record("PolicyOwnerUpdated", body.actor, item.title, item.owner);
+      return item;
+    },
+
+    updatePolicyCategory(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.category = body.category ?? item.category;
+      record("PolicyCategoryUpdated", body.actor, item.title, item.category);
+      return item;
+    },
+
+    updatePolicySummary(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.summary = body.summary ?? item.summary;
+      record("PolicySummaryUpdated", body.actor, item.title, "Summary updated");
+      return item;
+    },
+
+    bumpPolicyVersion(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      const current = Number.parseInt(String(item.version ?? "1").replace(/\D/g, ""), 10) || 1;
+      item.version = body.version ?? `v${current + 1}`;
+      item.status = body.status ?? "Review";
+      record("PolicyVersionBumped", body.actor, item.title, item.version);
+      return item;
+    },
+
+    schedulePolicyReview(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.status = "Review";
+      item.reviewBy = body.reviewBy ?? "Next governance review";
+      record("PolicyReviewScheduled", body.actor, item.title, item.reviewBy);
+      return item;
+    },
+
+    watchPolicy(id, body) {
+      const item = findById(state.policies, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
+      record("PolicyWatcherAdded", body.actor, item.title, watcher);
+      return item;
+    },
+
+    duplicatePolicy(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      const created = policy(body.title ?? `${item.title} revision`, body.category, item.owner, "Draft", item.summary, 0);
+      created.version = "v1";
+      state.policies.unshift(created);
+      record("PolicyDuplicated", body.actor, item.title, created.title);
+      return created;
+    },
+
+    bulkActivatePolicies(body) {
+      requirePermission(body.actor, "canApprove");
+      const ids = body.ids?.length ? body.ids : state.policies.filter((item) => item.status !== "Active").slice(0, 3).map((item) => item.id);
+      const updated = state.policies.filter((item) => ids.includes(item.id)).map((item) => {
+        item.status = "Active";
+        return item;
+      });
+      record("PoliciesBulkActivated", body.actor, "Policy registry", `${updated.length} policies activated`);
+      return { count: updated.length, updated };
+    },
+
+    policyDigest() {
+      const active = state.policies.filter((item) => item.status === "Active");
+      const review = state.policies.filter((item) => item.status === "Review");
+      const draft = state.policies.filter((item) => item.status === "Draft");
+      const retired = state.policies.filter((item) => item.status === "Retired");
+      const watched = state.policies.filter((item) => item.watchers?.length);
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.policies.length,
+        active: active.length,
+        review: review.length,
+        draft: draft.length,
+        retired: retired.length,
+        watched: watched.length,
+        acknowledgements: state.policies.reduce((total, item) => total + item.acknowledgements, 0),
+        nextPolicy: review[0]?.title ?? draft[0]?.title ?? active[0]?.title ?? "No policies"
+      };
+    },
+
     createCalendarEvent(body) {
       const created = calendarEvent(body.title, body.category, body.owner ?? body.actor, body.date, body.priority ?? "Medium", body.status ?? "Scheduled");
       state.calendarEvents.unshift(created);
