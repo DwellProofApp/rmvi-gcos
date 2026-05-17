@@ -230,6 +230,35 @@ type ComplianceDigest = {
   highRisk: number;
   nextReview: string;
 };
+type EvidenceRecord = {
+  id: string;
+  title: string;
+  source: string;
+  classification: "Financial" | "Security" | "Governance" | "Personnel" | "Legal" | "Archive";
+  custody: string;
+  status: "Open" | "In Review" | "Sealed" | "Verified" | "On Hold";
+  chainHash: string;
+  retention: string;
+  fileCount: number;
+  sealed?: boolean;
+  verified?: boolean;
+  hold?: boolean;
+  exported?: boolean;
+  exportFormat?: string;
+  retentionReviewAt?: string;
+};
+type EvidenceDigest = {
+  generatedAt: string;
+  total: number;
+  sealed: number;
+  verified: number;
+  holds: number;
+  exported: number;
+  permanent: number;
+  custody: number;
+  files: number;
+  nextEvidence: string;
+};
 type ArchiveManifest = {
   generatedAt: string;
   total: number;
@@ -7423,6 +7452,8 @@ function Audit({
   const [securityDigest, setSecurityDigest] = React.useState<SecurityControlDigest | null>(null);
   const [complianceReviews, setComplianceReviews] = React.useState<ComplianceReview[]>([]);
   const [complianceDigest, setComplianceDigest] = React.useState<ComplianceDigest | null>(null);
+  const [evidenceVault, setEvidenceVault] = React.useState<EvidenceRecord[]>([]);
+  const [evidenceDigest, setEvidenceDigest] = React.useState<EvidenceDigest | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -7459,6 +7490,8 @@ function Audit({
     void apiRequest<SecurityControlDigest>("/api/security-controls/digest").then(setSecurityDigest).catch(() => undefined);
     void apiRequest<ComplianceReview[]>("/api/compliance-reviews").then(setComplianceReviews).catch(() => undefined);
     void apiRequest<ComplianceDigest>("/api/compliance-reviews/digest").then(setComplianceDigest).catch(() => undefined);
+    void apiRequest<EvidenceRecord[]>("/api/evidence-vault").then(setEvidenceVault).catch(() => undefined);
+    void apiRequest<EvidenceDigest>("/api/evidence-vault/digest").then(setEvidenceDigest).catch(() => undefined);
   }, []);
 
   function refreshReadiness() {
@@ -7670,6 +7703,87 @@ function Audit({
     }).then(updateComplianceReviews).catch(() => undefined);
   }
 
+  function refreshEvidenceVault() {
+    void apiRequest<EvidenceRecord[]>("/api/evidence-vault").then(setEvidenceVault).catch(() => undefined);
+    void apiRequest<EvidenceDigest>("/api/evidence-vault/digest").then(setEvidenceDigest).catch(() => undefined);
+  }
+
+  function updateEvidenceVault(result: { vault: EvidenceRecord[] }) {
+    setEvidenceVault(result.vault);
+    void apiRequest<EvidenceDigest>("/api/evidence-vault/digest").then(setEvidenceDigest).catch(() => undefined);
+  }
+
+  function assignEvidenceCustody(id: string) {
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/custody`, {
+      method: "POST",
+      body: JSON.stringify({ custody: session.email })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
+  function classifyEvidence(id: string) {
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/classification`, {
+      method: "POST",
+      body: JSON.stringify({ classification: "Legal" })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
+  function refreshEvidenceChain(id: string) {
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/chain`, {
+      method: "POST",
+      body: JSON.stringify({ chainHash: `hash-${id}-${Date.now()}` })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
+  function scheduleEvidenceRetention(id: string) {
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/retention`, {
+      method: "POST",
+      body: JSON.stringify({ retention: "Permanent", reviewAt: new Date(Date.now() + 1000 * 60 * 60 * 24 * 90).toISOString() })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
+  function sealEvidenceRecord(id: string) {
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/seal`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Sealed from evidence vault" })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
+  function verifyEvidenceRecord(id: string) {
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ result: "Evidence verified from vault" })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
+  function holdEvidenceRecord(id: string) {
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/hold`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Evidence hold placed from vault" })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
+  function exportEvidenceRecord(id: string) {
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/export`, {
+      method: "POST",
+      body: JSON.stringify({ format: "PDF" })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
+  function archiveEvidenceRecord(id: string) {
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Evidence archived from vault" })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
+  function bulkSealEvidenceVault() {
+    const ids = evidenceVault.slice(0, 2).map((evidence) => evidence.id);
+    void apiRequest<{ vault: EvidenceRecord[] }>("/api/evidence-vault/bulk/seal", {
+      method: "POST",
+      body: JSON.stringify({ ids, reason: "Bulk sealed from evidence vault" })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
   function exportAuditPacket() {
     const headers = ["Event", "Actor", "Object", "Result", "Time"];
     const rows = visibleRows.map((row) => [row.event, row.actor, row.object, row.result, row.time]);
@@ -7757,6 +7871,45 @@ function Audit({
             </div>
           ))}
           {visibleRows.length === 0 && <div className="empty-state">No audit records match the current filters.</div>}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={Files} title="Evidence Vault" action={`${evidenceDigest?.total ?? evidenceVault.length} records`} />
+        <div className="action-row">
+          <button disabled={!evidenceVault.length} onClick={bulkSealEvidenceVault}><LockKeyhole size={15} /> Bulk seal</button>
+          <button onClick={refreshEvidenceVault}><RefreshCw size={15} /> Digest</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Sealed" value={String(evidenceDigest?.sealed ?? evidenceVault.filter((record) => record.sealed).length)} />
+          <Insight label="Verified" value={String(evidenceDigest?.verified ?? evidenceVault.filter((record) => record.verified).length)} />
+          <Insight label="Holds" value={String(evidenceDigest?.holds ?? evidenceVault.filter((record) => record.hold).length)} />
+          <Insight label="Exported" value={String(evidenceDigest?.exported ?? evidenceVault.filter((record) => record.exported).length)} />
+          <Insight label="Permanent" value={String(evidenceDigest?.permanent ?? evidenceVault.filter((record) => record.retention === "Permanent").length)} />
+          <Insight label="Custody" value={String(evidenceDigest?.custody ?? new Set(evidenceVault.map((record) => record.custody)).size)} />
+          <Insight label="Files" value={String(evidenceDigest?.files ?? evidenceVault.reduce((sum, record) => sum + record.fileCount, 0))} />
+          <Insight label="Next evidence" value={evidenceDigest?.nextEvidence ?? evidenceVault[0]?.title ?? "None"} />
+        </div>
+        <div className="source-map-list">
+          {evidenceVault.map((record) => (
+            <article className="source-map-item" key={record.id}>
+              <span>{record.status}</span>
+              <strong>{record.title}</strong>
+              <small>{record.source} - {record.classification} - custody {record.custody} - {record.fileCount} files</small>
+              <small>{record.chainHash} - retention {record.retention}{record.exported ? ` - exported ${record.exportFormat ?? "PDF"}` : ""}</small>
+              <div className="action-row compact-actions">
+                <button onClick={() => assignEvidenceCustody(record.id)}><Users size={14} /> Custody</button>
+                <button onClick={() => classifyEvidence(record.id)}><Files size={14} /> Classify</button>
+                <button onClick={() => refreshEvidenceChain(record.id)}><GitBranch size={14} /> Chain</button>
+                <button onClick={() => scheduleEvidenceRetention(record.id)}><FileClock size={14} /> Retention</button>
+                <button onClick={() => sealEvidenceRecord(record.id)}><LockKeyhole size={14} /> Seal</button>
+                <button onClick={() => verifyEvidenceRecord(record.id)}><FileCheck2 size={14} /> Verify</button>
+                <button onClick={() => holdEvidenceRecord(record.id)}><ShieldCheck size={14} /> Hold</button>
+                <button onClick={() => exportEvidenceRecord(record.id)}><Download size={14} /> Export</button>
+                <button onClick={() => archiveEvidenceRecord(record.id)}><Files size={14} /> Archive</button>
+              </div>
+            </article>
+          ))}
+          {!evidenceVault.length && <div className="empty-state">No active evidence records.</div>}
         </div>
       </div>
       <div className="panel module-side">

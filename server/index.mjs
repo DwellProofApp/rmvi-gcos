@@ -256,6 +256,18 @@ const routes = {
   "POST /api/compliance-reviews/:id/export": ({ params, body, session }) => ok(exportComplianceReview(params.id, body, session.email)),
   "POST /api/compliance-reviews/:id/archive": ({ params, body, session }) => ok(archiveComplianceReview(params.id, body, session.email)),
   "POST /api/compliance-reviews/:id/escalate": ({ params, body, session }) => ok(escalateComplianceReview(params.id, body, session.email)),
+  "GET /api/evidence-vault": () => ok(evidenceVaultReport()),
+  "GET /api/evidence-vault/digest": () => ok(evidenceVaultDigest()),
+  "POST /api/evidence-vault/bulk/seal": ({ body, session }) => ok(bulkSealEvidence(body, session.email)),
+  "POST /api/evidence-vault/:id/custody": ({ params, body, session }) => ok(assignEvidenceCustody(params.id, body, session.email)),
+  "POST /api/evidence-vault/:id/classification": ({ params, body, session }) => ok(updateEvidenceClassification(params.id, body, session.email)),
+  "POST /api/evidence-vault/:id/chain": ({ params, body, session }) => ok(updateEvidenceChain(params.id, body, session.email)),
+  "POST /api/evidence-vault/:id/retention": ({ params, body, session }) => ok(scheduleEvidenceRetention(params.id, body, session.email)),
+  "POST /api/evidence-vault/:id/seal": ({ params, body, session }) => ok(sealEvidence(params.id, body, session.email)),
+  "POST /api/evidence-vault/:id/verify": ({ params, body, session }) => ok(verifyEvidence(params.id, body, session.email)),
+  "POST /api/evidence-vault/:id/hold": ({ params, body, session }) => ok(placeEvidenceHold(params.id, body, session.email)),
+  "POST /api/evidence-vault/:id/export": ({ params, body, session }) => ok(exportEvidence(params.id, body, session.email)),
+  "POST /api/evidence-vault/:id/archive": ({ params, body, session }) => ok(archiveEvidence(params.id, body, session.email)),
   "GET /api/events": () => ok(state.events),
   "GET /api/events/digest": () => ok(services.eventDigest()),
   "POST /api/events": ({ body }) => createdResponse(services.recordManualEvent(body)),
@@ -786,6 +798,170 @@ function complianceReviewDigest() {
   };
 }
 
+const baseEvidenceVault = [
+  {
+    id: "ev-finance-ledger",
+    title: "County finance ledger packet",
+    source: "Compliance Review",
+    classification: "Financial",
+    custody: "National Audit Desk",
+    status: "Open",
+    chainHash: "hash-finance-ledger",
+    retention: "7 years",
+    fileCount: 12
+  },
+  {
+    id: "ev-transfer-session",
+    title: "Transfer session invalidation logs",
+    source: "Security Controls",
+    classification: "Security",
+    custody: "Security Controls",
+    status: "Open",
+    chainHash: "hash-transfer-session",
+    retention: "Permanent",
+    fileCount: 7
+  },
+  {
+    id: "ev-churchmail-archive",
+    title: "ChurchMail archive manifest",
+    source: "Archive",
+    classification: "Governance",
+    custody: "Compliance Engine",
+    status: "In Review",
+    chainHash: "hash-churchmail-archive",
+    retention: "Permanent",
+    fileCount: 21
+  }
+];
+
+function ensureEvidenceVault() {
+  state.evidenceVault ??= {};
+  return state.evidenceVault;
+}
+
+function evidenceVaultReport() {
+  const actions = ensureEvidenceVault();
+  return baseEvidenceVault
+    .map((evidence) => ({ ...evidence, ...(actions[evidence.id] ?? {}) }))
+    .filter((evidence) => !evidence.archived);
+}
+
+function getEvidence(id) {
+  const decoded = decodeURIComponent(String(id ?? ""));
+  const evidence = evidenceVaultReport().find((item) => item.id === decoded);
+  if (!evidence) throw new HttpError(404, "Evidence record not found");
+  return evidence;
+}
+
+function patchEvidence(id, patch, actor, event, result) {
+  const evidence = getEvidence(id);
+  const records = ensureEvidenceVault();
+  records[evidence.id] = {
+    ...(records[evidence.id] ?? {}),
+    ...patch,
+    updatedAt: new Date().toISOString(),
+    updatedBy: actor
+  };
+  record(event, actor, evidence.title, result);
+  return { evidence: { ...evidence, ...records[evidence.id] }, vault: evidenceVaultReport() };
+}
+
+function assignEvidenceCustody(id, body, actor) {
+  return patchEvidence(id, {
+    custody: body.custody ?? actor,
+    custodyAt: new Date().toISOString(),
+    status: "In Review"
+  }, actor, "EvidenceCustodyAssigned", body.custody ?? actor);
+}
+
+function updateEvidenceClassification(id, body, actor) {
+  return patchEvidence(id, {
+    classification: body.classification ?? "Governance"
+  }, actor, "EvidenceClassificationUpdated", body.classification ?? "Governance");
+}
+
+function updateEvidenceChain(id, body, actor) {
+  return patchEvidence(id, {
+    chainHash: body.chainHash ?? `hash-${Date.now()}`,
+    chainUpdatedAt: new Date().toISOString()
+  }, actor, "EvidenceChainUpdated", body.chainHash ?? "Chain hash refreshed");
+}
+
+function scheduleEvidenceRetention(id, body, actor) {
+  return patchEvidence(id, {
+    retention: body.retention ?? "Permanent",
+    retentionReviewAt: body.reviewAt ?? new Date(Date.now() + 1000 * 60 * 60 * 24 * 90).toISOString()
+  }, actor, "EvidenceRetentionScheduled", body.retention ?? "Permanent");
+}
+
+function sealEvidence(id, body, actor) {
+  requirePermission(actor, "canApprove");
+  return patchEvidence(id, {
+    sealed: true,
+    sealedAt: new Date().toISOString(),
+    sealReason: body.reason ?? "Evidence sealed from audit vault",
+    status: "Sealed"
+  }, actor, "EvidenceSealed", body.reason ?? "Evidence sealed");
+}
+
+function verifyEvidence(id, body, actor) {
+  return patchEvidence(id, {
+    verified: true,
+    verifiedAt: new Date().toISOString(),
+    verification: body.result ?? "Evidence verified",
+    status: "Verified"
+  }, actor, "EvidenceVerified", body.result ?? "Evidence verified");
+}
+
+function placeEvidenceHold(id, body, actor) {
+  return patchEvidence(id, {
+    hold: true,
+    holdReason: body.reason ?? "Evidence hold placed",
+    holdAt: new Date().toISOString(),
+    status: "On Hold"
+  }, actor, "EvidenceHoldPlaced", body.reason ?? "Evidence hold placed");
+}
+
+function exportEvidence(id, body, actor) {
+  return patchEvidence(id, {
+    exported: true,
+    exportFormat: body.format ?? "PDF",
+    exportedAt: new Date().toISOString()
+  }, actor, "EvidenceExported", body.format ?? "PDF");
+}
+
+function archiveEvidence(id, body, actor) {
+  return patchEvidence(id, {
+    archived: true,
+    archivedAt: new Date().toISOString(),
+    archiveReason: body.reason ?? "Evidence archived"
+  }, actor, "EvidenceArchived", body.reason ?? "Evidence archived");
+}
+
+function bulkSealEvidence(body, actor) {
+  requirePermission(actor, "canApprove");
+  const ids = body.ids?.length ? body.ids : evidenceVaultReport().slice(0, 2).map((evidence) => evidence.id);
+  const updated = ids.map((id) => sealEvidence(id, { reason: body.reason ?? "Bulk evidence seal" }, actor).evidence);
+  record("EvidenceBulkSealed", actor, "Evidence Vault", `${updated.length} records sealed`);
+  return { count: updated.length, updated, vault: evidenceVaultReport() };
+}
+
+function evidenceVaultDigest() {
+  const vault = evidenceVaultReport();
+  return {
+    generatedAt: new Date().toISOString(),
+    total: vault.length,
+    sealed: vault.filter((evidence) => evidence.sealed).length,
+    verified: vault.filter((evidence) => evidence.verified).length,
+    holds: vault.filter((evidence) => evidence.hold).length,
+    exported: vault.filter((evidence) => evidence.exported).length,
+    permanent: vault.filter((evidence) => evidence.retention === "Permanent").length,
+    custody: new Set(vault.map((evidence) => evidence.custody).filter(Boolean)).size,
+    files: vault.reduce((sum, evidence) => sum + (evidence.fileCount ?? 0), 0),
+    nextEvidence: vault.find((evidence) => !evidence.verified)?.title ?? vault[0]?.title ?? "No evidence"
+  };
+}
+
 function exportSnapshot(session) {
   return {
     exportedAt: new Date().toISOString(),
@@ -1034,7 +1210,8 @@ async function loadState() {
       offlineQueue: persisted.offlineQueue ?? seed.offlineQueue,
       readinessActions: persisted.readinessActions ?? seed.readinessActions ?? {},
       securityControls: persisted.securityControls ?? seed.securityControls ?? {},
-      complianceReviews: persisted.complianceReviews ?? seed.complianceReviews ?? {}
+      complianceReviews: persisted.complianceReviews ?? seed.complianceReviews ?? {},
+      evidenceVault: persisted.evidenceVault ?? seed.evidenceVault ?? {}
     });
   } catch (error) {
     if (error.code !== "ENOENT") console.warn(`Unable to load persisted state: ${error.message}`);

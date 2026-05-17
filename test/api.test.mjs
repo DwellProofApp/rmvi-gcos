@@ -263,6 +263,79 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(complianceDigest.exported >= 1, true);
     assert.equal(complianceDigest.escalated >= 1, true);
 
+    const evidenceVault = await getJson("/api/evidence-vault", nationalToken);
+    assert.equal(evidenceVault.length >= 3, true);
+    assert.equal(evidenceVault.some((record) => record.id === "ev-finance-ledger"), true);
+
+    const custodyEvidence = await postJson("/api/evidence-vault/ev-finance-ledger/custody", {
+      custody: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(custodyEvidence.evidence.custody, "np@rmvi.org");
+    assert.equal(custodyEvidence.evidence.status, "In Review");
+
+    const invalidEvidenceClass = await rawPost("/api/evidence-vault/ev-finance-ledger/classification", {
+      classification: "Unknown"
+    }, nationalToken);
+    assert.equal(invalidEvidenceClass.status, 400);
+
+    const classifiedEvidence = await postJson("/api/evidence-vault/ev-finance-ledger/classification", {
+      classification: "Legal"
+    }, nationalToken);
+    assert.equal(classifiedEvidence.evidence.classification, "Legal");
+
+    const chainedEvidence = await postJson("/api/evidence-vault/ev-finance-ledger/chain", {
+      chainHash: "automated-chain-hash"
+    }, nationalToken);
+    assert.equal(chainedEvidence.evidence.chainHash, "automated-chain-hash");
+
+    const retainedEvidence = await postJson("/api/evidence-vault/ev-finance-ledger/retention", {
+      retention: "Permanent",
+      reviewAt: "2026-08-15T12:00:00.000Z"
+    }, nationalToken);
+    assert.equal(retainedEvidence.evidence.retention, "Permanent");
+
+    const sealedEvidence = await postJson("/api/evidence-vault/ev-finance-ledger/seal", {
+      reason: "Automated evidence seal"
+    }, nationalToken);
+    assert.equal(sealedEvidence.evidence.sealed, true);
+    assert.equal(sealedEvidence.evidence.status, "Sealed");
+
+    const verifiedEvidence = await postJson("/api/evidence-vault/ev-finance-ledger/verify", {
+      result: "Automated evidence verification"
+    }, nationalToken);
+    assert.equal(verifiedEvidence.evidence.verified, true);
+    assert.equal(verifiedEvidence.evidence.status, "Verified");
+
+    const heldEvidence = await postJson("/api/evidence-vault/ev-finance-ledger/hold", {
+      reason: "Automated evidence hold"
+    }, nationalToken);
+    assert.equal(heldEvidence.evidence.hold, true);
+    assert.equal(heldEvidence.evidence.status, "On Hold");
+
+    const exportedEvidence = await postJson("/api/evidence-vault/ev-finance-ledger/export", {
+      format: "PDF"
+    }, nationalToken);
+    assert.equal(exportedEvidence.evidence.exported, true);
+    assert.equal(exportedEvidence.evidence.exportFormat, "PDF");
+
+    const bulkEvidenceSeal = await postJson("/api/evidence-vault/bulk/seal", {
+      ids: ["ev-transfer-session", "ev-churchmail-archive"],
+      reason: "Automated bulk evidence seal"
+    }, nationalToken);
+    assert.equal(bulkEvidenceSeal.count, 2);
+
+    const archivedEvidence = await postJson("/api/evidence-vault/ev-transfer-session/archive", {
+      reason: "Automated evidence archive"
+    }, nationalToken);
+    assert.equal(archivedEvidence.vault.some((record) => record.id === "ev-transfer-session"), false);
+
+    const evidenceDigest = await getJson("/api/evidence-vault/digest", nationalToken);
+    assert.equal(evidenceDigest.total >= 2, true);
+    assert.equal(evidenceDigest.sealed >= 1, true);
+    assert.equal(evidenceDigest.verified >= 1, true);
+    assert.equal(evidenceDigest.holds >= 1, true);
+    assert.equal(evidenceDigest.exported >= 1, true);
+
     const statusAfterSecondLogin = await getJson("/api/status");
     assert.equal(statusAfterSecondLogin.sessions.active, 3);
     assert.equal(Boolean(statusAfterSecondLogin.sessions.stations[0].id), true);
@@ -1638,6 +1711,17 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "ComplianceReviewsBulkReviewed"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ComplianceReviewArchived"), true);
     assert.equal(persisted.complianceReviews["comp-finance-q2"].packetId, "automated-packet");
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceCustodyAssigned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceClassificationUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceChainUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceRetentionScheduled"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceSealed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceHoldPlaced"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceExported"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceBulkSealed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EvidenceArchived"), true);
+    assert.equal(persisted.evidenceVault["ev-finance-ledger"].chainHash, "automated-chain-hash");
     assert.equal(persisted.audit.some((row) => row.event === "CommandBriefingArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandDirectiveIssued"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandTaskCreated"), true);

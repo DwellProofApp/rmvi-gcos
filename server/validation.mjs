@@ -24,6 +24,7 @@ const auditSeverities = ["Info", "Low", "Medium", "High", "Critical"];
 const securityControlStatuses = ["Active", "Warning", "Exception", "Disabled", "Testing"];
 const complianceRisks = ["Low", "Medium", "High", "Critical"];
 const complianceExportFormats = ["PDF", "CSV", "JSON"];
+const evidenceClassifications = ["Financial", "Security", "Governance", "Personnel", "Legal", "Archive"];
 
 const validators = {
   "POST /api/auth/login": (body) => {
@@ -206,6 +207,48 @@ const validators = {
   "POST /api/compliance-reviews/bulk/review": (body) => {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
     if (body.reviewer !== undefined) requireString(body.reviewer, "reviewer");
+  },
+
+  "POST /api/evidence-vault/:id/custody": (body) => {
+    if (body.custody !== undefined) requireString(body.custody, "custody");
+  },
+
+  "POST /api/evidence-vault/:id/classification": (body) => {
+    if (body.classification !== undefined) requireEnum(body.classification, evidenceClassifications, "classification");
+  },
+
+  "POST /api/evidence-vault/:id/chain": (body) => {
+    if (body.chainHash !== undefined) requireString(body.chainHash, "chainHash");
+  },
+
+  "POST /api/evidence-vault/:id/retention": (body) => {
+    if (body.retention !== undefined) requireString(body.retention, "retention");
+    if (body.reviewAt !== undefined) requireString(body.reviewAt, "reviewAt");
+  },
+
+  "POST /api/evidence-vault/:id/seal": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/evidence-vault/:id/verify": (body) => {
+    if (body.result !== undefined) requireString(body.result, "result");
+  },
+
+  "POST /api/evidence-vault/:id/hold": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/evidence-vault/:id/export": (body) => {
+    if (body.format !== undefined) requireEnum(body.format, complianceExportFormats, "format");
+  },
+
+  "POST /api/evidence-vault/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/evidence-vault/bulk/seal": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
   "POST /api/stations/:id/level": (body) => {
