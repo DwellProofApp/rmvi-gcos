@@ -1423,6 +1423,97 @@ export function createServices({ state, record, requirePermission, findById }) {
       return draft;
     },
 
+    updateAiDraftStatus(id, body) {
+      const draft = findById(state.aiDrafts, id);
+      draft.status = body.status ?? "Review";
+      record("AIDraftStatusUpdated", body.actor, draft.title, draft.status);
+      return draft;
+    },
+
+    publishAiDraft(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const draft = findById(state.aiDrafts, id);
+      draft.status = "Published";
+      draft.publishedBy = body.actor;
+      record("AIDraftPublished", body.actor, draft.title, "AI draft published");
+      return draft;
+    },
+
+    bindAiDraftSources(id, body) {
+      const draft = findById(state.aiDrafts, id);
+      draft.sourceNote = body.sourceNote ?? "Bound to current governance source map";
+      draft.sourceCount = Math.max(draft.sourceCount, body.sourceCount ?? draft.sourceCount);
+      record("AIDraftSourcesBound", body.actor, draft.title, draft.sourceNote);
+      return draft;
+    },
+
+    scoreAiDraft(id, body) {
+      const draft = findById(state.aiDrafts, id);
+      draft.confidence = Math.max(0, Math.min(100, body.confidence ?? 90));
+      record("AIDraftConfidenceScored", body.actor, draft.title, `${draft.confidence}% confidence`);
+      return draft;
+    },
+
+    sealAiDraft(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const draft = findById(state.aiDrafts, id);
+      draft.sealed = true;
+      draft.chainHash = draft.chainHash ?? `sha256:${Buffer.from(`${draft.id}:${draft.title}:${draft.createdAt}`).toString("base64url").slice(0, 32)}`;
+      record("AIDraftSealed", body.actor, draft.title, draft.chainHash);
+      return draft;
+    },
+
+    watchAiDraft(id, body) {
+      const draft = findById(state.aiDrafts, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      draft.watchers = Array.from(new Set([...(draft.watchers ?? []), watcher]));
+      record("AIDraftWatcherAdded", body.actor, draft.title, watcher);
+      return draft;
+    },
+
+    duplicateAiDraft(id, body) {
+      const draft = findById(state.aiDrafts, id);
+      const created = aiDraft(draft.kind, body.title ?? `${draft.title} follow-up`, draft.body, draft.sourceCount);
+      created.status = "Draft";
+      state.aiDrafts.unshift(created);
+      record("AIDraftDuplicated", body.actor, draft.title, created.title);
+      return created;
+    },
+
+    bulkRefreshAiDrafts(body) {
+      const ids = body.ids?.length ? body.ids : state.aiDrafts.slice(0, 3).map((item) => item.id);
+      const updated = ids.map((id) => {
+        const draft = findById(state.aiDrafts, id);
+        const focus = body.focus ?? draft.title.replace(`${draft.kind}: `, "");
+        const refreshed = generateDraft(draft.kind, focus, body.actor);
+        draft.title = refreshed.title;
+        draft.body = refreshed.body;
+        draft.sourceCount = refreshed.sourceCount;
+        draft.createdAt = refreshed.createdAt;
+        draft.status = "Refreshed";
+        return draft;
+      });
+      record("AIDraftsBulkRefreshed", body.actor, "AI Desk", `${updated.length} drafts refreshed`);
+      return { updated, count: updated.length };
+    },
+
+    aiDraftDigest() {
+      const published = state.aiDrafts.filter((item) => item.status === "Published");
+      const review = state.aiDrafts.filter((item) => item.status === "Review" || item.status === "Refreshed");
+      const sealed = state.aiDrafts.filter((item) => item.sealed);
+      const watched = state.aiDrafts.filter((item) => item.watchers?.length);
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.aiDrafts.length,
+        published: published.length,
+        review: review.length,
+        sealed: sealed.length,
+        watched: watched.length,
+        averageConfidence: state.aiDrafts.length ? Math.round(state.aiDrafts.reduce((sum, item) => sum + (item.confidence ?? 0), 0) / state.aiDrafts.length) : 0,
+        nextDraft: review[0]?.title ?? state.aiDrafts[0]?.title ?? "No AI drafts"
+      };
+    },
+
     syncOfflineActions(body) {
       const actions = Array.isArray(body.actions) ? body.actions : [];
       for (const action of actions) {

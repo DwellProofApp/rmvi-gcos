@@ -1104,6 +1104,53 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(refreshedDraft.title, "Executive Summary: Automated refreshed workflow test");
     assert.equal(refreshedDraft.sourceCount > 0, true);
 
+    const statusDraft = await postJson(`/api/ai-drafts/${draft.id}/status`, {
+      status: "Review"
+    }, nationalToken);
+    assert.equal(statusDraft.status, "Review");
+
+    const sourceDraft = await postJson(`/api/ai-drafts/${draft.id}/sources`, {
+      sourceNote: "Automated source binding",
+      sourceCount: 99
+    }, nationalToken);
+    assert.equal(sourceDraft.sourceNote, "Automated source binding");
+    assert.equal(sourceDraft.sourceCount >= 99, true);
+
+    const confidenceDraft = await postJson(`/api/ai-drafts/${draft.id}/confidence`, {
+      confidence: 96
+    }, nationalToken);
+    assert.equal(confidenceDraft.confidence, 96);
+
+    const watchedDraft = await postJson(`/api/ai-drafts/${draft.id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedDraft.watchers.includes("np@rmvi.org"), true);
+
+    const sealedDraft = await postJson(`/api/ai-drafts/${draft.id}/seal`, {}, nationalToken);
+    assert.equal(sealedDraft.sealed, true);
+    assert.match(sealedDraft.chainHash, /^sha256:/);
+
+    const publishedDraft = await postJson(`/api/ai-drafts/${draft.id}/publish`, {}, nationalToken);
+    assert.equal(publishedDraft.status, "Published");
+
+    const duplicatedDraft = await postJson(`/api/ai-drafts/${draft.id}/duplicate`, {
+      title: "Automated duplicate AI draft"
+    }, nationalToken);
+    assert.equal(duplicatedDraft.title, "Automated duplicate AI draft");
+    assert.equal(duplicatedDraft.status, "Draft");
+
+    const bulkRefreshedDrafts = await postJson("/api/ai-drafts/bulk/refresh", {
+      ids: [duplicatedDraft.id],
+      focus: "Automated AI bulk refresh"
+    }, nationalToken);
+    assert.equal(bulkRefreshedDrafts.count, 1);
+    assert.equal(bulkRefreshedDrafts.updated[0].status, "Refreshed");
+
+    const aiDraftDigest = await getJson("/api/ai-drafts/digest", nationalToken);
+    assert.equal(aiDraftDigest.total > 0, true);
+    assert.equal(aiDraftDigest.sealed >= 1, true);
+    assert.equal(aiDraftDigest.watched >= 1, true);
+
     const archivedDraft = await postJson(`/api/ai-drafts/${draft.id}/archive`, {
       reason: "Automated AI archive test"
     }, nationalToken);
@@ -1168,6 +1215,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "ApprovalsBulkApproved"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ApprovalsBulkRejected"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AIDraftGenerated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AIDraftStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AIDraftSourcesBound"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AIDraftConfidenceScored"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AIDraftWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AIDraftSealed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AIDraftPublished"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AIDraftDuplicated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AIDraftsBulkRefreshed"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskAdvanced"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskAssigneeUpdated"), true);

@@ -70,7 +70,7 @@ type OfflineAction = AuditRow & { queuedAt: string };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string };
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string };
 type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[] };
-type AiDraft = { id: string; kind: "Executive Summary" | "Memo" | "Report Brief"; title: string; body: string; sourceCount: number; createdAt: string };
+type AiDraft = { id: string; kind: "Executive Summary" | "Memo" | "Report Brief"; title: string; body: string; sourceCount: number; createdAt: string; status?: string; confidence?: number; sourceNote?: string; sealed?: boolean; chainHash?: string; publishedBy?: string; watchers?: string[] };
 type DocumentRecord = { id: string; name: string; classification: string; source: string; owner: string; fileType: string; status: string; storageKey: string; retainedUntil: string; createdAt: string };
 type SearchResult = { id: string; section: Section; title: string; meta: string; status: string };
 type NotificationItem = { id: string; section: Section; title: string; detail: string; severity: "Critical" | "High" | "Medium" | "Info" };
@@ -274,6 +274,16 @@ type ApprovalDigest = {
   watched: number;
   archived: number;
   nextApproval: string;
+};
+type AiDraftDigest = {
+  generatedAt: string;
+  total: number;
+  published: number;
+  review: number;
+  sealed: number;
+  watched: number;
+  averageConfidence: number;
+  nextDraft: string;
 };
 type CommandBriefing = {
   title: string;
@@ -684,6 +694,7 @@ function App() {
   const [messageDigest, setMessageDigest] = React.useState<MessageDigest | null>(null);
   const [reportDigest, setReportDigest] = React.useState<ReportDigest | null>(null);
   const [approvalDigest, setApprovalDigest] = React.useState<ApprovalDigest | null>(null);
+  const [aiDraftDigest, setAiDraftDigest] = React.useState<AiDraftDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -889,6 +900,7 @@ function App() {
       void apiRequest<MessageDigest>("/api/messages/digest").then(setMessageDigest).catch(() => undefined);
       void apiRequest<ReportDigest>("/api/reports/digest").then(setReportDigest).catch(() => undefined);
       void apiRequest<ApprovalDigest>("/api/approvals/digest").then(setApprovalDigest).catch(() => undefined);
+      void apiRequest<AiDraftDigest>("/api/ai-drafts/digest").then(setAiDraftDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -2851,6 +2863,128 @@ function App() {
     }
   }
 
+  function updateAiDraftStatus(id: string) {
+    const draft = aiDrafts.find((item) => item.id === id);
+    if (!draft) return;
+    const status = draft.status === "Review" ? "Draft" : "Review";
+    setAiDrafts((items) => items.map((item) => item.id === id ? { ...item, status } : item));
+    recordAudit("AIDraftStatusUpdated", draft.title, status);
+    if (!offlineMode) {
+      void apiRequest<AiDraft>(`/api/ai-drafts/${id}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function publishAiDraft(id: string) {
+    const draft = aiDrafts.find((item) => item.id === id);
+    if (!draft) return;
+    setAiDrafts((items) => items.map((item) => item.id === id ? { ...item, status: "Published", publishedBy: activeStation.email } : item));
+    recordAudit("AIDraftPublished", draft.title, "AI draft published");
+    if (!offlineMode) {
+      void apiRequest<AiDraft>(`/api/ai-drafts/${id}/publish`, {
+        method: "POST",
+        body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bindAiDraftSources(id: string) {
+    const draft = aiDrafts.find((item) => item.id === id);
+    if (!draft) return;
+    const sourceNote = "Bound to current governance source map";
+    const sourceCount = reports.length + approvals.length + tasks.length + policies.length + calendarEvents.length + personnel.length + escalations.length + messages.length;
+    setAiDrafts((items) => items.map((item) => item.id === id ? { ...item, sourceNote, sourceCount: Math.max(item.sourceCount, sourceCount) } : item));
+    recordAudit("AIDraftSourcesBound", draft.title, sourceNote);
+    if (!offlineMode) {
+      void apiRequest<AiDraft>(`/api/ai-drafts/${id}/sources`, {
+        method: "POST",
+        body: JSON.stringify({ sourceNote, sourceCount })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function scoreAiDraft(id: string) {
+    const draft = aiDrafts.find((item) => item.id === id);
+    if (!draft) return;
+    const confidence = draft.confidence === 96 ? 88 : 96;
+    setAiDrafts((items) => items.map((item) => item.id === id ? { ...item, confidence } : item));
+    recordAudit("AIDraftConfidenceScored", draft.title, `${confidence}% confidence`);
+    if (!offlineMode) {
+      void apiRequest<AiDraft>(`/api/ai-drafts/${id}/confidence`, {
+        method: "POST",
+        body: JSON.stringify({ confidence })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function sealAiDraft(id: string) {
+    const draft = aiDrafts.find((item) => item.id === id);
+    if (!draft) return;
+    const chainHash = draft.chainHash ?? `sha256:${btoa(`${draft.id}:${draft.title}:${draft.createdAt}`).replaceAll("=", "").slice(0, 24)}`;
+    setAiDrafts((items) => items.map((item) => item.id === id ? { ...item, sealed: true, chainHash } : item));
+    recordAudit("AIDraftSealed", draft.title, chainHash);
+    if (!offlineMode) {
+      void apiRequest<AiDraft>(`/api/ai-drafts/${id}/seal`, {
+        method: "POST",
+        body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchAiDraft(id: string) {
+    const draft = aiDrafts.find((item) => item.id === id);
+    if (!draft) return;
+    setAiDrafts((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("AIDraftWatcherAdded", draft.title, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<AiDraft>(`/api/ai-drafts/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function duplicateAiDraft(id: string) {
+    const draft = aiDrafts.find((item) => item.id === id);
+    if (!draft) return;
+    const duplicate: AiDraft = { ...draft, id: `ai-${Date.now()}`, title: `${draft.title} follow-up`, status: "Draft", createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) };
+    setAiDrafts((items) => [duplicate, ...items]);
+    recordAudit("AIDraftDuplicated", draft.title, duplicate.title);
+    if (!offlineMode) {
+      void apiRequest<AiDraft>(`/api/ai-drafts/${id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ title: duplicate.title })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkRefreshAiDrafts(ids: string[]) {
+    const targetIds = ids.length ? ids : aiDrafts.slice(0, 3).map((draft) => draft.id);
+    setAiDrafts((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, status: "Refreshed", createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) } : item));
+    recordAudit("AIDraftsBulkRefreshed", "AI Desk", `${targetIds.length} drafts refreshed`);
+    if (!offlineMode) {
+      void apiRequest<{ updated: AiDraft[]; count: number }>("/api/ai-drafts/bulk/refresh", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, focus: "Bulk governance refresh" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshAiDraftDigest() {
+    if (offlineMode) {
+      recordAudit("AIDraftDigestRefreshed", "AI draft digest", "Local AI draft digest refreshed");
+      return;
+    }
+    void apiRequest<AiDraftDigest>("/api/ai-drafts/digest")
+      .then((digest) => {
+        setAiDraftDigest(digest);
+        recordAudit("AIDraftDigestRefreshed", "AI draft digest", `${digest.total} drafts, ${digest.published} published`);
+      })
+      .catch(() => undefined);
+  }
+
   function archiveDocument(record: Omit<DocumentRecord, "id" | "storageKey" | "retainedUntil" | "createdAt">) {
     const safeName = record.name.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/(^-|-$)/g, "");
     const createdAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -3622,6 +3756,16 @@ function App() {
             onGenerateDraft={generateAiDraft}
             onRefreshDraft={refreshAiDraft}
             onArchiveDraft={archiveAiDraft}
+            onUpdateStatus={updateAiDraftStatus}
+            onPublishDraft={publishAiDraft}
+            onBindSources={bindAiDraftSources}
+            onScoreDraft={scoreAiDraft}
+            onSealDraft={sealAiDraft}
+            onWatchDraft={watchAiDraft}
+            onDuplicateDraft={duplicateAiDraft}
+            onBulkRefresh={bulkRefreshAiDrafts}
+            onRefreshDigest={refreshAiDraftDigest}
+            digest={aiDraftDigest}
           />
         )}
         {activeSection === "Hierarchy" && <Hierarchy stationDirectory={stationDirectory} offices={offices} />}
@@ -5615,7 +5759,17 @@ function AiDesk({
   messages,
   onGenerateDraft,
   onRefreshDraft,
-  onArchiveDraft
+  onArchiveDraft,
+  onUpdateStatus,
+  onPublishDraft,
+  onBindSources,
+  onScoreDraft,
+  onSealDraft,
+  onWatchDraft,
+  onDuplicateDraft,
+  onBulkRefresh,
+  onRefreshDigest,
+  digest
 }: {
   drafts: AiDraft[];
   reports: Report[];
@@ -5629,6 +5783,16 @@ function AiDesk({
   onGenerateDraft: (kind: AiDraft["kind"], focus: string) => void;
   onRefreshDraft: (id: string) => void;
   onArchiveDraft: (id: string) => void;
+  onUpdateStatus: (id: string) => void;
+  onPublishDraft: (id: string) => void;
+  onBindSources: (id: string) => void;
+  onScoreDraft: (id: string) => void;
+  onSealDraft: (id: string) => void;
+  onWatchDraft: (id: string) => void;
+  onDuplicateDraft: (id: string) => void;
+  onBulkRefresh: (ids: string[]) => void;
+  onRefreshDigest: () => void;
+  digest: AiDraftDigest | null;
 }) {
   const [kind, setKind] = React.useState<AiDraft["kind"]>("Executive Summary");
   const [focus, setFocus] = React.useState("National operations and escalation review");
@@ -5638,6 +5802,9 @@ function AiDesk({
   const activeTasks = tasks.filter((item) => item.status !== "Complete").length;
   const upcomingEvents = calendarEvents.filter((item) => item.status !== "Complete").length;
   const activePersonnel = personnel.filter((item) => item.status !== "Inactive").length;
+  const reviewDrafts = drafts.filter((item) => item.status === "Review" || item.status === "Refreshed").length;
+  const publishedDrafts = drafts.filter((item) => item.status === "Published").length;
+  const watchedDrafts = drafts.filter((item) => item.watchers?.length).length;
   const sourceMap = [
     ...reports.filter((item) => item.state !== "Approved").slice(0, 3).map((item) => ({
       label: "Report",
@@ -5690,6 +5857,19 @@ function AiDesk({
     <section className="module-grid">
       <div className="panel module-primary">
         <PanelHeader icon={Sparkles} title="AI Administrative Desk" action="Generate" />
+        <div className="office-summary-grid">
+          <Insight label="Drafts" value={String(digest?.total ?? drafts.length)} />
+          <Insight label="Review" value={String(digest?.review ?? reviewDrafts)} />
+          <Insight label="Published" value={String(digest?.published ?? publishedDrafts)} />
+          <Insight label="Sealed" value={String(digest?.sealed ?? drafts.filter((item) => item.sealed).length)} />
+          <Insight label="Watched" value={String(digest?.watched ?? watchedDrafts)} />
+          <Insight label="Avg confidence" value={`${digest?.averageConfidence ?? 0}%`} />
+          <Insight label="Next draft" value={digest?.nextDraft ?? drafts[0]?.title ?? "None"} />
+        </div>
+        <div className="archive-toolbar">
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
+          <button type="button" disabled={!drafts.length} onClick={() => onBulkRefresh(drafts.slice(0, 3).map((draft) => draft.id))}><RefreshCw size={15} /> Bulk refresh</button>
+        </div>
         <div className="ai-source-grid">
           <Metric icon={FileCheck2} label="Active Reports" value={String(activeReports)} trend="source" />
           <Metric icon={Workflow} label="Pending Approvals" value={String(pendingApprovals)} trend="source" />
@@ -5709,9 +5889,22 @@ function AiDesk({
                 <span>{draft.createdAt} - {draft.sourceCount} records</span>
               </div>
               <h2>{draft.title}</h2>
+              <div className="approval-meta">
+                <small>{draft.status ?? "Draft"}</small>
+                <small>{draft.confidence ?? 0}% confidence</small>
+                <small>{draft.watchers?.length ?? 0} watchers</small>
+                <small>{draft.sealed ? "Sealed" : "Open"}</small>
+              </div>
               <pre>{draft.body}</pre>
               <div className="action-row">
                 <button onClick={() => onRefreshDraft(draft.id)}><RefreshCw size={15} /> Refresh</button>
+                <button onClick={() => onUpdateStatus(draft.id)}><FileClock size={15} /> Status</button>
+                <button onClick={() => onPublishDraft(draft.id)}><Send size={15} /> Publish</button>
+                <button onClick={() => onBindSources(draft.id)}><GitBranch size={15} /> Sources</button>
+                <button onClick={() => onScoreDraft(draft.id)}><CheckCircle2 size={15} /> Confidence</button>
+                <button onClick={() => onSealDraft(draft.id)}><LockKeyhole size={15} /> Seal</button>
+                <button onClick={() => onWatchDraft(draft.id)}><Bell size={15} /> Watch</button>
+                <button onClick={() => onDuplicateDraft(draft.id)}><Files size={15} /> Duplicate</button>
                 <button onClick={() => onArchiveDraft(draft.id)}><Files size={15} /> Archive draft</button>
               </div>
             </article>

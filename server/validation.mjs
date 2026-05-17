@@ -580,6 +580,32 @@ const validators = {
     if (body.focus !== undefined) requireString(body.focus, "focus");
   },
 
+  "POST /api/ai-drafts/:id/status": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+  },
+
+  "POST /api/ai-drafts/:id/sources": (body) => {
+    if (body.sourceNote !== undefined) requireString(body.sourceNote, "sourceNote");
+    if (body.sourceCount !== undefined) requireNumber(body.sourceCount, "sourceCount");
+  },
+
+  "POST /api/ai-drafts/:id/confidence": (body) => {
+    if (body.confidence !== undefined) requireNumber(body.confidence, "confidence");
+  },
+
+  "POST /api/ai-drafts/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/ai-drafts/:id/duplicate": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+  },
+
+  "POST /api/ai-drafts/bulk/refresh": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.focus !== undefined) requireString(body.focus, "focus");
+  },
+
   "POST /api/offline-sync": (body) => {
     if (!Array.isArray(body.actions)) throw new ValidationError("actions must be an array");
     body.actions.forEach((action, index) => {
