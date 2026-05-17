@@ -846,6 +846,54 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    sealAuditRow(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.audit, id);
+      item.sealed = true;
+      item.chainHash = item.chainHash ?? `sha256:${Buffer.from(`${item.id}:${item.event}:${item.actor}:${item.object}:${item.time}`).toString("base64url").slice(0, 32)}`;
+      item.result = item.result.startsWith("Sealed:") ? item.result : `Sealed: ${item.result}`;
+      record("AuditRowSealed", body.actor, item.object, item.chainHash);
+      return item;
+    },
+
+    verifyAuditRow(id, body) {
+      const item = findById(state.audit, id);
+      item.verified = true;
+      item.verification = body.result ?? "Integrity verified";
+      record("AuditRowVerified", body.actor, item.object, item.verification);
+      return item;
+    },
+
+    bulkFlagAuditRows(body) {
+      const ids = body.ids?.length ? body.ids : state.audit.slice(0, 3).map((item) => item.id);
+      const updated = state.audit.filter((item) => ids.includes(item.id)).map((item) => {
+        item.result = item.result.startsWith("Flagged:") ? item.result : `Flagged: ${body.reason ?? item.result}`;
+        return item;
+      });
+      record("AuditRowsBulkFlagged", body.actor, "Audit ledger", `${updated.length} rows flagged`);
+      return { count: updated.length, updated };
+    },
+
+    auditDigest() {
+      const flagged = state.audit.filter((item) => /^Flagged:/i.test(item.result));
+      const sealed = state.audit.filter((item) => item.sealed || /^Sealed:/i.test(item.result));
+      const verified = state.audit.filter((item) => item.verified);
+      const eventCounts = state.audit.reduce((counts, item) => {
+        counts[item.event] = (counts[item.event] ?? 0) + 1;
+        return counts;
+      }, {});
+      const topEvent = Object.entries(eventCounts).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "No events";
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.audit.length,
+        flagged: flagged.length,
+        sealed: sealed.length,
+        verified: verified.length,
+        topEvent,
+        latestObject: state.audit[0]?.object ?? "No audit rows"
+      };
+    },
+
     recordManualEvent(body) {
       record("ManualEventRecorded", body.actor, body.object ?? "Event bus", body.result ?? "Manual event recorded");
       return { event: state.events[0], audit: state.audit[0] };

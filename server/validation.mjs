@@ -330,6 +330,19 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/audit/:id/seal": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/audit/:id/verify": (body) => {
+    if (body.result !== undefined) requireString(body.result, "result");
+  },
+
+  "POST /api/audit/bulk/flag": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/events": (body) => {
     if (body.object !== undefined) requireString(body.object, "object");
     if (body.result !== undefined) requireString(body.result, "result");

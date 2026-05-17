@@ -780,6 +780,29 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.match(flaggedAudit.result, /^Flagged:/);
 
+    const sealedAudit = await postJson(`/api/audit/${auditNote.id}/seal`, {
+      reason: "Automated seal test"
+    }, nationalToken);
+    assert.equal(sealedAudit.sealed, true);
+    assert.match(sealedAudit.chainHash, /^sha256:/);
+
+    const verifiedAudit = await postJson(`/api/audit/${auditNote.id}/verify`, {
+      result: "Automated integrity verified"
+    }, nationalToken);
+    assert.equal(verifiedAudit.verified, true);
+    assert.equal(verifiedAudit.verification, "Automated integrity verified");
+
+    const bulkAuditFlag = await postJson("/api/audit/bulk/flag", {
+      ids: [auditNote.id],
+      reason: "Automated bulk flag test"
+    }, nationalToken);
+    assert.equal(bulkAuditFlag.count, 1);
+
+    const auditDigest = await getJson("/api/audit/digest", nationalToken);
+    assert.equal(auditDigest.total > 0, true);
+    assert.equal(auditDigest.sealed >= 1, true);
+    assert.equal(auditDigest.verified >= 1, true);
+
     const manualEvent = await postJson("/api/events", {
       object: "Automated event test",
       result: "Manual event test"
@@ -894,6 +917,9 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "DocumentDuplicated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditNote"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditRowFlagged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditRowSealed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditRowVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AuditRowsBulkFlagged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ManualEventRecorded"), true);
     assert.equal(persisted.audit.some((row) => row.event === "GovernanceSnapshotArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EventLogCleared"), true);

@@ -65,7 +65,7 @@ type Policy = { id: string; title: string; category: string; owner: string; stat
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete" };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string };
-type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string };
+type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string };
 type OfflineAction = AuditRow & { queuedAt: string };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string };
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string };
@@ -199,6 +199,15 @@ type OfficeDigest = {
   suspended: number;
   stationIdentities: number;
   nextOffice: string;
+};
+type AuditDigest = {
+  generatedAt: string;
+  total: number;
+  flagged: number;
+  sealed: number;
+  verified: number;
+  topEvent: string;
+  latestObject: string;
 };
 type CommandBriefing = {
   title: string;
@@ -602,6 +611,7 @@ function App() {
   const [personnelDigest, setPersonnelDigest] = React.useState<PersonnelDigest | null>(null);
   const [transferDigest, setTransferDigest] = React.useState<TransferDigest | null>(null);
   const [officeDigest, setOfficeDigest] = React.useState<OfficeDigest | null>(null);
+  const [auditDigest, setAuditDigest] = React.useState<AuditDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -800,6 +810,7 @@ function App() {
       void apiRequest<PersonnelDigest>("/api/personnel/digest").then(setPersonnelDigest).catch(() => undefined);
       void apiRequest<TransferDigest>("/api/transfers/digest").then(setTransferDigest).catch(() => undefined);
       void apiRequest<OfficeDigest>("/api/offices/digest").then(setOfficeDigest).catch(() => undefined);
+      void apiRequest<AuditDigest>("/api/audit/digest").then(setAuditDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -2173,6 +2184,58 @@ function App() {
     }
   }
 
+  function sealAuditRow(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    const chainHash = row.chainHash ?? `sha256:${btoa(`${row.id}:${row.event}:${row.actor}:${row.object}`).replaceAll("=", "").slice(0, 24)}`;
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, sealed: true, chainHash, result: item.result.startsWith("Sealed:") ? item.result : `Sealed: ${item.result}` } : item));
+    recordAudit("AuditRowSealed", row.object, chainHash);
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/seal`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Sealed from audit console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function verifyAuditRow(id: string) {
+    const row = auditRows.find((item) => item.id === id);
+    if (!row) return;
+    setAuditRows((rows) => rows.map((item) => item.id === id ? { ...item, verified: true, verification: "Integrity verified" } : item));
+    recordAudit("AuditRowVerified", row.object, "Integrity verified");
+    if (!offlineMode) {
+      void apiRequest<AuditRow>(`/api/audit/${id}/verify`, {
+        method: "POST",
+        body: JSON.stringify({ result: "Integrity verified" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkFlagAuditRows(ids: string[]) {
+    const targetIds = ids.length ? ids : auditRows.slice(0, 3).map((item) => item.id);
+    setAuditRows((rows) => rows.map((item) => targetIds.includes(item.id) ? { ...item, result: item.result.startsWith("Flagged:") ? item.result : `Flagged: ${item.result}` } : item));
+    recordAudit("AuditRowsBulkFlagged", "Audit ledger", `${targetIds.length} rows flagged`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: AuditRow[] }>("/api/audit/bulk/flag", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, reason: "Bulk flagged from audit console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshAuditDigest() {
+    if (offlineMode) {
+      recordAudit("AuditDigestRefreshed", "Audit digest", "Local audit digest refreshed");
+      return;
+    }
+    void apiRequest<AuditDigest>("/api/audit/digest")
+      .then((digest) => {
+        setAuditDigest(digest);
+        recordAudit("AuditDigestRefreshed", "Audit digest", `${digest.flagged} flagged, ${digest.sealed} sealed`);
+      })
+      .catch(() => undefined);
+  }
+
   function recordManualEvent() {
     setEvents((items) => ["ManualEventRecorded: Audit console", ...items].slice(0, 8));
     recordAudit("ManualEventRecorded", "Audit console", "Manual event recorded");
@@ -2798,6 +2861,11 @@ function App() {
             onRevokeSession={revokeSession}
             onRevokeStationSessions={revokeStationSessions}
             onFlagSession={flagSession}
+            onSealAuditRow={sealAuditRow}
+            onVerifyAuditRow={verifyAuditRow}
+            onBulkFlagAuditRows={bulkFlagAuditRows}
+            onRefreshAuditDigest={refreshAuditDigest}
+            digest={auditDigest}
           />
         )}
       </section>
@@ -5314,7 +5382,12 @@ function Audit({
   onRenewSession,
   onRevokeSession,
   onRevokeStationSessions,
-  onFlagSession
+  onFlagSession,
+  onSealAuditRow,
+  onVerifyAuditRow,
+  onBulkFlagAuditRows,
+  onRefreshAuditDigest,
+  digest
 }: {
   auditRows: AuditRow[];
   apiStatus: ApiStatus | null;
@@ -5328,6 +5401,11 @@ function Audit({
   onRevokeSession: (id: string) => void;
   onRevokeStationSessions: (email: string) => void;
   onFlagSession: (id: string) => void;
+  onSealAuditRow: (id: string) => void;
+  onVerifyAuditRow: (id: string) => void;
+  onBulkFlagAuditRows: (ids: string[]) => void;
+  onRefreshAuditDigest: () => void;
+  digest: AuditDigest | null;
 }) {
   const [query, setQuery] = React.useState("");
   const [eventFilter, setEventFilter] = React.useState("All events");
@@ -5351,6 +5429,9 @@ function Audit({
   }];
   const activeSessionCount = Math.max(apiStatus?.sessions?.active ?? 0, sessionEntries.length);
   const expiringSoonCount = apiStatus?.sessions?.expiringSoon ?? sessionEntries.filter((item) => item.minutesRemaining <= 30).length;
+  const sealedCount = digest?.sealed ?? auditRows.filter((row) => row.sealed || row.result.startsWith("Sealed:")).length;
+  const verifiedCount = digest?.verified ?? auditRows.filter((row) => row.verified).length;
+  const flaggedCount = digest?.flagged ?? auditRows.filter((row) => row.result.startsWith("Flagged:")).length;
 
   React.useEffect(() => {
     void apiRequest<ReadinessReport>("/api/readiness").then(setReadiness).catch(() => undefined);
@@ -5400,20 +5481,35 @@ function Audit({
           </select>
           <button onClick={onCreateAuditNote}><Plus size={15} /> Note</button>
           <button disabled={!visibleRows[0]} onClick={() => visibleRows[0] && onFlagAuditRow(visibleRows[0].id)}><AlertTriangle size={15} /> Flag</button>
+          <button disabled={!visibleRows[0]} onClick={() => visibleRows[0] && onSealAuditRow(visibleRows[0].id)}><LockKeyhole size={15} /> Seal</button>
+          <button disabled={!visibleRows[0]} onClick={() => visibleRows[0] && onVerifyAuditRow(visibleRows[0].id)}><FileCheck2 size={15} /> Verify</button>
+          <button disabled={!visibleRows.length} onClick={() => onBulkFlagAuditRows(visibleRows.slice(0, 3).map((row) => row.id))}><AlertTriangle size={15} /> Bulk flag</button>
+          <button onClick={onRefreshAuditDigest}><RefreshCw size={15} /> Digest</button>
           <button onClick={exportAuditPacket}><Download size={15} /> Export CSV</button>
           <button onClick={() => void exportGovernanceSnapshot()}><Files size={15} /> Export snapshot</button>
           <button onClick={onArchiveGovernanceSnapshot}><Files size={15} /> Archive snapshot</button>
         </div>
+        <div className="office-summary-grid audit-integrity-grid">
+          <Insight label="Flagged" value={String(flaggedCount)} />
+          <Insight label="Sealed" value={String(sealedCount)} />
+          <Insight label="Verified" value={String(verifiedCount)} />
+          <Insight label="Top event" value={digest?.topEvent ?? eventTypes[1] ?? "Boot"} />
+        </div>
         <div className="data-table audit-table">
           <div className="table-row table-head">
-            <span>Event</span><span>Actor</span><span>Object</span><span>Result</span><span>Time</span>
+            <span>Event</span><span>Actor</span><span>Object</span><span>Integrity</span><span>Actions</span><span>Time</span>
           </div>
           {visibleRows.map((row) => (
             <div className="table-row" key={row.id}>
               <strong>{row.event}</strong>
               <span>{row.actor}</span>
               <span>{row.object}</span>
-              <span>{row.result}</span>
+              <span>{row.sealed || row.result.startsWith("Sealed:") ? "Sealed" : row.verified ? "Verified" : row.result.startsWith("Flagged:") ? "Flagged" : "Open"}</span>
+              <span className="table-actions">
+                <button onClick={() => onFlagAuditRow(row.id)}><AlertTriangle size={14} /> Flag</button>
+                <button onClick={() => onSealAuditRow(row.id)}><LockKeyhole size={14} /> Seal</button>
+                <button onClick={() => onVerifyAuditRow(row.id)}><FileCheck2 size={14} /> Verify</button>
+              </span>
               <span>{row.time}</span>
             </div>
           ))}
