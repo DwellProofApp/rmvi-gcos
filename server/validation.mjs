@@ -150,6 +150,32 @@ const validators = {
     if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
   },
 
+  "POST /api/tasks/:id/due": (body) => {
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/tasks/:id/owner": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
+  "POST /api/tasks/:id/block": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/tasks/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/tasks/:id/duplicate": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/tasks/bulk/complete": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
   "POST /api/policies": (body) => {
     requireString(body.title, "title");
     requireString(body.category, "category");

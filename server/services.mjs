@@ -191,6 +191,71 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateTaskDue(id, body) {
+      const item = findById(state.tasks, id);
+      item.due = body.due ?? item.due;
+      record("TaskDueUpdated", body.actor, item.title, item.due);
+      return item;
+    },
+
+    updateTaskOwner(id, body) {
+      const item = findById(state.tasks, id);
+      item.owner = body.owner ?? body.actor ?? item.owner;
+      record("TaskOwnerUpdated", body.actor, item.title, item.owner);
+      return item;
+    },
+
+    blockTask(id, body) {
+      const item = findById(state.tasks, id);
+      item.status = "Blocked";
+      item.blocker = body.reason ?? "Blocked from task center";
+      record("TaskBlocked", body.actor, item.title, item.blocker);
+      return item;
+    },
+
+    watchTask(id, body) {
+      const item = findById(state.tasks, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
+      record("TaskWatcherAdded", body.actor, item.title, watcher);
+      return item;
+    },
+
+    duplicateTask(id, body) {
+      const item = findById(state.tasks, id);
+      const created = task(body.title ?? `${item.title} follow-up`, item.owner, body.assignee ?? item.assignee, item.priority, body.due ?? item.due, "Queued");
+      state.tasks.unshift(created);
+      record("TaskDuplicated", body.actor, item.title, created.title);
+      return created;
+    },
+
+    bulkCompleteTasks(body) {
+      const ids = body.ids?.length ? body.ids : state.tasks.filter((item) => item.status !== "Complete").slice(0, 3).map((item) => item.id);
+      const updated = state.tasks.filter((item) => ids.includes(item.id)).map((item) => {
+        item.status = "Complete";
+        return item;
+      });
+      record("TasksBulkCompleted", body.actor, "Task center", `${updated.length} tasks completed`);
+      return { count: updated.length, updated };
+    },
+
+    taskDigest() {
+      const open = state.tasks.filter((item) => item.status !== "Complete");
+      const blocked = open.filter((item) => item.status === "Blocked");
+      const critical = open.filter((item) => item.priority === "Critical");
+      const watched = state.tasks.filter((item) => item.watchers?.length);
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.tasks.length,
+        open: open.length,
+        blocked: blocked.length,
+        critical: critical.length,
+        watched: watched.length,
+        nextTask: critical[0]?.title ?? blocked[0]?.title ?? open[0]?.title ?? "No open tasks",
+        owner: critical[0]?.owner ?? blocked[0]?.owner ?? open[0]?.owner ?? "None"
+      };
+    },
+
     createPolicy(body) {
       requirePermission(body.actor, "canApprove");
       const created = policy(body.title, body.category, body.owner ?? body.actor, body.status ?? "Draft", body.summary, body.acknowledgements ?? 0);

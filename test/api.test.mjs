@@ -361,6 +361,44 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(priorityTask.priority, "Critical");
 
+    const dueTask = await postJson(`/api/tasks/${tasks[1].id}/due`, {
+      due: "Overdue"
+    }, nationalToken);
+    assert.equal(dueTask.due, "Overdue");
+
+    const ownerTask = await postJson(`/api/tasks/${tasks[1].id}/owner`, {
+      owner: "National Presidency Workstation"
+    }, nationalToken);
+    assert.equal(ownerTask.owner, "National Presidency Workstation");
+
+    const blockedTask = await postJson(`/api/tasks/${tasks[1].id}/block`, {
+      reason: "Awaiting supporting evidence"
+    }, nationalToken);
+    assert.equal(blockedTask.status, "Blocked");
+    assert.equal(blockedTask.blocker, "Awaiting supporting evidence");
+
+    const watchedTask = await postJson(`/api/tasks/${tasks[1].id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedTask.watchers.includes("np@rmvi.org"), true);
+
+    const duplicatedTask = await postJson(`/api/tasks/${tasks[1].id}/duplicate`, {
+      title: "Automated duplicate task follow-up"
+    }, nationalToken);
+    assert.equal(duplicatedTask.title, "Automated duplicate task follow-up");
+    assert.equal(duplicatedTask.status, "Queued");
+
+    const bulkCompletedTasks = await postJson("/api/tasks/bulk/complete", {
+      ids: [createdTask.id]
+    }, nationalToken);
+    assert.equal(bulkCompletedTasks.count, 1);
+    assert.equal(bulkCompletedTasks.updated[0].status, "Complete");
+
+    const taskDigest = await getJson("/api/tasks/digest", nationalToken);
+    assert.equal(taskDigest.total > 0, true);
+    assert.equal(taskDigest.blocked >= 1, true);
+    assert.equal(taskDigest.watched >= 1, true);
+
     const policies = await getJson("/api/policies");
     const invalidPolicy = await rawPost("/api/policies", {
       category: "Finance",
@@ -875,6 +913,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "TaskCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskAdvanced"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskAssigneeUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskPriorityUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskDueUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskOwnerUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskBlocked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskDuplicated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TasksBulkCompleted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyPublished"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyStatusUpdated"), true);
@@ -938,7 +983,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(approvalsAfterRestart.some((item) => item.request === "Automated approval creation test"), true);
 
     const tasksAfterRestart = await getJson("/api/tasks");
-    assert.equal(tasksAfterRestart[0].title, "Automated task creation test");
+    assert.equal(tasksAfterRestart.some((item) => item.title === "Automated task creation test"), true);
+    assert.equal(tasksAfterRestart.some((item) => item.title === "Automated duplicate task follow-up"), true);
 
     const policiesAfterRestart = await getJson("/api/policies");
     assert.equal(policiesAfterRestart[0].title, "Automated policy registry test");

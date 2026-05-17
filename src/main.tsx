@@ -60,7 +60,7 @@ type StationCard = { email: string; title: string; level: StationLevel | string;
 type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string };
 type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number };
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string };
-type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete" };
+type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[] };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete" };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
@@ -208,6 +208,16 @@ type AuditDigest = {
   verified: number;
   topEvent: string;
   latestObject: string;
+};
+type TaskDigest = {
+  generatedAt: string;
+  total: number;
+  open: number;
+  blocked: number;
+  critical: number;
+  watched: number;
+  nextTask: string;
+  owner: string;
 };
 type CommandBriefing = {
   title: string;
@@ -612,6 +622,7 @@ function App() {
   const [transferDigest, setTransferDigest] = React.useState<TransferDigest | null>(null);
   const [officeDigest, setOfficeDigest] = React.useState<OfficeDigest | null>(null);
   const [auditDigest, setAuditDigest] = React.useState<AuditDigest | null>(null);
+  const [taskDigest, setTaskDigest] = React.useState<TaskDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -811,6 +822,7 @@ function App() {
       void apiRequest<TransferDigest>("/api/transfers/digest").then(setTransferDigest).catch(() => undefined);
       void apiRequest<OfficeDigest>("/api/offices/digest").then(setOfficeDigest).catch(() => undefined);
       void apiRequest<AuditDigest>("/api/audit/digest").then(setAuditDigest).catch(() => undefined);
+      void apiRequest<TaskDigest>("/api/tasks/digest").then(setTaskDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1147,6 +1159,99 @@ function App() {
         body: JSON.stringify({ assignee })
       }).then(refreshFromApi).catch(() => undefined);
     }
+  }
+
+  function updateTaskDue(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const due = task.due === "Overdue" ? "Today" : "Overdue";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, due } : item));
+    recordAudit("TaskDueUpdated", task.title, due);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/due`, {
+        method: "POST",
+        body: JSON.stringify({ due })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateTaskOwner(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const owner = activeStation.title;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, owner } : item));
+    recordAudit("TaskOwnerUpdated", task.title, owner);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/owner`, {
+        method: "POST",
+        body: JSON.stringify({ owner })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function blockTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, status: "Blocked", blocker: "Blocked from task center" } : item));
+    recordAudit("TaskBlocked", task.title, "Blocked from task center");
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/block`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Blocked from task center" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("TaskWatcherAdded", task.title, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function duplicateTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const duplicate: GovernanceTask = { ...task, id: `tsk-${Date.now()}`, title: `${task.title} follow-up`, status: "Queued" };
+    setTasks((items) => [duplicate, ...items]);
+    recordAudit("TaskDuplicated", task.title, duplicate.title);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ title: duplicate.title, assignee: task.assignee, due: task.due })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkCompleteTasks(ids: string[]) {
+    const targetIds = ids.length ? ids : tasks.filter((task) => task.status !== "Complete").slice(0, 3).map((task) => task.id);
+    setTasks((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, status: "Complete" } : item));
+    recordAudit("TasksBulkCompleted", "Task center", `${targetIds.length} tasks completed`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: GovernanceTask[] }>("/api/tasks/bulk/complete", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshTaskDigest() {
+    if (offlineMode) {
+      recordAudit("TaskDigestRefreshed", "Task digest", "Local task digest refreshed");
+      return;
+    }
+    void apiRequest<TaskDigest>("/api/tasks/digest")
+      .then((digest) => {
+        setTaskDigest(digest);
+        recordAudit("TaskDigestRefreshed", "Task digest", `${digest.open} open, ${digest.blocked} blocked`);
+      })
+      .catch(() => undefined);
   }
 
   function createPolicy(draft: Omit<Policy, "id" | "acknowledgements">) {
@@ -2743,6 +2848,14 @@ function App() {
             onAdvanceTask={advanceTask}
             onUpdateTaskAssignee={updateTaskAssignee}
             onUpdateTaskPriority={updateTaskPriority}
+            onUpdateTaskDue={updateTaskDue}
+            onUpdateTaskOwner={updateTaskOwner}
+            onBlockTask={blockTask}
+            onWatchTask={watchTask}
+            onDuplicateTask={duplicateTask}
+            onBulkCompleteTasks={bulkCompleteTasks}
+            onRefreshDigest={refreshTaskDigest}
+            digest={taskDigest}
             onEscalateTask={triggerEscalation}
           />
         )}
@@ -3799,6 +3912,14 @@ function Tasks({
   onAdvanceTask,
   onUpdateTaskAssignee,
   onUpdateTaskPriority,
+  onUpdateTaskDue,
+  onUpdateTaskOwner,
+  onBlockTask,
+  onWatchTask,
+  onDuplicateTask,
+  onBulkCompleteTasks,
+  onRefreshDigest,
+  digest,
   onEscalateTask
 }: {
   tasks: GovernanceTask[];
@@ -3808,6 +3929,14 @@ function Tasks({
   onAdvanceTask: (id: string, status: GovernanceTask["status"]) => void;
   onUpdateTaskAssignee: (id: string, assignee: string) => void;
   onUpdateTaskPriority: (id: string, priority: GovernanceTask["priority"]) => void;
+  onUpdateTaskDue: (id: string) => void;
+  onUpdateTaskOwner: (id: string) => void;
+  onBlockTask: (id: string) => void;
+  onWatchTask: (id: string) => void;
+  onDuplicateTask: (id: string) => void;
+  onBulkCompleteTasks: (ids: string[]) => void;
+  onRefreshDigest: () => void;
+  digest: TaskDigest | null;
   onEscalateTask: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
 }) {
   const [title, setTitle] = React.useState("Follow up on branch reporting corrections");
@@ -3832,6 +3961,8 @@ function Tasks({
   ), [priorityFilter, statusFilter, tasks]);
   const blockedCount = tasks.filter((task) => task.status === "Blocked").length;
   const completeCount = tasks.filter((task) => task.status === "Complete").length;
+  const criticalCount = tasks.filter((task) => task.priority === "Critical" && task.status !== "Complete").length;
+  const watchedCount = tasks.filter((task) => task.watchers?.length).length;
   const completionRate = tasks.length ? Math.round((completeCount / tasks.length) * 100) : 100;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -3847,8 +3978,11 @@ function Tasks({
         <PanelHeader icon={SquareCheckBig} title="Station Task Center" action={`${visibleTasks.length} visible`} />
         <div className="office-summary-grid">
           <Insight label="Completion" value={`${completionRate}%`} />
-          <Insight label="Blocked" value={String(blockedCount)} />
-          <Insight label="Offline queued" value={offlineMode ? "Active" : "Ready"} />
+          <Insight label="Open" value={String(digest?.open ?? tasks.length - completeCount)} />
+          <Insight label="Blocked" value={String(digest?.blocked ?? blockedCount)} />
+          <Insight label="Critical" value={String(digest?.critical ?? criticalCount)} />
+          <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Next task" value={digest?.nextTask ?? visibleTasks[0]?.title ?? "None"} />
         </div>
         <div className="archive-toolbar">
           <label>
@@ -3863,6 +3997,8 @@ function Tasks({
               {["All priorities", "Low", "Medium", "High", "Critical"].map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <button onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
+          <button disabled={!visibleTasks.length} onClick={() => onBulkCompleteTasks(visibleTasks.slice(0, 3).map((task) => task.id))}><CheckCircle2 size={15} /> Bulk complete</button>
         </div>
         <div className="task-board">
           {visibleTasks.map((task) => (
@@ -3876,8 +4012,13 @@ function Tasks({
               <div className="action-row">
                 <button onClick={() => onAdvanceTask(task.id, "In Progress")}><TimerReset size={15} /> Start</button>
                 <button onClick={() => onAdvanceTask(task.id, "Complete")}><CheckCircle2 size={15} /> Complete</button>
+                <button onClick={() => onBlockTask(task.id)}><LockKeyhole size={15} /> Block</button>
+                <button onClick={() => onUpdateTaskDue(task.id)}><CalendarDays size={15} /> Due</button>
                 <button onClick={() => onUpdateTaskAssignee(task.id, station.email)}><Users size={15} /> Assign</button>
+                <button onClick={() => onUpdateTaskOwner(task.id)}><Landmark size={15} /> Owner</button>
                 <button onClick={() => onUpdateTaskPriority(task.id, task.priority === "Critical" ? "High" : "Critical")}><AlertTriangle size={15} /> Priority</button>
+                <button onClick={() => onWatchTask(task.id)}><Bell size={15} /> Watch</button>
+                <button onClick={() => onDuplicateTask(task.id)}><Files size={15} /> Duplicate</button>
                 <button onClick={() => onEscalateTask("Task", task.title, `${task.due} task is ${task.status.toLowerCase()}`, task.owner, task.priority === "Critical" ? "Critical" : "High")}>
                   <AlertTriangle size={15} /> Escalate
                 </button>
