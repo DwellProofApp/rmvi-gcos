@@ -905,8 +905,20 @@ function App() {
   function acknowledgeMessage(id: string) {
     const message = messages.find((item) => item.id === id);
     if (!message) return;
-    setMessages((items) => items.map((item) => item.id === id ? { ...item, status: "Approved" } : item));
-    recordAudit("EmailAcknowledged", message.subject, "Communication logged");
+    updateMessageStatus(id, "Approved", "EmailAcknowledged");
+  }
+
+  function updateMessageStatus(id: string, status: Status, event = "EmailStatusUpdated") {
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    setMessages((items) => items.map((item) => item.id === id ? { ...item, status } : item));
+    recordAudit(event, message.subject, status);
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/messages/${id}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
   }
 
   function createReportFromMessage(id: string) {
@@ -1203,6 +1215,21 @@ function App() {
     }
   }
 
+  function updateReportScore(id: string, score: number) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    const nextScore = Math.max(0, Math.min(100, score));
+    const state = nextScore >= 80 && report.state !== "Approved" ? "In Review" : report.state;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, score: nextScore, state } : item));
+    recordAudit("ReportScoreUpdated", report.name, `${nextScore}% complete`);
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/score`, {
+        method: "POST",
+        body: JSON.stringify({ score: nextScore, state })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function archiveReportEvidence(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
@@ -1263,6 +1290,31 @@ function App() {
     }
   }
 
+  function signApproval(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    const match = /^(\d+)\/(\d+)$/.exec(approval.signatures);
+    const nextApproval = { ...approval };
+    if (match) {
+      const current = Number(match[1]);
+      const required = Number(match[2]);
+      const next = Math.min(required, current + 1);
+      nextApproval.signatures = `${next}/${required}`;
+      nextApproval.state = next >= required ? "Approved" : "Signature";
+    } else {
+      nextApproval.signatures = "1/2";
+      nextApproval.state = "Signature";
+    }
+    setApprovals((items) => items.map((item) => item.id === id ? nextApproval : item));
+    recordAudit("ApprovalSigned", approval.request, `${nextApproval.signatures} signatures`);
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/sign`, {
+        method: "POST",
+        body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function executeTransfer(id: string) {
     const transfer = transfers.find((item) => item.id === id);
     if (!transfer) return;
@@ -1303,6 +1355,23 @@ function App() {
     }
   }
 
+  function acknowledgeTransfer(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    setTransfers((items) => items.map((item) => item.id === id ? {
+      ...item,
+      step: "Permissions migration",
+      risk: "Acknowledgement recorded"
+    } : item));
+    recordAudit("TransferAcknowledged", transfer.person, "Recipient acknowledgement recorded");
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/acknowledge`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Acknowledged from transfer console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function createOffice(office: Omit<Office, "id" | "password" | "status">) {
     const normalizedEmail = office.email.toLowerCase();
     const exists = stationDirectory.some((station) => station.email === normalizedEmail);
@@ -1324,6 +1393,19 @@ function App() {
       }).then(refreshFromApi).catch(() => undefined);
     }
     return true;
+  }
+
+  function updateOfficeStatus(id: string, status: Office["status"]) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, status } : item));
+    recordAudit("OfficeStatusUpdated", office.name, status);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
   }
 
   function escalateUpward(id: string) {
@@ -1635,6 +1717,7 @@ function App() {
             station={activeStation}
             offlineMode={offlineMode}
             onAcknowledge={acknowledgeMessage}
+            onUpdateStatus={updateMessageStatus}
             onCreateReport={createReportFromMessage}
             onRequestApproval={requestApprovalFromMessage}
             onArchiveAttachments={archiveMessageAttachments}
@@ -1648,6 +1731,7 @@ function App() {
             onCreateReport={createReportDraft}
             onSubmitReport={submitReport}
             onRequestCorrection={requestReportCorrection}
+            onUpdateScore={updateReportScore}
             onEscalateReport={triggerEscalation}
             onArchiveEvidence={archiveReportEvidence}
           />
@@ -1659,6 +1743,7 @@ function App() {
             permissions={permissions}
             onCreateApproval={createApprovalRequest}
             onApprove={approveRequest}
+            onSign={signApproval}
             onReject={rejectApproval}
             onEscalateApproval={triggerEscalation}
           />
@@ -1735,7 +1820,7 @@ function App() {
           />
         )}
         {activeSection === "Hierarchy" && <Hierarchy stationDirectory={stationDirectory} offices={offices} />}
-        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} />}
+        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeStatus={updateOfficeStatus} />}
         {activeSection === "Transfers" && (
           <Transfers
             transfers={transfers}
@@ -1743,6 +1828,7 @@ function App() {
             offlineQueue={offlineQueue}
             onSync={syncOfflineQueue}
             onCreateTransfer={createTransferRequest}
+            onAcknowledgeTransfer={acknowledgeTransfer}
             onExecuteTransfer={executeTransfer}
           />
         )}
@@ -2147,6 +2233,7 @@ function ChurchMail({
   station,
   offlineMode,
   onAcknowledge,
+  onUpdateStatus,
   onCreateReport,
   onRequestApproval,
   onArchiveAttachments,
@@ -2157,6 +2244,7 @@ function ChurchMail({
   station: StationCard;
   offlineMode: boolean;
   onAcknowledge: (id: string) => void;
+  onUpdateStatus: (id: string, status: Status) => void;
   onCreateReport: (id: string) => void;
   onRequestApproval: (id: string) => void;
   onArchiveAttachments: (id: string) => void;
@@ -2230,6 +2318,7 @@ function ChurchMail({
                 <span>{"Origin station -> Current station -> Supervising authority -> Archive vault"}</span>
               </div>
               <div className="action-row">
+                <button onClick={() => onUpdateStatus(selected.id, "In Review")}><FileClock size={15} /> Review</button>
                 <button onClick={() => onAcknowledge(selected.id)}><Send size={15} /> Acknowledge</button>
                 <button onClick={() => onCreateReport(selected.id)}><FileCheck2 size={15} /> Create report</button>
                 <button onClick={() => onRequestApproval(selected.id)}><Signature size={15} /> Request approval</button>
@@ -2283,6 +2372,7 @@ function Reports({
   onCreateReport,
   onSubmitReport,
   onRequestCorrection,
+  onUpdateScore,
   onEscalateReport,
   onArchiveEvidence
 }: {
@@ -2291,6 +2381,7 @@ function Reports({
   onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => void;
   onSubmitReport: (id: string) => void;
   onRequestCorrection: (id: string) => void;
+  onUpdateScore: (id: string, score: number) => void;
   onEscalateReport: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
   onArchiveEvidence: (id: string) => void;
 }) {
@@ -2298,7 +2389,12 @@ function Reports({
   const [owner, setOwner] = React.useState(String(station.level));
   const [path, setPath] = React.useState(`${station.level} -> Supervising Office`);
   const [due, setDue] = React.useState("Draft");
+  const [stateFilter, setStateFilter] = React.useState("All states");
   const [feedback, setFeedback] = React.useState("");
+  const visibleReports = React.useMemo(() => (
+    stateFilter === "All states" ? reports : reports.filter((report) => report.state === stateFilter)
+  ), [reports, stateFilter]);
+  const stateOptions = React.useMemo(() => ["All states", ...Array.from(new Set(reports.map((report) => report.state))).sort()], [reports]);
 
   React.useEffect(() => {
     setOwner(String(station.level));
@@ -2315,12 +2411,20 @@ function Reports({
   return (
     <section className="module-grid">
       <div className="panel module-primary">
-        <PanelHeader icon={FileCheck2} title="Hierarchical Reporting Center" action="Upward flow" />
+        <PanelHeader icon={FileCheck2} title="Hierarchical Reporting Center" action={`${visibleReports.length} visible`} />
+        <div className="archive-toolbar">
+          <label>
+            <span>State</span>
+            <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)}>
+              {stateOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+        </div>
         <div className="data-table">
           <div className="table-row table-head">
             <span>Report</span><span>Owner</span><span>Route</span><span>Due</span><span>Status</span>
           </div>
-          {reports.map((report) => (
+          {visibleReports.map((report) => (
             <div className="table-row" key={report.name}>
               <strong>{report.name}</strong>
               <span>{report.owner}</span>
@@ -2330,6 +2434,7 @@ function Reports({
                 <StatusPill status={report.state} />
                 <button aria-label={`Submit ${report.name}`} onClick={() => onSubmitReport(report.id)}><Send size={14} /> Submit</button>
                 <button aria-label={`Request correction for ${report.name}`} onClick={() => onRequestCorrection(report.id)}><FileClock size={14} /> Correct</button>
+                <button aria-label={`Raise score for ${report.name}`} onClick={() => onUpdateScore(report.id, report.score + 15)}><CheckCircle2 size={14} /> Score</button>
                 <button aria-label={`Vault evidence for ${report.name}`} onClick={() => onArchiveEvidence(report.id)}><Files size={14} /> Vault</button>
                 <button
                   aria-label={`Escalate ${report.name}`}
@@ -2340,6 +2445,7 @@ function Reports({
               </div>
             </div>
           ))}
+          {visibleReports.length === 0 && <div className="empty-state">No reports match the current state filter.</div>}
         </div>
       </div>
       <div className="panel module-side">
@@ -2390,6 +2496,7 @@ function Approvals({
   permissions,
   onCreateApproval,
   onApprove,
+  onSign,
   onReject,
   onEscalateApproval
 }: {
@@ -2398,6 +2505,7 @@ function Approvals({
   permissions: Permissions;
   onCreateApproval: (draft: Omit<Approval, "id" | "state" | "signatures">) => void;
   onApprove: (id: string) => void;
+  onSign: (id: string) => void;
   onReject: (id: string) => void;
   onEscalateApproval: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
 }) {
@@ -2444,6 +2552,13 @@ function Approvals({
                   onClick={() => onApprove(approval.id)}
                 >
                   <CheckCircle2 size={15} /> Approve
+                </button>
+                <button
+                  aria-label={`Sign ${approval.request}`}
+                  disabled={!permissions.canApprove || approval.state === "Approved" || approval.state === "Rejected"}
+                  onClick={() => onSign(approval.id)}
+                >
+                  <Signature size={15} /> Sign
                 </button>
                 <button
                   aria-label={`Reject ${approval.request}`}
@@ -3383,12 +3498,14 @@ function Offices({
   offices,
   stationDirectory,
   permissions,
-  onCreateOffice
+  onCreateOffice,
+  onUpdateOfficeStatus
 }: {
   offices: Office[];
   stationDirectory: StationCard[];
   permissions: Permissions;
   onCreateOffice: (office: Omit<Office, "id" | "password" | "status">) => boolean;
+  onUpdateOfficeStatus: (id: string, status: Office["status"]) => void;
 }) {
   const [name, setName] = React.useState("New Hope District Office");
   const [email, setEmail] = React.useState("newhope_district@gcos.org");
@@ -3467,7 +3584,10 @@ function Offices({
               <span>{office.email}</span>
               <span>{office.level}</span>
               <span>{office.supervisor}</span>
-              <StatusPill status={office.status} />
+              <div className="table-actions">
+                <StatusPill status={office.status} />
+                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeStatus(office.id, office.status === "Suspended" ? "Provisioned" : "Suspended")}><LockKeyhole size={14} /> Status</button>
+              </div>
             </div>
           ))}
           {filteredOffices.length === 0 && <div className="empty-state">No offices match the current hierarchy filter.</div>}
@@ -3549,6 +3669,7 @@ function Transfers({
   offlineQueue,
   onSync,
   onCreateTransfer,
+  onAcknowledgeTransfer,
   onExecuteTransfer
 }: {
   transfers: Transfer[];
@@ -3556,6 +3677,7 @@ function Transfers({
   offlineQueue: OfflineAction[];
   onSync: () => void;
   onCreateTransfer: (draft: Omit<Transfer, "id" | "step" | "risk">) => void;
+  onAcknowledgeTransfer: (id: string) => void;
   onExecuteTransfer: (id: string) => void;
 }) {
   const [person, setPerson] = React.useState("Rev. Grace Walker");
@@ -3601,6 +3723,13 @@ function Transfers({
                 ))}
               </div>
               <div className="action-row">
+                <button
+                  aria-label={`Acknowledge transfer for ${transfer.person}`}
+                  disabled={!permissions.canExecuteTransfers}
+                  onClick={() => onAcknowledgeTransfer(transfer.id)}
+                >
+                  <CheckCircle2 size={15} /> Acknowledge
+                </button>
                 <button
                   aria-label={`Execute transfer for ${transfer.person}`}
                   disabled={!permissions.canExecuteTransfers}

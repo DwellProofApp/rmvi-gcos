@@ -19,6 +19,7 @@ const policyStatuses = ["Draft", "Active", "Review", "Retired"];
 const calendarPriorities = ["Low", "Medium", "High", "Critical"];
 const calendarStatuses = ["Scheduled", "At Risk", "Complete"];
 const personnelStatuses = ["Active", "Transfer Pending", "Assigned", "Inactive"];
+const officeStatuses = ["Provisioned", "Suspended", "Active"];
 
 const validators = {
   "POST /api/auth/login": (body) => {
@@ -34,6 +35,10 @@ const validators = {
     if (body.files !== undefined) requireString(body.files, "files");
   },
 
+  "POST /api/messages/:id/status": (body) => {
+    if (body.status !== undefined) requireEnum(body.status, statuses, "status");
+  },
+
   "POST /api/reports": (body) => {
     requireString(body.name, "name");
     requireString(body.path, "path");
@@ -43,10 +48,20 @@ const validators = {
     if (body.score !== undefined) requireNumber(body.score, "score");
   },
 
+  "POST /api/reports/:id/score": (body) => {
+    requireNumber(body.score, "score");
+    if (body.state !== undefined) requireString(body.state, "state");
+  },
+
   "POST /api/approvals": (body) => {
     requireString(body.request, "request");
     requireString(body.route, "route");
     if (body.limit !== undefined) requireString(body.limit, "limit");
+    if (body.state !== undefined) requireString(body.state, "state");
+    if (body.signatures !== undefined) requireString(body.signatures, "signatures");
+  },
+
+  "POST /api/approvals/:id/sign": (body) => {
     if (body.state !== undefined) requireString(body.state, "state");
     if (body.signatures !== undefined) requireString(body.signatures, "signatures");
   },
@@ -122,6 +137,10 @@ const validators = {
     requireString(body.supervisor, "supervisor");
   },
 
+  "POST /api/offices/:id/status": (body) => {
+    if (body.status !== undefined) requireEnum(body.status, officeStatuses, "status");
+  },
+
   "POST /api/documents": (body) => {
     requireString(body.name, "name");
     requireString(body.classification, "classification");
@@ -145,6 +164,10 @@ const validators = {
     requireString(body.to, "to");
     if (body.step !== undefined) requireString(body.step, "step");
     if (body.risk !== undefined) requireString(body.risk, "risk");
+  },
+
+  "POST /api/transfers/:id/acknowledge": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
   "POST /api/ai-drafts": (body) => {

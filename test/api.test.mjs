@@ -117,6 +117,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(createdMessage.subject, "Automated API test notice");
 
+    const reviewedMessage = await postJson(`/api/messages/${createdMessage.id}/status`, {
+      status: "In Review"
+    }, nationalToken);
+    assert.equal(reviewedMessage.status, "In Review");
+
     const snapshot = await getJson("/api/export", nationalToken);
     assert.equal(snapshot.exportedBy, "np@rmvi.org");
     assert.equal(snapshot.service, "gcos-api");
@@ -149,6 +154,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(correctionReport.state, "Correction Requested");
     assert.equal(correctionReport.score <= 45, true);
 
+    const scoredReport = await postJson(`/api/reports/${reports[1].id}/score`, {
+      score: 78,
+      state: "In Review"
+    }, nationalToken);
+    assert.equal(scoredReport.score, 78);
+    assert.equal(scoredReport.state, "In Review");
+
     const approvals = await getJson("/api/approvals");
     const invalidCreatedApproval = await rawPost("/api/approvals", {
       route: "National -> Regional",
@@ -170,6 +182,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const approvedRequest = await postJson(`/api/approvals/${approvals[0].id}/approve`, {}, nationalToken);
     assert.equal(approvedRequest.state, "Approved");
     assert.equal(approvedRequest.signatures, "complete");
+
+    const signedRequest = await postJson(`/api/approvals/${createdApproval.id}/sign`, {}, nationalToken);
+    assert.equal(signedRequest.state, "Signature");
+    assert.equal(signedRequest.signatures, "1/2");
 
     const rejectedRequest = await postJson(`/api/approvals/${approvals[1].id}/reject`, {
       reason: "Authority documentation incomplete"
@@ -348,6 +364,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(office.email, "automated_district@gcos.org");
     assert.equal(office.password, "gcos-automated-district-office");
 
+    const suspendedOffice = await postJson(`/api/offices/${office.id}/status`, {
+      status: "Suspended"
+    }, nationalToken);
+    assert.equal(suspendedOffice.status, "Suspended");
+
     const officeLogin = await postJson("/api/auth/login", {
       email: "automated_district@gcos.org",
       password: office.password
@@ -392,6 +413,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(createdTransfer.person, "Automated transfer test");
     assert.equal(createdTransfer.step, "Recipient acknowledgement");
+
+    const acknowledgedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/acknowledge`, {}, nationalToken);
+    assert.equal(acknowledgedTransfer.step, "Permissions migration");
+    assert.equal(acknowledgedTransfer.risk, "Acknowledgement recorded");
 
     const forbiddenTransfer = await rawPost(`/api/transfers/${transfers[0].id}/execute`, {}, localToken);
     assert.equal(forbiddenTransfer.status, 403);
@@ -459,6 +484,9 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const persisted = JSON.parse(await readFile(dataPath, "utf8"));
     assert.equal(persisted.messages[0].subject, "Automated API test notice");
     assert.equal(persisted.audit.some((row) => row.event === "OfflineActionTest"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReportScoreUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalSigned"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AIDraftGenerated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskAdvanced"), true);
@@ -468,6 +496,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCompleted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonRegistered"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferExecuted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentArchived"), true);
 

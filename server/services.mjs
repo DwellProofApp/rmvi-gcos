@@ -72,6 +72,13 @@ export function createServices({ state, record, requirePermission, findById }) {
       return created;
     },
 
+    updateMessageStatus(id, body) {
+      const item = findById(state.messages, id);
+      item.status = body.status ?? "In Review";
+      record("EmailStatusUpdated", body.actor, item.subject, item.status);
+      return item;
+    },
+
     createReport(body) {
       const created = report(body.name, body.owner ?? body.actor, body.path, body.due ?? "Draft", body.state ?? "Ready", body.score ?? 15);
       state.reports.unshift(created);
@@ -190,12 +197,38 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateReportScore(id, body) {
+      const item = findById(state.reports, id);
+      item.score = Math.max(0, Math.min(100, body.score ?? item.score));
+      if (body.state) item.state = body.state;
+      record("ReportScoreUpdated", body.actor, item.name, `${item.score}% complete`);
+      return item;
+    },
+
     approveRequest(id, body) {
       requirePermission(body.actor, "canApprove");
       const item = findById(state.approvals, id);
       item.state = "Approved";
       item.signatures = "complete";
       record("ApprovalGranted", body.actor, item.request, "Execution authorized");
+      return item;
+    },
+
+    signApproval(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      const match = /^(\d+)\/(\d+)$/.exec(item.signatures);
+      if (match) {
+        const current = Number(match[1]);
+        const required = Number(match[2]);
+        const next = Math.min(required, current + 1);
+        item.signatures = `${next}/${required}`;
+        item.state = next >= required ? "Approved" : "Signature";
+      } else {
+        item.signatures = body.signatures ?? "1/2";
+        item.state = body.state ?? "Signature";
+      }
+      record("ApprovalSigned", body.actor, item.request, `${item.signatures} signatures`);
       return item;
     },
 
@@ -251,12 +284,29 @@ export function createServices({ state, record, requirePermission, findById }) {
       return created;
     },
 
+    updateOfficeStatus(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.status = body.status ?? "Provisioned";
+      record("OfficeStatusUpdated", body.actor, item.name, item.status);
+      return item;
+    },
+
     createTransfer(body) {
       requirePermission(body.actor, "canExecuteTransfers");
       const created = transfer(body.person, body.from, body.to, body.step ?? "Recipient acknowledgement", body.risk ?? "Session switch pending");
       state.transfers.unshift(created);
       record("TransferCreated", body.actor, created.person, `${created.from} -> ${created.to}`);
       return created;
+    },
+
+    acknowledgeTransfer(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.step = "Permissions migration";
+      item.risk = "Acknowledgement recorded";
+      record("TransferAcknowledged", body.actor, item.person, "Recipient acknowledgement recorded");
+      return item;
     },
 
     executeTransfer(id, body) {
