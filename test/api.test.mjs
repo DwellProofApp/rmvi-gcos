@@ -194,6 +194,75 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(securityDigest.evidence >= 1, true);
     assert.equal(securityDigest.rotations >= 1, true);
 
+    const complianceReviews = await getJson("/api/compliance-reviews", nationalToken);
+    assert.equal(complianceReviews.length >= 3, true);
+    assert.equal(complianceReviews.some((review) => review.id === "comp-finance-q2"), true);
+
+    const routedCompliance = await postJson("/api/compliance-reviews/comp-finance-q2/route", {
+      reviewer: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(routedCompliance.review.reviewer, "np@rmvi.org");
+    assert.equal(routedCompliance.review.status, "In Review");
+
+    const evidencedCompliance = await postJson("/api/compliance-reviews/comp-finance-q2/evidence", {
+      evidence: "Automated compliance evidence"
+    }, nationalToken);
+    assert.equal(evidencedCompliance.review.evidence, "Automated compliance evidence");
+
+    const invalidComplianceRisk = await rawPost("/api/compliance-reviews/comp-finance-q2/score", {
+      risk: "Emergency",
+      score: 99
+    }, nationalToken);
+    assert.equal(invalidComplianceRisk.status, 400);
+
+    const scoredCompliance = await postJson("/api/compliance-reviews/comp-finance-q2/score", {
+      risk: "Critical",
+      score: 91
+    }, nationalToken);
+    assert.equal(scoredCompliance.review.risk, "Critical");
+    assert.equal(scoredCompliance.review.score, 91);
+
+    const attestedCompliance = await postJson("/api/compliance-reviews/comp-finance-q2/attest", {
+      attestation: "Automated compliance attestation"
+    }, nationalToken);
+    assert.equal(attestedCompliance.review.attested, true);
+    assert.equal(attestedCompliance.review.status, "Attested");
+
+    const packetCompliance = await postJson("/api/compliance-reviews/comp-finance-q2/packet", {
+      packetId: "automated-packet"
+    }, nationalToken);
+    assert.equal(packetCompliance.review.packetId, "automated-packet");
+
+    const exportedCompliance = await postJson("/api/compliance-reviews/comp-finance-q2/export", {
+      format: "PDF"
+    }, nationalToken);
+    assert.equal(exportedCompliance.review.exported, true);
+    assert.equal(exportedCompliance.review.exportFormat, "PDF");
+
+    const escalatedCompliance = await postJson("/api/compliance-reviews/comp-finance-q2/escalate", {
+      risk: "Critical",
+      reason: "Automated compliance escalation"
+    }, nationalToken);
+    assert.equal(escalatedCompliance.review.status, "Escalated");
+
+    const bulkCompliance = await postJson("/api/compliance-reviews/bulk/review", {
+      ids: ["comp-transfer-access", "comp-churchmail-archive"],
+      reviewer: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(bulkCompliance.count, 2);
+
+    const archivedCompliance = await postJson("/api/compliance-reviews/comp-transfer-access/archive", {
+      reason: "Automated compliance archive"
+    }, nationalToken);
+    assert.equal(archivedCompliance.reviews.some((review) => review.id === "comp-transfer-access"), false);
+
+    const complianceDigest = await getJson("/api/compliance-reviews/digest", nationalToken);
+    assert.equal(complianceDigest.total >= 2, true);
+    assert.equal(complianceDigest.attested >= 1, true);
+    assert.equal(complianceDigest.packetReady >= 1, true);
+    assert.equal(complianceDigest.exported >= 1, true);
+    assert.equal(complianceDigest.escalated >= 1, true);
+
     const statusAfterSecondLogin = await getJson("/api/status");
     assert.equal(statusAfterSecondLogin.sessions.active, 3);
     assert.equal(Boolean(statusAfterSecondLogin.sessions.stations[0].id), true);
@@ -1558,6 +1627,17 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "SecurityControlVerified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SecurityControlsBulkTested"), true);
     assert.equal(persisted.securityControls.RBAC.owner, "np@rmvi.org");
+    assert.equal(persisted.audit.some((row) => row.event === "ComplianceReviewRouted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ComplianceEvidenceAttached"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ComplianceRiskScored"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ComplianceReviewAttested"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CompliancePacketPrepared"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ComplianceReviewExported"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ComplianceReviewEscalated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ComplianceReviewBulkReviewed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ComplianceReviewsBulkReviewed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ComplianceReviewArchived"), true);
+    assert.equal(persisted.complianceReviews["comp-finance-q2"].packetId, "automated-packet");
     assert.equal(persisted.audit.some((row) => row.event === "CommandBriefingArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandDirectiveIssued"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandTaskCreated"), true);

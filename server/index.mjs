@@ -245,6 +245,17 @@ const routes = {
   "POST /api/audit/:id/close": ({ params, body }) => ok(services.closeAuditInvestigation(params.id, body)),
   "POST /api/audit/:id/hold": ({ params, body }) => ok(services.placeAuditHold(params.id, body)),
   "POST /api/audit/:id/release-hold": ({ params, body }) => ok(services.releaseAuditHold(params.id, body)),
+  "GET /api/compliance-reviews": () => ok(complianceReviewsReport()),
+  "GET /api/compliance-reviews/digest": () => ok(complianceReviewDigest()),
+  "POST /api/compliance-reviews/bulk/review": ({ body, session }) => ok(bulkReviewCompliance(body, session.email)),
+  "POST /api/compliance-reviews/:id/route": ({ params, body, session }) => ok(routeComplianceReview(params.id, body, session.email)),
+  "POST /api/compliance-reviews/:id/evidence": ({ params, body, session }) => ok(attachComplianceEvidence(params.id, body, session.email)),
+  "POST /api/compliance-reviews/:id/score": ({ params, body, session }) => ok(scoreComplianceRisk(params.id, body, session.email)),
+  "POST /api/compliance-reviews/:id/attest": ({ params, body, session }) => ok(attestComplianceReview(params.id, body, session.email)),
+  "POST /api/compliance-reviews/:id/packet": ({ params, body, session }) => ok(prepareCompliancePacket(params.id, body, session.email)),
+  "POST /api/compliance-reviews/:id/export": ({ params, body, session }) => ok(exportComplianceReview(params.id, body, session.email)),
+  "POST /api/compliance-reviews/:id/archive": ({ params, body, session }) => ok(archiveComplianceReview(params.id, body, session.email)),
+  "POST /api/compliance-reviews/:id/escalate": ({ params, body, session }) => ok(escalateComplianceReview(params.id, body, session.email)),
   "GET /api/events": () => ok(state.events),
   "GET /api/events/digest": () => ok(services.eventDigest()),
   "POST /api/events": ({ body }) => createdResponse(services.recordManualEvent(body)),
@@ -602,6 +613,179 @@ function securityControlsDigest() {
   };
 }
 
+const baseComplianceReviews = [
+  {
+    id: "comp-finance-q2",
+    title: "Quarterly finance packet",
+    scope: "National -> County finance reports",
+    status: "Open",
+    risk: "High",
+    score: 72,
+    reviewer: "National Audit Desk",
+    due: "Today",
+    evidence: "Financial report chain"
+  },
+  {
+    id: "comp-transfer-access",
+    title: "Transfer access revocation",
+    scope: "Personnel transfer controls",
+    status: "Open",
+    risk: "Medium",
+    score: 64,
+    reviewer: "Security Controls",
+    due: "Tomorrow",
+    evidence: "Session invalidation logs"
+  },
+  {
+    id: "comp-churchmail-archive",
+    title: "ChurchMail archive retention",
+    scope: "Governance communication records",
+    status: "In Review",
+    risk: "Medium",
+    score: 58,
+    reviewer: "Compliance Engine",
+    due: "This week",
+    evidence: "Archive manifest"
+  }
+];
+
+function ensureComplianceReviews() {
+  state.complianceReviews ??= {};
+  return state.complianceReviews;
+}
+
+function complianceReviewsReport() {
+  const actions = ensureComplianceReviews();
+  return baseComplianceReviews
+    .map((review) => ({ ...review, ...(actions[review.id] ?? {}) }))
+    .filter((review) => !review.archived);
+}
+
+function getComplianceReview(id) {
+  const decoded = decodeURIComponent(String(id ?? ""));
+  const review = complianceReviewsReport().find((item) => item.id === decoded);
+  if (!review) throw new HttpError(404, "Compliance review not found");
+  return review;
+}
+
+function patchComplianceReview(id, patch, actor, event, result) {
+  const review = getComplianceReview(id);
+  const reviews = ensureComplianceReviews();
+  reviews[review.id] = {
+    ...(reviews[review.id] ?? {}),
+    ...patch,
+    updatedAt: new Date().toISOString(),
+    updatedBy: actor
+  };
+  record(event, actor, review.title, result);
+  return { review: { ...review, ...reviews[review.id] }, reviews: complianceReviewsReport() };
+}
+
+function routeComplianceReview(id, body, actor) {
+  return patchComplianceReview(id, {
+    reviewer: body.reviewer ?? actor,
+    routedAt: new Date().toISOString(),
+    status: "In Review"
+  }, actor, "ComplianceReviewRouted", body.reviewer ?? actor);
+}
+
+function attachComplianceEvidence(id, body, actor) {
+  return patchComplianceReview(id, {
+    evidence: body.evidence ?? "Evidence packet attached",
+    evidenceCount: (getComplianceReview(id).evidenceCount ?? 0) + 1,
+    evidenceAt: new Date().toISOString()
+  }, actor, "ComplianceEvidenceAttached", body.evidence ?? "Evidence packet attached");
+}
+
+function scoreComplianceRisk(id, body, actor) {
+  const score = body.score ?? 75;
+  const risk = body.risk ?? (score >= 80 ? "Critical" : score >= 65 ? "High" : score >= 40 ? "Medium" : "Low");
+  return patchComplianceReview(id, {
+    score,
+    risk,
+    scoredAt: new Date().toISOString()
+  }, actor, "ComplianceRiskScored", `${risk} ${score}`);
+}
+
+function attestComplianceReview(id, body, actor) {
+  return patchComplianceReview(id, {
+    attested: true,
+    attestedBy: actor,
+    attestedAt: new Date().toISOString(),
+    attestation: body.attestation ?? "Reviewer attestation recorded",
+    status: "Attested"
+  }, actor, "ComplianceReviewAttested", body.attestation ?? "Reviewer attestation recorded");
+}
+
+function prepareCompliancePacket(id, body, actor) {
+  return patchComplianceReview(id, {
+    packetId: body.packetId ?? `packet-${Date.now()}`,
+    packetPreparedAt: new Date().toISOString(),
+    status: "Packet Ready"
+  }, actor, "CompliancePacketPrepared", body.packetId ?? "Audit packet prepared");
+}
+
+function exportComplianceReview(id, body, actor) {
+  return patchComplianceReview(id, {
+    exported: true,
+    exportedAt: new Date().toISOString(),
+    exportFormat: body.format ?? "PDF"
+  }, actor, "ComplianceReviewExported", body.format ?? "PDF");
+}
+
+function archiveComplianceReview(id, body, actor) {
+  return patchComplianceReview(id, {
+    archived: true,
+    archivedAt: new Date().toISOString(),
+    archiveReason: body.reason ?? "Compliance review archived"
+  }, actor, "ComplianceReviewArchived", body.reason ?? "Compliance review archived");
+}
+
+function escalateComplianceReview(id, body, actor) {
+  requirePermission(actor, "canApprove");
+  const review = patchComplianceReview(id, {
+    status: "Escalated",
+    risk: body.risk ?? "Critical",
+    escalationReason: body.reason ?? "Escalated from compliance review queue",
+    escalatedAt: new Date().toISOString()
+  }, actor, "ComplianceReviewEscalated", body.reason ?? "Compliance review escalated");
+  services.createEscalation({
+    item: review.review.title,
+    reason: body.reason ?? "Compliance review escalated",
+    owner: review.review.reviewer ?? actor,
+    severity: body.risk ?? "Critical",
+    actor
+  });
+  return review;
+}
+
+function bulkReviewCompliance(body, actor) {
+  const ids = body.ids?.length ? body.ids : complianceReviewsReport().slice(0, 2).map((review) => review.id);
+  const updated = ids.map((id) => patchComplianceReview(id, {
+    status: "In Review",
+    reviewer: body.reviewer ?? actor,
+    reviewedAt: new Date().toISOString()
+  }, actor, "ComplianceReviewBulkReviewed", body.reviewer ?? actor).review);
+  record("ComplianceReviewsBulkReviewed", actor, "Compliance Review Queue", `${updated.length} reviews routed`);
+  return { count: updated.length, updated, reviews: complianceReviewsReport() };
+}
+
+function complianceReviewDigest() {
+  const reviews = complianceReviewsReport();
+  return {
+    generatedAt: new Date().toISOString(),
+    total: reviews.length,
+    open: reviews.filter((review) => review.status === "Open").length,
+    inReview: reviews.filter((review) => review.status === "In Review").length,
+    attested: reviews.filter((review) => review.attested).length,
+    packetReady: reviews.filter((review) => review.packetId).length,
+    exported: reviews.filter((review) => review.exported).length,
+    escalated: reviews.filter((review) => review.status === "Escalated").length,
+    highRisk: reviews.filter((review) => ["High", "Critical"].includes(review.risk)).length,
+    nextReview: reviews.find((review) => !review.attested)?.title ?? reviews[0]?.title ?? "No reviews"
+  };
+}
+
 function exportSnapshot(session) {
   return {
     exportedAt: new Date().toISOString(),
@@ -849,7 +1033,8 @@ async function loadState() {
       events: persisted.events ?? seed.events,
       offlineQueue: persisted.offlineQueue ?? seed.offlineQueue,
       readinessActions: persisted.readinessActions ?? seed.readinessActions ?? {},
-      securityControls: persisted.securityControls ?? seed.securityControls ?? {}
+      securityControls: persisted.securityControls ?? seed.securityControls ?? {},
+      complianceReviews: persisted.complianceReviews ?? seed.complianceReviews ?? {}
     });
   } catch (error) {
     if (error.code !== "ENOENT") console.warn(`Unable to load persisted state: ${error.message}`);

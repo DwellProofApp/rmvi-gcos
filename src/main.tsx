@@ -200,6 +200,36 @@ type SecurityControlDigest = {
   rotations: number;
   nextControl: string;
 };
+type ComplianceReview = {
+  id: string;
+  title: string;
+  scope: string;
+  status: "Open" | "In Review" | "Attested" | "Packet Ready" | "Escalated";
+  risk: "Low" | "Medium" | "High" | "Critical";
+  score: number;
+  reviewer: string;
+  due: string;
+  evidence?: string;
+  evidenceCount?: number;
+  attested?: boolean;
+  attestedAt?: string;
+  packetId?: string;
+  exported?: boolean;
+  exportedAt?: string;
+  escalationReason?: string;
+};
+type ComplianceDigest = {
+  generatedAt: string;
+  total: number;
+  open: number;
+  inReview: number;
+  attested: number;
+  packetReady: number;
+  exported: number;
+  escalated: number;
+  highRisk: number;
+  nextReview: string;
+};
 type ArchiveManifest = {
   generatedAt: string;
   total: number;
@@ -7391,6 +7421,8 @@ function Audit({
   const [readiness, setReadiness] = React.useState<ReadinessReport | null>(null);
   const [securityControls, setSecurityControls] = React.useState<SecurityControlRecord[]>([]);
   const [securityDigest, setSecurityDigest] = React.useState<SecurityControlDigest | null>(null);
+  const [complianceReviews, setComplianceReviews] = React.useState<ComplianceReview[]>([]);
+  const [complianceDigest, setComplianceDigest] = React.useState<ComplianceDigest | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -7425,6 +7457,8 @@ function Audit({
     void apiRequest<ReadinessReport>("/api/readiness").then(setReadiness).catch(() => undefined);
     void apiRequest<SecurityControlRecord[]>("/api/security-controls").then(setSecurityControls).catch(() => undefined);
     void apiRequest<SecurityControlDigest>("/api/security-controls/digest").then(setSecurityDigest).catch(() => undefined);
+    void apiRequest<ComplianceReview[]>("/api/compliance-reviews").then(setComplianceReviews).catch(() => undefined);
+    void apiRequest<ComplianceDigest>("/api/compliance-reviews/digest").then(setComplianceDigest).catch(() => undefined);
   }, []);
 
   function refreshReadiness() {
@@ -7562,6 +7596,80 @@ function Audit({
     }).then(updateSecurityControls).catch(() => undefined);
   }
 
+  function refreshComplianceReviews() {
+    void apiRequest<ComplianceReview[]>("/api/compliance-reviews").then(setComplianceReviews).catch(() => undefined);
+    void apiRequest<ComplianceDigest>("/api/compliance-reviews/digest").then(setComplianceDigest).catch(() => undefined);
+  }
+
+  function updateComplianceReviews(result: { reviews: ComplianceReview[] }) {
+    setComplianceReviews(result.reviews);
+    void apiRequest<ComplianceDigest>("/api/compliance-reviews/digest").then(setComplianceDigest).catch(() => undefined);
+  }
+
+  function routeComplianceReview(id: string) {
+    void apiRequest<{ reviews: ComplianceReview[] }>(`/api/compliance-reviews/${encodeURIComponent(id)}/route`, {
+      method: "POST",
+      body: JSON.stringify({ reviewer: session.email })
+    }).then(updateComplianceReviews).catch(() => undefined);
+  }
+
+  function attachComplianceEvidence(id: string) {
+    void apiRequest<{ reviews: ComplianceReview[] }>(`/api/compliance-reviews/${encodeURIComponent(id)}/evidence`, {
+      method: "POST",
+      body: JSON.stringify({ evidence: "Compliance evidence packet attached from audit desk" })
+    }).then(updateComplianceReviews).catch(() => undefined);
+  }
+
+  function scoreComplianceReview(id: string) {
+    void apiRequest<{ reviews: ComplianceReview[] }>(`/api/compliance-reviews/${encodeURIComponent(id)}/score`, {
+      method: "POST",
+      body: JSON.stringify({ score: 88, risk: "High" })
+    }).then(updateComplianceReviews).catch(() => undefined);
+  }
+
+  function attestComplianceReview(id: string) {
+    void apiRequest<{ reviews: ComplianceReview[] }>(`/api/compliance-reviews/${encodeURIComponent(id)}/attest`, {
+      method: "POST",
+      body: JSON.stringify({ attestation: "Attested from audit desk" })
+    }).then(updateComplianceReviews).catch(() => undefined);
+  }
+
+  function prepareCompliancePacket(id: string) {
+    void apiRequest<{ reviews: ComplianceReview[] }>(`/api/compliance-reviews/${encodeURIComponent(id)}/packet`, {
+      method: "POST",
+      body: JSON.stringify({ packetId: `packet-${id}` })
+    }).then(updateComplianceReviews).catch(() => undefined);
+  }
+
+  function exportComplianceReview(id: string) {
+    void apiRequest<{ reviews: ComplianceReview[] }>(`/api/compliance-reviews/${encodeURIComponent(id)}/export`, {
+      method: "POST",
+      body: JSON.stringify({ format: "PDF" })
+    }).then(updateComplianceReviews).catch(() => undefined);
+  }
+
+  function escalateComplianceReview(id: string) {
+    void apiRequest<{ reviews: ComplianceReview[] }>(`/api/compliance-reviews/${encodeURIComponent(id)}/escalate`, {
+      method: "POST",
+      body: JSON.stringify({ risk: "Critical", reason: "Compliance escalation opened from audit desk" })
+    }).then(updateComplianceReviews).catch(() => undefined);
+  }
+
+  function archiveComplianceReview(id: string) {
+    void apiRequest<{ reviews: ComplianceReview[] }>(`/api/compliance-reviews/${encodeURIComponent(id)}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Compliance review archived from audit desk" })
+    }).then(updateComplianceReviews).catch(() => undefined);
+  }
+
+  function bulkReviewCompliance() {
+    const ids = complianceReviews.slice(0, 2).map((review) => review.id);
+    void apiRequest<{ reviews: ComplianceReview[] }>("/api/compliance-reviews/bulk/review", {
+      method: "POST",
+      body: JSON.stringify({ ids, reviewer: session.email })
+    }).then(updateComplianceReviews).catch(() => undefined);
+  }
+
   function exportAuditPacket() {
     const headers = ["Event", "Actor", "Object", "Result", "Time"];
     const rows = visibleRows.map((row) => [row.event, row.actor, row.object, row.result, row.time]);
@@ -7649,6 +7757,45 @@ function Audit({
             </div>
           ))}
           {visibleRows.length === 0 && <div className="empty-state">No audit records match the current filters.</div>}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={ClipboardCheck} title="Compliance Review Queue" action={`${complianceDigest?.highRisk ?? complianceReviews.filter((review) => ["High", "Critical"].includes(review.risk)).length} high risk`} />
+        <div className="action-row">
+          <button disabled={!complianceReviews.length} onClick={bulkReviewCompliance}><CheckCircle2 size={15} /> Bulk review</button>
+          <button onClick={refreshComplianceReviews}><RefreshCw size={15} /> Digest</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Open" value={String(complianceDigest?.open ?? complianceReviews.filter((review) => review.status === "Open").length)} />
+          <Insight label="In review" value={String(complianceDigest?.inReview ?? complianceReviews.filter((review) => review.status === "In Review").length)} />
+          <Insight label="Attested" value={String(complianceDigest?.attested ?? complianceReviews.filter((review) => review.attested).length)} />
+          <Insight label="Packets" value={String(complianceDigest?.packetReady ?? complianceReviews.filter((review) => review.packetId).length)} />
+          <Insight label="Exported" value={String(complianceDigest?.exported ?? complianceReviews.filter((review) => review.exported).length)} />
+          <Insight label="Escalated" value={String(complianceDigest?.escalated ?? complianceReviews.filter((review) => review.status === "Escalated").length)} />
+          <Insight label="High risk" value={String(complianceDigest?.highRisk ?? complianceReviews.filter((review) => ["High", "Critical"].includes(review.risk)).length)} />
+          <Insight label="Next review" value={complianceDigest?.nextReview ?? complianceReviews[0]?.title ?? "None"} />
+        </div>
+        <div className="source-map-list">
+          {complianceReviews.map((review) => (
+            <article className="source-map-item" key={review.id}>
+              <span>{review.status}</span>
+              <strong>{review.title}</strong>
+              <small>{review.scope} - {review.risk} risk - score {review.score} - {review.reviewer} - due {review.due}</small>
+              <small>{review.evidence ?? "No evidence"}{review.packetId ? ` - ${review.packetId}` : ""}{review.exported ? " - exported" : ""}</small>
+              {review.escalationReason && <small>Escalation: {review.escalationReason}</small>}
+              <div className="action-row compact-actions">
+                <button onClick={() => routeComplianceReview(review.id)}><GitBranch size={14} /> Route</button>
+                <button onClick={() => attachComplianceEvidence(review.id)}><Files size={14} /> Evidence</button>
+                <button onClick={() => scoreComplianceReview(review.id)}><AlertTriangle size={14} /> Score</button>
+                <button onClick={() => attestComplianceReview(review.id)}><Signature size={14} /> Attest</button>
+                <button onClick={() => prepareCompliancePacket(review.id)}><FileCheck2 size={14} /> Packet</button>
+                <button onClick={() => exportComplianceReview(review.id)}><Download size={14} /> Export</button>
+                <button onClick={() => escalateComplianceReview(review.id)}><RadioTower size={14} /> Escalate</button>
+                <button onClick={() => archiveComplianceReview(review.id)}><Files size={14} /> Archive</button>
+              </div>
+            </article>
+          ))}
+          {!complianceReviews.length && <div className="empty-state">No active compliance reviews.</div>}
         </div>
       </div>
       <div className="panel module-side">

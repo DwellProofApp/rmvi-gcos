@@ -22,6 +22,8 @@ const personnelStatuses = ["Active", "Transfer Pending", "Assigned", "Inactive",
 const officeStatuses = ["Provisioned", "Suspended", "Active"];
 const auditSeverities = ["Info", "Low", "Medium", "High", "Critical"];
 const securityControlStatuses = ["Active", "Warning", "Exception", "Disabled", "Testing"];
+const complianceRisks = ["Low", "Medium", "High", "Critical"];
+const complianceExportFormats = ["PDF", "CSV", "JSON"];
 
 const validators = {
   "POST /api/auth/login": (body) => {
@@ -165,6 +167,45 @@ const validators = {
   "POST /api/security-controls/bulk/test": (body) => {
     if (body.names !== undefined) requireStringArray(body.names, "names");
     if (body.result !== undefined) requireString(body.result, "result");
+  },
+
+  "POST /api/compliance-reviews/:id/route": (body) => {
+    if (body.reviewer !== undefined) requireString(body.reviewer, "reviewer");
+  },
+
+  "POST /api/compliance-reviews/:id/evidence": (body) => {
+    if (body.evidence !== undefined) requireString(body.evidence, "evidence");
+  },
+
+  "POST /api/compliance-reviews/:id/score": (body) => {
+    if (body.score !== undefined) requireNumber(body.score, "score");
+    if (body.risk !== undefined) requireEnum(body.risk, complianceRisks, "risk");
+  },
+
+  "POST /api/compliance-reviews/:id/attest": (body) => {
+    if (body.attestation !== undefined) requireString(body.attestation, "attestation");
+  },
+
+  "POST /api/compliance-reviews/:id/packet": (body) => {
+    if (body.packetId !== undefined) requireString(body.packetId, "packetId");
+  },
+
+  "POST /api/compliance-reviews/:id/export": (body) => {
+    if (body.format !== undefined) requireEnum(body.format, complianceExportFormats, "format");
+  },
+
+  "POST /api/compliance-reviews/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/compliance-reviews/:id/escalate": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.risk !== undefined) requireEnum(body.risk, complianceRisks, "risk");
+  },
+
+  "POST /api/compliance-reviews/bulk/review": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.reviewer !== undefined) requireString(body.reviewer, "reviewer");
   },
 
   "POST /api/stations/:id/level": (body) => {
