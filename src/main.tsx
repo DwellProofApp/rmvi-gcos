@@ -113,6 +113,30 @@ type ApiStatus = {
     events: number;
   };
 };
+type ExportSnapshot = {
+  exportedAt: string;
+  exportedBy: string;
+  service: string;
+  version: string;
+  counts: ApiStatus["counts"];
+  state: {
+    stations: StationCard[];
+    messages: Message[];
+    reports: Report[];
+    approvals: Approval[];
+    tasks: GovernanceTask[];
+    policies: Policy[];
+    calendarEvents: CalendarEvent[];
+    personnel: PersonRecord[];
+    escalations: Escalation[];
+    transfers: Transfer[];
+    offices: Office[];
+    documents: DocumentRecord[];
+    aiDrafts: AiDraft[];
+    audit: AuditRow[];
+    events: string[];
+  };
+};
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -3551,6 +3575,16 @@ function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiSt
     URL.revokeObjectURL(url);
   }
 
+  async function exportGovernanceSnapshot() {
+    const snapshot = await apiRequest<ExportSnapshot>("/api/export");
+    const url = URL.createObjectURL(new Blob([JSON.stringify(snapshot, null, 2)], { type: "application/json;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `gcos-governance-snapshot-${new Date().toISOString().slice(0, 10)}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   return (
     <section className="module-grid">
       <div className="panel module-primary">
@@ -3566,6 +3600,7 @@ function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiSt
             ))}
           </select>
           <button onClick={exportAuditPacket}><Download size={15} /> Export CSV</button>
+          <button onClick={() => void exportGovernanceSnapshot()}><Files size={15} /> Export snapshot</button>
         </div>
         <div className="data-table audit-table">
           <div className="table-row table-head">

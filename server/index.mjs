@@ -74,6 +74,7 @@ const routes = {
   "POST /api/documents": ({ body }) => createdResponse(services.createDocument(body)),
   "GET /api/audit": () => ok(state.audit),
   "GET /api/events": () => ok(state.events),
+  "GET /api/export": ({ session }) => ok(exportSnapshot(session)),
   "GET /api/ai-drafts": () => ok(state.aiDrafts),
   "POST /api/ai-drafts": ({ body }) => createdResponse(services.createAiDraft(body)),
   "POST /api/offline-sync": ({ body }) => ok(services.syncOfflineActions(body)),
@@ -155,6 +156,17 @@ function operationalStatus() {
   };
 }
 
+function exportSnapshot(session) {
+  return {
+    exportedAt: new Date().toISOString(),
+    exportedBy: session.email,
+    service: "gcos-api",
+    version: "0.1.0",
+    counts: operationalStatus().counts,
+    state: services.publicState()
+  };
+}
+
 function createSession(email) {
   const token = `gcos.${randomUUID()}`;
   const startedAt = new Date().toISOString();
@@ -186,11 +198,11 @@ function sessionSummary() {
 }
 
 function authenticateRequest(request, pathname) {
-  const isProtectedMutation = pathname.startsWith("/api/")
-    && request.method !== "GET"
+  const requiresSession = pathname.startsWith("/api/")
     && pathname !== "/api/auth/login"
-    && pathname !== "/api/dev/reset";
-  if (!isProtectedMutation) return null;
+    && pathname !== "/api/dev/reset"
+    && (request.method !== "GET" || pathname === "/api/export");
+  if (!requiresSession) return null;
 
   const token = readBearerToken(request.headers.authorization);
   if (!token) throw new HttpError(401, "Missing session token");

@@ -94,6 +94,9 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     });
     assert.equal(missingToken.status, 401);
 
+    const missingExportToken = await fetch(`${BASE_URL}/api/export`);
+    assert.equal(missingExportToken.status, 401);
+
     const invalidMessage = await rawPost("/api/messages", {
       kind: "Memo",
       subject: "Invalid kind",
@@ -109,6 +112,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       files: "none"
     }, nationalToken);
     assert.equal(createdMessage.subject, "Automated API test notice");
+
+    const snapshot = await getJson("/api/export", nationalToken);
+    assert.equal(snapshot.exportedBy, "np@rmvi.org");
+    assert.equal(snapshot.service, "gcos-api");
+    assert.equal(snapshot.counts.messages > 0, true);
+    assert.equal(snapshot.state.messages[0].subject, "Automated API test notice");
 
     const reports = await getJson("/api/reports");
     const invalidReport = await rawPost("/api/reports", {
@@ -528,8 +537,12 @@ function stopApi(child) {
   });
 }
 
-async function getJson(path) {
-  const response = await fetch(`${BASE_URL}${path}`);
+async function getJson(path, token = "") {
+  const response = await fetch(`${BASE_URL}${path}`, {
+    headers: {
+      ...(token ? { authorization: `Bearer ${token}` } : {})
+    }
+  });
   assert.equal(response.ok, true, `${path} returned ${response.status}`);
   return response.json();
 }
