@@ -9,6 +9,7 @@ import {
   person,
   policy,
   report,
+  normalizeStationEmail,
   station,
   stationPasswords,
   task,
@@ -208,6 +209,18 @@ export function createServices({ state, record, requirePermission, findById }) {
       const item = findById(state.transfers, id);
       item.step = "New station login ready";
       item.risk = "Previous permissions revoked";
+      const personRecord = state.personnel.find((entry) => entry.name === item.person);
+      if (personRecord) {
+        personRecord.currentStation = item.to;
+        personRecord.assignedStation = item.to;
+        personRecord.status = "Assigned";
+        record("PersonStatusUpdated", body.actor, personRecord.name, `Assigned to ${item.to}`);
+      }
+      const targetOffice = state.offices.find((entry) => entry.name === item.to);
+      if (targetOffice && !state.stations.some((entry) => entry.email === targetOffice.email)) {
+        state.stations.push(station(targetOffice.email, `${targetOffice.name} Workstation`, targetOffice.level, `${targetOffice.department}, supervised by ${targetOffice.supervisor}`));
+        record("StationActivated", body.actor, targetOffice.name, `${targetOffice.email} ready`);
+      }
       record("TransferExecuted", body.actor, item.person, "Identity migration logged");
       return item;
     },
@@ -236,7 +249,7 @@ export function createServices({ state, record, requirePermission, findById }) {
     },
 
     login(body) {
-      const normalizedEmail = body.email.toLowerCase();
+      const normalizedEmail = normalizeStationEmail(body.email);
       const foundOffice = state.offices.find((item) => item.email === normalizedEmail);
       const configuredPassword = stationPasswords[normalizedEmail] ?? foundOffice?.password;
       if (configuredPassword !== body.password) return { unauthorized: true, error: "Invalid station credentials" };

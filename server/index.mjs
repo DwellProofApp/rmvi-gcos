@@ -3,7 +3,7 @@ import { randomUUID } from "node:crypto";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { audit, createSeedState, getPermissions } from "./domain.mjs";
+import { audit, createSeedState, getPermissions, normalizeStationEmail } from "./domain.mjs";
 import { createServices } from "./services.mjs";
 import { validateRequest } from "./validation.mjs";
 
@@ -197,7 +197,7 @@ async function loadState() {
   const seed = createSeedState();
   try {
     const persisted = JSON.parse(await readFile(DATA_PATH, "utf8"));
-    return {
+    return migratePersistedState({
       ...seed,
       ...persisted,
       stations: persisted.stations ?? seed.stations,
@@ -216,11 +216,24 @@ async function loadState() {
       audit: persisted.audit ?? seed.audit,
       events: persisted.events ?? seed.events,
       offlineQueue: persisted.offlineQueue ?? seed.offlineQueue
-    };
+    });
   } catch (error) {
     if (error.code !== "ENOENT") console.warn(`Unable to load persisted state: ${error.message}`);
     return seed;
   }
+}
+
+function migratePersistedState(loadedState) {
+  const migratedState = JSON.parse(JSON.stringify(loadedState).replaceAll("@rmi.org", "@rmvi.org"));
+  for (const station of migratedState.stations) station.email = normalizeStationEmail(station.email);
+  for (const office of migratedState.offices) office.email = normalizeStationEmail(office.email);
+  const seenStationEmails = new Set();
+  migratedState.stations = migratedState.stations.filter((station) => {
+    if (seenStationEmails.has(station.email)) return false;
+    seenStationEmails.add(station.email);
+    return true;
+  });
+  return migratedState;
 }
 
 async function saveState() {

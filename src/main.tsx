@@ -1150,6 +1150,12 @@ function App() {
       step: "New station login ready",
       risk: "Previous permissions revoked"
     } : item));
+    setPersonnel((items) => items.map((item) => item.name === transfer.person ? {
+      ...item,
+      currentStation: transfer.to,
+      assignedStation: transfer.to,
+      status: "Assigned"
+    } : item));
     recordAudit("TransferExecuted", transfer.person, "Identity migration logged");
     if (!offlineMode) {
       void apiRequest<Transfer>(`/api/transfers/${id}/execute`, {
@@ -3277,6 +3283,11 @@ function Transfers({
               </div>
               <span>{transfer.step}</span>
               <p>{transfer.risk}</p>
+              <div className="pipeline mini">
+                {["Letter", "Acknowledge", "Revoke", "Activate", "Audit"].map((step) => (
+                  <div className="pipeline-step" key={step}>{step}</div>
+                ))}
+              </div>
               <div className="action-row">
                 <button
                   aria-label={`Execute transfer for ${transfer.person}`}

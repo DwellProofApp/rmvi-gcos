@@ -7,6 +7,10 @@ export const stationPasswords = {
   "local_branch_017@gcos.org": "gcos-local"
 };
 
+export function normalizeStationEmail(email) {
+  return String(email ?? "").toLowerCase().replace("@rmi.org", "@rmvi.org");
+}
+
 export function createSeedState() {
   const riverbendOffice = office("Riverbend Area Office", "riverbend_area@gcos.org", "Area HQ", "Area Coordination", "Buchanan District");
   return {

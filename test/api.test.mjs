@@ -339,6 +339,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const executedTransfer = await postJson(`/api/transfers/${transfers[0].id}/execute`, {}, nationalToken);
     assert.equal(executedTransfer.step, "New station login ready");
     assert.equal(executedTransfer.risk, "Previous permissions revoked");
+    const personnelAfterTransfer = await getJson("/api/personnel");
+    const transferredPerson = personnelAfterTransfer.find((item) => item.name === executedTransfer.person);
+    assert.equal(transferredPerson.status, "Assigned");
+    assert.equal(transferredPerson.currentStation, executedTransfer.to);
 
     const invalidDocument = await rawPost("/api/documents", {
       name: "Missing classification.pdf",
