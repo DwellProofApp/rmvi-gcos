@@ -59,7 +59,7 @@ type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
 type StationCard = { email: string; title: string; level: StationLevel | string; authority: string; icon: React.ElementType };
 type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[] };
 type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number; evidenceStatus?: string; reviewNote?: string; verified?: boolean; archived?: boolean; watchers?: string[] };
-type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string };
+type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string; delegate?: string; holdReason?: string; archived?: boolean; watchers?: string[] };
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[] };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[] };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[] };
@@ -263,6 +263,17 @@ type ReportDigest = {
   archived: number;
   averageScore: number;
   nextReport: string;
+};
+type ApprovalDigest = {
+  generatedAt: string;
+  total: number;
+  open: number;
+  delegated: number;
+  held: number;
+  signed: number;
+  watched: number;
+  archived: number;
+  nextApproval: string;
 };
 type CommandBriefing = {
   title: string;
@@ -672,6 +683,7 @@ function App() {
   const [calendarDigest, setCalendarDigest] = React.useState<CalendarDigest | null>(null);
   const [messageDigest, setMessageDigest] = React.useState<MessageDigest | null>(null);
   const [reportDigest, setReportDigest] = React.useState<ReportDigest | null>(null);
+  const [approvalDigest, setApprovalDigest] = React.useState<ApprovalDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -876,6 +888,7 @@ function App() {
       void apiRequest<CalendarDigest>("/api/calendar-events/digest").then(setCalendarDigest).catch(() => undefined);
       void apiRequest<MessageDigest>("/api/messages/digest").then(setMessageDigest).catch(() => undefined);
       void apiRequest<ReportDigest>("/api/reports/digest").then(setReportDigest).catch(() => undefined);
+      void apiRequest<ApprovalDigest>("/api/approvals/digest").then(setApprovalDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -2242,6 +2255,125 @@ function App() {
     }
   }
 
+  function updateApprovalLimit(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    const limit = approval.limit === "$25,000" ? "$5,000" : "$25,000";
+    setApprovals((items) => items.map((item) => item.id === id ? { ...item, limit } : item));
+    recordAudit("ApprovalLimitUpdated", approval.request, limit);
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/limit`, {
+        method: "POST",
+        body: JSON.stringify({ limit })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function delegateApproval(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    const delegate = activeStation.email;
+    setApprovals((items) => items.map((item) => item.id === id ? { ...item, delegate, state: "Delegated" } : item));
+    recordAudit("ApprovalDelegated", approval.request, delegate);
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/delegate`, {
+        method: "POST",
+        body: JSON.stringify({ delegate })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function holdApproval(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    setApprovals((items) => items.map((item) => item.id === id ? { ...item, state: "On Hold", holdReason: "Authority review required" } : item));
+    recordAudit("ApprovalHeld", approval.request, "Authority review required");
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/hold`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Authority review required" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function releaseApprovalHold(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    setApprovals((items) => items.map((item) => item.id === id ? { ...item, state: "Validation", holdReason: "" } : item));
+    recordAudit("ApprovalHoldReleased", approval.request, "Validation");
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/release`, {
+        method: "POST",
+        body: JSON.stringify({ state: "Validation" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchApproval(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    setApprovals((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("ApprovalWatcherAdded", approval.request, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function duplicateApproval(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    const duplicate: Approval = { ...approval, id: `app-${Date.now()}`, request: `${approval.request} follow-up`, state: "Validation", signatures: "0/2" };
+    setApprovals((items) => [duplicate, ...items]);
+    recordAudit("ApprovalDuplicated", approval.request, duplicate.request);
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ request: duplicate.request, route: approval.route, limit: approval.limit })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveApproval(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    setApprovals((items) => items.map((item) => item.id === id ? { ...item, archived: true } : item));
+    recordAudit("ApprovalArchived", approval.request, "Approval archived");
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Archived from approval engine" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkSignApprovals(ids: string[]) {
+    const targetIds = ids.length ? ids : approvals.filter((item) => item.state !== "Approved" && item.state !== "Rejected").slice(0, 3).map((item) => item.id);
+    setApprovals((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Signature", signatures: "1/2" } : item));
+    recordAudit("ApprovalsBulkSigned", "Approval engine", `${targetIds.length} approvals signed`);
+    if (!offlineMode) {
+      void apiRequest<{ updated: Approval[]; count: number }>("/api/approvals/bulk/sign", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, signatures: "1/2" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshApprovalDigest() {
+    if (offlineMode) {
+      recordAudit("ApprovalDigestRefreshed", "Approval digest", "Local approval digest refreshed");
+      return;
+    }
+    void apiRequest<ApprovalDigest>("/api/approvals/digest")
+      .then((digest) => {
+        setApprovalDigest(digest);
+        recordAudit("ApprovalDigestRefreshed", "Approval digest", `${digest.open} open, ${digest.held} held`);
+      })
+      .catch(() => undefined);
+  }
+
   function bulkApproveRequests(ids: string[]) {
     const targetIds = ids.length ? ids : approvals.filter((item) => item.state !== "Approved").map((item) => item.id);
     setApprovals((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Approved", signatures: "complete" } : item));
@@ -3359,11 +3491,19 @@ function App() {
             onUpdateRoute={updateApprovalRoute}
             onSign={signApproval}
             onReject={rejectApproval}
+            onUpdateLimit={updateApprovalLimit}
+            onDelegate={delegateApproval}
+            onHold={holdApproval}
+            onReleaseHold={releaseApprovalHold}
+            onWatch={watchApproval}
+            onDuplicate={duplicateApproval}
+            onArchive={archiveApproval}
+            onBulkSign={bulkSignApprovals}
             onEscalateApproval={triggerEscalation}
             onBulkApprove={bulkApproveRequests}
             onBulkReject={bulkRejectRequests}
-            onRefreshDigest={refreshWorkflowDigest}
-            digest={workflowDigest}
+            onRefreshDigest={refreshApprovalDigest}
+            digest={approvalDigest}
           />
         )}
         {activeSection === "Tasks" && (
@@ -4388,6 +4528,14 @@ function Approvals({
   onUpdateRoute,
   onSign,
   onReject,
+  onUpdateLimit,
+  onDelegate,
+  onHold,
+  onReleaseHold,
+  onWatch,
+  onDuplicate,
+  onArchive,
+  onBulkSign,
   onEscalateApproval,
   onBulkApprove,
   onBulkReject,
@@ -4402,11 +4550,19 @@ function Approvals({
   onUpdateRoute: (id: string, route: string) => void;
   onSign: (id: string) => void;
   onReject: (id: string) => void;
+  onUpdateLimit: (id: string) => void;
+  onDelegate: (id: string) => void;
+  onHold: (id: string) => void;
+  onReleaseHold: (id: string) => void;
+  onWatch: (id: string) => void;
+  onDuplicate: (id: string) => void;
+  onArchive: (id: string) => void;
+  onBulkSign: (ids: string[]) => void;
   onEscalateApproval: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
   onBulkApprove: (ids: string[]) => void;
   onBulkReject: (ids: string[]) => void;
   onRefreshDigest: () => void;
-  digest: WorkflowDigest | null;
+  digest: ApprovalDigest | null;
 }) {
   const [request, setRequest] = React.useState("Mission outreach budget release");
   const [route, setRoute] = React.useState(`${station.level} -> Delegated Authority`);
@@ -4416,6 +4572,10 @@ function Approvals({
   React.useEffect(() => {
     setRoute(`${station.level} -> Delegated Authority`);
   }, [station.level]);
+  const openCount = approvals.filter((approval) => approval.state !== "Approved" && approval.state !== "Rejected").length;
+  const heldCount = approvals.filter((approval) => approval.state === "On Hold").length;
+  const delegatedCount = approvals.filter((approval) => approval.state === "Delegated").length;
+  const watchedCount = approvals.filter((approval) => approval.watchers?.length).length;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -4437,15 +4597,18 @@ function Approvals({
         <div className="archive-toolbar">
           <button disabled={!permissions.canApprove} type="button" onClick={() => onBulkApprove(approvals.filter((approval) => approval.state !== "Approved").map((approval) => approval.id))}><CheckCircle2 size={14} /> Approve open</button>
           <button disabled={!permissions.canApprove} type="button" onClick={() => onBulkReject(approvals.filter((approval) => approval.state !== "Approved").map((approval) => approval.id))}><AlertTriangle size={14} /> Reject open</button>
+          <button disabled={!permissions.canApprove} type="button" onClick={() => onBulkSign(approvals.filter((approval) => approval.state !== "Approved" && approval.state !== "Rejected").map((approval) => approval.id))}><Signature size={14} /> Sign open</button>
           <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
         </div>
-        {digest && (
-          <div className="workflow-digest">
-            <Insight label="Open approvals" value={String(digest.approvalsOpen)} />
-            <Insight label="Escalated approvals" value={String(digest.escalatedApprovals)} />
-            <Insight label="Next approval" value={digest.nextApproval} />
-          </div>
-        )}
+        <div className="office-summary-grid">
+          <Insight label="Open" value={String(digest?.open ?? openCount)} />
+          <Insight label="Delegated" value={String(digest?.delegated ?? delegatedCount)} />
+          <Insight label="Held" value={String(digest?.held ?? heldCount)} />
+          <Insight label="Signed" value={String(digest?.signed ?? approvals.filter((approval) => approval.signatures !== "0/2").length)} />
+          <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Archived" value={String(digest?.archived ?? approvals.filter((approval) => approval.archived).length)} />
+          <Insight label="Next approval" value={digest?.nextApproval ?? approvals[0]?.request ?? "None"} />
+        </div>
         <div className="approval-board">
           {approvals.map((approval) => (
             <article className="approval-lane" key={approval.request}>
@@ -4455,6 +4618,8 @@ function Approvals({
               <div className="approval-meta">
                 <small>{approval.limit}</small>
                 <small>{approval.signatures} signatures</small>
+                <small>{approval.delegate ?? "No delegate"}</small>
+                <small>{approval.watchers?.length ?? 0} watchers</small>
               </div>
               <div className="action-row">
                 <button
@@ -4478,6 +4643,13 @@ function Approvals({
                 >
                   <GitBranch size={15} /> Route
                 </button>
+                <button disabled={!permissions.canApprove} onClick={() => onUpdateLimit(approval.id)}><Landmark size={15} /> Limit</button>
+                <button disabled={!permissions.canApprove} onClick={() => onDelegate(approval.id)}><Users size={15} /> Delegate</button>
+                <button disabled={!permissions.canApprove} onClick={() => onHold(approval.id)}><LockKeyhole size={15} /> Hold</button>
+                <button disabled={!permissions.canApprove} onClick={() => onReleaseHold(approval.id)}><TimerReset size={15} /> Release</button>
+                <button onClick={() => onWatch(approval.id)}><Bell size={15} /> Watch</button>
+                <button disabled={!permissions.canApprove} onClick={() => onDuplicate(approval.id)}><Files size={15} /> Duplicate</button>
+                <button disabled={!permissions.canApprove} onClick={() => onArchive(approval.id)}><FileClock size={15} /> Archive</button>
                 <button
                   aria-label={`Reject ${approval.request}`}
                   disabled={!permissions.canApprove}

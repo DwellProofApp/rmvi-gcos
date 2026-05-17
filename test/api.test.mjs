@@ -417,6 +417,56 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(routedRequest.route, "National -> Executive Review");
     assert.equal(routedRequest.state, "Validation");
 
+    const limitedApproval = await postJson(`/api/approvals/${createdApproval.id}/limit`, {
+      limit: "$25,000"
+    }, nationalToken);
+    assert.equal(limitedApproval.limit, "$25,000");
+
+    const delegatedApproval = await postJson(`/api/approvals/${createdApproval.id}/delegate`, {
+      delegate: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(delegatedApproval.delegate, "np@rmvi.org");
+    assert.equal(delegatedApproval.state, "Delegated");
+
+    const heldApproval = await postJson(`/api/approvals/${createdApproval.id}/hold`, {
+      reason: "Automated authority review"
+    }, nationalToken);
+    assert.equal(heldApproval.state, "On Hold");
+    assert.equal(heldApproval.holdReason, "Automated authority review");
+
+    const releasedApproval = await postJson(`/api/approvals/${createdApproval.id}/release`, {
+      state: "Validation"
+    }, nationalToken);
+    assert.equal(releasedApproval.state, "Validation");
+
+    const watchedApproval = await postJson(`/api/approvals/${createdApproval.id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedApproval.watchers.includes("np@rmvi.org"), true);
+
+    const duplicatedApproval = await postJson(`/api/approvals/${createdApproval.id}/duplicate`, {
+      request: "Automated duplicated approval follow-up"
+    }, nationalToken);
+    assert.equal(duplicatedApproval.request, "Automated duplicated approval follow-up");
+    assert.equal(duplicatedApproval.state, "Validation");
+
+    const archivedApproval = await postJson(`/api/approvals/${createdApproval.id}/archive`, {
+      reason: "Automated approval archive"
+    }, nationalToken);
+    assert.equal(archivedApproval.archived, true);
+
+    const bulkSigned = await postJson("/api/approvals/bulk/sign", {
+      ids: [duplicatedApproval.id],
+      signatures: "1/2"
+    }, nationalToken);
+    assert.equal(bulkSigned.count, 1);
+    assert.equal(bulkSigned.updated[0].state, "Signature");
+
+    const approvalDigest = await getJson("/api/approvals/digest", nationalToken);
+    assert.equal(approvalDigest.total > 0, true);
+    assert.equal(approvalDigest.watched >= 1, true);
+    assert.equal(approvalDigest.archived >= 1, true);
+
     const rejectedRequest = await postJson(`/api/approvals/${approvals[1].id}/reject`, {
       reason: "Authority documentation incomplete"
     }, nationalToken);
@@ -1105,6 +1155,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "ReportDueUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportsBulkSubmitted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportsBulkCorrectionRequested"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalLimitUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalDelegated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalHeld"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalHoldReleased"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalDuplicated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalsBulkSigned"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ApprovalSigned"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ApprovalRouteUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ApprovalsBulkApproved"), true);

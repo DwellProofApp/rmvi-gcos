@@ -183,6 +183,41 @@ const validators = {
     if (body.state !== undefined) requireString(body.state, "state");
   },
 
+  "POST /api/approvals/:id/limit": (body) => {
+    if (body.limit !== undefined) requireString(body.limit, "limit");
+  },
+
+  "POST /api/approvals/:id/delegate": (body) => {
+    if (body.delegate !== undefined) requireString(body.delegate, "delegate");
+  },
+
+  "POST /api/approvals/:id/hold": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/approvals/:id/release": (body) => {
+    if (body.state !== undefined) requireString(body.state, "state");
+  },
+
+  "POST /api/approvals/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/approvals/:id/duplicate": (body) => {
+    if (body.request !== undefined) requireString(body.request, "request");
+    if (body.route !== undefined) requireString(body.route, "route");
+    if (body.limit !== undefined) requireString(body.limit, "limit");
+  },
+
+  "POST /api/approvals/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/approvals/bulk/sign": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.signatures !== undefined) requireString(body.signatures, "signatures");
+  },
+
   "POST /api/approvals/bulk/approve": (body) => {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
   },

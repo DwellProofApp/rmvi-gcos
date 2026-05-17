@@ -839,6 +839,99 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateApprovalLimit(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.limit = body.limit ?? item.limit;
+      record("ApprovalLimitUpdated", body.actor, item.request, item.limit);
+      return item;
+    },
+
+    delegateApproval(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.delegate = body.delegate ?? body.actor;
+      item.state = "Delegated";
+      record("ApprovalDelegated", body.actor, item.request, item.delegate);
+      return item;
+    },
+
+    holdApproval(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.state = "On Hold";
+      item.holdReason = body.reason ?? "Approval placed on hold";
+      record("ApprovalHeld", body.actor, item.request, item.holdReason);
+      return item;
+    },
+
+    releaseApprovalHold(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.state = body.state ?? "Validation";
+      item.holdReason = "";
+      record("ApprovalHoldReleased", body.actor, item.request, item.state);
+      return item;
+    },
+
+    watchApproval(id, body) {
+      const item = findById(state.approvals, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
+      record("ApprovalWatcherAdded", body.actor, item.request, watcher);
+      return item;
+    },
+
+    duplicateApproval(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      const created = approval(body.request ?? `${item.request} follow-up`, body.route ?? item.route, body.limit ?? item.limit, "Validation", "0/2");
+      state.approvals.unshift(created);
+      record("ApprovalDuplicated", body.actor, item.request, created.request);
+      return created;
+    },
+
+    archiveApproval(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.archived = true;
+      record("ApprovalArchived", body.actor, item.request, body.reason ?? "Approval archived");
+      return item;
+    },
+
+    bulkSignApprovals(body) {
+      requirePermission(body.actor, "canApprove");
+      const ids = Array.isArray(body.ids) && body.ids.length ? body.ids : state.approvals.filter((item) => item.state !== "Approved" && item.state !== "Rejected").slice(0, 3).map((item) => item.id);
+      const updated = ids.map((id) => {
+        const item = findById(state.approvals, id);
+        item.signatures = body.signatures ?? "1/2";
+        item.state = "Signature";
+        return item;
+      });
+      record("ApprovalsBulkSigned", body.actor, "Approval engine", `${updated.length} approvals signed`);
+      return { updated, count: updated.length };
+    },
+
+    approvalDigest() {
+      const open = state.approvals.filter((item) => item.state !== "Approved" && item.state !== "Rejected");
+      const delegated = state.approvals.filter((item) => item.state === "Delegated");
+      const held = state.approvals.filter((item) => item.state === "On Hold");
+      const signed = state.approvals.filter((item) => /signature|complete|\d+\/\d+/i.test(item.signatures));
+      const watched = state.approvals.filter((item) => item.watchers?.length);
+      const archived = state.approvals.filter((item) => item.archived);
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.approvals.length,
+        open: open.length,
+        delegated: delegated.length,
+        held: held.length,
+        signed: signed.length,
+        watched: watched.length,
+        archived: archived.length,
+        nextApproval: held[0]?.request ?? delegated[0]?.request ?? open[0]?.request ?? state.approvals[0]?.request ?? "No approvals"
+      };
+    },
+
     bulkApproveRequests(body) {
       requirePermission(body.actor, "canApprove");
       const ids = Array.isArray(body.ids) && body.ids.length ? body.ids : state.approvals.filter((item) => item.state !== "Approved").map((item) => item.id);
