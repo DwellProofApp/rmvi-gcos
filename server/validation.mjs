@@ -351,6 +351,18 @@ const validators = {
     if (body.risk !== undefined) requireString(body.risk, "risk");
   },
 
+  "POST /api/transfers/:id/prepare": (body) => {
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/transfers/:id/revoke-access": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/transfers/:id/verify": (body) => {
+    if (body.result !== undefined) requireString(body.result, "result");
+  },
+
   "POST /api/ai-drafts": (body) => {
     if (body.kind !== undefined) requireEnum(body.kind, aiKinds, "kind");
     if (body.focus !== undefined) requireString(body.focus, "focus");

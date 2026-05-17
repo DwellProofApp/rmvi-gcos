@@ -634,6 +634,56 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    prepareTransfer(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.step = "Pre-migration checklist";
+      item.risk = body.note ?? "Identity graph prepared";
+      record("TransferPrepared", body.actor, item.person, item.risk);
+      return item;
+    },
+
+    revokeTransferAccess(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.step = "Previous access revoked";
+      item.risk = "Old station credentials disabled";
+      record("TransferAccessRevoked", body.actor, item.person, body.reason ?? item.risk);
+      return item;
+    },
+
+    activateTransferStation(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.step = "New station activated";
+      item.risk = "New workstation ready";
+      record("TransferStationActivated", body.actor, item.person, item.to);
+      return item;
+    },
+
+    verifyTransfer(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.step = "Verified";
+      item.risk = body.result ?? "Identity migration verified";
+      record("TransferVerified", body.actor, item.person, item.risk);
+      return item;
+    },
+
+    transferDigest() {
+      const ready = state.transfers.filter((item) => item.step === "New station login ready" || item.step === "Verified");
+      const risky = state.transfers.filter((item) => /risk|pending|required|review/i.test(item.risk));
+      const pending = state.transfers.filter((item) => !ready.includes(item));
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.transfers.length,
+        ready: ready.length,
+        pending: pending.length,
+        risk: risky.length,
+        nextTransfer: pending[0]?.person ?? ready[0]?.person ?? "No transfers"
+      };
+    },
+
     executeTransfer(id, body) {
       requirePermission(body.actor, "canExecuteTransfers");
       const item = findById(state.transfers, id);

@@ -643,6 +643,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(createdTransfer.person, "Automated transfer test");
     assert.equal(createdTransfer.step, "Recipient acknowledgement");
 
+    const preparedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/prepare`, {
+      note: "Automated transfer preparation"
+    }, nationalToken);
+    assert.equal(preparedTransfer.step, "Pre-migration checklist");
+
     const acknowledgedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/acknowledge`, {}, nationalToken);
     assert.equal(acknowledgedTransfer.step, "Permissions migration");
     assert.equal(acknowledgedTransfer.risk, "Acknowledgement recorded");
@@ -651,6 +656,23 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       risk: "Supervisor review required"
     }, nationalToken);
     assert.equal(riskTransfer.risk, "Supervisor review required");
+
+    const accessRevokedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/revoke-access`, {
+      reason: "Automated revoke access test"
+    }, nationalToken);
+    assert.equal(accessRevokedTransfer.step, "Previous access revoked");
+
+    const activatedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/activate-station`, {}, nationalToken);
+    assert.equal(activatedTransfer.step, "New station activated");
+
+    const verifiedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/verify`, {
+      result: "Automated verification test"
+    }, nationalToken);
+    assert.equal(verifiedTransfer.step, "Verified");
+
+    const transferDigest = await getJson("/api/transfers/digest");
+    assert.equal(transferDigest.total >= 1, true);
+    assert.equal(transferDigest.nextTransfer.length > 0, true);
 
     const forbiddenTransfer = await rawPost(`/api/transfers/${transfers[0].id}/execute`, {}, localToken);
     assert.equal(forbiddenTransfer.status, 403);
@@ -834,6 +856,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "EscalationMerged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferRiskUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferPrepared"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferAccessRevoked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferStationActivated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferVerified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferExecuted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentClassificationUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentOwnerUpdated"), true);

@@ -183,6 +183,14 @@ type PersonnelDigest = {
   primaryStation: string;
   nextPerson: string;
 };
+type TransferDigest = {
+  generatedAt: string;
+  total: number;
+  ready: number;
+  pending: number;
+  risk: number;
+  nextTransfer: string;
+};
 type CommandBriefing = {
   title: string;
   generatedAt: string;
@@ -583,6 +591,7 @@ function App() {
   const [workflowDigest, setWorkflowDigest] = React.useState<WorkflowDigest | null>(null);
   const [escalationDigest, setEscalationDigest] = React.useState<EscalationDigest | null>(null);
   const [personnelDigest, setPersonnelDigest] = React.useState<PersonnelDigest | null>(null);
+  const [transferDigest, setTransferDigest] = React.useState<TransferDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -779,6 +788,7 @@ function App() {
       void apiRequest<WorkflowDigest>("/api/workflows/digest").then(setWorkflowDigest).catch(() => undefined);
       void apiRequest<EscalationDigest>("/api/escalations/digest").then(setEscalationDigest).catch(() => undefined);
       void apiRequest<PersonnelDigest>("/api/personnel/digest").then(setPersonnelDigest).catch(() => undefined);
+      void apiRequest<TransferDigest>("/api/transfers/digest").then(setTransferDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1688,6 +1698,71 @@ function App() {
         body: JSON.stringify({ risk })
       }).then(refreshFromApi).catch(() => undefined);
     }
+  }
+
+  function prepareTransfer(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, step: "Pre-migration checklist", risk: "Identity graph prepared" } : item));
+    recordAudit("TransferPrepared", transfer.person, "Identity graph prepared");
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/prepare`, {
+        method: "POST",
+        body: JSON.stringify({ note: "Identity graph prepared" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function revokeTransferAccess(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, step: "Previous access revoked", risk: "Old station credentials disabled" } : item));
+    recordAudit("TransferAccessRevoked", transfer.person, "Old station credentials disabled");
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/revoke-access`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Revoked from transfer console" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function activateTransferStation(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, step: "New station activated", risk: "New workstation ready" } : item));
+    recordAudit("TransferStationActivated", transfer.person, transfer.to);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/activate-station`, {
+        method: "POST",
+        body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function verifyTransfer(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, step: "Verified", risk: "Identity migration verified" } : item));
+    recordAudit("TransferVerified", transfer.person, "Identity migration verified");
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/verify`, {
+        method: "POST",
+        body: JSON.stringify({ result: "Identity migration verified" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshTransferDigest() {
+    if (offlineMode) {
+      recordAudit("TransferDigestRefreshed", "Transfer digest", "Local transfer digest refreshed");
+      return;
+    }
+    void apiRequest<TransferDigest>("/api/transfers/digest")
+      .then((digest) => {
+        setTransferDigest(digest);
+        recordAudit("TransferDigestRefreshed", "Transfer digest", `${digest.pending} pending, ${digest.ready} ready`);
+      })
+      .catch(() => undefined);
   }
 
   function createOffice(office: Omit<Office, "id" | "password" | "status">) {
@@ -2623,6 +2698,12 @@ function App() {
             onAcknowledgeTransfer={acknowledgeTransfer}
             onUpdateTransferRisk={updateTransferRisk}
             onExecuteTransfer={executeTransfer}
+            onPrepareTransfer={prepareTransfer}
+            onRevokeAccess={revokeTransferAccess}
+            onActivateStation={activateTransferStation}
+            onVerifyTransfer={verifyTransfer}
+            onRefreshDigest={refreshTransferDigest}
+            digest={transferDigest}
           />
         )}
         {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onRefreshManifest={refreshArchiveManifest} />}
@@ -4766,7 +4847,13 @@ function Transfers({
   onCreateTransfer,
   onAcknowledgeTransfer,
   onUpdateTransferRisk,
-  onExecuteTransfer
+  onExecuteTransfer,
+  onPrepareTransfer,
+  onRevokeAccess,
+  onActivateStation,
+  onVerifyTransfer,
+  onRefreshDigest,
+  digest
 }: {
   transfers: Transfer[];
   permissions: Permissions;
@@ -4776,6 +4863,12 @@ function Transfers({
   onAcknowledgeTransfer: (id: string) => void;
   onUpdateTransferRisk: (id: string, risk: string) => void;
   onExecuteTransfer: (id: string) => void;
+  onPrepareTransfer: (id: string) => void;
+  onRevokeAccess: (id: string) => void;
+  onActivateStation: (id: string) => void;
+  onVerifyTransfer: (id: string) => void;
+  onRefreshDigest: () => void;
+  digest: TransferDigest | null;
 }) {
   const [person, setPerson] = React.useState("Rev. Grace Walker");
   const [from, setFrom] = React.useState("County Mission Office");
@@ -4815,7 +4908,15 @@ function Transfers({
               {stepOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
         </div>
+        {digest && (
+          <div className="workflow-digest">
+            <Insight label="Ready" value={String(digest.ready)} />
+            <Insight label="Pending" value={String(digest.pending)} />
+            <Insight label="Next transfer" value={digest.nextTransfer} />
+          </div>
+        )}
         <div className="transfer-list">
           {visibleTransfers.map((transfer) => (
             <article className="transfer-card" key={transfer.person}>
@@ -4834,6 +4935,13 @@ function Transfers({
               </div>
               <div className="action-row">
                 <button
+                  aria-label={`Prepare transfer for ${transfer.person}`}
+                  disabled={!permissions.canExecuteTransfers}
+                  onClick={() => onPrepareTransfer(transfer.id)}
+                >
+                  <ClipboardCheck size={15} /> Prepare
+                </button>
+                <button
                   aria-label={`Acknowledge transfer for ${transfer.person}`}
                   disabled={!permissions.canExecuteTransfers}
                   onClick={() => onAcknowledgeTransfer(transfer.id)}
@@ -4848,11 +4956,32 @@ function Transfers({
                   <AlertTriangle size={15} /> Risk
                 </button>
                 <button
+                  aria-label={`Revoke old access for ${transfer.person}`}
+                  disabled={!permissions.canExecuteTransfers}
+                  onClick={() => onRevokeAccess(transfer.id)}
+                >
+                  <LockKeyhole size={15} /> Revoke access
+                </button>
+                <button
+                  aria-label={`Activate station for ${transfer.person}`}
+                  disabled={!permissions.canExecuteTransfers}
+                  onClick={() => onActivateStation(transfer.id)}
+                >
+                  <RadioTower size={15} /> Activate
+                </button>
+                <button
                   aria-label={`Execute transfer for ${transfer.person}`}
                   disabled={!permissions.canExecuteTransfers}
                   onClick={() => onExecuteTransfer(transfer.id)}
                 >
                   <RefreshCw size={15} /> Execute switch
+                </button>
+                <button
+                  aria-label={`Verify transfer for ${transfer.person}`}
+                  disabled={!permissions.canExecuteTransfers}
+                  onClick={() => onVerifyTransfer(transfer.id)}
+                >
+                  <CheckCircle2 size={15} /> Verify
                 </button>
               </div>
             </article>
