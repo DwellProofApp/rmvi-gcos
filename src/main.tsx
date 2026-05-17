@@ -2,6 +2,7 @@ import React from "react";
 import { createRoot } from "react-dom/client";
 import {
   AlertTriangle,
+  Archive as ArchiveIcon,
   ArrowDownToLine,
   ArrowUpFromLine,
   Bell,
@@ -60,7 +61,7 @@ type StationCard = { id?: string; email: string; title: string; level: StationLe
 type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[] };
 type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number; evidenceStatus?: string; reviewNote?: string; verified?: boolean; archived?: boolean; watchers?: string[] };
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string; delegate?: string; holdReason?: string; archived?: boolean; watchers?: string[] };
-type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[] };
+type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[] };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[] };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
@@ -367,6 +368,13 @@ type TaskDigest = {
   approvals?: number;
   evidence?: number;
   slaBreaches?: number;
+  scheduled?: number;
+  dispatched?: number;
+  qaPassed?: number;
+  riskAccepted?: number;
+  templates?: number;
+  linked?: number;
+  archived?: number;
   nextTask: string;
   owner: string;
 };
@@ -714,7 +722,10 @@ function usePersistentState<T>(key: string, initialValue: T) {
     if (!stored) return initialValue;
 
     try {
-      return JSON.parse(stored) as T;
+      const parsed = JSON.parse(stored) as T;
+      if (Array.isArray(initialValue) && !Array.isArray(parsed)) return initialValue;
+      if (initialValue !== null && typeof initialValue === "object" && (parsed === null || typeof parsed !== "object")) return initialValue;
+      return parsed;
     } catch {
       return initialValue;
     }
@@ -1746,6 +1757,146 @@ function App() {
       void apiRequest<{ count: number; updated: GovernanceTask[] }>("/api/tasks/bulk/escalate", {
         method: "POST",
         body: JSON.stringify({ ids: targetIds, reason: "Bulk escalated from task center" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function scheduleTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const scheduledFor = "Tomorrow";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, scheduledFor, due: scheduledFor } : item));
+    recordAudit("TaskScheduled", task.title, scheduledFor);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/schedule`, {
+        method: "POST",
+        body: JSON.stringify({ scheduledFor, due: scheduledFor })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function dispatchTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const team = "Field operations";
+    const location = String(activeStation.level);
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, dispatchTeam: team, dispatchLocation: location, status: item.status === "Complete" ? "Complete" : "In Progress" } : item));
+    recordAudit("TaskDispatched", task.title, `${team} to ${location}`);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/dispatch`, {
+        method: "POST",
+        body: JSON.stringify({ team, location })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function logTaskTime(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const hours = 2;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, timeHours: (item.timeHours ?? 0) + hours } : item));
+    recordAudit("TaskTimeLogged", task.title, `${hours}h logged`);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/time`, {
+        method: "POST",
+        body: JSON.stringify({ hours })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function qaReviewTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const status = "Passed";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, qaStatus: status, qaReviewer: activeStation.email } : item));
+    recordAudit("TaskQaReviewed", task.title, status);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/qa`, {
+        method: "POST",
+        body: JSON.stringify({ status, reviewer: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function acceptTaskRisk(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const reason = "Accepted from task operations board";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, riskAccepted: true, riskReason: reason } : item));
+    recordAudit("TaskRiskAccepted", task.title, reason);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/risk`, {
+        method: "POST",
+        body: JSON.stringify({ reason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function saveTaskTemplate(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const templateName = `${task.title} template`;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, templateSaved: true, templateName } : item));
+    recordAudit("TaskTemplateSaved", task.title, templateName);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/template`, {
+        method: "POST",
+        body: JSON.stringify({ templateName })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkTaskReport(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const reportId = reports[0]?.id ?? "report-follow-up";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, linkedReport: reportId } : item));
+    recordAudit("TaskReportLinked", task.title, reportId);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/report`, {
+        method: "POST",
+        body: JSON.stringify({ reportId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkTaskApproval(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const approvalId = approvals[0]?.id ?? "approval-follow-up";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, linkedApproval: approvalId } : item));
+    recordAudit("TaskApprovalLinked", task.title, approvalId);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/approval-link`, {
+        method: "POST",
+        body: JSON.stringify({ approvalId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const reason = "Archived from task operations board";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, archived: true, archiveReason: reason } : item));
+    recordAudit("TaskArchived", task.title, reason);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkScheduleTasks(ids: string[]) {
+    const targetIds = ids.length ? ids : tasks.filter((task) => !task.archived && task.status !== "Complete").slice(0, 3).map((task) => task.id);
+    const scheduledFor = "Tomorrow";
+    setTasks((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, scheduledFor } : item));
+    recordAudit("TasksBulkScheduled", "Task center", `${targetIds.length} tasks scheduled`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: GovernanceTask[] }>("/api/tasks/bulk/schedule", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, scheduledFor })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -4466,6 +4617,16 @@ function App() {
             onDuplicateTask={duplicateTask}
             onBulkCompleteTasks={bulkCompleteTasks}
             onBulkEscalateTasks={bulkEscalateTasks}
+            onScheduleTask={scheduleTask}
+            onDispatchTask={dispatchTask}
+            onLogTime={logTaskTime}
+            onQaReview={qaReviewTask}
+            onAcceptRisk={acceptTaskRisk}
+            onSaveTemplate={saveTaskTemplate}
+            onLinkReport={linkTaskReport}
+            onLinkApproval={linkTaskApproval}
+            onArchiveTask={archiveTask}
+            onBulkScheduleTasks={bulkScheduleTasks}
             onRefreshDigest={refreshTaskDigest}
             digest={taskDigest}
             onEscalateTask={triggerEscalation}
@@ -5724,6 +5885,16 @@ function Tasks({
   onDuplicateTask,
   onBulkCompleteTasks,
   onBulkEscalateTasks,
+  onScheduleTask,
+  onDispatchTask,
+  onLogTime,
+  onQaReview,
+  onAcceptRisk,
+  onSaveTemplate,
+  onLinkReport,
+  onLinkApproval,
+  onArchiveTask,
+  onBulkScheduleTasks,
   onRefreshDigest,
   digest,
   onEscalateTask
@@ -5751,6 +5922,16 @@ function Tasks({
   onDuplicateTask: (id: string) => void;
   onBulkCompleteTasks: (ids: string[]) => void;
   onBulkEscalateTasks: (ids: string[]) => void;
+  onScheduleTask: (id: string) => void;
+  onDispatchTask: (id: string) => void;
+  onLogTime: (id: string) => void;
+  onQaReview: (id: string) => void;
+  onAcceptRisk: (id: string) => void;
+  onSaveTemplate: (id: string) => void;
+  onLinkReport: (id: string) => void;
+  onLinkApproval: (id: string) => void;
+  onArchiveTask: (id: string) => void;
+  onBulkScheduleTasks: (ids: string[]) => void;
   onRefreshDigest: () => void;
   digest: TaskDigest | null;
   onEscalateTask: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
@@ -5771,20 +5952,30 @@ function Tasks({
 
   const visibleTasks = React.useMemo(() => (
     tasks.filter((task) => (
+      !task.archived
+      &&
       (statusFilter === "All statuses" || task.status === statusFilter)
       && (priorityFilter === "All priorities" || task.priority === priorityFilter)
     ))
   ), [priorityFilter, statusFilter, tasks]);
-  const blockedCount = tasks.filter((task) => task.status === "Blocked").length;
-  const completeCount = tasks.filter((task) => task.status === "Complete").length;
-  const criticalCount = tasks.filter((task) => task.priority === "Critical" && task.status !== "Complete").length;
-  const watchedCount = tasks.filter((task) => task.watchers?.length).length;
-  const escalatedCount = tasks.filter((task) => task.escalated).length;
-  const dependencyCount = tasks.filter((task) => task.dependencies?.length).length;
-  const approvalCount = tasks.filter((task) => task.approvalRequired).length;
-  const evidenceCount = tasks.filter((task) => task.evidence).length;
-  const slaBreachCount = tasks.filter((task) => task.slaStatus === "Breached" || task.due === "Overdue").length;
-  const completionRate = tasks.length ? Math.round((completeCount / tasks.length) * 100) : 100;
+  const activeTasks = tasks.filter((task) => !task.archived);
+  const blockedCount = activeTasks.filter((task) => task.status === "Blocked").length;
+  const completeCount = activeTasks.filter((task) => task.status === "Complete").length;
+  const criticalCount = activeTasks.filter((task) => task.priority === "Critical" && task.status !== "Complete").length;
+  const watchedCount = activeTasks.filter((task) => task.watchers?.length).length;
+  const escalatedCount = activeTasks.filter((task) => task.escalated).length;
+  const dependencyCount = activeTasks.filter((task) => task.dependencies?.length).length;
+  const approvalCount = activeTasks.filter((task) => task.approvalRequired).length;
+  const evidenceCount = activeTasks.filter((task) => task.evidence).length;
+  const slaBreachCount = activeTasks.filter((task) => task.slaStatus === "Breached" || task.due === "Overdue").length;
+  const scheduledCount = activeTasks.filter((task) => task.scheduledFor).length;
+  const dispatchedCount = activeTasks.filter((task) => task.dispatchTeam).length;
+  const qaPassedCount = activeTasks.filter((task) => task.qaStatus === "Passed").length;
+  const riskAcceptedCount = activeTasks.filter((task) => task.riskAccepted).length;
+  const templateCount = activeTasks.filter((task) => task.templateSaved).length;
+  const linkedCount = activeTasks.filter((task) => task.linkedReport || task.linkedApproval).length;
+  const archivedCount = tasks.filter((task) => task.archived).length;
+  const completionRate = activeTasks.length ? Math.round((completeCount / activeTasks.length) * 100) : 100;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -5808,6 +5999,13 @@ function Tasks({
           <Insight label="Approvals" value={String(digest?.approvals ?? approvalCount)} />
           <Insight label="Evidence" value={String(digest?.evidence ?? evidenceCount)} />
           <Insight label="SLA breaches" value={String(digest?.slaBreaches ?? slaBreachCount)} />
+          <Insight label="Scheduled" value={String(digest?.scheduled ?? scheduledCount)} />
+          <Insight label="Dispatched" value={String(digest?.dispatched ?? dispatchedCount)} />
+          <Insight label="QA passed" value={String(digest?.qaPassed ?? qaPassedCount)} />
+          <Insight label="Risk accepted" value={String(digest?.riskAccepted ?? riskAcceptedCount)} />
+          <Insight label="Templates" value={String(digest?.templates ?? templateCount)} />
+          <Insight label="Linked" value={String(digest?.linked ?? linkedCount)} />
+          <Insight label="Archived" value={String(digest?.archived ?? archivedCount)} />
           <Insight label="Next task" value={digest?.nextTask ?? visibleTasks[0]?.title ?? "None"} />
         </div>
         <div className="archive-toolbar">
@@ -5826,6 +6024,7 @@ function Tasks({
           <button onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
           <button disabled={!visibleTasks.length} onClick={() => onBulkCompleteTasks(visibleTasks.slice(0, 3).map((task) => task.id))}><CheckCircle2 size={15} /> Bulk complete</button>
           <button disabled={!visibleTasks.length} onClick={() => onBulkEscalateTasks(visibleTasks.slice(0, 3).map((task) => task.id))}><AlertTriangle size={15} /> Bulk escalate</button>
+          <button disabled={!visibleTasks.length} onClick={() => onBulkScheduleTasks(visibleTasks.slice(0, 3).map((task) => task.id))}><CalendarDays size={15} /> Bulk schedule</button>
         </div>
         <div className="task-board">
           {visibleTasks.map((task) => (
@@ -5842,10 +6041,26 @@ function Tasks({
                 <small>{task.approvalRequired ? task.approvalRoute ?? "Approval required" : "No approval gate"}</small>
                 <small>{task.evidence ?? "No evidence"}</small>
                 <small>{task.comments?.length ?? 0} comments - {task.checkpoints?.length ?? 0} checkpoints</small>
+                <small>{task.scheduledFor ? `Scheduled ${task.scheduledFor}` : "Unscheduled"}</small>
+                <small>{task.dispatchTeam ? `${task.dispatchTeam} - ${task.dispatchLocation ?? "No location"}` : "No dispatch"}</small>
+                <small>{task.timeHours ? `${task.timeHours}h logged` : "No time logged"}</small>
+                <small>{task.qaStatus ? `QA ${task.qaStatus}` : "QA pending"}</small>
+                <small>{task.riskAccepted ? "Risk accepted" : "No risk acceptance"}</small>
+                <small>{task.templateName ?? "No template"}</small>
+                <small>{task.linkedReport ? `Report ${task.linkedReport}` : "No linked report"}</small>
+                <small>{task.linkedApproval ? `Approval ${task.linkedApproval}` : "No linked approval"}</small>
               </div>
               <div className="action-row">
                 <button onClick={() => onAdvanceTask(task.id, "In Progress")}><TimerReset size={15} /> Start</button>
                 <button onClick={() => onAdvanceTask(task.id, "Complete")}><CheckCircle2 size={15} /> Complete</button>
+                <button onClick={() => onScheduleTask(task.id)}><CalendarDays size={15} /> Schedule</button>
+                <button onClick={() => onDispatchTask(task.id)}><RadioTower size={15} /> Dispatch</button>
+                <button onClick={() => onLogTime(task.id)}><TimerReset size={15} /> Time</button>
+                <button onClick={() => onQaReview(task.id)}><ShieldCheck size={15} /> QA</button>
+                <button onClick={() => onAcceptRisk(task.id)}><AlertTriangle size={15} /> Risk</button>
+                <button onClick={() => onSaveTemplate(task.id)}><Files size={15} /> Template</button>
+                <button onClick={() => onLinkReport(task.id)}><FileCheck2 size={15} /> Report</button>
+                <button onClick={() => onLinkApproval(task.id)}><Signature size={15} /> Approval link</button>
                 <button onClick={() => onBlockTask(task.id)}><LockKeyhole size={15} /> Block</button>
                 <button onClick={() => onUnblockTask(task.id)}><CheckCircle2 size={15} /> Unblock</button>
                 <button onClick={() => onUpdateTaskDue(task.id)}><CalendarDays size={15} /> Due</button>
@@ -5865,6 +6080,7 @@ function Tasks({
                 <button onClick={() => onEscalateTask("Task", task.title, `${task.due} task is ${task.status.toLowerCase()}`, task.owner, task.priority === "Critical" ? "Critical" : "High")}>
                   <AlertTriangle size={15} /> Escalate
                 </button>
+                <button onClick={() => onArchiveTask(task.id)}><ArchiveIcon size={15} /> Archive</button>
               </div>
             </article>
           ))}

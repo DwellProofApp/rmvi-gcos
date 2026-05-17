@@ -890,6 +890,54 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(checkpointTask.checkpoints.includes("Automated checkpoint"), true);
 
+    const scheduledTask = await postJson(`/api/tasks/${tasks[1].id}/schedule`, {
+      scheduledFor: "Tomorrow",
+      due: "Tomorrow"
+    }, nationalToken);
+    assert.equal(scheduledTask.scheduledFor, "Tomorrow");
+    assert.equal(scheduledTask.due, "Tomorrow");
+
+    const dispatchedTask = await postJson(`/api/tasks/${tasks[1].id}/dispatch`, {
+      team: "Field team",
+      location: "Buchanan"
+    }, nationalToken);
+    assert.equal(dispatchedTask.dispatchTeam, "Field team");
+    assert.equal(dispatchedTask.dispatchLocation, "Buchanan");
+
+    const timedTask = await postJson(`/api/tasks/${tasks[1].id}/time`, {
+      hours: 2
+    }, nationalToken);
+    assert.equal(timedTask.timeHours, 2);
+
+    const qaTask = await postJson(`/api/tasks/${tasks[1].id}/qa`, {
+      status: "Passed",
+      reviewer: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(qaTask.qaStatus, "Passed");
+    assert.equal(qaTask.qaReviewer, "np@rmvi.org");
+
+    const riskTask = await postJson(`/api/tasks/${tasks[1].id}/risk`, {
+      reason: "Accepted risk"
+    }, nationalToken);
+    assert.equal(riskTask.riskAccepted, true);
+    assert.equal(riskTask.riskReason, "Accepted risk");
+
+    const templatedTask = await postJson(`/api/tasks/${tasks[1].id}/template`, {
+      templateName: "Automated task template"
+    }, nationalToken);
+    assert.equal(templatedTask.templateSaved, true);
+    assert.equal(templatedTask.templateName, "Automated task template");
+
+    const reportLinkedTask = await postJson(`/api/tasks/${tasks[1].id}/report`, {
+      reportId: "rep-test"
+    }, nationalToken);
+    assert.equal(reportLinkedTask.linkedReport, "rep-test");
+
+    const approvalLinkedTask = await postJson(`/api/tasks/${tasks[1].id}/approval-link`, {
+      approvalId: "app-test"
+    }, nationalToken);
+    assert.equal(approvalLinkedTask.linkedApproval, "app-test");
+
     const duplicatedTask = await postJson(`/api/tasks/${tasks[1].id}/duplicate`, {
       title: "Automated duplicate task follow-up"
     }, nationalToken);
@@ -909,6 +957,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(bulkEscalatedTasks.count, 1);
     assert.equal(bulkEscalatedTasks.updated[0].escalated, true);
 
+    const bulkScheduledTasks = await postJson("/api/tasks/bulk/schedule", {
+      ids: [duplicatedTask.id],
+      scheduledFor: "This week"
+    }, nationalToken);
+    assert.equal(bulkScheduledTasks.count, 1);
+    assert.equal(bulkScheduledTasks.updated[0].scheduledFor, "This week");
+
+    const archivedTask = await postJson(`/api/tasks/${createdTask.id}/archive`, {
+      reason: "Automated task archive"
+    }, nationalToken);
+    assert.equal(archivedTask.archived, true);
+    assert.equal(archivedTask.archiveReason, "Automated task archive");
+
     const taskDigest = await getJson("/api/tasks/digest", nationalToken);
     assert.equal(taskDigest.total > 0, true);
     assert.equal(taskDigest.watched >= 1, true);
@@ -917,6 +978,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(taskDigest.approvals >= 1, true);
     assert.equal(taskDigest.evidence >= 1, true);
     assert.equal(taskDigest.slaBreaches >= 1, true);
+    assert.equal(taskDigest.scheduled >= 1, true);
+    assert.equal(taskDigest.dispatched >= 1, true);
+    assert.equal(taskDigest.qaPassed >= 1, true);
+    assert.equal(taskDigest.riskAccepted >= 1, true);
+    assert.equal(taskDigest.templates >= 1, true);
+    assert.equal(taskDigest.linked >= 1, true);
+    assert.equal(taskDigest.archived >= 1, true);
 
     const policies = await getJson("/api/policies");
     const invalidPolicy = await rawPost("/api/policies", {
@@ -1848,9 +1916,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "TaskEscalated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskCommentAdded"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskCheckpointAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskScheduled"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskDispatched"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskTimeLogged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskQaReviewed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskRiskAccepted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskTemplateSaved"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskReportLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskApprovalLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskDuplicated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TasksBulkCompleted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TasksBulkEscalated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TasksBulkScheduled"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyPublished"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyStatusUpdated"), true);

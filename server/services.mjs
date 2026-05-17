@@ -399,6 +399,77 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    scheduleTask(id, body) {
+      const item = findById(state.tasks, id);
+      item.scheduledFor = body.scheduledFor ?? "Tomorrow";
+      item.due = body.due ?? item.due;
+      record("TaskScheduled", body.actor, item.title, item.scheduledFor);
+      return item;
+    },
+
+    dispatchTask(id, body) {
+      const item = findById(state.tasks, id);
+      item.dispatchTeam = body.team ?? "Field operations";
+      item.dispatchLocation = body.location ?? "Assigned station";
+      item.status = item.status === "Complete" ? item.status : "In Progress";
+      record("TaskDispatched", body.actor, item.title, `${item.dispatchTeam} -> ${item.dispatchLocation}`);
+      return item;
+    },
+
+    logTaskTime(id, body) {
+      const item = findById(state.tasks, id);
+      const hours = body.hours ?? 1;
+      item.timeHours = (item.timeHours ?? 0) + hours;
+      record("TaskTimeLogged", body.actor, item.title, `${hours} hours`);
+      return item;
+    },
+
+    qaReviewTask(id, body) {
+      const item = findById(state.tasks, id);
+      item.qaStatus = body.status ?? "Passed";
+      item.qaReviewer = body.reviewer ?? body.actor;
+      record("TaskQaReviewed", body.actor, item.title, item.qaStatus);
+      return item;
+    },
+
+    acceptTaskRisk(id, body) {
+      const item = findById(state.tasks, id);
+      item.riskAccepted = true;
+      item.riskReason = body.reason ?? "Risk accepted by station authority";
+      record("TaskRiskAccepted", body.actor, item.title, item.riskReason);
+      return item;
+    },
+
+    saveTaskTemplate(id, body) {
+      const item = findById(state.tasks, id);
+      item.templateName = body.templateName ?? `${item.title} template`;
+      item.templateSaved = true;
+      record("TaskTemplateSaved", body.actor, item.title, item.templateName);
+      return item;
+    },
+
+    linkTaskReport(id, body) {
+      const item = findById(state.tasks, id);
+      item.linkedReport = body.reportId ?? "report-follow-up";
+      record("TaskReportLinked", body.actor, item.title, item.linkedReport);
+      return item;
+    },
+
+    linkTaskApproval(id, body) {
+      const item = findById(state.tasks, id);
+      item.linkedApproval = body.approvalId ?? "approval-follow-up";
+      record("TaskApprovalLinked", body.actor, item.title, item.linkedApproval);
+      return item;
+    },
+
+    archiveTask(id, body) {
+      const item = findById(state.tasks, id);
+      item.archived = true;
+      item.archiveReason = body.reason ?? "Task archived";
+      record("TaskArchived", body.actor, item.title, item.archiveReason);
+      return item;
+    },
+
     duplicateTask(id, body) {
       const item = findById(state.tasks, id);
       const created = task(body.title ?? `${item.title} follow-up`, item.owner, body.assignee ?? item.assignee, item.priority, body.due ?? item.due, "Queued");
@@ -429,19 +500,37 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { count: updated.length, updated };
     },
 
+    bulkScheduleTasks(body) {
+      const ids = body.ids?.length ? body.ids : state.tasks.filter((item) => item.status !== "Complete").slice(0, 3).map((item) => item.id);
+      const updated = state.tasks.filter((item) => ids.includes(item.id)).map((item) => {
+        item.scheduledFor = body.scheduledFor ?? "Tomorrow";
+        return item;
+      });
+      record("TasksBulkScheduled", body.actor, "Task center", `${updated.length} tasks scheduled`);
+      return { count: updated.length, updated };
+    },
+
     taskDigest() {
-      const open = state.tasks.filter((item) => item.status !== "Complete");
+      const activeTasks = state.tasks.filter((item) => !item.archived);
+      const open = activeTasks.filter((item) => item.status !== "Complete");
       const blocked = open.filter((item) => item.status === "Blocked");
       const critical = open.filter((item) => item.priority === "Critical");
-      const watched = state.tasks.filter((item) => item.watchers?.length);
+      const watched = activeTasks.filter((item) => item.watchers?.length);
       const escalated = open.filter((item) => item.escalated);
-      const dependencies = state.tasks.filter((item) => item.dependencies?.length);
-      const approvals = state.tasks.filter((item) => item.approvalRequired);
-      const evidence = state.tasks.filter((item) => item.evidence);
+      const dependencies = activeTasks.filter((item) => item.dependencies?.length);
+      const approvals = activeTasks.filter((item) => item.approvalRequired);
+      const evidence = activeTasks.filter((item) => item.evidence);
       const slaBreaches = open.filter((item) => item.slaStatus === "Breached" || item.due === "Overdue");
+      const scheduled = activeTasks.filter((item) => item.scheduledFor);
+      const dispatched = activeTasks.filter((item) => item.dispatchTeam);
+      const qaPassed = activeTasks.filter((item) => item.qaStatus === "Passed");
+      const riskAccepted = activeTasks.filter((item) => item.riskAccepted);
+      const templates = activeTasks.filter((item) => item.templateSaved);
+      const linked = activeTasks.filter((item) => item.linkedReport || item.linkedApproval);
+      const archived = state.tasks.filter((item) => item.archived);
       return {
         generatedAt: new Date().toISOString(),
-        total: state.tasks.length,
+        total: activeTasks.length,
         open: open.length,
         blocked: blocked.length,
         critical: critical.length,
@@ -451,6 +540,13 @@ export function createServices({ state, record, requirePermission, findById }) {
         approvals: approvals.length,
         evidence: evidence.length,
         slaBreaches: slaBreaches.length,
+        scheduled: scheduled.length,
+        dispatched: dispatched.length,
+        qaPassed: qaPassed.length,
+        riskAccepted: riskAccepted.length,
+        templates: templates.length,
+        linked: linked.length,
+        archived: archived.length,
         nextTask: critical[0]?.title ?? blocked[0]?.title ?? open[0]?.title ?? "No open tasks",
         owner: critical[0]?.owner ?? blocked[0]?.owner ?? open[0]?.owner ?? "None"
       };

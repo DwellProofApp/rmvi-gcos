@@ -529,6 +529,45 @@ const validators = {
     if (body.checkpoint !== undefined) requireString(body.checkpoint, "checkpoint");
   },
 
+  "POST /api/tasks/:id/schedule": (body) => {
+    if (body.scheduledFor !== undefined) requireString(body.scheduledFor, "scheduledFor");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/tasks/:id/dispatch": (body) => {
+    if (body.team !== undefined) requireString(body.team, "team");
+    if (body.location !== undefined) requireString(body.location, "location");
+  },
+
+  "POST /api/tasks/:id/time": (body) => {
+    if (body.hours !== undefined) requireNumber(body.hours, "hours");
+  },
+
+  "POST /api/tasks/:id/qa": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.reviewer !== undefined) requireString(body.reviewer, "reviewer");
+  },
+
+  "POST /api/tasks/:id/risk": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/tasks/:id/template": (body) => {
+    if (body.templateName !== undefined) requireString(body.templateName, "templateName");
+  },
+
+  "POST /api/tasks/:id/report": (body) => {
+    if (body.reportId !== undefined) requireString(body.reportId, "reportId");
+  },
+
+  "POST /api/tasks/:id/approval-link": (body) => {
+    if (body.approvalId !== undefined) requireString(body.approvalId, "approvalId");
+  },
+
+  "POST /api/tasks/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/tasks/:id/duplicate": (body) => {
     if (body.title !== undefined) requireString(body.title, "title");
     if (body.assignee !== undefined) requireString(body.assignee, "assignee");
@@ -542,6 +581,11 @@ const validators = {
   "POST /api/tasks/bulk/escalate": (body) => {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
     if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/tasks/bulk/schedule": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.scheduledFor !== undefined) requireString(body.scheduledFor, "scheduledFor");
   },
 
   "POST /api/policies": (body) => {
