@@ -1051,17 +1051,104 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    verifyPersonCredentials(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.credentialStatus = body.status ?? "Verified";
+      record("PersonCredentialsVerified", body.actor, item.name, item.credentialStatus);
+      return item;
+    },
+
+    assignPersonTraining(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.trainingStatus = body.status ?? "Assigned";
+      item.trainingTrack = body.track ?? "Governance onboarding";
+      record("PersonTrainingAssigned", body.actor, item.name, item.trainingTrack);
+      return item;
+    },
+
+    grantPersonStationAccess(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.stationAccess = body.station ?? item.assignedStation;
+      item.accessStatus = body.status ?? "Granted";
+      record("PersonStationAccessGranted", body.actor, item.name, `${item.stationAccess} ${item.accessStatus}`);
+      return item;
+    },
+
+    flagPersonIncident(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.incidentFlag = body.reason ?? "Personnel review required";
+      item.incidentSeverity = body.severity ?? "Medium";
+      record("PersonIncidentFlagged", body.actor, item.name, item.incidentFlag);
+      return item;
+    },
+
+    linkPersonTask(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.linkedTask = body.taskId ?? "task-follow-up";
+      record("PersonTaskLinked", body.actor, item.name, item.linkedTask);
+      return item;
+    },
+
+    reviewPerson(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.reviewStatus = body.status ?? "Reviewed";
+      item.reviewNote = body.note ?? "Personnel record reviewed";
+      record("PersonReviewed", body.actor, item.name, item.reviewStatus);
+      return item;
+    },
+
+    archivePerson(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.archived = true;
+      item.archiveReason = body.reason ?? "Personnel record archived";
+      record("PersonArchived", body.actor, item.name, item.archiveReason);
+      return item;
+    },
+
+    bulkCredentialReviewPersonnel(body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const ids = body.ids?.length ? body.ids : state.personnel.filter((item) => !item.archived && item.status !== "Inactive").slice(0, 3).map((item) => item.id);
+      const updated = state.personnel.filter((item) => ids.includes(item.id)).map((item) => {
+        item.credentialStatus = body.status ?? "Review required";
+        return item;
+      });
+      record("PersonnelBulkCredentialReview", body.actor, "Personnel directory", `${updated.length} records queued for credential review`);
+      return { count: updated.length, updated };
+    },
+
     personnelDigest() {
-      const active = state.personnel.filter((item) => item.status === "Active" || item.status === "Assigned");
-      const transferPending = state.personnel.filter((item) => item.status === "Transfer Pending");
-      const onboarding = state.personnel.filter((item) => item.status === "Onboarding");
-      const inactive = state.personnel.filter((item) => item.status === "Inactive" || item.status === "On Leave");
+      const visible = state.personnel.filter((item) => !item.archived);
+      const active = visible.filter((item) => item.status === "Active" || item.status === "Assigned");
+      const transferPending = visible.filter((item) => item.status === "Transfer Pending");
+      const onboarding = visible.filter((item) => item.status === "Onboarding");
+      const inactive = visible.filter((item) => item.status === "Inactive" || item.status === "On Leave");
+      const verified = visible.filter((item) => item.credentialStatus === "Verified");
+      const training = visible.filter((item) => item.trainingStatus);
+      const accessGranted = visible.filter((item) => item.accessStatus === "Granted");
+      const incidents = visible.filter((item) => item.incidentFlag);
+      const linked = visible.filter((item) => item.linkedTask);
+      const reviewed = visible.filter((item) => item.reviewStatus);
+      const archived = state.personnel.filter((item) => item.archived);
       return {
         generatedAt: new Date().toISOString(),
         active: active.length,
         transferPending: transferPending.length,
         onboarding: onboarding.length,
         inactive: inactive.length,
+        verified: verified.length,
+        training: training.length,
+        accessGranted: accessGranted.length,
+        incidents: incidents.length,
+        linked: linked.length,
+        reviewed: reviewed.length,
+        archived: archived.length,
         primaryStation: transferPending[0]?.assignedStation ?? active[0]?.assignedStation ?? "No active station",
         nextPerson: transferPending[0]?.name ?? onboarding[0]?.name ?? active[0]?.name ?? "No personnel record"
       };

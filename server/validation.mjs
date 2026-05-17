@@ -804,6 +804,43 @@ const validators = {
     if (body.clearance !== undefined) requireString(body.clearance, "clearance");
   },
 
+  "POST /api/personnel/:id/credentials/verify": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+  },
+
+  "POST /api/personnel/:id/training": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.track !== undefined) requireString(body.track, "track");
+  },
+
+  "POST /api/personnel/:id/access": (body) => {
+    if (body.station !== undefined) requireString(body.station, "station");
+    if (body.status !== undefined) requireString(body.status, "status");
+  },
+
+  "POST /api/personnel/:id/incident": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.severity !== undefined) requireString(body.severity, "severity");
+  },
+
+  "POST /api/personnel/:id/task": (body) => {
+    if (body.taskId !== undefined) requireString(body.taskId, "taskId");
+  },
+
+  "POST /api/personnel/:id/review": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/personnel/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/personnel/bulk/credential-review": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.status !== undefined) requireString(body.status, "status");
+  },
+
   "POST /api/escalations": (body) => {
     requireString(body.source, "source");
     requireString(body.item, "item");

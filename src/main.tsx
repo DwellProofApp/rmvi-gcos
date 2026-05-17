@@ -20,6 +20,7 @@ import {
   GitBranch,
   Globe2,
   Inbox,
+  KeyRound,
   Landmark,
   LayoutDashboard,
   LockKeyhole,
@@ -64,7 +65,7 @@ type Approval = { id: string; request: string; route: string; limit: string; sta
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
-type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
+type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
 type OfflineAction = AuditRow & { queuedAt: string };
@@ -291,6 +292,13 @@ type PersonnelDigest = {
   transferPending: number;
   onboarding: number;
   inactive: number;
+  verified?: number;
+  training?: number;
+  accessGranted?: number;
+  incidents?: number;
+  linked?: number;
+  reviewed?: number;
+  archived?: number;
   primaryStation: string;
   nextPerson: string;
 };
@@ -2667,6 +2675,117 @@ function App() {
     }
   }
 
+  function verifyPersonCredentials(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    const status = "Verified";
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, credentialStatus: status } : item));
+    recordAudit("PersonCredentialsVerified", person.name, status);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/credentials/verify`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function assignPersonTraining(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    const track = "Governance onboarding";
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, trainingStatus: "Assigned", trainingTrack: track } : item));
+    recordAudit("PersonTrainingAssigned", person.name, track);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/training`, {
+        method: "POST",
+        body: JSON.stringify({ status: "Assigned", track })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function grantPersonStationAccess(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    const stationAccess = person.assignedStation;
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, stationAccess, accessStatus: "Granted" } : item));
+    recordAudit("PersonStationAccessGranted", person.name, stationAccess);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/access`, {
+        method: "POST",
+        body: JSON.stringify({ station: stationAccess, status: "Granted" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function flagPersonIncident(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    const reason = "Personnel review required";
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, incidentFlag: reason, incidentSeverity: "Medium" } : item));
+    recordAudit("PersonIncidentFlagged", person.name, reason);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/incident`, {
+        method: "POST",
+        body: JSON.stringify({ reason, severity: "Medium" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkPersonTask(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    const taskId = tasks[0]?.id ?? "task-follow-up";
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, linkedTask: taskId } : item));
+    recordAudit("PersonTaskLinked", person.name, taskId);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/task`, {
+        method: "POST",
+        body: JSON.stringify({ taskId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function reviewPerson(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    const note = "Personnel record reviewed";
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, reviewStatus: "Reviewed", reviewNote: note } : item));
+    recordAudit("PersonReviewed", person.name, note);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/review`, {
+        method: "POST",
+        body: JSON.stringify({ status: "Reviewed", note })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archivePerson(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    const reason = "Archived from personnel directory";
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, archived: true, archiveReason: reason } : item));
+    recordAudit("PersonArchived", person.name, reason);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkCredentialReviewPersonnel(ids: string[]) {
+    const targetIds = ids.length ? ids : personnel.filter((person) => !person.archived && person.status !== "Inactive").slice(0, 3).map((person) => person.id);
+    const status = "Review required";
+    setPersonnel((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, credentialStatus: status } : item));
+    recordAudit("PersonnelBulkCredentialReview", "Personnel directory", `${targetIds.length} records queued`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: PersonRecord[] }>("/api/personnel/bulk/credential-review", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function refreshPersonnelDigest() {
     if (offlineMode) {
       recordAudit("PersonnelDigestRefreshed", "Personnel digest", "Local personnel digest refreshed");
@@ -5005,6 +5124,14 @@ function App() {
             onResetCredentials={resetPersonCredentials}
             onPlaceLeave={placePersonOnLeave}
             onUpdateClearance={updatePersonClearance}
+            onVerifyCredentials={verifyPersonCredentials}
+            onAssignTraining={assignPersonTraining}
+            onGrantAccess={grantPersonStationAccess}
+            onFlagIncident={flagPersonIncident}
+            onLinkTask={linkPersonTask}
+            onReviewPerson={reviewPerson}
+            onArchivePerson={archivePerson}
+            onBulkCredentialReview={bulkCredentialReviewPersonnel}
             onRefreshDigest={refreshPersonnelDigest}
             digest={personnelDigest}
           />
@@ -6937,6 +7064,14 @@ function PersonnelDirectory({
   onResetCredentials,
   onPlaceLeave,
   onUpdateClearance,
+  onVerifyCredentials,
+  onAssignTraining,
+  onGrantAccess,
+  onFlagIncident,
+  onLinkTask,
+  onReviewPerson,
+  onArchivePerson,
+  onBulkCredentialReview,
   onRefreshDigest,
   digest
 }: {
@@ -6954,6 +7089,14 @@ function PersonnelDirectory({
   onResetCredentials: (id: string) => void;
   onPlaceLeave: (id: string) => void;
   onUpdateClearance: (id: string) => void;
+  onVerifyCredentials: (id: string) => void;
+  onAssignTraining: (id: string) => void;
+  onGrantAccess: (id: string) => void;
+  onFlagIncident: (id: string) => void;
+  onLinkTask: (id: string) => void;
+  onReviewPerson: (id: string) => void;
+  onArchivePerson: (id: string) => void;
+  onBulkCredentialReview: (ids: string[]) => void;
   onRefreshDigest: () => void;
   digest: PersonnelDigest | null;
 }) {
@@ -6970,11 +7113,22 @@ function PersonnelDirectory({
   }, [station.level]);
 
   const visiblePersonnel = React.useMemo(() => (
-    statusFilter === "All statuses" ? personnel : personnel.filter((person) => person.status === statusFilter)
+    personnel.filter((person) => (
+      !person.archived
+      && (statusFilter === "All statuses" || person.status === statusFilter)
+    ))
   ), [personnel, statusFilter]);
-  const activeCount = personnel.filter((person) => person.status === "Active").length;
-  const transferPendingCount = personnel.filter((person) => person.status === "Transfer Pending").length;
-  const assignedCount = personnel.filter((person) => person.status === "Assigned").length;
+  const activePersonnel = personnel.filter((person) => !person.archived);
+  const activeCount = activePersonnel.filter((person) => person.status === "Active").length;
+  const transferPendingCount = activePersonnel.filter((person) => person.status === "Transfer Pending").length;
+  const assignedCount = activePersonnel.filter((person) => person.status === "Assigned").length;
+  const verifiedCount = activePersonnel.filter((person) => person.credentialStatus === "Verified").length;
+  const trainingCount = activePersonnel.filter((person) => person.trainingStatus).length;
+  const accessCount = activePersonnel.filter((person) => person.accessStatus === "Granted").length;
+  const incidentCount = activePersonnel.filter((person) => person.incidentFlag).length;
+  const linkedCount = activePersonnel.filter((person) => person.linkedTask).length;
+  const reviewedCount = activePersonnel.filter((person) => person.reviewStatus).length;
+  const archivedCount = personnel.filter((person) => person.archived).length;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -6999,6 +7153,13 @@ function PersonnelDirectory({
           <Insight label="Active" value={String(activeCount)} />
           <Insight label="Transfer pending" value={String(transferPendingCount)} />
           <Insight label="Assigned" value={String(assignedCount)} />
+          <Insight label="Verified" value={String(digest?.verified ?? verifiedCount)} />
+          <Insight label="Training" value={String(digest?.training ?? trainingCount)} />
+          <Insight label="Access" value={String(digest?.accessGranted ?? accessCount)} />
+          <Insight label="Incidents" value={String(digest?.incidents ?? incidentCount)} />
+          <Insight label="Linked" value={String(digest?.linked ?? linkedCount)} />
+          <Insight label="Reviewed" value={String(digest?.reviewed ?? reviewedCount)} />
+          <Insight label="Archived" value={String(digest?.archived ?? archivedCount)} />
         </div>
         <div className="archive-toolbar">
           <label>
@@ -7008,6 +7169,7 @@ function PersonnelDirectory({
             </select>
           </label>
           <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
+          <button disabled={!permissions.canExecuteTransfers || !visiblePersonnel.length} type="button" onClick={() => onBulkCredentialReview(visiblePersonnel.slice(0, 3).map((person) => person.id))}><ShieldCheck size={14} /> Bulk credential review</button>
         </div>
         {digest && (
           <div className="workflow-digest">
@@ -7025,9 +7187,22 @@ function PersonnelDirectory({
               </div>
               <h2>{person.name}</h2>
               <p>{person.currentStation} to {person.assignedStation}{person.clearance ? ` | ${person.clearance} clearance` : ""}{person.credentialStatus ? ` | ${person.credentialStatus}` : ""}</p>
+              <div className="approval-meta">
+                <small>{person.trainingStatus ? `${person.trainingStatus}: ${person.trainingTrack}` : "No training"}</small>
+                <small>{person.accessStatus ? `${person.accessStatus}: ${person.stationAccess}` : "No station access"}</small>
+                <small>{person.incidentFlag ? `${person.incidentSeverity}: ${person.incidentFlag}` : "No incident"}</small>
+                <small>{person.linkedTask ? `Task ${person.linkedTask}` : "No linked task"}</small>
+                <small>{person.reviewStatus ? `${person.reviewStatus}: ${person.reviewNote}` : "No review"}</small>
+              </div>
               <div className="action-row">
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onOnboardPerson(person.id)}><ClipboardCheck size={15} /> Onboard</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onResetCredentials(person.id)}><LockKeyhole size={15} /> Credentials</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onVerifyCredentials(person.id)}><ShieldCheck size={15} /> Verify</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onAssignTraining(person.id)}><FileCheck2 size={15} /> Training</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onGrantAccess(person.id)}><KeyRound size={15} /> Access</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onFlagIncident(person.id)}><AlertTriangle size={15} /> Incident</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkTask(person.id)}><SquareCheckBig size={15} /> Task link</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onReviewPerson(person.id)}><ClipboardCheck size={15} /> Review</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onPlaceLeave(person.id)}><TimerReset size={15} /> Leave</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onUpdateClearance(person.id)}><ShieldCheck size={15} /> Clearance</button>
                 <button onClick={() => onUpdatePersonStatus(person.id, "Assigned")}><CheckCircle2 size={15} /> Mark assigned</button>
@@ -7035,6 +7210,7 @@ function PersonnelDirectory({
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onUpdatePersonAssignment(person.id, station.level)}><RefreshCw size={15} /> Reassign</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onDeactivatePerson(person.id)}><LockKeyhole size={15} /> Deactivate</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => createTransfer(person)}><Signature size={15} /> Create transfer</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onArchivePerson(person.id)}><ArchiveIcon size={15} /> Archive</button>
               </div>
             </article>
           ))}

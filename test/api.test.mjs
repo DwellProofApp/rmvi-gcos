@@ -1349,9 +1349,67 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(clearancePerson.clearance, "Executive");
 
+    const verifiedPerson = await postJson(`/api/personnel/${personnel[0].id}/credentials/verify`, {
+      status: "Verified"
+    }, nationalToken);
+    assert.equal(verifiedPerson.credentialStatus, "Verified");
+
+    const trainedPerson = await postJson(`/api/personnel/${personnel[0].id}/training`, {
+      status: "Assigned",
+      track: "Governance onboarding"
+    }, nationalToken);
+    assert.equal(trainedPerson.trainingStatus, "Assigned");
+    assert.equal(trainedPerson.trainingTrack, "Governance onboarding");
+
+    const accessPerson = await postJson(`/api/personnel/${personnel[0].id}/access`, {
+      station: "Regional Review Desk",
+      status: "Granted"
+    }, nationalToken);
+    assert.equal(accessPerson.stationAccess, "Regional Review Desk");
+    assert.equal(accessPerson.accessStatus, "Granted");
+
+    const incidentPerson = await postJson(`/api/personnel/${personnel[0].id}/incident`, {
+      reason: "Automated personnel review required",
+      severity: "Medium"
+    }, nationalToken);
+    assert.equal(incidentPerson.incidentFlag, "Automated personnel review required");
+    assert.equal(incidentPerson.incidentSeverity, "Medium");
+
+    const taskLinkedPerson = await postJson(`/api/personnel/${personnel[0].id}/task`, {
+      taskId: "tsk-test"
+    }, nationalToken);
+    assert.equal(taskLinkedPerson.linkedTask, "tsk-test");
+
+    const reviewedPerson = await postJson(`/api/personnel/${personnel[0].id}/review`, {
+      status: "Reviewed",
+      note: "Automated personnel review"
+    }, nationalToken);
+    assert.equal(reviewedPerson.reviewStatus, "Reviewed");
+    assert.equal(reviewedPerson.reviewNote, "Automated personnel review");
+
+    const bulkCredentialReview = await postJson("/api/personnel/bulk/credential-review", {
+      ids: [createdPerson.id],
+      status: "Review required"
+    }, nationalToken);
+    assert.equal(bulkCredentialReview.count, 1);
+    assert.equal(bulkCredentialReview.updated[0].credentialStatus, "Review required");
+
+    const archivedPerson = await postJson(`/api/personnel/${createdPerson.id}/archive`, {
+      reason: "Automated personnel archive"
+    }, nationalToken);
+    assert.equal(archivedPerson.archived, true);
+    assert.equal(archivedPerson.archiveReason, "Automated personnel archive");
+
     const personnelDigest = await getJson("/api/personnel/digest");
     assert.equal(personnelDigest.nextPerson.length > 0, true);
     assert.equal(personnelDigest.transferPending >= 0, true);
+    assert.equal(personnelDigest.verified >= 1, true);
+    assert.equal(personnelDigest.training >= 1, true);
+    assert.equal(personnelDigest.accessGranted >= 1, true);
+    assert.equal(personnelDigest.incidents >= 1, true);
+    assert.equal(personnelDigest.linked >= 1, true);
+    assert.equal(personnelDigest.reviewed >= 1, true);
+    assert.equal(personnelDigest.archived >= 1, true);
 
     const escalation = await postJson("/api/escalations", {
       source: "Report",
@@ -2112,6 +2170,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "PersonCredentialsReset"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonLeavePlaced"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonClearanceUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonCredentialsVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonTrainingAssigned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonStationAccessGranted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonIncidentFlagged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonTaskLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonReviewed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonnelBulkCredentialReview"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeSupervisorUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeActivated"), true);
