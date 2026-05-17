@@ -149,6 +149,92 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateMessageRoute(id, body) {
+      const item = findById(state.messages, id);
+      item.route = body.route ?? "Current station -> Supervising authority";
+      record("EmailRouteUpdated", body.actor, item.subject, item.route);
+      return item;
+    },
+
+    updateMessagePriority(id, body) {
+      const item = findById(state.messages, id);
+      item.priority = body.priority ?? "High";
+      record("EmailPriorityUpdated", body.actor, item.subject, item.priority);
+      return item;
+    },
+
+    escalateMessage(id, body) {
+      const item = findById(state.messages, id);
+      item.status = "Escalated";
+      item.priority = "Critical";
+      record("EmailEscalated", body.actor, item.subject, body.reason ?? "Escalated from ChurchMail");
+      return item;
+    },
+
+    approveMessage(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.messages, id);
+      item.status = "Approved";
+      record("EmailApproved", body.actor, item.subject, "Governance communication approved");
+      return item;
+    },
+
+    archiveMessage(id, body) {
+      const item = findById(state.messages, id);
+      item.archived = true;
+      record("EmailArchived", body.actor, item.subject, body.reason ?? "Message archived");
+      return item;
+    },
+
+    watchMessage(id, body) {
+      const item = findById(state.messages, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
+      record("EmailWatcherAdded", body.actor, item.subject, watcher);
+      return item;
+    },
+
+    duplicateMessage(id, body) {
+      const item = findById(state.messages, id);
+      const created = message(item.kind, body.subject ?? `${item.subject} follow-up`, body.from ?? item.from, "Queued", item.files);
+      created.route = item.route;
+      created.priority = item.priority;
+      state.messages.unshift(created);
+      record("EmailDuplicated", body.actor, item.subject, created.subject);
+      return created;
+    },
+
+    bulkApproveMessages(body) {
+      requirePermission(body.actor, "canApprove");
+      const ids = body.ids?.length ? body.ids : state.messages.filter((item) => item.status !== "Approved").slice(0, 3).map((item) => item.id);
+      const updated = state.messages.filter((item) => ids.includes(item.id)).map((item) => {
+        item.status = "Approved";
+        return item;
+      });
+      record("EmailsBulkApproved", body.actor, "ChurchMail", `${updated.length} messages approved`);
+      return { count: updated.length, updated };
+    },
+
+    messageDigest() {
+      const ready = state.messages.filter((item) => item.status === "Ready");
+      const review = state.messages.filter((item) => item.status === "In Review");
+      const escalated = state.messages.filter((item) => item.status === "Escalated");
+      const approved = state.messages.filter((item) => item.status === "Approved");
+      const archived = state.messages.filter((item) => item.archived);
+      const watched = state.messages.filter((item) => item.watchers?.length);
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.messages.length,
+        ready: ready.length,
+        review: review.length,
+        escalated: escalated.length,
+        approved: approved.length,
+        archived: archived.length,
+        watched: watched.length,
+        nextMessage: escalated[0]?.subject ?? review[0]?.subject ?? ready[0]?.subject ?? state.messages[0]?.subject ?? "No messages"
+      };
+    },
+
     createReport(body) {
       const created = report(body.name, body.owner ?? body.actor, body.path, body.due ?? "Draft", body.state ?? "Ready", body.score ?? 15);
       state.reports.unshift(created);

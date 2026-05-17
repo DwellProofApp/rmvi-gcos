@@ -194,11 +194,57 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(classifiedMessage.kind, "Directive");
 
+    const routedMessage = await postJson(`/api/messages/${createdMessage.id}/route`, {
+      route: "National -> Regional -> Archive"
+    }, nationalToken);
+    assert.equal(routedMessage.route, "National -> Regional -> Archive");
+
+    const priorityMessage = await postJson(`/api/messages/${createdMessage.id}/priority`, {
+      priority: "Critical"
+    }, nationalToken);
+    assert.equal(priorityMessage.priority, "Critical");
+
+    const escalatedMessage = await postJson(`/api/messages/${createdMessage.id}/escalate`, {
+      reason: "Automated message escalation"
+    }, nationalToken);
+    assert.equal(escalatedMessage.status, "Escalated");
+    assert.equal(escalatedMessage.priority, "Critical");
+
+    const approvedMessage = await postJson(`/api/messages/${createdMessage.id}/approve`, {}, nationalToken);
+    assert.equal(approvedMessage.status, "Approved");
+
+    const archivedMessage = await postJson(`/api/messages/${createdMessage.id}/archive`, {
+      reason: "Automated message archive"
+    }, nationalToken);
+    assert.equal(archivedMessage.archived, true);
+
+    const watchedMessage = await postJson(`/api/messages/${createdMessage.id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedMessage.watchers.includes("np@rmvi.org"), true);
+
+    const duplicatedMessage = await postJson(`/api/messages/${createdMessage.id}/duplicate`, {
+      subject: "Automated duplicated ChurchMail notice"
+    }, nationalToken);
+    assert.equal(duplicatedMessage.subject, "Automated duplicated ChurchMail notice");
+    assert.equal(duplicatedMessage.status, "Queued");
+
+    const bulkApprovedMessages = await postJson("/api/messages/bulk/approve", {
+      ids: [duplicatedMessage.id]
+    }, nationalToken);
+    assert.equal(bulkApprovedMessages.count, 1);
+    assert.equal(bulkApprovedMessages.updated[0].status, "Approved");
+
+    const messageDigest = await getJson("/api/messages/digest", nationalToken);
+    assert.equal(messageDigest.total > 0, true);
+    assert.equal(messageDigest.approved >= 1, true);
+    assert.equal(messageDigest.watched >= 1, true);
+
     const snapshot = await getJson("/api/export", nationalToken);
     assert.equal(snapshot.exportedBy, "np@rmvi.org");
     assert.equal(snapshot.service, "gcos-api");
     assert.equal(snapshot.counts.messages > 0, true);
-    assert.equal(snapshot.state.messages[0].subject, "Automated API test notice");
+    assert.equal(snapshot.state.messages.some((item) => item.subject === "Automated API test notice"), true);
 
     const reports = await getJson("/api/reports");
     const invalidReport = await rawPost("/api/reports", {
@@ -978,7 +1024,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(sync.synced, 1);
 
     const persisted = JSON.parse(await readFile(dataPath, "utf8"));
-    assert.equal(persisted.messages[0].subject, "Automated API test notice");
+    assert.equal(persisted.messages.some((item) => item.subject === "Automated API test notice"), true);
+    assert.equal(persisted.messages.some((item) => item.subject === "Automated duplicated ChurchMail notice"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfflineActionTest"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SessionRenewed"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SessionFlagged"), true);
@@ -990,6 +1037,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "CommandEscalationOpened"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EmailClassified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EmailStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailRouteUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailPriorityUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailEscalated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailApproved"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailDuplicated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailsBulkApproved"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportScoreUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportDueUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportsBulkSubmitted"), true);
@@ -1078,7 +1133,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     api = await startApi(dataPath, webDistPath);
 
     const messagesAfterRestart = await getJson("/api/messages");
-    assert.equal(messagesAfterRestart[0].subject, "Automated API test notice");
+    assert.equal(messagesAfterRestart.some((item) => item.subject === "Automated API test notice"), true);
+    assert.equal(messagesAfterRestart.some((item) => item.subject === "Automated duplicated ChurchMail notice"), true);
 
     const reportsAfterRestart = await getJson("/api/reports");
     assert.equal(reportsAfterRestart.some((item) => item.name === "Automated mission finance report"), true);

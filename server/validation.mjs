@@ -75,6 +75,35 @@ const validators = {
     if (body.status !== undefined) requireEnum(body.status, statuses, "status");
   },
 
+  "POST /api/messages/:id/route": (body) => {
+    if (body.route !== undefined) requireString(body.route, "route");
+  },
+
+  "POST /api/messages/:id/priority": (body) => {
+    if (body.priority !== undefined) requireEnum(body.priority, ["Low", "Medium", "High", "Critical"], "priority");
+  },
+
+  "POST /api/messages/:id/escalate": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/messages/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/messages/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/messages/:id/duplicate": (body) => {
+    if (body.subject !== undefined) requireString(body.subject, "subject");
+    if (body.from !== undefined) requireString(body.from, "from");
+  },
+
+  "POST /api/messages/bulk/approve": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
   "POST /api/reports": (body) => {
     requireString(body.name, "name");
     requireString(body.path, "path");

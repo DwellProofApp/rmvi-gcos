@@ -57,7 +57,7 @@ type Section = "Control Center" | "ChurchMail" | "Reports" | "Approvals" | "Task
 type MessageKind = "Directive" | "Report" | "Approval" | "Notification" | "Transfer";
 type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
 type StationCard = { email: string; title: string; level: StationLevel | string; authority: string; icon: React.ElementType };
-type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string };
+type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[] };
 type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number };
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string };
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[] };
@@ -240,6 +240,17 @@ type CalendarDigest = {
   watched: number;
   nextEvent: string;
   owner: string;
+};
+type MessageDigest = {
+  generatedAt: string;
+  total: number;
+  ready: number;
+  review: number;
+  escalated: number;
+  approved: number;
+  archived: number;
+  watched: number;
+  nextMessage: string;
 };
 type CommandBriefing = {
   title: string;
@@ -647,6 +658,7 @@ function App() {
   const [taskDigest, setTaskDigest] = React.useState<TaskDigest | null>(null);
   const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
   const [calendarDigest, setCalendarDigest] = React.useState<CalendarDigest | null>(null);
+  const [messageDigest, setMessageDigest] = React.useState<MessageDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -849,6 +861,7 @@ function App() {
       void apiRequest<TaskDigest>("/api/tasks/digest").then(setTaskDigest).catch(() => undefined);
       void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
       void apiRequest<CalendarDigest>("/api/calendar-events/digest").then(setCalendarDigest).catch(() => undefined);
+      void apiRequest<MessageDigest>("/api/messages/digest").then(setMessageDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1063,6 +1076,125 @@ function App() {
         body: JSON.stringify({ kind })
       }).then(refreshFromApi).catch(() => undefined);
     }
+  }
+
+  function updateMessageRoute(id: string) {
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    const route = `${activeStation.level} -> Supervising authority -> Archive vault`;
+    setMessages((items) => items.map((item) => item.id === id ? { ...item, route } : item));
+    recordAudit("EmailRouteUpdated", message.subject, route);
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/messages/${id}/route`, {
+        method: "POST",
+        body: JSON.stringify({ route })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateMessagePriority(id: string) {
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    const priority = message.priority === "Critical" ? "High" : "Critical";
+    setMessages((items) => items.map((item) => item.id === id ? { ...item, priority } : item));
+    recordAudit("EmailPriorityUpdated", message.subject, priority);
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/messages/${id}/priority`, {
+        method: "POST",
+        body: JSON.stringify({ priority })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function escalateMessage(id: string) {
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    setMessages((items) => items.map((item) => item.id === id ? { ...item, status: "Escalated", priority: "Critical" } : item));
+    recordAudit("EmailEscalated", message.subject, "Escalated from ChurchMail");
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/messages/${id}/escalate`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Escalated from ChurchMail" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function approveMessage(id: string) {
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    setMessages((items) => items.map((item) => item.id === id ? { ...item, status: "Approved" } : item));
+    recordAudit("EmailApproved", message.subject, "Governance communication approved");
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/messages/${id}/approve`, {
+        method: "POST",
+        body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveMessage(id: string) {
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    setMessages((items) => items.map((item) => item.id === id ? { ...item, archived: true } : item));
+    recordAudit("EmailArchived", message.subject, "Message archived");
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/messages/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Archived from ChurchMail" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchMessage(id: string) {
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    setMessages((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("EmailWatcherAdded", message.subject, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/messages/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function duplicateMessage(id: string) {
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    const duplicate: Message = { ...message, id: `msg-${Date.now()}`, subject: `${message.subject} follow-up`, status: "Queued", age: "now" };
+    setMessages((items) => [duplicate, ...items]);
+    recordAudit("EmailDuplicated", message.subject, duplicate.subject);
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/messages/${id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ subject: duplicate.subject, from: message.from })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkApproveMessages(ids: string[]) {
+    const targetIds = ids.length ? ids : messages.filter((message) => message.status !== "Approved").slice(0, 3).map((message) => message.id);
+    setMessages((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, status: "Approved" } : item));
+    recordAudit("EmailsBulkApproved", "ChurchMail", `${targetIds.length} messages approved`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: Message[] }>("/api/messages/bulk/approve", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshMessageDigest() {
+    if (offlineMode) {
+      recordAudit("MessageDigestRefreshed", "ChurchMail digest", "Local message digest refreshed");
+      return;
+    }
+    void apiRequest<MessageDigest>("/api/messages/digest")
+      .then((digest) => {
+        setMessageDigest(digest);
+        recordAudit("MessageDigestRefreshed", "ChurchMail digest", `${digest.ready} ready, ${digest.escalated} escalated`);
+      })
+      .catch(() => undefined);
   }
 
   function createReportFromMessage(id: string) {
@@ -3046,6 +3178,16 @@ function App() {
             onRequestApproval={requestApprovalFromMessage}
             onArchiveAttachments={archiveMessageAttachments}
             onSendMessage={sendChurchMail}
+            onUpdateRoute={updateMessageRoute}
+            onUpdatePriority={updateMessagePriority}
+            onEscalateMessage={escalateMessage}
+            onApproveMessage={approveMessage}
+            onArchiveMessage={archiveMessage}
+            onWatchMessage={watchMessage}
+            onDuplicateMessage={duplicateMessage}
+            onBulkApprove={bulkApproveMessages}
+            onRefreshDigest={refreshMessageDigest}
+            digest={messageDigest}
           />
         )}
         {activeSection === "Reports" && (
@@ -3743,7 +3885,17 @@ function ChurchMail({
   onCreateReport,
   onRequestApproval,
   onArchiveAttachments,
-  onSendMessage
+  onSendMessage,
+  onUpdateRoute,
+  onUpdatePriority,
+  onEscalateMessage,
+  onApproveMessage,
+  onArchiveMessage,
+  onWatchMessage,
+  onDuplicateMessage,
+  onBulkApprove,
+  onRefreshDigest,
+  digest
 }: {
   messages: Message[];
   events: string[];
@@ -3756,6 +3908,16 @@ function ChurchMail({
   onRequestApproval: (id: string) => void;
   onArchiveAttachments: (id: string) => void;
   onSendMessage: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string }) => void;
+  onUpdateRoute: (id: string) => void;
+  onUpdatePriority: (id: string) => void;
+  onEscalateMessage: (id: string) => void;
+  onApproveMessage: (id: string) => void;
+  onArchiveMessage: (id: string) => void;
+  onWatchMessage: (id: string) => void;
+  onDuplicateMessage: (id: string) => void;
+  onBulkApprove: (ids: string[]) => void;
+  onRefreshDigest: () => void;
+  digest: MessageDigest | null;
 }) {
   const [selectedId, setSelectedId] = React.useState(messages[0]?.id ?? "");
   const [composeKind, setComposeKind] = React.useState<MessageKind>("Directive");
@@ -3770,6 +3932,10 @@ function ChurchMail({
     && (statusFilter === "All statuses" || message.status === statusFilter)
   )), [kindFilter, messages, statusFilter]);
   const selected = visibleMessages.find((message) => message.id === selectedId) ?? visibleMessages[0] ?? messages[0];
+  const readyCount = messages.filter((message) => message.status === "Ready").length;
+  const reviewCount = messages.filter((message) => message.status === "In Review").length;
+  const escalatedCount = messages.filter((message) => message.status === "Escalated").length;
+  const watchedCount = messages.filter((message) => message.watchers?.length).length;
 
   function submitMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3787,6 +3953,14 @@ function ChurchMail({
     <section className="module-grid">
       <div className="panel module-primary">
         <PanelHeader icon={Mail} title="ChurchMail Governance Inbox" action="Classified routing" />
+        <div className="office-summary-grid">
+          <Insight label="Ready" value={String(digest?.ready ?? readyCount)} />
+          <Insight label="Review" value={String(digest?.review ?? reviewCount)} />
+          <Insight label="Escalated" value={String(digest?.escalated ?? escalatedCount)} />
+          <Insight label="Archived" value={String(digest?.archived ?? messages.filter((message) => message.archived).length)} />
+          <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Next message" value={digest?.nextMessage ?? selected?.subject ?? "None"} />
+        </div>
         <div className="archive-toolbar">
           <label>
             <span>Classification</span>
@@ -3800,6 +3974,8 @@ function ChurchMail({
               {["All statuses", "Ready", "In Review", "Escalated", "Approved", "Queued"].map((status) => <option key={status} value={status}>{status}</option>)}
             </select>
           </label>
+          <button onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
+          <button disabled={!visibleMessages.length} onClick={() => onBulkApprove(visibleMessages.slice(0, 3).map((message) => message.id))}><CheckCircle2 size={15} /> Bulk approve</button>
         </div>
         <div className="mail-layout">
           <div className="message-list">
@@ -3822,12 +3998,24 @@ function ChurchMail({
               <p>{selected.from} sent an official {selected.kind.toLowerCase()} with attached governance records: {selected.files}.</p>
               <div className="route-box">
                 <strong>Routing chain</strong>
-                <span>{"Origin station -> Current station -> Supervising authority -> Archive vault"}</span>
+                <span>{selected.route ?? "Origin station -> Current station -> Supervising authority -> Archive vault"}</span>
+              </div>
+              <div className="approval-meta">
+                <small>{selected.priority ?? "Medium"} priority</small>
+                <small>{selected.watchers?.length ?? 0} watchers</small>
+                <small>{selected.archived ? "Archived" : "Live record"}</small>
               </div>
               <div className="action-row">
                 <button onClick={() => onUpdateStatus(selected.id, "In Review")}><FileClock size={15} /> Review</button>
                 <button onClick={() => onClassify(selected.id, selected.kind === "Directive" ? "Notification" : "Directive")}><SlidersHorizontal size={15} /> Classify</button>
                 <button onClick={() => onAcknowledge(selected.id)}><Send size={15} /> Acknowledge</button>
+                <button onClick={() => onApproveMessage(selected.id)}><CheckCircle2 size={15} /> Approve</button>
+                <button onClick={() => onEscalateMessage(selected.id)}><AlertTriangle size={15} /> Escalate</button>
+                <button onClick={() => onUpdateRoute(selected.id)}><Workflow size={15} /> Route</button>
+                <button onClick={() => onUpdatePriority(selected.id)}><TimerReset size={15} /> Priority</button>
+                <button onClick={() => onWatchMessage(selected.id)}><Bell size={15} /> Watch</button>
+                <button onClick={() => onDuplicateMessage(selected.id)}><Files size={15} /> Duplicate</button>
+                <button onClick={() => onArchiveMessage(selected.id)}><LockKeyhole size={15} /> Archive</button>
                 <button onClick={() => onCreateReport(selected.id)}><FileCheck2 size={15} /> Create report</button>
                 <button onClick={() => onRequestApproval(selected.id)}><Signature size={15} /> Request approval</button>
                 <button onClick={() => onArchiveAttachments(selected.id)}><Files size={15} /> Vault</button>
