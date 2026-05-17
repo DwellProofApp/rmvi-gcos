@@ -481,6 +481,31 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(deactivatedPerson.status, "Inactive");
 
+    const onboardedPerson = await postJson(`/api/personnel/${createdPerson.id}/onboard`, {
+      reason: "Automated onboarding test"
+    }, nationalToken);
+    assert.equal(onboardedPerson.status, "Onboarding");
+    assert.equal(onboardedPerson.credentialStatus, "Provisioning");
+
+    const credentialPerson = await postJson(`/api/personnel/${createdPerson.id}/credentials/reset`, {
+      reason: "Automated credential reset test"
+    }, nationalToken);
+    assert.equal(credentialPerson.credentialStatus, "Reset required");
+
+    const leavePerson = await postJson(`/api/personnel/${createdPerson.id}/leave`, {
+      reason: "Automated leave test"
+    }, nationalToken);
+    assert.equal(leavePerson.status, "On Leave");
+
+    const clearancePerson = await postJson(`/api/personnel/${createdPerson.id}/clearance`, {
+      clearance: "Executive"
+    }, nationalToken);
+    assert.equal(clearancePerson.clearance, "Executive");
+
+    const personnelDigest = await getJson("/api/personnel/digest");
+    assert.equal(personnelDigest.nextPerson.length > 0, true);
+    assert.equal(personnelDigest.transferPending >= 0, true);
+
     const escalation = await postJson("/api/escalations", {
       source: "Report",
       item: "Automated escalation test",
@@ -796,6 +821,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "PersonStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonAssignmentUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonRoleUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonOnboardingStarted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonCredentialsReset"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonLeavePlaced"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonClearanceUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeSupervisorUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationOwnerUpdated"), true);

@@ -298,6 +298,55 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    onboardPerson(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.status = "Onboarding";
+      item.credentialStatus = "Provisioning";
+      record("PersonOnboardingStarted", body.actor, item.name, body.reason ?? "Onboarding started");
+      return item;
+    },
+
+    resetPersonCredentials(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.credentialStatus = "Reset required";
+      record("PersonCredentialsReset", body.actor, item.name, body.reason ?? "Credential reset requested");
+      return item;
+    },
+
+    placePersonOnLeave(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.status = "On Leave";
+      record("PersonLeavePlaced", body.actor, item.name, body.reason ?? "Leave recorded");
+      return item;
+    },
+
+    updatePersonClearance(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.clearance = body.clearance ?? "Station";
+      record("PersonClearanceUpdated", body.actor, item.name, item.clearance);
+      return item;
+    },
+
+    personnelDigest() {
+      const active = state.personnel.filter((item) => item.status === "Active" || item.status === "Assigned");
+      const transferPending = state.personnel.filter((item) => item.status === "Transfer Pending");
+      const onboarding = state.personnel.filter((item) => item.status === "Onboarding");
+      const inactive = state.personnel.filter((item) => item.status === "Inactive" || item.status === "On Leave");
+      return {
+        generatedAt: new Date().toISOString(),
+        active: active.length,
+        transferPending: transferPending.length,
+        onboarding: onboarding.length,
+        inactive: inactive.length,
+        primaryStation: transferPending[0]?.assignedStation ?? active[0]?.assignedStation ?? "No active station",
+        nextPerson: transferPending[0]?.name ?? onboarding[0]?.name ?? active[0]?.name ?? "No personnel record"
+      };
+    },
+
     submitReport(id, body) {
       const item = findById(state.reports, id);
       item.state = "Approved";

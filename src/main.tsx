@@ -63,7 +63,7 @@ type Approval = { id: string; request: string; route: string; limit: string; sta
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete" };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete" };
-type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" };
+type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string };
 type OfflineAction = AuditRow & { queuedAt: string };
@@ -173,6 +173,15 @@ type EscalationDigest = {
   resolved: number;
   primary: string;
   owner: string;
+};
+type PersonnelDigest = {
+  generatedAt: string;
+  active: number;
+  transferPending: number;
+  onboarding: number;
+  inactive: number;
+  primaryStation: string;
+  nextPerson: string;
 };
 type CommandBriefing = {
   title: string;
@@ -573,6 +582,7 @@ function App() {
   const [archiveManifest, setArchiveManifest] = React.useState<ArchiveManifest | null>(null);
   const [workflowDigest, setWorkflowDigest] = React.useState<WorkflowDigest | null>(null);
   const [escalationDigest, setEscalationDigest] = React.useState<EscalationDigest | null>(null);
+  const [personnelDigest, setPersonnelDigest] = React.useState<PersonnelDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -768,6 +778,7 @@ function App() {
       void apiRequest<ArchiveManifest>("/api/archive/manifest").then(setArchiveManifest).catch(() => undefined);
       void apiRequest<WorkflowDigest>("/api/workflows/digest").then(setWorkflowDigest).catch(() => undefined);
       void apiRequest<EscalationDigest>("/api/escalations/digest").then(setEscalationDigest).catch(() => undefined);
+      void apiRequest<PersonnelDigest>("/api/personnel/digest").then(setPersonnelDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1293,6 +1304,72 @@ function App() {
         body: JSON.stringify({ reason: "Deactivated from personnel directory" })
       }).then(refreshFromApi).catch(() => undefined);
     }
+  }
+
+  function onboardPerson(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, status: "Onboarding", credentialStatus: "Provisioning" } : item));
+    recordAudit("PersonOnboardingStarted", person.name, "Onboarding started");
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/onboard`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Onboarding from personnel directory" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function resetPersonCredentials(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, credentialStatus: "Reset required" } : item));
+    recordAudit("PersonCredentialsReset", person.name, "Credential reset requested");
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/credentials/reset`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Reset from personnel directory" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function placePersonOnLeave(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, status: "On Leave" } : item));
+    recordAudit("PersonLeavePlaced", person.name, "Leave recorded");
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/leave`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Leave from personnel directory" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updatePersonClearance(id: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    const clearance = person.clearance === "Executive" ? "Station" : "Executive";
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, clearance } : item));
+    recordAudit("PersonClearanceUpdated", person.name, clearance);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/clearance`, {
+        method: "POST",
+        body: JSON.stringify({ clearance })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshPersonnelDigest() {
+    if (offlineMode) {
+      recordAudit("PersonnelDigestRefreshed", "Personnel digest", "Local personnel digest refreshed");
+      return;
+    }
+    void apiRequest<PersonnelDigest>("/api/personnel/digest")
+      .then((digest) => {
+        setPersonnelDigest(digest);
+        recordAudit("PersonnelDigestRefreshed", "Personnel digest", `${digest.active} active, ${digest.transferPending} transfer pending`);
+      })
+      .catch(() => undefined);
   }
 
   function archiveMessageAttachments(id: string) {
@@ -2491,6 +2568,12 @@ function App() {
             onUpdatePersonRole={updatePersonRole}
             onDeactivatePerson={deactivatePerson}
             onCreateTransfer={createTransferRequest}
+            onOnboardPerson={onboardPerson}
+            onResetCredentials={resetPersonCredentials}
+            onPlaceLeave={placePersonOnLeave}
+            onUpdateClearance={updatePersonClearance}
+            onRefreshDigest={refreshPersonnelDigest}
+            digest={personnelDigest}
           />
         )}
         {activeSection === "Escalations" && (
@@ -3925,7 +4008,13 @@ function PersonnelDirectory({
   onUpdatePersonAssignment,
   onUpdatePersonRole,
   onDeactivatePerson,
-  onCreateTransfer
+  onCreateTransfer,
+  onOnboardPerson,
+  onResetCredentials,
+  onPlaceLeave,
+  onUpdateClearance,
+  onRefreshDigest,
+  digest
 }: {
   personnel: PersonRecord[];
   station: StationCard;
@@ -3937,6 +4026,12 @@ function PersonnelDirectory({
   onUpdatePersonRole: (id: string, role: string) => void;
   onDeactivatePerson: (id: string) => void;
   onCreateTransfer: (transfer: Omit<Transfer, "id" | "step" | "risk">) => void;
+  onOnboardPerson: (id: string) => void;
+  onResetCredentials: (id: string) => void;
+  onPlaceLeave: (id: string) => void;
+  onUpdateClearance: (id: string) => void;
+  onRefreshDigest: () => void;
+  digest: PersonnelDigest | null;
 }) {
   const [name, setName] = React.useState("Rev. Grace Walker");
   const [role, setRole] = React.useState("Area Coordinator");
@@ -3985,10 +4080,18 @@ function PersonnelDirectory({
           <label>
             <span>Status</span>
             <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as PersonRecord["status"] | "All statuses")}>
-              {["All statuses", "Active", "Transfer Pending", "Assigned", "Inactive"].map((option) => <option key={option} value={option}>{option}</option>)}
+              {["All statuses", "Active", "Transfer Pending", "Assigned", "Onboarding", "On Leave", "Inactive"].map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
         </div>
+        {digest && (
+          <div className="workflow-digest">
+            <Insight label="Active" value={String(digest.active)} />
+            <Insight label="Transfer pending" value={String(digest.transferPending)} />
+            <Insight label="Next person" value={digest.nextPerson} />
+          </div>
+        )}
         <div className="personnel-list">
           {visiblePersonnel.map((person) => (
             <article className="personnel-card" key={person.id}>
@@ -3997,8 +4100,12 @@ function PersonnelDirectory({
                 <span>{person.role}</span>
               </div>
               <h2>{person.name}</h2>
-              <p>{person.currentStation} to {person.assignedStation}</p>
+              <p>{person.currentStation} to {person.assignedStation}{person.clearance ? ` | ${person.clearance} clearance` : ""}{person.credentialStatus ? ` | ${person.credentialStatus}` : ""}</p>
               <div className="action-row">
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onOnboardPerson(person.id)}><ClipboardCheck size={15} /> Onboard</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onResetCredentials(person.id)}><LockKeyhole size={15} /> Credentials</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onPlaceLeave(person.id)}><TimerReset size={15} /> Leave</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onUpdateClearance(person.id)}><ShieldCheck size={15} /> Clearance</button>
                 <button onClick={() => onUpdatePersonStatus(person.id, "Assigned")}><CheckCircle2 size={15} /> Mark assigned</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onUpdatePersonRole(person.id, person.role === "Governance Liaison" ? "Area Coordinator" : "Governance Liaison")}><Users size={15} /> Role</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onUpdatePersonAssignment(person.id, station.level)}><RefreshCw size={15} /> Reassign</button>
@@ -4038,7 +4145,7 @@ function PersonnelDirectory({
           <label>
             <span>Status</span>
             <select value={status} onChange={(event) => setStatus(event.target.value as PersonRecord["status"])}>
-              {["Active", "Transfer Pending", "Assigned", "Inactive"].map((option) => <option key={option} value={option}>{option}</option>)}
+              {["Active", "Transfer Pending", "Assigned", "Onboarding", "On Leave", "Inactive"].map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
           {feedback && <div className="compose-feedback">{feedback}</div>}

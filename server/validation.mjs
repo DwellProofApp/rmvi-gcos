@@ -18,7 +18,7 @@ const taskStatuses = ["Queued", "In Progress", "Blocked", "Complete"];
 const policyStatuses = ["Draft", "Active", "Review", "Retired"];
 const calendarPriorities = ["Low", "Medium", "High", "Critical"];
 const calendarStatuses = ["Scheduled", "At Risk", "Complete"];
-const personnelStatuses = ["Active", "Transfer Pending", "Assigned", "Inactive"];
+const personnelStatuses = ["Active", "Transfer Pending", "Assigned", "Inactive", "Onboarding", "On Leave"];
 const officeStatuses = ["Provisioned", "Suspended", "Active"];
 
 const validators = {
@@ -204,6 +204,22 @@ const validators = {
 
   "POST /api/personnel/:id/deactivate": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/personnel/:id/onboard": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/personnel/:id/credentials/reset": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/personnel/:id/leave": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/personnel/:id/clearance": (body) => {
+    if (body.clearance !== undefined) requireString(body.clearance, "clearance");
   },
 
   "POST /api/escalations": (body) => {
