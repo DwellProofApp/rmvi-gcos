@@ -114,6 +114,13 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateTaskAssignee(id, body) {
+      const item = findById(state.tasks, id);
+      item.assignee = body.assignee ?? body.actor ?? item.assignee;
+      record("TaskAssigneeUpdated", body.actor, item.title, item.assignee);
+      return item;
+    },
+
     updateTaskPriority(id, body) {
       const item = findById(state.tasks, id);
       item.priority = body.priority ?? "High";
@@ -166,6 +173,13 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateCalendarEventDate(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.date = body.date ?? item.date;
+      record("CalendarDateUpdated", body.actor, item.title, item.date);
+      return item;
+    },
+
     updateCalendarEventPriority(id, body) {
       const item = findById(state.calendarEvents, id);
       item.priority = body.priority ?? "High";
@@ -195,6 +209,14 @@ export function createServices({ state, record, requirePermission, findById }) {
       if (body.assignedStation) item.assignedStation = body.assignedStation;
       if (body.status) item.status = body.status;
       record("PersonAssignmentUpdated", body.actor, item.name, `${item.currentStation} -> ${item.assignedStation}`);
+      return item;
+    },
+
+    updatePersonRole(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      item.role = body.role ?? item.role;
+      record("PersonRoleUpdated", body.actor, item.name, item.role);
       return item;
     },
 
@@ -229,6 +251,13 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateReportDue(id, body) {
+      const item = findById(state.reports, id);
+      item.due = body.due ?? "This week";
+      record("ReportDueUpdated", body.actor, item.name, item.due);
+      return item;
+    },
+
     updateReportScore(id, body) {
       const item = findById(state.reports, id);
       item.score = Math.max(0, Math.min(100, body.score ?? item.score));
@@ -243,6 +272,15 @@ export function createServices({ state, record, requirePermission, findById }) {
       item.state = "Approved";
       item.signatures = "complete";
       record("ApprovalGranted", body.actor, item.request, "Execution authorized");
+      return item;
+    },
+
+    updateApprovalRoute(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.route = body.route ?? item.route;
+      item.state = body.state ?? item.state;
+      record("ApprovalRouteUpdated", body.actor, item.request, item.route);
       return item;
     },
 

@@ -1043,6 +1043,19 @@ function App() {
     }
   }
 
+  function updateTaskAssignee(id: string, assignee: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, assignee } : item));
+    recordAudit("TaskAssigneeUpdated", task.title, assignee);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/assignee`, {
+        method: "POST",
+        body: JSON.stringify({ assignee })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function createPolicy(draft: Omit<Policy, "id" | "acknowledgements">) {
     const policy: Policy = {
       ...draft,
@@ -1126,6 +1139,19 @@ function App() {
     }
   }
 
+  function updateCalendarEventDate(id: string, date: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, date } : item));
+    recordAudit("CalendarDateUpdated", event.title, date);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/date`, {
+        method: "POST",
+        body: JSON.stringify({ date })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function updateCalendarEventPriority(id: string, priority: CalendarEvent["priority"]) {
     const event = calendarEvents.find((item) => item.id === id);
     if (!event) return;
@@ -1189,6 +1215,19 @@ function App() {
       void apiRequest<PersonRecord>(`/api/personnel/${id}/assignment`, {
         method: "POST",
         body: JSON.stringify({ assignedStation, status: "Transfer Pending" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updatePersonRole(id: string, role: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, role } : item));
+    recordAudit("PersonRoleUpdated", person.name, role);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/role`, {
+        method: "POST",
+        body: JSON.stringify({ role })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1282,6 +1321,19 @@ function App() {
     }
   }
 
+  function updateReportDue(id: string, due: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, due } : item));
+    recordAudit("ReportDueUpdated", report.name, due);
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/due`, {
+        method: "POST",
+        body: JSON.stringify({ due })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function archiveReportEvidence(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
@@ -1363,6 +1415,19 @@ function App() {
       void apiRequest<Approval>(`/api/approvals/${id}/sign`, {
         method: "POST",
         body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateApprovalRoute(id: string, route: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    setApprovals((items) => items.map((item) => item.id === id ? { ...item, route, state: "Validation" } : item));
+    recordAudit("ApprovalRouteUpdated", approval.request, route);
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/route`, {
+        method: "POST",
+        body: JSON.stringify({ route, state: "Validation" })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1882,6 +1947,7 @@ function App() {
             onCreateReport={createReportDraft}
             onSubmitReport={submitReport}
             onRequestCorrection={requestReportCorrection}
+            onUpdateDue={updateReportDue}
             onUpdateScore={updateReportScore}
             onEscalateReport={triggerEscalation}
             onArchiveEvidence={archiveReportEvidence}
@@ -1894,6 +1960,7 @@ function App() {
             permissions={permissions}
             onCreateApproval={createApprovalRequest}
             onApprove={approveRequest}
+            onUpdateRoute={updateApprovalRoute}
             onSign={signApproval}
             onReject={rejectApproval}
             onEscalateApproval={triggerEscalation}
@@ -1906,6 +1973,7 @@ function App() {
             offlineMode={offlineMode}
             onCreateTask={createTask}
             onAdvanceTask={advanceTask}
+            onUpdateTaskAssignee={updateTaskAssignee}
             onUpdateTaskPriority={updateTaskPriority}
             onEscalateTask={triggerEscalation}
           />
@@ -1929,6 +1997,7 @@ function App() {
             offlineMode={offlineMode}
             onCreateCalendarEvent={createCalendarEvent}
             onCompleteCalendarEvent={completeCalendarEvent}
+            onUpdateCalendarEventDate={updateCalendarEventDate}
             onUpdateCalendarEventPriority={updateCalendarEventPriority}
             onMarkCalendarEventAtRisk={markCalendarEventAtRisk}
             onEscalateCalendarEvent={triggerEscalation}
@@ -1943,6 +2012,7 @@ function App() {
             onCreatePerson={createPerson}
             onUpdatePersonStatus={updatePersonStatus}
             onUpdatePersonAssignment={updatePersonAssignment}
+            onUpdatePersonRole={updatePersonRole}
             onDeactivatePerson={deactivatePerson}
             onCreateTransfer={createTransferRequest}
           />
@@ -2533,6 +2603,7 @@ function Reports({
   onCreateReport,
   onSubmitReport,
   onRequestCorrection,
+  onUpdateDue,
   onUpdateScore,
   onEscalateReport,
   onArchiveEvidence
@@ -2542,6 +2613,7 @@ function Reports({
   onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => void;
   onSubmitReport: (id: string) => void;
   onRequestCorrection: (id: string) => void;
+  onUpdateDue: (id: string, due: string) => void;
   onUpdateScore: (id: string, score: number) => void;
   onEscalateReport: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
   onArchiveEvidence: (id: string) => void;
@@ -2595,6 +2667,7 @@ function Reports({
                 <StatusPill status={report.state} />
                 <button aria-label={`Submit ${report.name}`} onClick={() => onSubmitReport(report.id)}><Send size={14} /> Submit</button>
                 <button aria-label={`Request correction for ${report.name}`} onClick={() => onRequestCorrection(report.id)}><FileClock size={14} /> Correct</button>
+                <button aria-label={`Update due status for ${report.name}`} onClick={() => onUpdateDue(report.id, report.due === "Overdue" ? "This week" : "Overdue")}><TimerReset size={14} /> Due</button>
                 <button aria-label={`Raise score for ${report.name}`} onClick={() => onUpdateScore(report.id, report.score + 15)}><CheckCircle2 size={14} /> Score</button>
                 <button aria-label={`Vault evidence for ${report.name}`} onClick={() => onArchiveEvidence(report.id)}><Files size={14} /> Vault</button>
                 <button
@@ -2657,6 +2730,7 @@ function Approvals({
   permissions,
   onCreateApproval,
   onApprove,
+  onUpdateRoute,
   onSign,
   onReject,
   onEscalateApproval
@@ -2666,6 +2740,7 @@ function Approvals({
   permissions: Permissions;
   onCreateApproval: (draft: Omit<Approval, "id" | "state" | "signatures">) => void;
   onApprove: (id: string) => void;
+  onUpdateRoute: (id: string, route: string) => void;
   onSign: (id: string) => void;
   onReject: (id: string) => void;
   onEscalateApproval: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
@@ -2722,6 +2797,13 @@ function Approvals({
                   <Signature size={15} /> Sign
                 </button>
                 <button
+                  aria-label={`Route ${approval.request}`}
+                  disabled={!permissions.canApprove}
+                  onClick={() => onUpdateRoute(approval.id, `${station.level} -> Executive Review`)}
+                >
+                  <GitBranch size={15} /> Route
+                </button>
+                <button
                   aria-label={`Reject ${approval.request}`}
                   disabled={!permissions.canApprove}
                   onClick={() => onReject(approval.id)}
@@ -2774,6 +2856,7 @@ function Tasks({
   offlineMode,
   onCreateTask,
   onAdvanceTask,
+  onUpdateTaskAssignee,
   onUpdateTaskPriority,
   onEscalateTask
 }: {
@@ -2782,6 +2865,7 @@ function Tasks({
   offlineMode: boolean;
   onCreateTask: (task: Omit<GovernanceTask, "id" | "status">) => void;
   onAdvanceTask: (id: string, status: GovernanceTask["status"]) => void;
+  onUpdateTaskAssignee: (id: string, assignee: string) => void;
   onUpdateTaskPriority: (id: string, priority: GovernanceTask["priority"]) => void;
   onEscalateTask: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
 }) {
@@ -2851,6 +2935,7 @@ function Tasks({
               <div className="action-row">
                 <button onClick={() => onAdvanceTask(task.id, "In Progress")}><TimerReset size={15} /> Start</button>
                 <button onClick={() => onAdvanceTask(task.id, "Complete")}><CheckCircle2 size={15} /> Complete</button>
+                <button onClick={() => onUpdateTaskAssignee(task.id, station.email)}><Users size={15} /> Assign</button>
                 <button onClick={() => onUpdateTaskPriority(task.id, task.priority === "Critical" ? "High" : "Critical")}><AlertTriangle size={15} /> Priority</button>
                 <button onClick={() => onEscalateTask("Task", task.title, `${task.due} task is ${task.status.toLowerCase()}`, task.owner, task.priority === "Critical" ? "Critical" : "High")}>
                   <AlertTriangle size={15} /> Escalate
@@ -3057,6 +3142,7 @@ function GovernanceCalendar({
   offlineMode,
   onCreateCalendarEvent,
   onCompleteCalendarEvent,
+  onUpdateCalendarEventDate,
   onUpdateCalendarEventPriority,
   onMarkCalendarEventAtRisk,
   onEscalateCalendarEvent
@@ -3066,6 +3152,7 @@ function GovernanceCalendar({
   offlineMode: boolean;
   onCreateCalendarEvent: (event: Omit<CalendarEvent, "id">) => void;
   onCompleteCalendarEvent: (id: string) => void;
+  onUpdateCalendarEventDate: (id: string, date: string) => void;
   onUpdateCalendarEventPriority: (id: string, priority: CalendarEvent["priority"]) => void;
   onMarkCalendarEventAtRisk: (id: string) => void;
   onEscalateCalendarEvent: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
@@ -3136,6 +3223,7 @@ function GovernanceCalendar({
               <p>{event.category} owned by {event.owner}. Date: {event.date}.</p>
               <div className="action-row">
                 <button onClick={() => onCompleteCalendarEvent(event.id)}><CheckCircle2 size={15} /> Complete</button>
+                <button onClick={() => onUpdateCalendarEventDate(event.id, event.date === "2026-05-24" ? "2026-05-31" : "2026-05-24")}><CalendarDays size={15} /> Date</button>
                 <button onClick={() => onUpdateCalendarEventPriority(event.id, event.priority === "Critical" ? "High" : "Critical")}><AlertTriangle size={15} /> Priority</button>
                 <button onClick={() => onMarkCalendarEventAtRisk(event.id)}><TimerReset size={15} /> Mark risk</button>
                 <button onClick={() => onEscalateCalendarEvent("Calendar", event.title, `${event.date} calendar item is ${event.status.toLowerCase()}`, event.owner, event.priority === "Critical" ? "Critical" : "High")}>
@@ -3203,6 +3291,7 @@ function PersonnelDirectory({
   onCreatePerson,
   onUpdatePersonStatus,
   onUpdatePersonAssignment,
+  onUpdatePersonRole,
   onDeactivatePerson,
   onCreateTransfer
 }: {
@@ -3213,6 +3302,7 @@ function PersonnelDirectory({
   onCreatePerson: (person: Omit<PersonRecord, "id">) => void;
   onUpdatePersonStatus: (id: string, status: PersonRecord["status"]) => void;
   onUpdatePersonAssignment: (id: string, assignedStation: string) => void;
+  onUpdatePersonRole: (id: string, role: string) => void;
   onDeactivatePerson: (id: string) => void;
   onCreateTransfer: (transfer: Omit<Transfer, "id" | "step" | "risk">) => void;
 }) {
@@ -3278,6 +3368,7 @@ function PersonnelDirectory({
               <p>{person.currentStation} to {person.assignedStation}</p>
               <div className="action-row">
                 <button onClick={() => onUpdatePersonStatus(person.id, "Assigned")}><CheckCircle2 size={15} /> Mark assigned</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onUpdatePersonRole(person.id, person.role === "Governance Liaison" ? "Area Coordinator" : "Governance Liaison")}><Users size={15} /> Role</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onUpdatePersonAssignment(person.id, station.level)}><RefreshCw size={15} /> Reassign</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onDeactivatePerson(person.id)}><LockKeyhole size={15} /> Deactivate</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => createTransfer(person)}><Signature size={15} /> Create transfer</button>

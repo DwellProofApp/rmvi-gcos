@@ -57,6 +57,10 @@ const validators = {
     if (body.state !== undefined) requireString(body.state, "state");
   },
 
+  "POST /api/reports/:id/due": (body) => {
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
   "POST /api/approvals": (body) => {
     requireString(body.request, "request");
     requireString(body.route, "route");
@@ -70,6 +74,11 @@ const validators = {
     if (body.signatures !== undefined) requireString(body.signatures, "signatures");
   },
 
+  "POST /api/approvals/:id/route": (body) => {
+    if (body.route !== undefined) requireString(body.route, "route");
+    if (body.state !== undefined) requireString(body.state, "state");
+  },
+
   "POST /api/tasks": (body) => {
     requireString(body.title, "title");
     requireString(body.assignee, "assignee");
@@ -81,6 +90,10 @@ const validators = {
 
   "POST /api/tasks/:id/advance": (body) => {
     if (body.status !== undefined) requireEnum(body.status, taskStatuses, "status");
+  },
+
+  "POST /api/tasks/:id/assignee": (body) => {
+    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
   },
 
   "POST /api/tasks/:id/priority": (body) => {
@@ -113,6 +126,10 @@ const validators = {
     if (body.priority !== undefined) requireEnum(body.priority, calendarPriorities, "priority");
   },
 
+  "POST /api/calendar-events/:id/date": (body) => {
+    if (body.date !== undefined) requireString(body.date, "date");
+  },
+
   "POST /api/personnel": (body) => {
     requireString(body.name, "name");
     requireString(body.role, "role");
@@ -125,6 +142,10 @@ const validators = {
     if (body.currentStation !== undefined) requireString(body.currentStation, "currentStation");
     if (body.assignedStation !== undefined) requireString(body.assignedStation, "assignedStation");
     if (body.status !== undefined) requireEnum(body.status, personnelStatuses, "status");
+  },
+
+  "POST /api/personnel/:id/role": (body) => {
+    if (body.role !== undefined) requireString(body.role, "role");
   },
 
   "POST /api/personnel/:id/status": (body) => {

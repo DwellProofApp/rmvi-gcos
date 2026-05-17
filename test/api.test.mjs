@@ -166,6 +166,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(scoredReport.score, 78);
     assert.equal(scoredReport.state, "In Review");
 
+    const dueReport = await postJson(`/api/reports/${reports[1].id}/due`, {
+      due: "Overdue"
+    }, nationalToken);
+    assert.equal(dueReport.due, "Overdue");
+
     const approvals = await getJson("/api/approvals");
     const invalidCreatedApproval = await rawPost("/api/approvals", {
       route: "National -> Regional",
@@ -191,6 +196,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const signedRequest = await postJson(`/api/approvals/${createdApproval.id}/sign`, {}, nationalToken);
     assert.equal(signedRequest.state, "Signature");
     assert.equal(signedRequest.signatures, "1/2");
+
+    const routedRequest = await postJson(`/api/approvals/${createdApproval.id}/route`, {
+      route: "National -> Executive Review",
+      state: "Validation"
+    }, nationalToken);
+    assert.equal(routedRequest.route, "National -> Executive Review");
+    assert.equal(routedRequest.state, "Validation");
 
     const rejectedRequest = await postJson(`/api/approvals/${approvals[1].id}/reject`, {
       reason: "Authority documentation incomplete"
@@ -219,6 +231,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       status: "Complete"
     }, nationalToken);
     assert.equal(advancedTask.status, "Complete");
+
+    const assignedTask = await postJson(`/api/tasks/${tasks[1].id}/assignee`, {
+      assignee: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(assignedTask.assignee, "np@rmvi.org");
 
     const priorityTask = await postJson(`/api/tasks/${tasks[1].id}/priority`, {
       priority: "Critical"
@@ -282,6 +299,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const completedCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[0].id}/complete`, {}, nationalToken);
     assert.equal(completedCalendarEvent.status, "Complete");
 
+    const datedCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/date`, {
+      date: "2026-06-01"
+    }, nationalToken);
+    assert.equal(datedCalendarEvent.date, "2026-06-01");
+
     const priorityCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/priority`, {
       priority: "Critical"
     }, nationalToken);
@@ -329,6 +351,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(reassignedPerson.assignedStation, "Regional Review Desk");
     assert.equal(reassignedPerson.status, "Transfer Pending");
+
+    const rolePerson = await postJson(`/api/personnel/${personnel[0].id}/role`, {
+      role: "Governance Liaison"
+    }, nationalToken);
+    assert.equal(rolePerson.role, "Governance Liaison");
 
     const deactivatedPerson = await postJson(`/api/personnel/${personnel[1].id}/deactivate`, {
       reason: "Automated deactivation test"
@@ -540,19 +567,24 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "EmailClassified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EmailStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportScoreUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReportDueUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ApprovalSigned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalRouteUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AIDraftGenerated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskAdvanced"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskAssigneeUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyPublished"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCompleted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarDateUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarPriorityUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonRegistered"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonAssignmentUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonRoleUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeSupervisorUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationOwnerUpdated"), true);
