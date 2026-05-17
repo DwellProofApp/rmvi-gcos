@@ -76,6 +76,42 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const statusAfterSecondLogin = await getJson("/api/status");
     assert.equal(statusAfterSecondLogin.sessions.active, 2);
 
+    const commandBriefing = await getJson("/api/command-center/briefing");
+    assert.equal(commandBriefing.title, "Executive command briefing");
+    assert.equal(commandBriefing.riskScore > 0, true);
+    assert.equal(commandBriefing.priorities.length, 4);
+
+    const archivedCommandBriefing = await postJson("/api/command-center/briefing/archive", {
+      title: "Automated command briefing"
+    }, nationalToken);
+    assert.equal(archivedCommandBriefing.document.classification, "Command briefing");
+    assert.equal(archivedCommandBriefing.briefing.title, "Automated command briefing");
+
+    const commandDirective = await postJson("/api/command-center/directive", {
+      subject: "Automated command directive",
+      files: "Command packet"
+    }, nationalToken);
+    assert.equal(commandDirective.kind, "Directive");
+    assert.equal(commandDirective.subject, "Automated command directive");
+
+    const commandTask = await postJson("/api/command-center/task", {
+      title: "Automated command task",
+      assignee: "np@rmvi.org",
+      priority: "High",
+      due: "Today"
+    }, nationalToken);
+    assert.equal(commandTask.title, "Automated command task");
+    assert.equal(commandTask.status, "In Progress");
+
+    const commandEscalation = await postJson("/api/command-center/escalation", {
+      item: "Automated command escalation",
+      reason: "Automated command risk",
+      owner: "np@rmvi.org",
+      severity: "High"
+    }, nationalToken);
+    assert.equal(commandEscalation.source, "Control Center");
+    assert.equal(commandEscalation.item, "Automated command escalation");
+
     const denied = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -592,6 +628,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const persisted = JSON.parse(await readFile(dataPath, "utf8"));
     assert.equal(persisted.messages[0].subject, "Automated API test notice");
     assert.equal(persisted.audit.some((row) => row.event === "OfflineActionTest"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CommandBriefingArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CommandDirectiveIssued"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CommandTaskCreated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CommandEscalationOpened"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EmailClassified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EmailStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportScoreUpdated"), true);

@@ -27,6 +27,30 @@ const validators = {
     requireString(body.password, "password");
   },
 
+  "POST /api/command-center/briefing/archive": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+  },
+
+  "POST /api/command-center/directive": (body) => {
+    if (body.subject !== undefined) requireString(body.subject, "subject");
+    if (body.files !== undefined) requireString(body.files, "files");
+  },
+
+  "POST /api/command-center/task": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
+    if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/command-center/escalation": (body) => {
+    if (body.item !== undefined) requireString(body.item, "item");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+    if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
+  },
+
   "POST /api/messages": (body) => {
     requireEnum(body.kind, messageKinds, "kind");
     requireString(body.subject, "subject");

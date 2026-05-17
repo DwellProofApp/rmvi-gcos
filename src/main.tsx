@@ -146,6 +146,20 @@ type ReadinessReport = {
     detail: string;
   }[];
 };
+type CommandBriefing = {
+  title: string;
+  generatedAt: string;
+  riskScore: number;
+  counts: {
+    openEscalations: number;
+    pendingApprovals: number;
+    activeReports: number;
+    blockedTasks: number;
+    atRiskCalendar: number;
+    transferPending: number;
+  };
+  priorities: string[];
+};
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -527,6 +541,7 @@ function App() {
   const [offlineQueue, setOfflineQueue] = usePersistentState("gcos.offlineQueue", initialOfflineQueue);
   const [apiStatus, setApiStatus] = React.useState<ApiStatus | null>(null);
   const [apiStatusError, setApiStatusError] = React.useState("");
+  const [commandBriefing, setCommandBriefing] = React.useState<CommandBriefing | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -718,6 +733,7 @@ function App() {
       setAiDrafts(data.aiDrafts.length ? data.aiDrafts : initialAiDrafts);
       setAuditRows(data.audit);
       setEvents(data.events);
+      void apiRequest<CommandBriefing>("/api/command-center/briefing").then(setCommandBriefing).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1805,6 +1821,96 @@ function App() {
     }
   }
 
+  function refreshCommandBriefing() {
+    if (offlineMode) {
+      recordAudit("CommandBriefingRefreshed", "Control Center", "Local command briefing refreshed");
+      return;
+    }
+    void apiRequest<CommandBriefing>("/api/command-center/briefing")
+      .then((briefing) => {
+        setCommandBriefing(briefing);
+        recordAudit("CommandBriefingRefreshed", briefing.title, `${briefing.riskScore}% risk score`);
+      })
+      .catch(() => undefined);
+  }
+
+  function archiveCommandBriefing() {
+    archiveDocument({
+      name: "Executive command briefing.json",
+      classification: "Command briefing",
+      source: "Control Center",
+      owner: activeStation.email,
+      fileType: "JSON",
+      status: offlineMode ? "Queued" : "Archived"
+    });
+    if (!offlineMode) {
+      void apiRequest<{ document: DocumentRecord; briefing: CommandBriefing }>("/api/command-center/briefing/archive", {
+        method: "POST",
+        body: JSON.stringify({ title: "Executive command briefing" })
+      }).then(({ briefing }) => setCommandBriefing(briefing)).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function issueCommandDirective() {
+    const message: Message = {
+      id: `msg-${Date.now()}`,
+      kind: "Directive",
+      subject: "Executive command directive",
+      from: activeStation.email,
+      age: "now",
+      status: offlineMode ? "Queued" : "Ready",
+      files: "Command briefing"
+    };
+    setMessages((items) => [message, ...items]);
+    recordAudit("CommandDirectiveIssued", message.subject, "Directive routed from control center");
+    if (!offlineMode) {
+      void apiRequest<Message>("/api/command-center/directive", {
+        method: "POST",
+        body: JSON.stringify({ subject: message.subject, files: message.files })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function createCommandTask() {
+    const task: GovernanceTask = {
+      id: `tsk-${Date.now()}`,
+      title: "Command center follow-up",
+      owner: "Control Center",
+      assignee: activeStation.email,
+      priority: "High",
+      due: "Today",
+      status: offlineMode ? "Queued" : "In Progress"
+    };
+    setTasks((items) => [task, ...items]);
+    recordAudit("CommandTaskCreated", task.title, `${task.assignee} assigned`);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>("/api/command-center/task", {
+        method: "POST",
+        body: JSON.stringify({ title: task.title, owner: task.owner, assignee: task.assignee, priority: task.priority, due: task.due })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function openCommandEscalation() {
+    const escalation: Escalation = {
+      id: `esc-${Date.now()}`,
+      source: "Control Center",
+      item: "Command center risk",
+      reason: "Executive command briefing requires attention",
+      severity: "High",
+      status: "Open",
+      owner: activeStation.email
+    };
+    setEscalations((items) => [escalation, ...items]);
+    recordAudit("CommandEscalationOpened", escalation.item, escalation.reason);
+    if (!offlineMode) {
+      void apiRequest<Escalation>("/api/command-center/escalation", {
+        method: "POST",
+        body: JSON.stringify({ item: escalation.item, reason: escalation.reason, severity: escalation.severity, owner: escalation.owner })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function markDocumentReview(id: string) {
     const document = documents.find((item) => item.id === id);
     if (!document) return;
@@ -1994,7 +2100,13 @@ function App() {
             stationDirectory={stationDirectory}
             apiStatus={apiStatus}
             apiStatusError={apiStatusError}
+            commandBriefing={commandBriefing}
             onSync={syncOfflineQueue}
+            onRefreshCommandBriefing={refreshCommandBriefing}
+            onArchiveCommandBriefing={archiveCommandBriefing}
+            onIssueCommandDirective={issueCommandDirective}
+            onCreateCommandTask={createCommandTask}
+            onOpenCommandEscalation={openCommandEscalation}
           />
         )}
         {activeSection === "ChurchMail" && (
@@ -2466,6 +2578,77 @@ function formatUptime(seconds: number) {
   return `${hours}h ${minutes % 60}m`;
 }
 
+function CommandDispatchPanel({
+  briefing,
+  reports,
+  approvals,
+  tasks,
+  calendarEvents,
+  personnel,
+  escalations,
+  onRefresh,
+  onArchive,
+  onDirective,
+  onTask,
+  onEscalation
+}: {
+  briefing: CommandBriefing | null;
+  reports: Report[];
+  approvals: Approval[];
+  tasks: GovernanceTask[];
+  calendarEvents: CalendarEvent[];
+  personnel: PersonRecord[];
+  escalations: Escalation[];
+  onRefresh: () => void;
+  onArchive: () => void;
+  onDirective: () => void;
+  onTask: () => void;
+  onEscalation: () => void;
+}) {
+  const fallbackCounts = {
+    openEscalations: escalations.filter((item) => item.status !== "Resolved").length,
+    pendingApprovals: approvals.filter((item) => item.state !== "Approved").length,
+    activeReports: reports.filter((item) => item.state !== "Approved").length,
+    blockedTasks: tasks.filter((item) => item.status === "Blocked").length,
+    atRiskCalendar: calendarEvents.filter((item) => item.status === "At Risk").length,
+    transferPending: personnel.filter((item) => item.status === "Transfer Pending").length
+  };
+  const counts = briefing?.counts ?? fallbackCounts;
+  const riskScore = briefing?.riskScore ?? Math.min(100, (counts.openEscalations * 16) + (counts.pendingApprovals * 8) + (counts.activeReports * 6) + (counts.blockedTasks * 12) + (counts.atRiskCalendar * 10) + (counts.transferPending * 7));
+  const priorities = briefing?.priorities ?? [
+    escalations.find((item) => item.status !== "Resolved")?.item ?? "No open escalation",
+    approvals.find((item) => item.state !== "Approved")?.request ?? "No pending approval",
+    tasks.find((item) => item.status === "Blocked")?.title ?? "No blocked task",
+    calendarEvents.find((item) => item.status === "At Risk")?.title ?? "No calendar risk"
+  ];
+
+  return (
+    <div className="panel command-dispatch">
+      <PanelHeader icon={RadioTower} title="Command Dispatch" action={`${riskScore}% risk`} />
+      <div className="office-summary-grid command-summary">
+        <Insight label="Open escalations" value={String(counts.openEscalations)} />
+        <Insight label="Pending approvals" value={String(counts.pendingApprovals)} />
+        <Insight label="Active reports" value={String(counts.activeReports)} />
+      </div>
+      <div className="dispatch-priorities">
+        {priorities.map((priority) => (
+          <div className="control-row" key={priority}>
+            <CircleDot size={15} />
+            <span>{priority}</span>
+          </div>
+        ))}
+      </div>
+      <div className="action-row">
+        <button onClick={onRefresh}><RefreshCw size={15} /> Refresh brief</button>
+        <button onClick={onArchive}><Files size={15} /> Archive brief</button>
+        <button onClick={onDirective}><Send size={15} /> Issue directive</button>
+        <button onClick={onTask}><SquareCheckBig size={15} /> Create task</button>
+        <button onClick={onEscalation}><AlertTriangle size={15} /> Open escalation</button>
+      </div>
+    </div>
+  );
+}
+
 function ControlCenter({
   offlineMode,
   messages,
@@ -2485,7 +2668,13 @@ function ControlCenter({
   stationDirectory,
   apiStatus,
   apiStatusError,
-  onSync
+  commandBriefing,
+  onSync,
+  onRefreshCommandBriefing,
+  onArchiveCommandBriefing,
+  onIssueCommandDirective,
+  onCreateCommandTask,
+  onOpenCommandEscalation
 }: {
   offlineMode: boolean;
   messages: Message[];
@@ -2505,7 +2694,13 @@ function ControlCenter({
   stationDirectory: StationCard[];
   apiStatus: ApiStatus | null;
   apiStatusError: string;
+  commandBriefing: CommandBriefing | null;
   onSync: () => void;
+  onRefreshCommandBriefing: () => void;
+  onArchiveCommandBriefing: () => void;
+  onIssueCommandDirective: () => void;
+  onCreateCommandTask: () => void;
+  onOpenCommandEscalation: () => void;
 }) {
   return (
     <section className="dashboard-grid">
@@ -2526,6 +2721,20 @@ function ControlCenter({
         transfers={transfers}
         documents={documents}
         offlineQueue={offlineQueue}
+      />
+      <CommandDispatchPanel
+        briefing={commandBriefing}
+        reports={reports}
+        approvals={approvals}
+        tasks={tasks}
+        calendarEvents={calendarEvents}
+        personnel={personnel}
+        escalations={escalations}
+        onRefresh={onRefreshCommandBriefing}
+        onArchive={onArchiveCommandBriefing}
+        onDirective={onIssueCommandDirective}
+        onTask={onCreateCommandTask}
+        onEscalation={onOpenCommandEscalation}
       />
       <HierarchyPanel compact />
       <AiPanel />

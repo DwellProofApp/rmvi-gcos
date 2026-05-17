@@ -65,6 +65,69 @@ export function createServices({ state, record, requirePermission, findById }) {
   return {
     publicState,
 
+    commandBriefing(body = {}) {
+      const openEscalations = state.escalations.filter((item) => item.status !== "Resolved");
+      const pendingApprovals = state.approvals.filter((item) => item.state !== "Approved");
+      const activeReports = state.reports.filter((item) => item.state !== "Approved");
+      const blockedTasks = state.tasks.filter((item) => item.status === "Blocked");
+      const atRiskCalendar = state.calendarEvents.filter((item) => item.status === "At Risk");
+      const transferPending = state.personnel.filter((item) => item.status === "Transfer Pending");
+      const riskScore = Math.min(100, (openEscalations.length * 16) + (pendingApprovals.length * 8) + (activeReports.length * 6) + (blockedTasks.length * 12) + (atRiskCalendar.length * 10) + (transferPending.length * 7));
+      const title = body.title ?? "Executive command briefing";
+      return {
+        title,
+        generatedAt: new Date().toISOString(),
+        riskScore,
+        counts: {
+          openEscalations: openEscalations.length,
+          pendingApprovals: pendingApprovals.length,
+          activeReports: activeReports.length,
+          blockedTasks: blockedTasks.length,
+          atRiskCalendar: atRiskCalendar.length,
+          transferPending: transferPending.length
+        },
+        priorities: [
+          openEscalations[0]?.item ?? "No open escalation",
+          pendingApprovals[0]?.request ?? "No pending approval",
+          blockedTasks[0]?.title ?? "No blocked task",
+          atRiskCalendar[0]?.title ?? "No calendar risk"
+        ]
+      };
+    },
+
+    archiveCommandBriefing(body) {
+      const briefing = this.commandBriefing({ title: body.title ?? "Executive command briefing" });
+      const created = documentRecord(`${briefing.title}.json`, "Command briefing", "Control Center", body.actor, "JSON", "Archived");
+      state.documents.unshift(created);
+      record("CommandBriefingArchived", body.actor, created.name, `${briefing.riskScore}% risk score`);
+      return { document: created, briefing };
+    },
+
+    issueCommandDirective(body) {
+      requirePermission(body.actor, "canApprove");
+      const briefing = this.commandBriefing({ title: "Directive context" });
+      const created = message("Directive", body.subject ?? "Executive command directive", body.actor ?? "Control Center", "Ready", body.files ?? "Command briefing");
+      state.messages.unshift(created);
+      record("CommandDirectiveIssued", body.actor, created.subject, `${briefing.riskScore}% risk context`);
+      return created;
+    },
+
+    createCommandTask(body) {
+      const briefing = this.commandBriefing({ title: "Task context" });
+      const created = task(body.title ?? "Command center follow-up", body.owner ?? "Control Center", body.assignee ?? body.actor, body.priority ?? "High", body.due ?? "Today", "In Progress");
+      state.tasks.unshift(created);
+      record("CommandTaskCreated", body.actor, created.title, `${briefing.counts.openEscalations} escalations in context`);
+      return created;
+    },
+
+    openCommandEscalation(body) {
+      const briefing = this.commandBriefing({ title: "Escalation context" });
+      const created = escalation("Control Center", body.item ?? "Command center risk", body.reason ?? `Risk score ${briefing.riskScore}% requires attention`, body.severity ?? "High", body.owner ?? body.actor ?? "Control Center");
+      state.escalations.unshift(created);
+      record("CommandEscalationOpened", body.actor, created.item, created.reason);
+      return created;
+    },
+
     createMessage(body) {
       const created = message(body.kind, body.subject, body.from, body.status ?? "Ready", body.files ?? "No attachments");
       state.messages.unshift(created);

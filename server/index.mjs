@@ -31,6 +31,11 @@ const routes = {
   "GET /api/readiness": () => ok(readinessReport()),
   "GET /api/status": () => ok(operationalStatus()),
   "GET /api/bootstrap": () => ok(services.publicState()),
+  "GET /api/command-center/briefing": () => ok(services.commandBriefing()),
+  "POST /api/command-center/briefing/archive": ({ session, body }) => createdResponse(services.archiveCommandBriefing({ ...body, actor: session.email })),
+  "POST /api/command-center/directive": ({ session, body }) => createdResponse(services.issueCommandDirective({ ...body, actor: session.email })),
+  "POST /api/command-center/task": ({ session, body }) => createdResponse(services.createCommandTask({ ...body, actor: session.email })),
+  "POST /api/command-center/escalation": ({ session, body }) => createdResponse(services.openCommandEscalation({ ...body, actor: session.email })),
   "POST /api/dev/reset": () => {
     if (!DEV_RESET_ENABLED) throw new HttpError(403, "Development reset is disabled");
     Object.assign(state, createSeedState());
