@@ -846,6 +846,72 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    checkInCalendarEvent(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.checkInStatus = body.status ?? "Checked in";
+      item.checkInBy = body.by ?? body.actor;
+      record("CalendarEventCheckedIn", body.actor, item.title, item.checkInStatus);
+      return item;
+    },
+
+    updateCalendarVenue(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.venue = body.venue ?? "Main governance hall";
+      record("CalendarVenueUpdated", body.actor, item.title, item.venue);
+      return item;
+    },
+
+    attachCalendarAgenda(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.agenda = body.agenda ?? "Governance agenda attached";
+      record("CalendarAgendaAttached", body.actor, item.title, item.agenda);
+      return item;
+    },
+
+    logCalendarAttendance(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.attendance = body.count ?? 0;
+      record("CalendarAttendanceLogged", body.actor, item.title, `${item.attendance} attendees`);
+      return item;
+    },
+
+    sendCalendarReminder(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.reminderSent = true;
+      item.reminderAudience = body.audience ?? "All participants";
+      record("CalendarReminderSent", body.actor, item.title, item.reminderAudience);
+      return item;
+    },
+
+    markCalendarReadiness(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.readiness = body.status ?? "Ready";
+      record("CalendarReadinessMarked", body.actor, item.title, item.readiness);
+      return item;
+    },
+
+    linkCalendarTask(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.linkedTask = body.taskId ?? "task-follow-up";
+      record("CalendarTaskLinked", body.actor, item.title, item.linkedTask);
+      return item;
+    },
+
+    linkCalendarReport(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.linkedReport = body.reportId ?? "report-follow-up";
+      record("CalendarReportLinked", body.actor, item.title, item.linkedReport);
+      return item;
+    },
+
+    archiveCalendarEvent(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.archived = true;
+      item.archiveReason = body.reason ?? "Calendar item archived";
+      record("CalendarEventArchived", body.actor, item.title, item.archiveReason);
+      return item;
+    },
+
     duplicateCalendarEvent(id, body) {
       const item = findById(state.calendarEvents, id);
       const created = calendarEvent(body.title ?? `${item.title} follow-up`, item.category, body.owner ?? item.owner, body.date ?? item.date, item.priority, "Scheduled");
@@ -864,20 +930,48 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { count: updated.length, updated };
     },
 
+    bulkRescheduleCalendarEvents(body) {
+      const ids = body.ids?.length ? body.ids : state.calendarEvents.filter((item) => !item.archived && item.status !== "Complete").slice(0, 3).map((item) => item.id);
+      const updated = state.calendarEvents.filter((item) => ids.includes(item.id)).map((item) => {
+        item.date = body.date ?? "2026-06-14";
+        item.status = "Scheduled";
+        return item;
+      });
+      record("CalendarEventsBulkRescheduled", body.actor, "Governance calendar", `${updated.length} events rescheduled`);
+      return { count: updated.length, updated };
+    },
+
     calendarDigest() {
-      const scheduled = state.calendarEvents.filter((item) => item.status === "Scheduled");
-      const atRisk = state.calendarEvents.filter((item) => item.status === "At Risk");
-      const complete = state.calendarEvents.filter((item) => item.status === "Complete");
-      const critical = state.calendarEvents.filter((item) => item.priority === "Critical" && item.status !== "Complete");
-      const watched = state.calendarEvents.filter((item) => item.watchers?.length);
+      const visible = state.calendarEvents.filter((item) => !item.archived);
+      const scheduled = visible.filter((item) => item.status === "Scheduled");
+      const atRisk = visible.filter((item) => item.status === "At Risk");
+      const complete = visible.filter((item) => item.status === "Complete");
+      const critical = visible.filter((item) => item.priority === "Critical" && item.status !== "Complete");
+      const watched = visible.filter((item) => item.watchers?.length);
+      const checkedIn = visible.filter((item) => item.checkInStatus);
+      const venues = visible.filter((item) => item.venue);
+      const agendas = visible.filter((item) => item.agenda);
+      const attendance = visible.filter((item) => item.attendance !== undefined);
+      const reminders = visible.filter((item) => item.reminderSent);
+      const ready = visible.filter((item) => item.readiness === "Ready");
+      const linked = visible.filter((item) => item.linkedTask || item.linkedReport);
+      const archived = state.calendarEvents.filter((item) => item.archived);
       return {
         generatedAt: new Date().toISOString(),
-        total: state.calendarEvents.length,
+        total: visible.length,
         scheduled: scheduled.length,
         atRisk: atRisk.length,
         complete: complete.length,
         critical: critical.length,
         watched: watched.length,
+        checkedIn: checkedIn.length,
+        venues: venues.length,
+        agendas: agendas.length,
+        attendance: attendance.length,
+        reminders: reminders.length,
+        ready: ready.length,
+        linked: linked.length,
+        archived: archived.length,
         nextEvent: atRisk[0]?.title ?? critical[0]?.title ?? scheduled[0]?.title ?? "No scheduled events",
         owner: atRisk[0]?.owner ?? critical[0]?.owner ?? scheduled[0]?.owner ?? "None"
       };

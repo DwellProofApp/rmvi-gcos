@@ -1197,6 +1197,49 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(watchedCalendarEvent.watchers.includes("np@rmvi.org"), true);
 
+    const checkedInCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/check-in`, {
+      status: "Checked in",
+      by: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(checkedInCalendarEvent.checkInStatus, "Checked in");
+    assert.equal(checkedInCalendarEvent.checkInBy, "np@rmvi.org");
+
+    const venueCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/venue`, {
+      venue: "Main governance hall"
+    }, nationalToken);
+    assert.equal(venueCalendarEvent.venue, "Main governance hall");
+
+    const agendaCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/agenda`, {
+      agenda: "Automated governance agenda"
+    }, nationalToken);
+    assert.equal(agendaCalendarEvent.agenda, "Automated governance agenda");
+
+    const attendanceCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/attendance`, {
+      count: 24
+    }, nationalToken);
+    assert.equal(attendanceCalendarEvent.attendance, 24);
+
+    const reminderCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/reminder`, {
+      audience: "All participants"
+    }, nationalToken);
+    assert.equal(reminderCalendarEvent.reminderSent, true);
+    assert.equal(reminderCalendarEvent.reminderAudience, "All participants");
+
+    const readinessCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/readiness`, {
+      status: "Ready"
+    }, nationalToken);
+    assert.equal(readinessCalendarEvent.readiness, "Ready");
+
+    const taskLinkedCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/task`, {
+      taskId: "tsk-test"
+    }, nationalToken);
+    assert.equal(taskLinkedCalendarEvent.linkedTask, "tsk-test");
+
+    const reportLinkedCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/report`, {
+      reportId: "rep-test"
+    }, nationalToken);
+    assert.equal(reportLinkedCalendarEvent.linkedReport, "rep-test");
+
     const duplicatedCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/duplicate`, {
       title: "Automated duplicate calendar review",
       date: "2026-06-14"
@@ -1210,10 +1253,32 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(bulkCompletedCalendarEvents.count, 1);
     assert.equal(bulkCompletedCalendarEvents.updated[0].status, "Complete");
 
+    const bulkRescheduledCalendarEvents = await postJson("/api/calendar-events/bulk/reschedule", {
+      ids: [duplicatedCalendarEvent.id],
+      date: "2026-06-14"
+    }, nationalToken);
+    assert.equal(bulkRescheduledCalendarEvents.count, 1);
+    assert.equal(bulkRescheduledCalendarEvents.updated[0].date, "2026-06-14");
+    assert.equal(bulkRescheduledCalendarEvents.updated[0].status, "Scheduled");
+
+    const archivedCalendarEvent = await postJson(`/api/calendar-events/${createdCalendarEvent.id}/archive`, {
+      reason: "Automated calendar archive"
+    }, nationalToken);
+    assert.equal(archivedCalendarEvent.archived, true);
+    assert.equal(archivedCalendarEvent.archiveReason, "Automated calendar archive");
+
     const calendarDigest = await getJson("/api/calendar-events/digest", nationalToken);
     assert.equal(calendarDigest.total > 0, true);
     assert.equal(calendarDigest.watched >= 1, true);
     assert.equal(calendarDigest.complete >= 1, true);
+    assert.equal(calendarDigest.checkedIn >= 1, true);
+    assert.equal(calendarDigest.venues >= 1, true);
+    assert.equal(calendarDigest.agendas >= 1, true);
+    assert.equal(calendarDigest.attendance >= 1, true);
+    assert.equal(calendarDigest.reminders >= 1, true);
+    assert.equal(calendarDigest.ready >= 1, true);
+    assert.equal(calendarDigest.linked >= 1, true);
+    assert.equal(calendarDigest.archived >= 1, true);
 
     const personnel = await getJson("/api/personnel");
     const invalidPerson = await rawPost("/api/personnel", {
@@ -2027,8 +2092,18 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "CalendarCategoryUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventRescheduled"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCheckedIn"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarVenueUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarAgendaAttached"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarAttendanceLogged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarReminderSent"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarReadinessMarked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarTaskLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarReportLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarEventArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventDuplicated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventsBulkCompleted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarEventsBulkRescheduled"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonRegistered"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonAssignmentUpdated"), true);

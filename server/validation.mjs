@@ -710,6 +710,43 @@ const validators = {
     if (body.watcher !== undefined) requireString(body.watcher, "watcher");
   },
 
+  "POST /api/calendar-events/:id/check-in": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.by !== undefined) requireString(body.by, "by");
+  },
+
+  "POST /api/calendar-events/:id/venue": (body) => {
+    if (body.venue !== undefined) requireString(body.venue, "venue");
+  },
+
+  "POST /api/calendar-events/:id/agenda": (body) => {
+    if (body.agenda !== undefined) requireString(body.agenda, "agenda");
+  },
+
+  "POST /api/calendar-events/:id/attendance": (body) => {
+    if (body.count !== undefined) requireNumber(body.count, "count");
+  },
+
+  "POST /api/calendar-events/:id/reminder": (body) => {
+    if (body.audience !== undefined) requireString(body.audience, "audience");
+  },
+
+  "POST /api/calendar-events/:id/readiness": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+  },
+
+  "POST /api/calendar-events/:id/task": (body) => {
+    if (body.taskId !== undefined) requireString(body.taskId, "taskId");
+  },
+
+  "POST /api/calendar-events/:id/report": (body) => {
+    if (body.reportId !== undefined) requireString(body.reportId, "reportId");
+  },
+
+  "POST /api/calendar-events/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/calendar-events/:id/duplicate": (body) => {
     if (body.title !== undefined) requireString(body.title, "title");
     if (body.owner !== undefined) requireString(body.owner, "owner");
@@ -718,6 +755,11 @@ const validators = {
 
   "POST /api/calendar-events/bulk/complete": (body) => {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
+  "POST /api/calendar-events/bulk/reschedule": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.date !== undefined) requireString(body.date, "date");
   },
 
   "POST /api/personnel": (body) => {

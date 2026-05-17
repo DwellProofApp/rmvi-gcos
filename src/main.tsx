@@ -63,7 +63,7 @@ type Report = { id: string; name: string; owner: string; path: string; due: stri
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string; delegate?: string; holdReason?: string; archived?: boolean; watchers?: string[] };
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
-type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[] };
+type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
@@ -405,6 +405,14 @@ type CalendarDigest = {
   complete: number;
   critical: number;
   watched: number;
+  checkedIn?: number;
+  venues?: number;
+  agendas?: number;
+  attendance?: number;
+  reminders?: number;
+  ready?: number;
+  linked?: number;
+  archived?: number;
   nextEvent: string;
   owner: string;
 };
@@ -2383,6 +2391,145 @@ function App() {
       void apiRequest<{ count: number; updated: CalendarEvent[] }>("/api/calendar-events/bulk/complete", {
         method: "POST",
         body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function checkInCalendarEvent(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const status = "Checked in";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, checkInStatus: status, checkInBy: activeStation.email } : item));
+    recordAudit("CalendarEventCheckedIn", event.title, status);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/check-in`, {
+        method: "POST",
+        body: JSON.stringify({ status, by: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateCalendarVenue(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const venue = "Main governance hall";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, venue } : item));
+    recordAudit("CalendarVenueUpdated", event.title, venue);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/venue`, {
+        method: "POST",
+        body: JSON.stringify({ venue })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function attachCalendarAgenda(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const agenda = "Governance agenda attached";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, agenda } : item));
+    recordAudit("CalendarAgendaAttached", event.title, agenda);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/agenda`, {
+        method: "POST",
+        body: JSON.stringify({ agenda })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function logCalendarAttendance(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const count = 24;
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, attendance: count } : item));
+    recordAudit("CalendarAttendanceLogged", event.title, `${count} attendees`);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/attendance`, {
+        method: "POST",
+        body: JSON.stringify({ count })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function sendCalendarReminder(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const audience = "All participants";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, reminderSent: true, reminderAudience: audience } : item));
+    recordAudit("CalendarReminderSent", event.title, audience);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/reminder`, {
+        method: "POST",
+        body: JSON.stringify({ audience })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function markCalendarReadiness(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const status = "Ready";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, readiness: status } : item));
+    recordAudit("CalendarReadinessMarked", event.title, status);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/readiness`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkCalendarTask(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const taskId = tasks[0]?.id ?? "task-follow-up";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, linkedTask: taskId } : item));
+    recordAudit("CalendarTaskLinked", event.title, taskId);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/task`, {
+        method: "POST",
+        body: JSON.stringify({ taskId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkCalendarReport(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const reportId = reports[0]?.id ?? "report-follow-up";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, linkedReport: reportId } : item));
+    recordAudit("CalendarReportLinked", event.title, reportId);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/report`, {
+        method: "POST",
+        body: JSON.stringify({ reportId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveCalendarEvent(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    const reason = "Archived from governance calendar";
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, archived: true, archiveReason: reason } : item));
+    recordAudit("CalendarEventArchived", event.title, reason);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkRescheduleCalendarEvents(ids: string[]) {
+    const targetIds = ids.length ? ids : calendarEvents.filter((event) => !event.archived && event.status !== "Complete").slice(0, 3).map((event) => event.id);
+    const date = "2026-06-14";
+    setCalendarEvents((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, date, status: "Scheduled" } : item));
+    recordAudit("CalendarEventsBulkRescheduled", "Governance calendar", `${targetIds.length} events rescheduled`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: CalendarEvent[] }>("/api/calendar-events/bulk/reschedule", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, date })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -4827,6 +4974,16 @@ function App() {
             onWatchCalendarEvent={watchCalendarEvent}
             onDuplicateCalendarEvent={duplicateCalendarEvent}
             onBulkCompleteCalendarEvents={bulkCompleteCalendarEvents}
+            onCheckInEvent={checkInCalendarEvent}
+            onUpdateVenue={updateCalendarVenue}
+            onAttachAgenda={attachCalendarAgenda}
+            onLogAttendance={logCalendarAttendance}
+            onSendReminder={sendCalendarReminder}
+            onMarkReadiness={markCalendarReadiness}
+            onLinkTask={linkCalendarTask}
+            onLinkReport={linkCalendarReport}
+            onArchiveEvent={archiveCalendarEvent}
+            onBulkRescheduleEvents={bulkRescheduleCalendarEvents}
             onRefreshDigest={refreshCalendarDigest}
             digest={calendarDigest}
             onEscalateCalendarEvent={triggerEscalation}
@@ -6544,6 +6701,16 @@ function GovernanceCalendar({
   onWatchCalendarEvent,
   onDuplicateCalendarEvent,
   onBulkCompleteCalendarEvents,
+  onCheckInEvent,
+  onUpdateVenue,
+  onAttachAgenda,
+  onLogAttendance,
+  onSendReminder,
+  onMarkReadiness,
+  onLinkTask,
+  onLinkReport,
+  onArchiveEvent,
+  onBulkRescheduleEvents,
   onRefreshDigest,
   digest,
   onEscalateCalendarEvent
@@ -6562,6 +6729,16 @@ function GovernanceCalendar({
   onWatchCalendarEvent: (id: string) => void;
   onDuplicateCalendarEvent: (id: string) => void;
   onBulkCompleteCalendarEvents: (ids: string[]) => void;
+  onCheckInEvent: (id: string) => void;
+  onUpdateVenue: (id: string) => void;
+  onAttachAgenda: (id: string) => void;
+  onLogAttendance: (id: string) => void;
+  onSendReminder: (id: string) => void;
+  onMarkReadiness: (id: string) => void;
+  onLinkTask: (id: string) => void;
+  onLinkReport: (id: string) => void;
+  onArchiveEvent: (id: string) => void;
+  onBulkRescheduleEvents: (ids: string[]) => void;
   onRefreshDigest: () => void;
   digest: CalendarDigest | null;
   onEscalateCalendarEvent: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
@@ -6583,15 +6760,26 @@ function GovernanceCalendar({
   const categoryOptions = React.useMemo(() => ["All categories", ...Array.from(new Set(calendarEvents.map((event) => event.category))).sort()], [calendarEvents]);
   const visibleEvents = React.useMemo(() => (
     calendarEvents.filter((event) => (
+      !event.archived
+      &&
       (categoryFilter === "All categories" || event.category === categoryFilter)
       && (statusFilter === "All statuses" || event.status === statusFilter)
     ))
   ), [calendarEvents, categoryFilter, statusFilter]);
-  const atRiskCount = calendarEvents.filter((event) => event.status === "At Risk").length;
-  const scheduledCount = calendarEvents.filter((event) => event.status === "Scheduled").length;
-  const completeCount = calendarEvents.filter((event) => event.status === "Complete").length;
-  const criticalCount = calendarEvents.filter((event) => event.priority === "Critical" && event.status !== "Complete").length;
-  const watchedCount = calendarEvents.filter((event) => event.watchers?.length).length;
+  const activeEvents = calendarEvents.filter((event) => !event.archived);
+  const atRiskCount = activeEvents.filter((event) => event.status === "At Risk").length;
+  const scheduledCount = activeEvents.filter((event) => event.status === "Scheduled").length;
+  const completeCount = activeEvents.filter((event) => event.status === "Complete").length;
+  const criticalCount = activeEvents.filter((event) => event.priority === "Critical" && event.status !== "Complete").length;
+  const watchedCount = activeEvents.filter((event) => event.watchers?.length).length;
+  const checkedInCount = activeEvents.filter((event) => event.checkInStatus).length;
+  const venueCount = activeEvents.filter((event) => event.venue).length;
+  const agendaCount = activeEvents.filter((event) => event.agenda).length;
+  const attendanceCount = activeEvents.filter((event) => event.attendance !== undefined).length;
+  const reminderCount = activeEvents.filter((event) => event.reminderSent).length;
+  const readyCount = activeEvents.filter((event) => event.readiness === "Ready").length;
+  const linkedCount = activeEvents.filter((event) => event.linkedTask || event.linkedReport).length;
+  const archivedCount = calendarEvents.filter((event) => event.archived).length;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -6610,6 +6798,14 @@ function GovernanceCalendar({
           <Insight label="Complete" value={String(digest?.complete ?? completeCount)} />
           <Insight label="Critical" value={String(digest?.critical ?? criticalCount)} />
           <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Checked in" value={String(digest?.checkedIn ?? checkedInCount)} />
+          <Insight label="Venues" value={String(digest?.venues ?? venueCount)} />
+          <Insight label="Agendas" value={String(digest?.agendas ?? agendaCount)} />
+          <Insight label="Attendance" value={String(digest?.attendance ?? attendanceCount)} />
+          <Insight label="Reminders" value={String(digest?.reminders ?? reminderCount)} />
+          <Insight label="Ready" value={String(digest?.ready ?? readyCount)} />
+          <Insight label="Linked" value={String(digest?.linked ?? linkedCount)} />
+          <Insight label="Archived" value={String(digest?.archived ?? archivedCount)} />
           <Insight label="Next event" value={digest?.nextEvent ?? visibleEvents[0]?.title ?? "None"} />
         </div>
         <div className="archive-toolbar">
@@ -6627,6 +6823,7 @@ function GovernanceCalendar({
           </label>
           <button onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
           <button disabled={!visibleEvents.length} onClick={() => onBulkCompleteCalendarEvents(visibleEvents.slice(0, 3).map((event) => event.id))}><CheckCircle2 size={15} /> Bulk complete</button>
+          <button disabled={!visibleEvents.length} onClick={() => onBulkRescheduleEvents(visibleEvents.slice(0, 3).map((event) => event.id))}><TimerReset size={15} /> Bulk reschedule</button>
         </div>
         <div className="calendar-list">
           {visibleEvents.map((event) => (
@@ -6640,9 +6837,25 @@ function GovernanceCalendar({
               <div className="approval-meta">
                 <small>{event.watchers?.length ?? 0} watchers</small>
                 <small>{event.status}</small>
+                <small>{event.checkInStatus ? `${event.checkInStatus} by ${event.checkInBy ?? "station"}` : "No check-in"}</small>
+                <small>{event.venue ?? "No venue"}</small>
+                <small>{event.agenda ?? "No agenda"}</small>
+                <small>{event.attendance !== undefined ? `${event.attendance} attendees` : "No attendance"}</small>
+                <small>{event.reminderSent ? `Reminder ${event.reminderAudience}` : "No reminder"}</small>
+                <small>{event.readiness ?? "Readiness pending"}</small>
+                <small>{event.linkedTask ? `Task ${event.linkedTask}` : "No linked task"}</small>
+                <small>{event.linkedReport ? `Report ${event.linkedReport}` : "No linked report"}</small>
               </div>
               <div className="action-row">
                 <button onClick={() => onCompleteCalendarEvent(event.id)}><CheckCircle2 size={15} /> Complete</button>
+                <button onClick={() => onCheckInEvent(event.id)}><ClipboardCheck size={15} /> Check in</button>
+                <button onClick={() => onUpdateVenue(event.id)}><Landmark size={15} /> Venue</button>
+                <button onClick={() => onAttachAgenda(event.id)}><ScrollText size={15} /> Agenda</button>
+                <button onClick={() => onLogAttendance(event.id)}><Users size={15} /> Attendance</button>
+                <button onClick={() => onSendReminder(event.id)}><Bell size={15} /> Reminder</button>
+                <button onClick={() => onMarkReadiness(event.id)}><ShieldCheck size={15} /> Readiness</button>
+                <button onClick={() => onLinkTask(event.id)}><SquareCheckBig size={15} /> Task link</button>
+                <button onClick={() => onLinkReport(event.id)}><FileCheck2 size={15} /> Report link</button>
                 <button onClick={() => onUpdateCalendarEventDate(event.id, event.date === "2026-05-24" ? "2026-05-31" : "2026-05-24")}><CalendarDays size={15} /> Date</button>
                 <button onClick={() => onRescheduleCalendarEvent(event.id)}><TimerReset size={15} /> Reschedule</button>
                 <button onClick={() => onUpdateCalendarEventPriority(event.id, event.priority === "Critical" ? "High" : "Critical")}><AlertTriangle size={15} /> Priority</button>
@@ -6654,6 +6867,7 @@ function GovernanceCalendar({
                 <button onClick={() => onEscalateCalendarEvent("Calendar", event.title, `${event.date} calendar item is ${event.status.toLowerCase()}`, event.owner, event.priority === "Critical" ? "Critical" : "High")}>
                   <AlertTriangle size={15} /> Escalate
                 </button>
+                <button onClick={() => onArchiveEvent(event.id)}><ArchiveIcon size={15} /> Archive</button>
               </div>
             </article>
           ))}
