@@ -127,6 +127,73 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(archivedReadiness.readiness.checks.some((check) => check.name === "exports"), false);
 
+    const securityControls = await getJson("/api/security-controls", nationalToken);
+    assert.equal(securityControls.length >= 6, true);
+    assert.equal(securityControls.some((control) => control.name === "RBAC"), true);
+
+    const invalidSecurityStatus = await rawPost("/api/security-controls/RBAC/status", {
+      status: "Broken"
+    }, nationalToken);
+    assert.equal(invalidSecurityStatus.status, 400);
+
+    const updatedSecurityStatus = await postJson("/api/security-controls/RBAC/status", {
+      status: "Warning",
+      reason: "Automated status test"
+    }, nationalToken);
+    assert.equal(updatedSecurityStatus.control.status, "Warning");
+
+    const ownedSecurityControl = await postJson("/api/security-controls/RBAC/owner", {
+      owner: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(ownedSecurityControl.control.owner, "np@rmvi.org");
+
+    const evidencedSecurityControl = await postJson("/api/security-controls/RBAC/evidence", {
+      evidence: "Automated evidence packet"
+    }, nationalToken);
+    assert.equal(evidencedSecurityControl.control.evidence, "Automated evidence packet");
+
+    const testedSecurityControl = await postJson("/api/security-controls/RBAC/test", {
+      result: "Automated control test passed",
+      status: "Active"
+    }, nationalToken);
+    assert.equal(testedSecurityControl.control.status, "Active");
+    assert.equal(testedSecurityControl.control.lastTestResult, "Automated control test passed");
+
+    const rotatedSecurityControl = await postJson("/api/security-controls/RBAC/rotate", {
+      reason: "Automated rotation test"
+    }, nationalToken);
+    assert.equal(Boolean(rotatedSecurityControl.control.lastRotation), true);
+
+    const exceptionSecurityControl = await postJson("/api/security-controls/RBAC/exception", {
+      reason: "Automated exception test"
+    }, nationalToken);
+    assert.equal(exceptionSecurityControl.control.status, "Exception");
+
+    const remediatedSecurityControl = await postJson("/api/security-controls/RBAC/remediation", {
+      assignee: "np@rmvi.org",
+      priority: "High",
+      due: "Today"
+    }, nationalToken);
+    assert.match(remediatedSecurityControl.title, /^Remediate security control:/);
+
+    const verifiedSecurityControl = await postJson("/api/security-controls/RBAC/verify", {
+      result: "Automated verification test"
+    }, nationalToken);
+    assert.equal(verifiedSecurityControl.control.verified, true);
+    assert.equal(verifiedSecurityControl.control.status, "Active");
+
+    const bulkSecurityTest = await postJson("/api/security-controls/bulk/test", {
+      names: ["RBAC", "ABAC"],
+      result: "Automated bulk control test"
+    }, nationalToken);
+    assert.equal(bulkSecurityTest.count, 2);
+
+    const securityDigest = await getJson("/api/security-controls/digest", nationalToken);
+    assert.equal(securityDigest.total >= 6, true);
+    assert.equal(securityDigest.verified >= 1, true);
+    assert.equal(securityDigest.evidence >= 1, true);
+    assert.equal(securityDigest.rotations >= 1, true);
+
     const statusAfterSecondLogin = await getJson("/api/status");
     assert.equal(statusAfterSecondLogin.sessions.active, 3);
     assert.equal(Boolean(statusAfterSecondLogin.sessions.stations[0].id), true);
@@ -1481,6 +1548,16 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessOverrideApproved"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessBulkAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessCheckArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SecurityControlStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SecurityControlOwnerAssigned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SecurityControlEvidenceAttached"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SecurityControlTested"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SecurityControlRotated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SecurityControlExceptionOpened"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SecurityControlRemediationCreated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SecurityControlVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SecurityControlsBulkTested"), true);
+    assert.equal(persisted.securityControls.RBAC.owner, "np@rmvi.org");
     assert.equal(persisted.audit.some((row) => row.event === "CommandBriefingArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandDirectiveIssued"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandTaskCreated"), true);

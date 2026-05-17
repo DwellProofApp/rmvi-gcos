@@ -21,6 +21,7 @@ const calendarStatuses = ["Scheduled", "At Risk", "Complete"];
 const personnelStatuses = ["Active", "Transfer Pending", "Assigned", "Inactive", "Onboarding", "On Leave"];
 const officeStatuses = ["Provisioned", "Suspended", "Active"];
 const auditSeverities = ["Info", "Low", "Medium", "High", "Critical"];
+const securityControlStatuses = ["Active", "Warning", "Exception", "Disabled", "Testing"];
 
 const validators = {
   "POST /api/auth/login": (body) => {
@@ -122,6 +123,48 @@ const validators = {
   "POST /api/readiness/bulk/acknowledge": (body) => {
     if (body.names !== undefined) requireStringArray(body.names, "names");
     if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/security-controls/:name/status": (body) => {
+    if (body.status !== undefined) requireEnum(body.status, securityControlStatuses, "status");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/security-controls/:name/owner": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
+  "POST /api/security-controls/:name/evidence": (body) => {
+    if (body.evidence !== undefined) requireString(body.evidence, "evidence");
+  },
+
+  "POST /api/security-controls/:name/test": (body) => {
+    if (body.result !== undefined) requireString(body.result, "result");
+    if (body.status !== undefined) requireEnum(body.status, securityControlStatuses, "status");
+  },
+
+  "POST /api/security-controls/:name/rotate": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/security-controls/:name/exception": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/security-controls/:name/remediation": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
+    if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/security-controls/:name/verify": (body) => {
+    if (body.result !== undefined) requireString(body.result, "result");
+  },
+
+  "POST /api/security-controls/bulk/test": (body) => {
+    if (body.names !== undefined) requireStringArray(body.names, "names");
+    if (body.result !== undefined) requireString(body.result, "result");
   },
 
   "POST /api/stations/:id/level": (body) => {

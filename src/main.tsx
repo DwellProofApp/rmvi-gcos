@@ -171,6 +171,35 @@ type ReadinessDigest = {
   scheduled: number;
   nextCheck: string;
 };
+type SecurityControlRecord = {
+  name: string;
+  detail: string;
+  status: "Active" | "Warning" | "Exception" | "Disabled" | "Testing";
+  owner?: string;
+  evidence?: string;
+  evidenceAt?: string;
+  lastTest?: string;
+  lastTestResult?: string;
+  lastRotation?: string;
+  rotationReason?: string;
+  exceptionReason?: string;
+  verified?: boolean;
+  verifiedAt?: string;
+  verification?: string;
+  remediationTaskId?: string;
+};
+type SecurityControlDigest = {
+  generatedAt: string;
+  total: number;
+  active: number;
+  warning: number;
+  exceptions: number;
+  verified: number;
+  evidence: number;
+  owners: number;
+  rotations: number;
+  nextControl: string;
+};
 type ArchiveManifest = {
   generatedAt: string;
   total: number;
@@ -7360,6 +7389,8 @@ function Audit({
   const [query, setQuery] = React.useState("");
   const [eventFilter, setEventFilter] = React.useState("All events");
   const [readiness, setReadiness] = React.useState<ReadinessReport | null>(null);
+  const [securityControls, setSecurityControls] = React.useState<SecurityControlRecord[]>([]);
+  const [securityDigest, setSecurityDigest] = React.useState<SecurityControlDigest | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -7392,6 +7423,8 @@ function Audit({
 
   React.useEffect(() => {
     void apiRequest<ReadinessReport>("/api/readiness").then(setReadiness).catch(() => undefined);
+    void apiRequest<SecurityControlRecord[]>("/api/security-controls").then(setSecurityControls).catch(() => undefined);
+    void apiRequest<SecurityControlDigest>("/api/security-controls/digest").then(setSecurityDigest).catch(() => undefined);
   }, []);
 
   function refreshReadiness() {
@@ -7452,6 +7485,81 @@ function Audit({
       method: "POST",
       body: JSON.stringify({ names, reason: "Bulk acknowledged from audit desk" })
     }).then(updateReadinessFromResult).catch(() => undefined);
+  }
+
+  function refreshSecurityControls() {
+    void apiRequest<SecurityControlRecord[]>("/api/security-controls").then(setSecurityControls).catch(() => undefined);
+    void apiRequest<SecurityControlDigest>("/api/security-controls/digest").then(setSecurityDigest).catch(() => undefined);
+  }
+
+  function updateSecurityControls(result: { controls: SecurityControlRecord[] }) {
+    setSecurityControls(result.controls);
+    void apiRequest<SecurityControlDigest>("/api/security-controls/digest").then(setSecurityDigest).catch(() => undefined);
+  }
+
+  function updateSecurityStatus(name: string, currentStatus: SecurityControlRecord["status"]) {
+    const status = currentStatus === "Active" ? "Warning" : "Active";
+    void apiRequest<{ controls: SecurityControlRecord[] }>(`/api/security-controls/${encodeURIComponent(name)}/status`, {
+      method: "POST",
+      body: JSON.stringify({ status, reason: `${status} from audit security controls` })
+    }).then(updateSecurityControls).catch(() => undefined);
+  }
+
+  function assignSecurityOwner(name: string) {
+    void apiRequest<{ controls: SecurityControlRecord[] }>(`/api/security-controls/${encodeURIComponent(name)}/owner`, {
+      method: "POST",
+      body: JSON.stringify({ owner: session.email })
+    }).then(updateSecurityControls).catch(() => undefined);
+  }
+
+  function attachSecurityEvidence(name: string) {
+    void apiRequest<{ controls: SecurityControlRecord[] }>(`/api/security-controls/${encodeURIComponent(name)}/evidence`, {
+      method: "POST",
+      body: JSON.stringify({ evidence: "Evidence packet attached from audit desk" })
+    }).then(updateSecurityControls).catch(() => undefined);
+  }
+
+  function testSecurityControl(name: string) {
+    void apiRequest<{ controls: SecurityControlRecord[] }>(`/api/security-controls/${encodeURIComponent(name)}/test`, {
+      method: "POST",
+      body: JSON.stringify({ result: "Control test passed from audit desk", status: "Active" })
+    }).then(updateSecurityControls).catch(() => undefined);
+  }
+
+  function rotateSecurityControl(name: string) {
+    void apiRequest<{ controls: SecurityControlRecord[] }>(`/api/security-controls/${encodeURIComponent(name)}/rotate`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Rotation completed from audit desk" })
+    }).then(updateSecurityControls).catch(() => undefined);
+  }
+
+  function openSecurityException(name: string) {
+    void apiRequest<{ controls: SecurityControlRecord[] }>(`/api/security-controls/${encodeURIComponent(name)}/exception`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Temporary exception opened for governance review" })
+    }).then(updateSecurityControls).catch(() => undefined);
+  }
+
+  function createSecurityRemediation(name: string) {
+    void apiRequest<GovernanceTask>(`/api/security-controls/${encodeURIComponent(name)}/remediation`, {
+      method: "POST",
+      body: JSON.stringify({ assignee: session.email, priority: "High", due: "Today" })
+    }).then(refreshSecurityControls).catch(() => undefined);
+  }
+
+  function verifySecurityControl(name: string) {
+    void apiRequest<{ controls: SecurityControlRecord[] }>(`/api/security-controls/${encodeURIComponent(name)}/verify`, {
+      method: "POST",
+      body: JSON.stringify({ result: "Verified from audit security controls" })
+    }).then(updateSecurityControls).catch(() => undefined);
+  }
+
+  function bulkTestSecurityControls() {
+    const names = securityControls.slice(0, 3).map((control) => control.name);
+    void apiRequest<{ controls: SecurityControlRecord[] }>("/api/security-controls/bulk/test", {
+      method: "POST",
+      body: JSON.stringify({ names, result: "Bulk control test passed from audit desk" })
+    }).then(updateSecurityControls).catch(() => undefined);
   }
 
   function exportAuditPacket() {
@@ -7544,13 +7652,43 @@ function Audit({
         </div>
       </div>
       <div className="panel module-side">
-        <PanelHeader icon={LockKeyhole} title="Security Controls" action="Active" />
-        {["RBAC", "ABAC", "Station permissions", "Session invalidation", "End-to-end encryption", "Immutable logging"].map((control) => (
-          <div className="control-row" key={control}>
-            <CheckCircle2 size={16} />
-            <span>{control}</span>
-          </div>
-        ))}
+        <PanelHeader icon={LockKeyhole} title="Security Controls" action={`${securityDigest?.active ?? securityControls.filter((control) => control.status === "Active").length} active`} />
+        <div className="action-row">
+          <button disabled={!securityControls.length} onClick={bulkTestSecurityControls}><ShieldCheck size={15} /> Bulk test</button>
+          <button onClick={refreshSecurityControls}><RefreshCw size={15} /> Digest</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Active" value={String(securityDigest?.active ?? securityControls.filter((control) => control.status === "Active").length)} />
+          <Insight label="Warning" value={String(securityDigest?.warning ?? securityControls.filter((control) => control.status === "Warning").length)} />
+          <Insight label="Exceptions" value={String(securityDigest?.exceptions ?? securityControls.filter((control) => control.status === "Exception").length)} />
+          <Insight label="Verified" value={String(securityDigest?.verified ?? securityControls.filter((control) => control.verified).length)} />
+          <Insight label="Evidence" value={String(securityDigest?.evidence ?? securityControls.filter((control) => control.evidence).length)} />
+          <Insight label="Owners" value={String(securityDigest?.owners ?? securityControls.filter((control) => control.owner).length)} />
+          <Insight label="Rotations" value={String(securityDigest?.rotations ?? securityControls.filter((control) => control.lastRotation).length)} />
+          <Insight label="Next control" value={securityDigest?.nextControl ?? securityControls[0]?.name ?? "None"} />
+        </div>
+        <div className="source-map-list">
+          {securityControls.map((control) => (
+            <article className="source-map-item" key={control.name}>
+              <span>{control.status}</span>
+              <strong>{control.name}</strong>
+              <small>{control.detail} - {control.owner ?? "unowned"}{control.lastTest ? ` - tested ${formatDateTime(control.lastTest)}` : ""}</small>
+              {control.evidence && <small>{control.evidence}</small>}
+              {control.exceptionReason && <small>Exception: {control.exceptionReason}</small>}
+              <div className="action-row compact-actions">
+                <button onClick={() => updateSecurityStatus(control.name, control.status)}><AlertTriangle size={14} /> Status</button>
+                <button onClick={() => assignSecurityOwner(control.name)}><Users size={14} /> Owner</button>
+                <button onClick={() => attachSecurityEvidence(control.name)}><Files size={14} /> Evidence</button>
+                <button onClick={() => testSecurityControl(control.name)}><ShieldCheck size={14} /> Test</button>
+                <button onClick={() => rotateSecurityControl(control.name)}><TimerReset size={14} /> Rotate</button>
+                <button onClick={() => openSecurityException(control.name)}><AlertTriangle size={14} /> Exception</button>
+                <button onClick={() => verifySecurityControl(control.name)}><FileCheck2 size={14} /> Verify</button>
+                <button onClick={() => createSecurityRemediation(control.name)}><SquareCheckBig size={14} /> Task</button>
+              </div>
+            </article>
+          ))}
+          {!securityControls.length && <div className="empty-state">Loading security controls.</div>}
+        </div>
       </div>
       <div className="panel module-side">
         <PanelHeader icon={Server} title="Session Monitor" action={`${activeSessionCount} active`} />

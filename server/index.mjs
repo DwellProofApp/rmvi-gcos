@@ -37,6 +37,17 @@ const routes = {
   "POST /api/readiness/:name/recheck": ({ params, body, session }) => ok(scheduleReadinessRecheck(params.name, body, session.email)),
   "POST /api/readiness/:name/remediation": ({ params, body, session }) => createdResponse(createReadinessRemediation(params.name, body, session.email)),
   "POST /api/readiness/:name/archive": ({ params, body, session }) => ok(archiveReadiness(params.name, body, session.email)),
+  "GET /api/security-controls": () => ok(securityControlsReport()),
+  "GET /api/security-controls/digest": () => ok(securityControlsDigest()),
+  "POST /api/security-controls/bulk/test": ({ body, session }) => ok(bulkTestSecurityControls(body, session.email)),
+  "POST /api/security-controls/:name/status": ({ params, body, session }) => ok(updateSecurityControlStatus(params.name, body, session.email)),
+  "POST /api/security-controls/:name/owner": ({ params, body, session }) => ok(assignSecurityControlOwner(params.name, body, session.email)),
+  "POST /api/security-controls/:name/evidence": ({ params, body, session }) => ok(attachSecurityControlEvidence(params.name, body, session.email)),
+  "POST /api/security-controls/:name/test": ({ params, body, session }) => ok(testSecurityControl(params.name, body, session.email)),
+  "POST /api/security-controls/:name/rotate": ({ params, body, session }) => ok(rotateSecurityControl(params.name, body, session.email)),
+  "POST /api/security-controls/:name/exception": ({ params, body, session }) => ok(openSecurityControlException(params.name, body, session.email)),
+  "POST /api/security-controls/:name/remediation": ({ params, body, session }) => createdResponse(createSecurityControlRemediation(params.name, body, session.email)),
+  "POST /api/security-controls/:name/verify": ({ params, body, session }) => ok(verifySecurityControl(params.name, body, session.email)),
   "GET /api/status": () => ok(operationalStatus()),
   "GET /api/sessions": () => ok(sessionSummary()),
   "GET /api/sessions/digest": () => ok(sessionDigest()),
@@ -453,6 +464,144 @@ function readinessDigest() {
   };
 }
 
+const baseSecurityControls = [
+  { name: "RBAC", detail: "Role-based permissions protect delegated authority and approval gates.", status: "Active" },
+  { name: "ABAC", detail: "Attribute-based context controls station level, department, and hierarchy visibility.", status: "Active" },
+  { name: "Station permissions", detail: "Every workstation inherits station-scoped permissions and reporting limits.", status: "Active" },
+  { name: "Session invalidation", detail: "Transfers, locks, and station revocations can invalidate active sessions.", status: "Active" },
+  { name: "End-to-end encryption", detail: "ChurchMail attachments and administrative packets require encryption controls.", status: "Warning" },
+  { name: "Immutable logging", detail: "Audit rows, event-bus updates, and governance actions are permanently recorded.", status: "Active" }
+];
+
+function ensureSecurityControls() {
+  state.securityControls ??= {};
+  return state.securityControls;
+}
+
+function securityControlsReport() {
+  const actions = ensureSecurityControls();
+  return baseSecurityControls.map((control) => ({
+    ...control,
+    ...(actions[control.name] ?? {})
+  }));
+}
+
+function getSecurityControl(name) {
+  const decoded = decodeURIComponent(String(name ?? ""));
+  const control = securityControlsReport().find((item) => item.name === decoded);
+  if (!control) throw new HttpError(404, "Security control not found");
+  return control;
+}
+
+function patchSecurityControl(name, patch, actor, event, result) {
+  const control = getSecurityControl(name);
+  const controls = ensureSecurityControls();
+  controls[control.name] = {
+    ...(controls[control.name] ?? {}),
+    ...patch,
+    updatedAt: new Date().toISOString(),
+    updatedBy: actor
+  };
+  record(event, actor, control.name, result);
+  return { control: { ...control, ...controls[control.name] }, controls: securityControlsReport() };
+}
+
+function updateSecurityControlStatus(name, body, actor) {
+  requirePermission(actor, "canApprove");
+  return patchSecurityControl(name, {
+    status: body.status ?? "Active",
+    statusReason: body.reason ?? "Status updated from audit security controls"
+  }, actor, "SecurityControlStatusUpdated", body.reason ?? body.status ?? "Status updated");
+}
+
+function assignSecurityControlOwner(name, body, actor) {
+  return patchSecurityControl(name, {
+    owner: body.owner ?? actor
+  }, actor, "SecurityControlOwnerAssigned", body.owner ?? actor);
+}
+
+function attachSecurityControlEvidence(name, body, actor) {
+  return patchSecurityControl(name, {
+    evidence: body.evidence ?? "Evidence packet attached",
+    evidenceAt: new Date().toISOString()
+  }, actor, "SecurityControlEvidenceAttached", body.evidence ?? "Evidence packet attached");
+}
+
+function testSecurityControl(name, body, actor) {
+  return patchSecurityControl(name, {
+    lastTest: new Date().toISOString(),
+    lastTestResult: body.result ?? "Control test passed",
+    status: body.status ?? "Active"
+  }, actor, "SecurityControlTested", body.result ?? "Control test passed");
+}
+
+function rotateSecurityControl(name, body, actor) {
+  requirePermission(actor, "canApprove");
+  return patchSecurityControl(name, {
+    lastRotation: new Date().toISOString(),
+    rotationReason: body.reason ?? "Control secret or policy rotation completed",
+    status: "Active"
+  }, actor, "SecurityControlRotated", body.reason ?? "Control rotation completed");
+}
+
+function openSecurityControlException(name, body, actor) {
+  requirePermission(actor, "canApprove");
+  return patchSecurityControl(name, {
+    status: "Exception",
+    exceptionReason: body.reason ?? "Temporary exception opened from audit desk",
+    exceptionAt: new Date().toISOString()
+  }, actor, "SecurityControlExceptionOpened", body.reason ?? "Temporary exception opened");
+}
+
+function createSecurityControlRemediation(name, body, actor) {
+  const control = getSecurityControl(name);
+  const created = services.createTask({
+    title: body.title ?? `Remediate security control: ${control.name}`,
+    owner: "Security Controls",
+    assignee: body.assignee ?? actor,
+    priority: body.priority ?? (control.status === "Warning" || control.status === "Exception" ? "High" : "Medium"),
+    due: body.due ?? "Today",
+    actor
+  });
+  patchSecurityControl(name, {
+    remediationTaskId: created.id,
+    owner: body.assignee ?? actor
+  }, actor, "SecurityControlRemediationCreated", created.title);
+  return created;
+}
+
+function verifySecurityControl(name, body, actor) {
+  return patchSecurityControl(name, {
+    verified: true,
+    verifiedAt: new Date().toISOString(),
+    verification: body.result ?? "Control verified from audit desk",
+    status: "Active"
+  }, actor, "SecurityControlVerified", body.result ?? "Control verified");
+}
+
+function bulkTestSecurityControls(body, actor) {
+  const names = body.names?.length ? body.names : securityControlsReport().slice(0, 3).map((control) => control.name);
+  const updated = names.map((name) => testSecurityControl(name, { result: body.result ?? "Bulk control test passed" }, actor).control);
+  record("SecurityControlsBulkTested", actor, "Security Controls", `${updated.length} controls tested`);
+  return { count: updated.length, updated, controls: securityControlsReport() };
+}
+
+function securityControlsDigest() {
+  const controls = securityControlsReport();
+  return {
+    generatedAt: new Date().toISOString(),
+    total: controls.length,
+    active: controls.filter((control) => control.status === "Active").length,
+    warning: controls.filter((control) => control.status === "Warning").length,
+    exceptions: controls.filter((control) => control.status === "Exception").length,
+    verified: controls.filter((control) => control.verified).length,
+    evidence: controls.filter((control) => control.evidence).length,
+    owners: controls.filter((control) => control.owner).length,
+    rotations: controls.filter((control) => control.lastRotation).length,
+    nextControl: controls.find((control) => control.status !== "Active")?.name ?? controls.find((control) => !control.verified)?.name ?? controls[0]?.name ?? "No controls"
+  };
+}
+
 function exportSnapshot(session) {
   return {
     exportedAt: new Date().toISOString(),
@@ -699,7 +848,8 @@ async function loadState() {
       audit: persisted.audit ?? seed.audit,
       events: persisted.events ?? seed.events,
       offlineQueue: persisted.offlineQueue ?? seed.offlineQueue,
-      readinessActions: persisted.readinessActions ?? seed.readinessActions ?? {}
+      readinessActions: persisted.readinessActions ?? seed.readinessActions ?? {},
+      securityControls: persisted.securityControls ?? seed.securityControls ?? {}
     });
   } catch (error) {
     if (error.code !== "ENOENT") console.warn(`Unable to load persisted state: ${error.message}`);
