@@ -39,10 +39,19 @@ const routes = {
   "POST /api/readiness/:name/archive": ({ params, body, session }) => ok(archiveReadiness(params.name, body, session.email)),
   "GET /api/status": () => ok(operationalStatus()),
   "GET /api/sessions": () => ok(sessionSummary()),
+  "GET /api/sessions/digest": () => ok(sessionDigest()),
   "POST /api/sessions/renew": ({ session }) => ok(renewSession(session.token, session.email)),
   "POST /api/sessions/station/revoke": ({ session, body }) => ok(revokeStationSessions(body.email ?? session.email, session.token, session.email)),
+  "POST /api/sessions/bulk/revoke": ({ session, body }) => ok(bulkRevokeSessions(body, session.token, session.email)),
   "POST /api/sessions/:id/revoke": ({ params, session }) => ok(revokeSession(params.id, session.email)),
   "POST /api/sessions/:id/flag": ({ params, session, body }) => ok(flagSession(params.id, session.email, body.reason)),
+  "POST /api/sessions/:id/extend": ({ params, session, body }) => ok(extendSession(params.id, session.email, body.minutes)),
+  "POST /api/sessions/:id/lock": ({ params, session, body }) => ok(lockSession(params.id, session.email, body.reason)),
+  "POST /api/sessions/:id/unlock": ({ params, session, body }) => ok(unlockSession(params.id, session.email, body.reason)),
+  "POST /api/sessions/:id/trust": ({ params, session, body }) => ok(trustSession(params.id, session.email, body.reason)),
+  "POST /api/sessions/:id/mfa": ({ params, session, body }) => ok(requireSessionMfa(params.id, session.email, body.reason)),
+  "POST /api/sessions/:id/device": ({ params, session, body }) => ok(labelSessionDevice(params.id, session.email, body.label)),
+  "POST /api/sessions/:id/note": ({ params, session, body }) => ok(noteSession(params.id, session.email, body.note)),
   "GET /api/bootstrap": () => ok(services.publicState()),
   "GET /api/command-center/briefing": () => ok(services.commandBriefing()),
   "POST /api/command-center/briefing/archive": ({ session, body }) => createdResponse(services.archiveCommandBriefing({ ...body, actor: session.email })),
@@ -501,6 +510,93 @@ function flagSession(token, actor, reason) {
   return { session: summarizeSession(token, session), sessions: sessionSummary() };
 }
 
+function extendSession(token, actor, minutes) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  const extensionMinutes = Number.isFinite(minutes) && minutes > 0 ? minutes : 120;
+  session.expiresAt = new Date(Date.parse(session.expiresAt) + extensionMinutes * 60000).toISOString();
+  session.status = "Extended";
+  record("SessionExtended", actor, session.email, `${extensionMinutes} minutes added`);
+  return { session: summarizeSession(token, session), sessions: sessionSummary() };
+}
+
+function lockSession(token, actor, reason) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  session.status = "Locked";
+  session.lockReason = reason ?? "Session locked from audit console";
+  record("SessionLocked", actor, session.email, session.lockReason);
+  return { session: summarizeSession(token, session), sessions: sessionSummary() };
+}
+
+function unlockSession(token, actor, reason) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  session.status = "Active";
+  session.lockReason = undefined;
+  record("SessionUnlocked", actor, session.email, reason ?? "Session unlocked");
+  return { session: summarizeSession(token, session), sessions: sessionSummary() };
+}
+
+function trustSession(token, actor, reason) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  session.trusted = true;
+  record("SessionTrusted", actor, session.email, reason ?? "Session marked trusted");
+  return { session: summarizeSession(token, session), sessions: sessionSummary() };
+}
+
+function requireSessionMfa(token, actor, reason) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  session.mfaRequired = true;
+  session.status = "MFA Required";
+  record("SessionMfaRequired", actor, session.email, reason ?? "Step-up MFA required");
+  return { session: summarizeSession(token, session), sessions: sessionSummary() };
+}
+
+function labelSessionDevice(token, actor, label) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  session.deviceLabel = label ?? "Managed workstation";
+  record("SessionDeviceLabeled", actor, session.email, session.deviceLabel);
+  return { session: summarizeSession(token, session), sessions: sessionSummary() };
+}
+
+function noteSession(token, actor, note) {
+  const session = sessions.get(token);
+  if (!session) throw new HttpError(404, "Session not found");
+  session.notes = [...(session.notes ?? []), `${actor}: ${note ?? "Session note added"}`];
+  record("SessionNoteAdded", actor, session.email, note ?? "Session note added");
+  return { session: summarizeSession(token, session), sessions: sessionSummary() };
+}
+
+function bulkRevokeSessions(body, currentToken, actor) {
+  const requested = body.ids?.length ? body.ids : Array.from(sessions.keys()).filter((token) => token !== currentToken).slice(0, 3);
+  let revoked = 0;
+  for (const token of requested) {
+    if (token === currentToken) continue;
+    if (sessions.delete(token)) revoked += 1;
+  }
+  record("SessionsBulkRevoked", actor, "Session monitor", `${revoked} sessions revoked`);
+  return { revoked, sessions: sessionSummary() };
+}
+
+function sessionDigest() {
+  const summary = sessionSummary();
+  return {
+    generatedAt: new Date().toISOString(),
+    active: summary.active,
+    expiringSoon: summary.expiringSoon,
+    flagged: summary.stations.filter((session) => session.status === "Flagged").length,
+    locked: summary.stations.filter((session) => session.status === "Locked").length,
+    trusted: summary.stations.filter((session) => session.trusted).length,
+    mfaRequired: summary.stations.filter((session) => session.mfaRequired).length,
+    labeled: summary.stations.filter((session) => session.deviceLabel).length,
+    nextSession: summary.stations[0]?.email ?? "No sessions"
+  };
+}
+
 function sessionSummary() {
   const now = Date.now();
   const active = [];
@@ -516,7 +612,12 @@ function sessionSummary() {
       expiresAt: session.expiresAt,
       minutesRemaining: Math.max(0, Math.round((Date.parse(session.expiresAt) - now) / 60000)),
       status: session.status ?? "Active",
-      flags: session.flags ?? []
+      flags: session.flags ?? [],
+      trusted: Boolean(session.trusted),
+      mfaRequired: Boolean(session.mfaRequired),
+      deviceLabel: session.deviceLabel,
+      notes: session.notes ?? [],
+      lockReason: session.lockReason
     });
   }
   return {
@@ -534,7 +635,12 @@ function summarizeSession(token, session) {
     expiresAt: session.expiresAt,
     minutesRemaining: Math.max(0, Math.round((Date.parse(session.expiresAt) - Date.now()) / 60000)),
     status: session.status ?? "Active",
-    flags: session.flags ?? []
+    flags: session.flags ?? [],
+    trusted: Boolean(session.trusted),
+    mfaRequired: Boolean(session.mfaRequired),
+    deviceLabel: session.deviceLabel,
+    notes: session.notes ?? [],
+    lockReason: session.lockReason
   };
 }
 

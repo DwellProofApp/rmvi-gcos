@@ -97,6 +97,11 @@ type ApiStatus = {
       minutesRemaining: number;
       status?: string;
       flags?: string[];
+      trusted?: boolean;
+      mfaRequired?: boolean;
+      deviceLabel?: string;
+      notes?: string[];
+      lockReason?: string;
     }[];
   };
   counts: {
@@ -250,6 +255,17 @@ type EventDigest = {
   muted: number;
   routed: number;
   latest: string;
+};
+type SessionDigest = {
+  generatedAt: string;
+  active: number;
+  expiringSoon: number;
+  flagged: number;
+  locked: number;
+  trusted: number;
+  mfaRequired: number;
+  labeled: number;
+  nextSession: string;
 };
 type TaskDigest = {
   generatedAt: string;
@@ -741,6 +757,7 @@ function App() {
   const [auditDigest, setAuditDigest] = React.useState<AuditDigest | null>(null);
   const [eventDigest, setEventDigest] = React.useState<EventDigest | null>(null);
   const [readinessDigest, setReadinessDigest] = React.useState<ReadinessDigest | null>(null);
+  const [sessionDigest, setSessionDigest] = React.useState<SessionDigest | null>(null);
   const [taskDigest, setTaskDigest] = React.useState<TaskDigest | null>(null);
   const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
   const [calendarDigest, setCalendarDigest] = React.useState<CalendarDigest | null>(null);
@@ -959,6 +976,7 @@ function App() {
       void apiRequest<AuditDigest>("/api/audit/digest").then(setAuditDigest).catch(() => undefined);
       void apiRequest<EventDigest>("/api/events/digest").then(setEventDigest).catch(() => undefined);
       void apiRequest<ReadinessDigest>("/api/readiness/digest").then(setReadinessDigest).catch(() => undefined);
+      void apiRequest<SessionDigest>("/api/sessions/digest").then(setSessionDigest).catch(() => undefined);
       void apiRequest<TaskDigest>("/api/tasks/digest").then(setTaskDigest).catch(() => undefined);
       void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
       void apiRequest<CalendarDigest>("/api/calendar-events/digest").then(setCalendarDigest).catch(() => undefined);
@@ -3668,6 +3686,80 @@ function App() {
     }).catch(() => undefined);
   }
 
+  function updateSessionResult(event: string, result: { session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }) {
+    setApiStatus((status) => status ? { ...status, sessions: result.sessions } : status);
+    recordAudit(event, result.session.email, result.session.status ?? "Session updated");
+    void apiRequest<SessionDigest>("/api/sessions/digest").then(setSessionDigest).catch(() => undefined);
+  }
+
+  function extendSession(id: string) {
+    if (!id || offlineMode) return;
+    void apiRequest<{ session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }>(`/api/sessions/${encodeURIComponent(id)}/extend`, {
+      method: "POST",
+      body: JSON.stringify({ minutes: 120 })
+    }).then((result) => updateSessionResult("SessionExtended", result)).catch(() => undefined);
+  }
+
+  function lockSession(id: string) {
+    if (!id || offlineMode) return;
+    void apiRequest<{ session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }>(`/api/sessions/${encodeURIComponent(id)}/lock`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Locked from audit session monitor" })
+    }).then((result) => updateSessionResult("SessionLocked", result)).catch(() => undefined);
+  }
+
+  function unlockSession(id: string) {
+    if (!id || offlineMode) return;
+    void apiRequest<{ session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }>(`/api/sessions/${encodeURIComponent(id)}/unlock`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Unlocked from audit session monitor" })
+    }).then((result) => updateSessionResult("SessionUnlocked", result)).catch(() => undefined);
+  }
+
+  function trustSession(id: string) {
+    if (!id || offlineMode) return;
+    void apiRequest<{ session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }>(`/api/sessions/${encodeURIComponent(id)}/trust`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Trusted from audit session monitor" })
+    }).then((result) => updateSessionResult("SessionTrusted", result)).catch(() => undefined);
+  }
+
+  function requireSessionMfa(id: string) {
+    if (!id || offlineMode) return;
+    void apiRequest<{ session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }>(`/api/sessions/${encodeURIComponent(id)}/mfa`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "MFA required from audit session monitor" })
+    }).then((result) => updateSessionResult("SessionMfaRequired", result)).catch(() => undefined);
+  }
+
+  function labelSessionDevice(id: string) {
+    if (!id || offlineMode) return;
+    void apiRequest<{ session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }>(`/api/sessions/${encodeURIComponent(id)}/device`, {
+      method: "POST",
+      body: JSON.stringify({ label: "Managed workstation" })
+    }).then((result) => updateSessionResult("SessionDeviceLabeled", result)).catch(() => undefined);
+  }
+
+  function noteSession(id: string) {
+    if (!id || offlineMode) return;
+    void apiRequest<{ session: ApiStatus["sessions"]["stations"][number]; sessions: ApiStatus["sessions"] }>(`/api/sessions/${encodeURIComponent(id)}/note`, {
+      method: "POST",
+      body: JSON.stringify({ note: "Reviewed from audit session monitor" })
+    }).then((result) => updateSessionResult("SessionNoteAdded", result)).catch(() => undefined);
+  }
+
+  function bulkRevokeSessions(ids: string[]) {
+    if (offlineMode) return;
+    void apiRequest<{ revoked: number; sessions: ApiStatus["sessions"] }>("/api/sessions/bulk/revoke", {
+      method: "POST",
+      body: JSON.stringify({ ids })
+    }).then((result) => {
+      setApiStatus((status) => status ? { ...status, sessions: result.sessions } : status);
+      recordAudit("SessionsBulkRevoked", "Session monitor", `${result.revoked} sessions revoked`);
+      void apiRequest<SessionDigest>("/api/sessions/digest").then(setSessionDigest).catch(() => undefined);
+    }).catch(() => undefined);
+  }
+
   function archiveGovernanceSnapshot() {
     archiveDocument({
       name: `Governance snapshot ${new Date().toISOString().slice(0, 10)}.json`,
@@ -4310,6 +4402,14 @@ function App() {
             onRevokeSession={revokeSession}
             onRevokeStationSessions={revokeStationSessions}
             onFlagSession={flagSession}
+            onExtendSession={extendSession}
+            onLockSession={lockSession}
+            onUnlockSession={unlockSession}
+            onTrustSession={trustSession}
+            onRequireSessionMfa={requireSessionMfa}
+            onLabelSessionDevice={labelSessionDevice}
+            onNoteSession={noteSession}
+            onBulkRevokeSessions={bulkRevokeSessions}
             onSealAuditRow={sealAuditRow}
             onVerifyAuditRow={verifyAuditRow}
             onBulkFlagAuditRows={bulkFlagAuditRows}
@@ -4327,6 +4427,7 @@ function App() {
             digest={auditDigest}
             eventDigest={eventDigest}
             readinessDigest={readinessDigest}
+            sessionDigest={sessionDigest}
             onSetReadinessDigest={setReadinessDigest}
           />
         )}
@@ -7177,6 +7278,14 @@ function Audit({
   onRevokeSession,
   onRevokeStationSessions,
   onFlagSession,
+  onExtendSession,
+  onLockSession,
+  onUnlockSession,
+  onTrustSession,
+  onRequireSessionMfa,
+  onLabelSessionDevice,
+  onNoteSession,
+  onBulkRevokeSessions,
   onSealAuditRow,
   onVerifyAuditRow,
   onBulkFlagAuditRows,
@@ -7194,6 +7303,7 @@ function Audit({
   digest,
   eventDigest,
   readinessDigest,
+  sessionDigest,
   onSetReadinessDigest
 }: {
   auditRows: AuditRow[];
@@ -7219,6 +7329,14 @@ function Audit({
   onRevokeSession: (id: string) => void;
   onRevokeStationSessions: (email: string) => void;
   onFlagSession: (id: string) => void;
+  onExtendSession: (id: string) => void;
+  onLockSession: (id: string) => void;
+  onUnlockSession: (id: string) => void;
+  onTrustSession: (id: string) => void;
+  onRequireSessionMfa: (id: string) => void;
+  onLabelSessionDevice: (id: string) => void;
+  onNoteSession: (id: string) => void;
+  onBulkRevokeSessions: (ids: string[]) => void;
   onSealAuditRow: (id: string) => void;
   onVerifyAuditRow: (id: string) => void;
   onBulkFlagAuditRows: (ids: string[]) => void;
@@ -7236,6 +7354,7 @@ function Audit({
   digest: AuditDigest | null;
   eventDigest: EventDigest | null;
   readinessDigest: ReadinessDigest | null;
+  sessionDigest: SessionDigest | null;
   onSetReadinessDigest: React.Dispatch<React.SetStateAction<ReadinessDigest | null>>;
 }) {
   const [query, setQuery] = React.useState("");
@@ -7260,6 +7379,10 @@ function Audit({
   }];
   const activeSessionCount = Math.max(apiStatus?.sessions?.active ?? 0, sessionEntries.length);
   const expiringSoonCount = apiStatus?.sessions?.expiringSoon ?? sessionEntries.filter((item) => item.minutesRemaining <= 30).length;
+  const lockedSessionCount = sessionDigest?.locked ?? sessionEntries.filter((item) => item.status === "Locked").length;
+  const trustedSessionCount = sessionDigest?.trusted ?? sessionEntries.filter((item) => item.trusted).length;
+  const mfaSessionCount = sessionDigest?.mfaRequired ?? sessionEntries.filter((item) => item.mfaRequired).length;
+  const labeledSessionCount = sessionDigest?.labeled ?? sessionEntries.filter((item) => item.deviceLabel).length;
   const sealedCount = digest?.sealed ?? auditRows.filter((row) => row.sealed || row.result.startsWith("Sealed:")).length;
   const verifiedCount = digest?.verified ?? auditRows.filter((row) => row.verified).length;
   const flaggedCount = digest?.flagged ?? auditRows.filter((row) => row.result.startsWith("Flagged:")).length;
@@ -7434,10 +7557,15 @@ function Audit({
         <div className="action-row">
           <button onClick={onRenewSession}><RefreshCw size={15} /> Renew current</button>
           <button onClick={() => onRevokeStationSessions(session.email)}><LockKeyhole size={15} /> Revoke station</button>
+          <button disabled={!sessionEntries.length} onClick={() => onBulkRevokeSessions(sessionEntries.filter((item) => item.id && item.id !== session.token).slice(0, 3).map((item) => item.id ?? ""))}><Files size={15} /> Bulk revoke</button>
         </div>
         <div className="office-summary-grid">
-          <Insight label="Active sessions" value={String(activeSessionCount)} />
+          <Insight label="Active" value={String(sessionDigest?.active ?? activeSessionCount)} />
           <Insight label="Expiring soon" value={String(expiringSoonCount)} />
+          <Insight label="Locked" value={String(lockedSessionCount)} />
+          <Insight label="Trusted" value={String(trustedSessionCount)} />
+          <Insight label="MFA" value={String(mfaSessionCount)} />
+          <Insight label="Labeled" value={String(labeledSessionCount)} />
           <Insight label="Current station" value={session.email} />
         </div>
         <div className="source-map-list">
@@ -7445,9 +7573,16 @@ function Audit({
             <article className="source-map-item" key={`${item.email}-${item.startedAt}`}>
               <span>{item.email}</span>
               <strong>{item.minutesRemaining} minutes remaining</strong>
-              <small>{item.status ?? "Active"} - started {formatDateTime(item.startedAt)} - expires {formatDateTime(item.expiresAt)}</small>
+              <small>{item.status ?? "Active"} - {item.deviceLabel ?? "unlabeled"} - {item.trusted ? "trusted" : "untrusted"} - started {formatDateTime(item.startedAt)} - expires {formatDateTime(item.expiresAt)}</small>
               <div className="action-row compact-actions">
                 <button disabled={!item.id} onClick={() => item.id && onFlagSession(item.id)}><AlertTriangle size={14} /> Flag</button>
+                <button disabled={!item.id} onClick={() => item.id && onExtendSession(item.id)}><TimerReset size={14} /> Extend</button>
+                <button disabled={!item.id} onClick={() => item.id && onLockSession(item.id)}><LockKeyhole size={14} /> Lock</button>
+                <button disabled={!item.id} onClick={() => item.id && onUnlockSession(item.id)}><CheckCircle2 size={14} /> Unlock</button>
+                <button disabled={!item.id} onClick={() => item.id && onTrustSession(item.id)}><ShieldCheck size={14} /> Trust</button>
+                <button disabled={!item.id} onClick={() => item.id && onRequireSessionMfa(item.id)}><Signature size={14} /> MFA</button>
+                <button disabled={!item.id} onClick={() => item.id && onLabelSessionDevice(item.id)}><Server size={14} /> Device</button>
+                <button disabled={!item.id} onClick={() => item.id && onNoteSession(item.id)}><MessageSquareText size={14} /> Note</button>
                 <button disabled={!item.id || item.id === session.token} onClick={() => item.id && onRevokeSession(item.id)}><LockKeyhole size={14} /> Revoke</button>
               </div>
             </article>

@@ -36,6 +36,38 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/sessions/:id/extend": (body) => {
+    if (body.minutes !== undefined) requireNumber(body.minutes, "minutes");
+  },
+
+  "POST /api/sessions/:id/lock": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/sessions/:id/unlock": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/sessions/:id/trust": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/sessions/:id/mfa": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/sessions/:id/device": (body) => {
+    if (body.label !== undefined) requireString(body.label, "label");
+  },
+
+  "POST /api/sessions/:id/note": (body) => {
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/sessions/bulk/revoke": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
   "POST /api/command-center/briefing/archive": (body) => {
     if (body.title !== undefined) requireString(body.title, "title");
   },

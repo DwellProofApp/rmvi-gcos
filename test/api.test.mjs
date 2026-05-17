@@ -141,6 +141,47 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(flaggedSession.session.status, "Flagged");
     assert.equal(flaggedSession.session.flags.includes("Automated suspicious session test"), true);
 
+    const extendedSession = await postJson(`/api/sessions/${renewedSession.session.id}/extend`, {
+      minutes: 30
+    }, nationalToken);
+    assert.equal(extendedSession.session.status, "Extended");
+
+    const lockedSession = await postJson(`/api/sessions/${renewedSession.session.id}/lock`, {
+      reason: "Automated lock test"
+    }, nationalToken);
+    assert.equal(lockedSession.session.status, "Locked");
+
+    const unlockedSession = await postJson(`/api/sessions/${renewedSession.session.id}/unlock`, {
+      reason: "Automated unlock test"
+    }, nationalToken);
+    assert.equal(unlockedSession.session.status, "Active");
+
+    const trustedSession = await postJson(`/api/sessions/${renewedSession.session.id}/trust`, {
+      reason: "Automated trust test"
+    }, nationalToken);
+    assert.equal(trustedSession.session.trusted, true);
+
+    const mfaSession = await postJson(`/api/sessions/${renewedSession.session.id}/mfa`, {
+      reason: "Automated MFA test"
+    }, nationalToken);
+    assert.equal(mfaSession.session.mfaRequired, true);
+    assert.equal(mfaSession.session.status, "MFA Required");
+
+    const labeledSession = await postJson(`/api/sessions/${renewedSession.session.id}/device`, {
+      label: "Automated workstation"
+    }, nationalToken);
+    assert.equal(labeledSession.session.deviceLabel, "Automated workstation");
+
+    const notedSession = await postJson(`/api/sessions/${renewedSession.session.id}/note`, {
+      note: "Automated session note"
+    }, nationalToken);
+    assert.equal(notedSession.session.notes.some((note) => note.includes("Automated session note")), true);
+
+    const sessionDigest = await getJson("/api/sessions/digest", nationalToken);
+    assert.equal(sessionDigest.trusted >= 1, true);
+    assert.equal(sessionDigest.mfaRequired >= 1, true);
+    assert.equal(sessionDigest.labeled >= 1, true);
+
     const spareLocalLogin = await postJson("/api/auth/login", {
       email: "local_branch_017@gcos.org",
       password: "gcos-local"
@@ -149,6 +190,15 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const revokedLocalSession = await postJson(`/api/sessions/${spareLocalLogin.token}/revoke`, {}, nationalToken);
     assert.equal(revokedLocalSession.revoked, spareLocalLogin.token);
     assert.equal(revokedLocalSession.sessions.active, 3);
+
+    const bulkSessionLogin = await postJson("/api/auth/login", {
+      email: "district_admin@rmvi.org",
+      password: "gcos-district"
+    });
+    const bulkRevokedSessions = await postJson("/api/sessions/bulk/revoke", {
+      ids: [bulkSessionLogin.token]
+    }, nationalToken);
+    assert.equal(bulkRevokedSessions.revoked, 1);
 
     const extraLogin = await postJson("/api/auth/login", {
       email: "np@rmvi.org",
@@ -1416,6 +1466,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "SessionFlagged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SessionRevoked"), true);
     assert.equal(persisted.audit.some((row) => row.event === "StationSessionsRevoked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionExtended"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionLocked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionUnlocked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionTrusted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionMfaRequired"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionDeviceLabeled"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionNoteAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "SessionsBulkRevoked"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessOwnerAssigned"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessRecheckScheduled"), true);
