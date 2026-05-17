@@ -122,6 +122,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(reviewedMessage.status, "In Review");
 
+    const classifiedMessage = await postJson(`/api/messages/${createdMessage.id}/classify`, {
+      kind: "Directive"
+    }, nationalToken);
+    assert.equal(classifiedMessage.kind, "Directive");
+
     const snapshot = await getJson("/api/export", nationalToken);
     assert.equal(snapshot.exportedBy, "np@rmvi.org");
     assert.equal(snapshot.service, "gcos-api");
@@ -391,6 +396,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(suspendedOffice.status, "Suspended");
 
+    const supervisedOffice = await postJson(`/api/offices/${office.id}/supervisor`, {
+      supervisor: "International Headquarters"
+    }, nationalToken);
+    assert.equal(supervisedOffice.supervisor, "International Headquarters");
+
     const officeLogin = await postJson("/api/auth/login", {
       email: "automated_district@gcos.org",
       password: office.password
@@ -440,6 +450,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(acknowledgedTransfer.step, "Permissions migration");
     assert.equal(acknowledgedTransfer.risk, "Acknowledgement recorded");
 
+    const riskTransfer = await postJson(`/api/transfers/${createdTransfer.id}/risk`, {
+      risk: "Supervisor review required"
+    }, nationalToken);
+    assert.equal(riskTransfer.risk, "Supervisor review required");
+
     const forbiddenTransfer = await rawPost(`/api/transfers/${transfers[0].id}/execute`, {}, localToken);
     assert.equal(forbiddenTransfer.status, 403);
 
@@ -468,6 +483,16 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(document.name, "Automated signed packet.pdf");
     assert.equal(document.status, "Archived");
     assert.match(document.storageKey, /^gcos-object-vault\//);
+
+    const classifiedDocument = await postJson(`/api/documents/${document.id}/classification`, {
+      classification: "Executive packet"
+    }, nationalToken);
+    assert.equal(classifiedDocument.classification, "Executive packet");
+
+    const ownedDocument = await postJson(`/api/documents/${document.id}/owner`, {
+      owner: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(ownedDocument.owner, "np@rmvi.org");
 
     const reviewDocument = await postJson(`/api/documents/${document.id}/review`, {
       reason: "Automated review test"
@@ -512,6 +537,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const persisted = JSON.parse(await readFile(dataPath, "utf8"));
     assert.equal(persisted.messages[0].subject, "Automated API test notice");
     assert.equal(persisted.audit.some((row) => row.event === "OfflineActionTest"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EmailClassified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EmailStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportScoreUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ApprovalSigned"), true);
@@ -527,10 +553,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "PersonRegistered"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonAssignmentUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeSupervisorUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationOwnerUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferAcknowledged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferRiskUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferExecuted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentClassificationUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentOwnerUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AIDraftRefreshed"), true);
 

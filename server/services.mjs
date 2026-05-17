@@ -72,6 +72,13 @@ export function createServices({ state, record, requirePermission, findById }) {
       return created;
     },
 
+    classifyMessage(id, body) {
+      const item = findById(state.messages, id);
+      item.kind = body.kind ?? "Notification";
+      record("EmailClassified", body.actor, item.subject, item.kind);
+      return item;
+    },
+
     updateMessageStatus(id, body) {
       const item = findById(state.messages, id);
       item.status = body.status ?? "In Review";
@@ -317,6 +324,16 @@ export function createServices({ state, record, requirePermission, findById }) {
       return created;
     },
 
+    updateOfficeSupervisor(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.supervisor = body.supervisor ?? item.supervisor;
+      const stationRecord = state.stations.find((entry) => entry.email === item.email);
+      if (stationRecord) stationRecord.authority = `${item.department}, supervised by ${item.supervisor}`;
+      record("OfficeSupervisorUpdated", body.actor, item.name, item.supervisor);
+      return item;
+    },
+
     updateOfficeStatus(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);
@@ -339,6 +356,14 @@ export function createServices({ state, record, requirePermission, findById }) {
       item.step = "Permissions migration";
       item.risk = "Acknowledgement recorded";
       record("TransferAcknowledged", body.actor, item.person, "Recipient acknowledgement recorded");
+      return item;
+    },
+
+    updateTransferRisk(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.risk = body.risk ?? "Supervisor review required";
+      record("TransferRiskUpdated", body.actor, item.person, item.risk);
       return item;
     },
 
@@ -368,6 +393,20 @@ export function createServices({ state, record, requirePermission, findById }) {
       state.documents.unshift(created);
       record("DocumentArchived", body.actor, created.name, `${created.classification} stored in object vault`);
       return created;
+    },
+
+    updateDocumentClassification(id, body) {
+      const item = findById(state.documents, id);
+      item.classification = body.classification ?? item.classification;
+      record("DocumentClassificationUpdated", body.actor, item.name, item.classification);
+      return item;
+    },
+
+    updateDocumentOwner(id, body) {
+      const item = findById(state.documents, id);
+      item.owner = body.owner ?? body.actor ?? item.owner;
+      record("DocumentOwnerUpdated", body.actor, item.name, item.owner);
+      return item;
     },
 
     markDocumentInReview(id, body) {

@@ -35,6 +35,10 @@ const validators = {
     if (body.files !== undefined) requireString(body.files, "files");
   },
 
+  "POST /api/messages/:id/classify": (body) => {
+    if (body.kind !== undefined) requireEnum(body.kind, messageKinds, "kind");
+  },
+
   "POST /api/messages/:id/status": (body) => {
     if (body.status !== undefined) requireEnum(body.status, statuses, "status");
   },
@@ -159,6 +163,10 @@ const validators = {
     if (body.status !== undefined) requireEnum(body.status, officeStatuses, "status");
   },
 
+  "POST /api/offices/:id/supervisor": (body) => {
+    if (body.supervisor !== undefined) requireString(body.supervisor, "supervisor");
+  },
+
   "POST /api/documents": (body) => {
     requireString(body.name, "name");
     requireString(body.classification, "classification");
@@ -166,6 +174,14 @@ const validators = {
     requireString(body.fileType, "fileType");
     if (body.owner !== undefined) requireString(body.owner, "owner");
     if (body.status !== undefined) requireEnum(body.status, documentStatuses, "status");
+  },
+
+  "POST /api/documents/:id/classification": (body) => {
+    if (body.classification !== undefined) requireString(body.classification, "classification");
+  },
+
+  "POST /api/documents/:id/owner": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
   },
 
   "POST /api/documents/:id/review": (body) => {
@@ -186,6 +202,10 @@ const validators = {
 
   "POST /api/transfers/:id/acknowledge": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/transfers/:id/risk": (body) => {
+    if (body.risk !== undefined) requireString(body.risk, "risk");
   },
 
   "POST /api/ai-drafts": (body) => {

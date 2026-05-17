@@ -921,6 +921,19 @@ function App() {
     }
   }
 
+  function classifyMessage(id: string, kind: MessageKind) {
+    const message = messages.find((item) => item.id === id);
+    if (!message) return;
+    setMessages((items) => items.map((item) => item.id === id ? { ...item, kind } : item));
+    recordAudit("EmailClassified", message.subject, kind);
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/messages/${id}/classify`, {
+        method: "POST",
+        body: JSON.stringify({ kind })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function createReportFromMessage(id: string) {
     const message = messages.find((item) => item.id === id);
     if (!message) return;
@@ -1411,6 +1424,19 @@ function App() {
     }
   }
 
+  function updateTransferRisk(id: string, risk: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, risk } : item));
+    recordAudit("TransferRiskUpdated", transfer.person, risk);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/risk`, {
+        method: "POST",
+        body: JSON.stringify({ risk })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function createOffice(office: Omit<Office, "id" | "password" | "status">) {
     const normalizedEmail = office.email.toLowerCase();
     const exists = stationDirectory.some((station) => station.email === normalizedEmail);
@@ -1443,6 +1469,19 @@ function App() {
       void apiRequest<Office>(`/api/offices/${id}/status`, {
         method: "POST",
         body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateOfficeSupervisor(id: string, supervisor: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, supervisor } : item));
+    recordAudit("OfficeSupervisorUpdated", office.name, supervisor);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/supervisor`, {
+        method: "POST",
+        body: JSON.stringify({ supervisor })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1599,6 +1638,32 @@ function App() {
       void apiRequest<DocumentRecord>("/api/documents", {
         method: "POST",
         body: JSON.stringify(record)
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateDocumentClassification(id: string, classification: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, classification } : item));
+    recordAudit("DocumentClassificationUpdated", document.name, classification);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/classification`, {
+        method: "POST",
+        body: JSON.stringify({ classification })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateDocumentOwner(id: string, owner: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, owner } : item));
+    recordAudit("DocumentOwnerUpdated", document.name, owner);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/owner`, {
+        method: "POST",
+        body: JSON.stringify({ owner })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1802,6 +1867,7 @@ function App() {
             station={activeStation}
             offlineMode={offlineMode}
             onAcknowledge={acknowledgeMessage}
+            onClassify={classifyMessage}
             onUpdateStatus={updateMessageStatus}
             onCreateReport={createReportFromMessage}
             onRequestApproval={requestApprovalFromMessage}
@@ -1911,7 +1977,7 @@ function App() {
           />
         )}
         {activeSection === "Hierarchy" && <Hierarchy stationDirectory={stationDirectory} offices={offices} />}
-        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeStatus={updateOfficeStatus} />}
+        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} />}
         {activeSection === "Transfers" && (
           <Transfers
             transfers={transfers}
@@ -1920,10 +1986,11 @@ function App() {
             onSync={syncOfflineQueue}
             onCreateTransfer={createTransferRequest}
             onAcknowledgeTransfer={acknowledgeTransfer}
+            onUpdateTransferRisk={updateTransferRisk}
             onExecuteTransfer={executeTransfer}
           />
         )}
-        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} onArchiveDocument={archiveDocument} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} />}
+        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} />}
         {activeSection === "Audit" && <Audit auditRows={auditRows} apiStatus={apiStatus} session={session} />}
       </section>
     </main>
@@ -2324,6 +2391,7 @@ function ChurchMail({
   station,
   offlineMode,
   onAcknowledge,
+  onClassify,
   onUpdateStatus,
   onCreateReport,
   onRequestApproval,
@@ -2335,6 +2403,7 @@ function ChurchMail({
   station: StationCard;
   offlineMode: boolean;
   onAcknowledge: (id: string) => void;
+  onClassify: (id: string, kind: MessageKind) => void;
   onUpdateStatus: (id: string, status: Status) => void;
   onCreateReport: (id: string) => void;
   onRequestApproval: (id: string) => void;
@@ -2410,6 +2479,7 @@ function ChurchMail({
               </div>
               <div className="action-row">
                 <button onClick={() => onUpdateStatus(selected.id, "In Review")}><FileClock size={15} /> Review</button>
+                <button onClick={() => onClassify(selected.id, selected.kind === "Directive" ? "Notification" : "Directive")}><SlidersHorizontal size={15} /> Classify</button>
                 <button onClick={() => onAcknowledge(selected.id)}><Send size={15} /> Acknowledge</button>
                 <button onClick={() => onCreateReport(selected.id)}><FileCheck2 size={15} /> Create report</button>
                 <button onClick={() => onRequestApproval(selected.id)}><Signature size={15} /> Request approval</button>
@@ -3643,12 +3713,14 @@ function Offices({
   stationDirectory,
   permissions,
   onCreateOffice,
+  onUpdateOfficeSupervisor,
   onUpdateOfficeStatus
 }: {
   offices: Office[];
   stationDirectory: StationCard[];
   permissions: Permissions;
   onCreateOffice: (office: Omit<Office, "id" | "password" | "status">) => boolean;
+  onUpdateOfficeSupervisor: (id: string, supervisor: string) => void;
   onUpdateOfficeStatus: (id: string, status: Office["status"]) => void;
 }) {
   const [name, setName] = React.useState("New Hope District Office");
@@ -3730,6 +3802,7 @@ function Offices({
               <span>{office.supervisor}</span>
               <div className="table-actions">
                 <StatusPill status={office.status} />
+                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeSupervisor(office.id, office.supervisor === "International Headquarters" ? "National Headquarters" : "International Headquarters")}><GitBranch size={14} /> Supervisor</button>
                 <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeStatus(office.id, office.status === "Suspended" ? "Provisioned" : "Suspended")}><LockKeyhole size={14} /> Status</button>
               </div>
             </div>
@@ -3814,6 +3887,7 @@ function Transfers({
   onSync,
   onCreateTransfer,
   onAcknowledgeTransfer,
+  onUpdateTransferRisk,
   onExecuteTransfer
 }: {
   transfers: Transfer[];
@@ -3822,12 +3896,18 @@ function Transfers({
   onSync: () => void;
   onCreateTransfer: (draft: Omit<Transfer, "id" | "step" | "risk">) => void;
   onAcknowledgeTransfer: (id: string) => void;
+  onUpdateTransferRisk: (id: string, risk: string) => void;
   onExecuteTransfer: (id: string) => void;
 }) {
   const [person, setPerson] = React.useState("Rev. Grace Walker");
   const [from, setFrom] = React.useState("County Mission Office");
   const [to, setTo] = React.useState("Riverbend Area Office");
+  const [stepFilter, setStepFilter] = React.useState("All steps");
   const [feedback, setFeedback] = React.useState("");
+  const stepOptions = React.useMemo(() => ["All steps", ...Array.from(new Set(transfers.map((transfer) => transfer.step))).sort()], [transfers]);
+  const visibleTransfers = React.useMemo(() => (
+    stepFilter === "All steps" ? transfers : transfers.filter((transfer) => transfer.step === stepFilter)
+  ), [stepFilter, transfers]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3843,15 +3923,23 @@ function Transfers({
   return (
     <section className="module-grid">
       <div className="panel module-primary">
-        <PanelHeader icon={Signature} title="Transfer Identity Migration" action="Mission office" />
+        <PanelHeader icon={Signature} title="Transfer Identity Migration" action={`${visibleTransfers.length} visible`} />
         {!permissions.canExecuteTransfers && (
           <div className="permission-warning">
             <LockKeyhole size={16} />
             <span>This station can view transfers, but cannot execute identity migration.</span>
           </div>
         )}
+        <div className="archive-toolbar">
+          <label>
+            <span>Step</span>
+            <select value={stepFilter} onChange={(event) => setStepFilter(event.target.value)}>
+              {stepOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+        </div>
         <div className="transfer-list">
-          {transfers.map((transfer) => (
+          {visibleTransfers.map((transfer) => (
             <article className="transfer-card" key={transfer.person}>
               <h2>{transfer.person}</h2>
               <div className="route-box">
@@ -3875,6 +3963,13 @@ function Transfers({
                   <CheckCircle2 size={15} /> Acknowledge
                 </button>
                 <button
+                  aria-label={`Flag risk for ${transfer.person}`}
+                  disabled={!permissions.canExecuteTransfers}
+                  onClick={() => onUpdateTransferRisk(transfer.id, transfer.risk === "Supervisor review required" ? "Session switch pending" : "Supervisor review required")}
+                >
+                  <AlertTriangle size={15} /> Risk
+                </button>
+                <button
                   aria-label={`Execute transfer for ${transfer.person}`}
                   disabled={!permissions.canExecuteTransfers}
                   onClick={() => onExecuteTransfer(transfer.id)}
@@ -3884,6 +3979,7 @@ function Transfers({
               </div>
             </article>
           ))}
+          {visibleTransfers.length === 0 && <div className="empty-state">No transfers match the current step filter.</div>}
         </div>
       </div>
       <div className="panel module-side">
@@ -3921,6 +4017,8 @@ function Archive({
   station,
   offlineMode,
   onArchiveDocument,
+  onUpdateClassification,
+  onUpdateOwner,
   onMarkReview,
   onMarkArchived
 }: {
@@ -3928,6 +4026,8 @@ function Archive({
   station: StationCard;
   offlineMode: boolean;
   onArchiveDocument: (record: Omit<DocumentRecord, "id" | "storageKey" | "retainedUntil" | "createdAt">) => void;
+  onUpdateClassification: (id: string, classification: string) => void;
+  onUpdateOwner: (id: string, owner: string) => void;
   onMarkReview: (id: string) => void;
   onMarkArchived: (id: string) => void;
 }) {
@@ -3937,14 +4037,17 @@ function Archive({
   const [fileType, setFileType] = React.useState("PDF");
   const [sourceFilter, setSourceFilter] = React.useState("All sources");
   const [statusFilter, setStatusFilter] = React.useState("All statuses");
+  const [ownerFilter, setOwnerFilter] = React.useState("All owners");
   const [feedback, setFeedback] = React.useState("");
   const sourceOptions = React.useMemo(() => ["All sources", ...Array.from(new Set(documents.map((document) => document.source))).sort()], [documents]);
   const statusOptions = React.useMemo(() => ["All statuses", ...Array.from(new Set(documents.map((document) => document.status))).sort()], [documents]);
+  const ownerOptions = React.useMemo(() => ["All owners", ...Array.from(new Set(documents.map((document) => document.owner))).sort()], [documents]);
   const visibleDocuments = React.useMemo(() => documents.filter((document) => {
     const sourceMatches = sourceFilter === "All sources" || document.source === sourceFilter;
     const statusMatches = statusFilter === "All statuses" || document.status === statusFilter;
-    return sourceMatches && statusMatches;
-  }), [documents, sourceFilter, statusFilter]);
+    const ownerMatches = ownerFilter === "All owners" || document.owner === ownerFilter;
+    return sourceMatches && statusMatches && ownerMatches;
+  }), [documents, ownerFilter, sourceFilter, statusFilter]);
   const archivedCount = documents.filter((document) => document.status === "Archived").length;
   const inReviewCount = documents.filter((document) => document.status === "In Review").length;
   const fileTypeCount = new Set(documents.map((document) => document.fileType)).size;
@@ -3985,6 +4088,12 @@ function Archive({
               {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <label>
+            <span>Owner</span>
+            <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>
+              {ownerOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
         </div>
         <div className="data-table document-table">
           <div className="table-row table-head">
@@ -3998,6 +4107,8 @@ function Archive({
               <span>{document.owner}</span>
               <div className="table-actions">
                 <StatusPill status={document.status} />
+                <button onClick={() => onUpdateClassification(document.id, document.classification === "Executive packet" ? "Report evidence" : "Executive packet")}><SlidersHorizontal size={14} /> Class</button>
+                <button onClick={() => onUpdateOwner(document.id, station.email)}><Users size={14} /> Owner</button>
                 <button onClick={() => onMarkReview(document.id)}><FileClock size={14} /> Review</button>
                 <button onClick={() => onMarkArchived(document.id)}><Files size={14} /> Archive</button>
               </div>
