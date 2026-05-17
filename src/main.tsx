@@ -58,7 +58,7 @@ type MessageKind = "Directive" | "Report" | "Approval" | "Notification" | "Trans
 type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
 type StationCard = { email: string; title: string; level: StationLevel | string; authority: string; icon: React.ElementType };
 type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[] };
-type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number };
+type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number; evidenceStatus?: string; reviewNote?: string; verified?: boolean; archived?: boolean; watchers?: string[] };
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string };
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[] };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[] };
@@ -251,6 +251,18 @@ type MessageDigest = {
   archived: number;
   watched: number;
   nextMessage: string;
+};
+type ReportDigest = {
+  generatedAt: string;
+  total: number;
+  open: number;
+  overdue: number;
+  correction: number;
+  verified: number;
+  watched: number;
+  archived: number;
+  averageScore: number;
+  nextReport: string;
 };
 type CommandBriefing = {
   title: string;
@@ -659,6 +671,7 @@ function App() {
   const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
   const [calendarDigest, setCalendarDigest] = React.useState<CalendarDigest | null>(null);
   const [messageDigest, setMessageDigest] = React.useState<MessageDigest | null>(null);
+  const [reportDigest, setReportDigest] = React.useState<ReportDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -862,6 +875,7 @@ function App() {
       void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
       void apiRequest<CalendarDigest>("/api/calendar-events/digest").then(setCalendarDigest).catch(() => undefined);
       void apiRequest<MessageDigest>("/api/messages/digest").then(setMessageDigest).catch(() => undefined);
+      void apiRequest<ReportDigest>("/api/reports/digest").then(setReportDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1973,6 +1987,113 @@ function App() {
     }
   }
 
+  function updateReportOwner(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    const owner = activeStation.title;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, owner } : item));
+    recordAudit("ReportOwnerUpdated", report.name, owner);
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/owner`, {
+        method: "POST",
+        body: JSON.stringify({ owner })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateReportPath(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    const path = `${activeStation.level} -> Supervising Office -> Archive`;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, path } : item));
+    recordAudit("ReportPathUpdated", report.name, path);
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/path`, {
+        method: "POST",
+        body: JSON.stringify({ path })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function markReportEvidence(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, evidenceStatus: "Evidence attached", score: Math.max(item.score, 70) } : item));
+    recordAudit("ReportEvidenceUpdated", report.name, "Evidence attached");
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/evidence`, {
+        method: "POST",
+        body: JSON.stringify({ evidenceStatus: "Evidence attached" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function reviewReport(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, state: "In Review", reviewNote: "Supervisory review opened" } : item));
+    recordAudit("ReportReviewStarted", report.name, "Supervisory review opened");
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/review`, {
+        method: "POST",
+        body: JSON.stringify({ note: "Supervisory review opened" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function verifyReport(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, verified: true, state: "Approved", score: Math.max(item.score, 95) } : item));
+    recordAudit("ReportVerified", report.name, "Report verified");
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/verify`, {
+        method: "POST",
+        body: JSON.stringify({ state: "Approved" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchReport(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("ReportWatcherAdded", report.name, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function duplicateReport(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    const duplicate: Report = { ...report, id: `rep-${Date.now()}`, name: `${report.name} follow-up`, state: "Ready", score: Math.min(report.score, 35) };
+    setReports((items) => [duplicate, ...items]);
+    recordAudit("ReportDuplicated", report.name, duplicate.name);
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/duplicate`, {
+        method: "POST",
+        body: JSON.stringify({ name: duplicate.name, path: report.path, due: report.due })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveReportRecord(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, archived: true } : item));
+    recordAudit("ReportArchived", report.name, "Report archived");
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Archived from reporting center" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function bulkSubmitReports(ids: string[]) {
     const targetIds = ids.length ? ids : reports.filter((item) => item.state !== "Approved").map((item) => item.id);
     setReports((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Approved", score: 100 } : item));
@@ -2006,6 +2127,19 @@ function App() {
       .then((digest) => {
         setWorkflowDigest(digest);
         recordAudit("WorkflowDigestRefreshed", "Workflow digest", `${digest.reportsOpen} reports, ${digest.approvalsOpen} approvals open`);
+      })
+      .catch(() => undefined);
+  }
+
+  function refreshReportDigest() {
+    if (offlineMode) {
+      recordAudit("ReportDigestRefreshed", "Report digest", "Local report digest refreshed");
+      return;
+    }
+    void apiRequest<ReportDigest>("/api/reports/digest")
+      .then((digest) => {
+        setReportDigest(digest);
+        recordAudit("ReportDigestRefreshed", "Report digest", `${digest.open} open, ${digest.overdue} overdue`);
       })
       .catch(() => undefined);
   }
@@ -3201,10 +3335,18 @@ function App() {
             onUpdateScore={updateReportScore}
             onEscalateReport={triggerEscalation}
             onArchiveEvidence={archiveReportEvidence}
+            onUpdateOwner={updateReportOwner}
+            onUpdatePath={updateReportPath}
+            onMarkEvidence={markReportEvidence}
+            onReviewReport={reviewReport}
+            onVerifyReport={verifyReport}
+            onWatchReport={watchReport}
+            onDuplicateReport={duplicateReport}
+            onArchiveReport={archiveReportRecord}
             onBulkSubmit={bulkSubmitReports}
             onBulkCorrection={bulkRequestReportCorrections}
-            onRefreshDigest={refreshWorkflowDigest}
-            digest={workflowDigest}
+            onRefreshDigest={refreshReportDigest}
+            digest={reportDigest}
           />
         )}
         {activeSection === "Approvals" && (
@@ -4072,6 +4214,14 @@ function Reports({
   onUpdateScore,
   onEscalateReport,
   onArchiveEvidence,
+  onUpdateOwner,
+  onUpdatePath,
+  onMarkEvidence,
+  onReviewReport,
+  onVerifyReport,
+  onWatchReport,
+  onDuplicateReport,
+  onArchiveReport,
   onBulkSubmit,
   onBulkCorrection,
   onRefreshDigest,
@@ -4086,10 +4236,18 @@ function Reports({
   onUpdateScore: (id: string, score: number) => void;
   onEscalateReport: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
   onArchiveEvidence: (id: string) => void;
+  onUpdateOwner: (id: string) => void;
+  onUpdatePath: (id: string) => void;
+  onMarkEvidence: (id: string) => void;
+  onReviewReport: (id: string) => void;
+  onVerifyReport: (id: string) => void;
+  onWatchReport: (id: string) => void;
+  onDuplicateReport: (id: string) => void;
+  onArchiveReport: (id: string) => void;
   onBulkSubmit: (ids: string[]) => void;
   onBulkCorrection: (ids: string[]) => void;
   onRefreshDigest: () => void;
-  digest: WorkflowDigest | null;
+  digest: ReportDigest | null;
 }) {
   const [name, setName] = React.useState("Monthly branch administration report");
   const [owner, setOwner] = React.useState(String(station.level));
@@ -4101,6 +4259,10 @@ function Reports({
     stateFilter === "All states" ? reports : reports.filter((report) => report.state === stateFilter)
   ), [reports, stateFilter]);
   const stateOptions = React.useMemo(() => ["All states", ...Array.from(new Set(reports.map((report) => report.state))).sort()], [reports]);
+  const openCount = reports.filter((report) => report.state !== "Approved").length;
+  const overdueCount = reports.filter((report) => report.due === "Overdue").length;
+  const correctionCount = reports.filter((report) => report.state === "Correction Requested").length;
+  const watchedCount = reports.filter((report) => report.watchers?.length).length;
 
   React.useEffect(() => {
     setOwner(String(station.level));
@@ -4118,6 +4280,15 @@ function Reports({
     <section className="module-grid">
       <div className="panel module-primary">
         <PanelHeader icon={FileCheck2} title="Hierarchical Reporting Center" action={`${visibleReports.length} visible`} />
+        <div className="office-summary-grid">
+          <Insight label="Open" value={String(digest?.open ?? openCount)} />
+          <Insight label="Overdue" value={String(digest?.overdue ?? overdueCount)} />
+          <Insight label="Corrections" value={String(digest?.correction ?? correctionCount)} />
+          <Insight label="Verified" value={String(digest?.verified ?? reports.filter((report) => report.verified).length)} />
+          <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Average score" value={`${digest?.averageScore ?? 0}%`} />
+          <Insight label="Next report" value={digest?.nextReport ?? visibleReports[0]?.name ?? "None"} />
+        </div>
         <div className="archive-toolbar">
           <label>
             <span>State</span>
@@ -4129,13 +4300,6 @@ function Reports({
           <button type="button" onClick={() => onBulkCorrection(visibleReports.map((report) => report.id))}><FileClock size={14} /> Correct visible</button>
           <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
         </div>
-        {digest && (
-          <div className="workflow-digest">
-            <Insight label="Open reports" value={String(digest.reportsOpen)} />
-            <Insight label="Open approvals" value={String(digest.approvalsOpen)} />
-            <Insight label="Next report" value={digest.nextReport} />
-          </div>
-        )}
         <div className="data-table">
           <div className="table-row table-head">
             <span>Report</span><span>Owner</span><span>Route</span><span>Due</span><span>Status</span>
@@ -4150,8 +4314,16 @@ function Reports({
                 <StatusPill status={report.state} />
                 <button aria-label={`Submit ${report.name}`} onClick={() => onSubmitReport(report.id)}><Send size={14} /> Submit</button>
                 <button aria-label={`Request correction for ${report.name}`} onClick={() => onRequestCorrection(report.id)}><FileClock size={14} /> Correct</button>
+                <button aria-label={`Review ${report.name}`} onClick={() => onReviewReport(report.id)}><FileCheck2 size={14} /> Review</button>
+                <button aria-label={`Verify ${report.name}`} onClick={() => onVerifyReport(report.id)}><CheckCircle2 size={14} /> Verify</button>
                 <button aria-label={`Update due status for ${report.name}`} onClick={() => onUpdateDue(report.id, report.due === "Overdue" ? "This week" : "Overdue")}><TimerReset size={14} /> Due</button>
                 <button aria-label={`Raise score for ${report.name}`} onClick={() => onUpdateScore(report.id, report.score + 15)}><CheckCircle2 size={14} /> Score</button>
+                <button aria-label={`Update owner for ${report.name}`} onClick={() => onUpdateOwner(report.id)}><Users size={14} /> Owner</button>
+                <button aria-label={`Update path for ${report.name}`} onClick={() => onUpdatePath(report.id)}><Workflow size={14} /> Path</button>
+                <button aria-label={`Mark evidence for ${report.name}`} onClick={() => onMarkEvidence(report.id)}><Files size={14} /> Evidence</button>
+                <button aria-label={`Watch ${report.name}`} onClick={() => onWatchReport(report.id)}><Bell size={14} /> Watch</button>
+                <button aria-label={`Duplicate ${report.name}`} onClick={() => onDuplicateReport(report.id)}><Files size={14} /> Duplicate</button>
+                <button aria-label={`Archive ${report.name}`} onClick={() => onArchiveReport(report.id)}><LockKeyhole size={14} /> Archive</button>
                 <button aria-label={`Vault evidence for ${report.name}`} onClick={() => onArchiveEvidence(report.id)}><Files size={14} /> Vault</button>
                 <button
                   aria-label={`Escalate ${report.name}`}

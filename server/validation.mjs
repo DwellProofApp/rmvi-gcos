@@ -122,6 +122,40 @@ const validators = {
     if (body.due !== undefined) requireString(body.due, "due");
   },
 
+  "POST /api/reports/:id/owner": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
+  "POST /api/reports/:id/path": (body) => {
+    if (body.path !== undefined) requireString(body.path, "path");
+  },
+
+  "POST /api/reports/:id/evidence": (body) => {
+    if (body.evidenceStatus !== undefined) requireString(body.evidenceStatus, "evidenceStatus");
+  },
+
+  "POST /api/reports/:id/review": (body) => {
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/reports/:id/verify": (body) => {
+    if (body.state !== undefined) requireString(body.state, "state");
+  },
+
+  "POST /api/reports/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/reports/:id/duplicate": (body) => {
+    if (body.name !== undefined) requireString(body.name, "name");
+    if (body.path !== undefined) requireString(body.path, "path");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/reports/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/reports/bulk/submit": (body) => {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
   },

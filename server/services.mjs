@@ -687,6 +687,89 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateReportOwner(id, body) {
+      const item = findById(state.reports, id);
+      item.owner = body.owner ?? body.actor ?? item.owner;
+      record("ReportOwnerUpdated", body.actor, item.name, item.owner);
+      return item;
+    },
+
+    updateReportPath(id, body) {
+      const item = findById(state.reports, id);
+      item.path = body.path ?? item.path;
+      record("ReportPathUpdated", body.actor, item.name, item.path);
+      return item;
+    },
+
+    markReportEvidence(id, body) {
+      const item = findById(state.reports, id);
+      item.evidenceStatus = body.evidenceStatus ?? "Evidence attached";
+      item.score = Math.max(item.score, 70);
+      record("ReportEvidenceUpdated", body.actor, item.name, item.evidenceStatus);
+      return item;
+    },
+
+    reviewReport(id, body) {
+      const item = findById(state.reports, id);
+      item.state = "In Review";
+      item.reviewNote = body.note ?? "Supervisory review opened";
+      record("ReportReviewStarted", body.actor, item.name, item.reviewNote);
+      return item;
+    },
+
+    verifyReport(id, body) {
+      const item = findById(state.reports, id);
+      item.verified = true;
+      item.state = body.state ?? "Approved";
+      item.score = Math.max(item.score, 95);
+      record("ReportVerified", body.actor, item.name, "Report verified");
+      return item;
+    },
+
+    watchReport(id, body) {
+      const item = findById(state.reports, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
+      record("ReportWatcherAdded", body.actor, item.name, watcher);
+      return item;
+    },
+
+    duplicateReport(id, body) {
+      const item = findById(state.reports, id);
+      const created = report(body.name ?? `${item.name} follow-up`, item.owner, body.path ?? item.path, body.due ?? item.due, "Ready", Math.min(item.score, 35));
+      state.reports.unshift(created);
+      record("ReportDuplicated", body.actor, item.name, created.name);
+      return created;
+    },
+
+    archiveReport(id, body) {
+      const item = findById(state.reports, id);
+      item.archived = true;
+      record("ReportArchived", body.actor, item.name, body.reason ?? "Report archived");
+      return item;
+    },
+
+    reportDigest() {
+      const open = state.reports.filter((item) => item.state !== "Approved");
+      const overdue = state.reports.filter((item) => item.due === "Overdue");
+      const correction = state.reports.filter((item) => item.state === "Correction Requested");
+      const verified = state.reports.filter((item) => item.verified);
+      const watched = state.reports.filter((item) => item.watchers?.length);
+      const archived = state.reports.filter((item) => item.archived);
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.reports.length,
+        open: open.length,
+        overdue: overdue.length,
+        correction: correction.length,
+        verified: verified.length,
+        watched: watched.length,
+        archived: archived.length,
+        averageScore: state.reports.length ? Math.round(state.reports.reduce((sum, item) => sum + item.score, 0) / state.reports.length) : 100,
+        nextReport: overdue[0]?.name ?? correction[0]?.name ?? open[0]?.name ?? state.reports[0]?.name ?? "No reports"
+      };
+    },
+
     bulkSubmitReports(body) {
       const ids = Array.isArray(body.ids) && body.ids.length ? body.ids : state.reports.filter((item) => item.state !== "Approved").map((item) => item.id);
       const updated = ids.map((id) => {
