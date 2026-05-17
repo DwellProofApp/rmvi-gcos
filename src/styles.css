@@ -679,6 +679,14 @@ h1 {
   grid-template-columns: 1.05fr 1.1fr 0.75fr 1fr 0.65fr;
 }
 
+.station-directory {
+  grid-column: 1 / -1;
+}
+
+.station-table .table-row {
+  grid-template-columns: 1.3fr 1fr 0.65fr 0.75fr 1fr;
+}
+
 .office-summary-grid {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));

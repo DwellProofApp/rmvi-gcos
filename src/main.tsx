@@ -1548,7 +1548,7 @@ function App() {
           />
         )}
         {activeSection === "Hierarchy" && <Hierarchy stationDirectory={stationDirectory} offices={offices} />}
-        {activeSection === "Offices" && <Offices offices={offices} permissions={permissions} onCreateOffice={createOffice} />}
+        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} />}
         {activeSection === "Transfers" && (
           <Transfers
             transfers={transfers}
@@ -3110,10 +3110,12 @@ function Hierarchy({
 
 function Offices({
   offices,
+  stationDirectory,
   permissions,
   onCreateOffice
 }: {
   offices: Office[];
+  stationDirectory: StationCard[];
   permissions: Permissions;
   onCreateOffice: (office: Omit<Office, "id" | "password" | "status">) => boolean;
 }) {
@@ -3129,6 +3131,22 @@ function Offices({
   ), [levelFilter, offices]);
   const provisionedCount = offices.filter((office) => office.status === "Provisioned").length;
   const supervisorCount = new Set(offices.map((office) => office.supervisor)).size;
+  const officeEmailSet = React.useMemo(() => new Set(offices.map((office) => office.email)), [offices]);
+  const stationRows = React.useMemo(() => stationDirectory.map((station) => {
+    const stationPermissions = getPermissions(station);
+    const permissionLabels = [
+      stationPermissions.canCreateOffices && "Office admin",
+      stationPermissions.canApprove && "Approver",
+      stationPermissions.canExecuteTransfers && "Transfers",
+      stationPermissions.canOverride && "Override",
+      !stationPermissions.canApprove && "Reporter"
+    ].filter(Boolean);
+    return {
+      ...station,
+      origin: officeEmailSet.has(station.email) ? "Provisioned office" : "Seed station",
+      permissions: permissionLabels.join(", ")
+    };
+  }), [officeEmailSet, stationDirectory]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3155,7 +3173,7 @@ function Offices({
         <div className="office-summary-grid">
           <Insight label="Total offices" value={String(offices.length)} />
           <Insight label="Provisioned" value={String(provisionedCount)} />
-          <Insight label="Supervisors" value={String(supervisorCount)} />
+          <Insight label="Station identities" value={String(stationDirectory.length)} />
         </div>
         <div className="registry-toolbar">
           <label>
@@ -3182,6 +3200,29 @@ function Offices({
             </div>
           ))}
           {filteredOffices.length === 0 && <div className="empty-state">No offices match the current hierarchy filter.</div>}
+        </div>
+      </div>
+
+      <div className="panel station-directory">
+        <PanelHeader icon={LockKeyhole} title="Station Identity Directory" action={`${stationRows.length} active`} />
+        <div className="office-summary-grid">
+          <Insight label="Seed stations" value={String(stationRows.filter((station) => station.origin === "Seed station").length)} />
+          <Insight label="Provisioned" value={String(stationRows.filter((station) => station.origin === "Provisioned office").length)} />
+          <Insight label="Supervisors" value={String(supervisorCount)} />
+        </div>
+        <div className="data-table station-table">
+          <div className="table-row table-head">
+            <span>Station</span><span>Email</span><span>Level</span><span>Origin</span><span>Permissions</span>
+          </div>
+          {stationRows.map((station) => (
+            <div className="table-row" key={station.email}>
+              <strong>{station.title}</strong>
+              <span>{station.email}</span>
+              <span>{station.level}</span>
+              <span>{station.origin}</span>
+              <span>{station.permissions}</span>
+            </div>
+          ))}
         </div>
       </div>
 
