@@ -626,12 +626,55 @@ const validators = {
     if (body.watcher !== undefined) requireString(body.watcher, "watcher");
   },
 
+  "POST /api/policies/:id/compliance": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.score !== undefined) requireNumber(body.score, "score");
+  },
+
+  "POST /api/policies/:id/evidence": (body) => {
+    if (body.evidence !== undefined) requireString(body.evidence, "evidence");
+  },
+
+  "POST /api/policies/:id/distribute": (body) => {
+    if (body.audience !== undefined) requireString(body.audience, "audience");
+  },
+
+  "POST /api/policies/:id/exception": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.expires !== undefined) requireString(body.expires, "expires");
+  },
+
+  "POST /api/policies/:id/training": (body) => {
+    if (body.audience !== undefined) requireString(body.audience, "audience");
+  },
+
+  "POST /api/policies/:id/hold": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/policies/:id/task": (body) => {
+    if (body.taskId !== undefined) requireString(body.taskId, "taskId");
+  },
+
+  "POST /api/policies/:id/approval-link": (body) => {
+    if (body.approvalId !== undefined) requireString(body.approvalId, "approvalId");
+  },
+
+  "POST /api/policies/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/policies/:id/duplicate": (body) => {
     if (body.title !== undefined) requireString(body.title, "title");
   },
 
   "POST /api/policies/bulk/activate": (body) => {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
+  "POST /api/policies/bulk/review": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.reviewBy !== undefined) requireString(body.reviewBy, "reviewBy");
   },
 
   "POST /api/calendar-events": (body) => {

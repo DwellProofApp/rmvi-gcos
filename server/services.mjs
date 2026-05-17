@@ -634,6 +634,84 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    checkPolicyCompliance(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.complianceStatus = body.status ?? "Compliant";
+      item.complianceScore = body.score ?? 100;
+      record("PolicyComplianceChecked", body.actor, item.title, `${item.complianceStatus} ${item.complianceScore}`);
+      return item;
+    },
+
+    bindPolicyEvidence(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.evidence = body.evidence ?? "Policy evidence packet";
+      record("PolicyEvidenceBound", body.actor, item.title, item.evidence);
+      return item;
+    },
+
+    distributePolicy(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.distributedTo = body.audience ?? "All stations";
+      item.distributedAt = new Date().toISOString();
+      record("PolicyDistributed", body.actor, item.title, item.distributedTo);
+      return item;
+    },
+
+    grantPolicyException(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.exceptionNote = body.reason ?? "Exception approved by governance authority";
+      item.exceptionExpires = body.expires ?? "Next review";
+      record("PolicyExceptionGranted", body.actor, item.title, item.exceptionNote);
+      return item;
+    },
+
+    assignPolicyTraining(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.trainingAssigned = true;
+      item.trainingAudience = body.audience ?? "Station administrators";
+      record("PolicyTrainingAssigned", body.actor, item.title, item.trainingAudience);
+      return item;
+    },
+
+    holdPolicy(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.hold = true;
+      item.holdReason = body.reason ?? "Legal hold applied";
+      record("PolicyHoldApplied", body.actor, item.title, item.holdReason);
+      return item;
+    },
+
+    linkPolicyTask(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.linkedTask = body.taskId ?? "task-follow-up";
+      record("PolicyTaskLinked", body.actor, item.title, item.linkedTask);
+      return item;
+    },
+
+    linkPolicyApproval(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.linkedApproval = body.approvalId ?? "approval-follow-up";
+      record("PolicyApprovalLinked", body.actor, item.title, item.linkedApproval);
+      return item;
+    },
+
+    archivePolicy(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.archived = true;
+      item.archiveReason = body.reason ?? "Policy archived";
+      record("PolicyArchived", body.actor, item.title, item.archiveReason);
+      return item;
+    },
+
     duplicatePolicy(id, body) {
       requirePermission(body.actor, "canApprove");
       const item = findById(state.policies, id);
@@ -655,21 +733,50 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { count: updated.length, updated };
     },
 
+    bulkReviewPolicies(body) {
+      requirePermission(body.actor, "canApprove");
+      const ids = body.ids?.length ? body.ids : state.policies.filter((item) => item.status !== "Review").slice(0, 3).map((item) => item.id);
+      const updated = state.policies.filter((item) => ids.includes(item.id)).map((item) => {
+        item.status = "Review";
+        item.reviewBy = body.reviewBy ?? "Next governance review";
+        return item;
+      });
+      record("PoliciesBulkReviewed", body.actor, "Policy registry", `${updated.length} policies marked for review`);
+      return { count: updated.length, updated };
+    },
+
     policyDigest() {
-      const active = state.policies.filter((item) => item.status === "Active");
-      const review = state.policies.filter((item) => item.status === "Review");
-      const draft = state.policies.filter((item) => item.status === "Draft");
-      const retired = state.policies.filter((item) => item.status === "Retired");
-      const watched = state.policies.filter((item) => item.watchers?.length);
+      const visible = state.policies.filter((item) => !item.archived);
+      const active = visible.filter((item) => item.status === "Active");
+      const review = visible.filter((item) => item.status === "Review");
+      const draft = visible.filter((item) => item.status === "Draft");
+      const retired = visible.filter((item) => item.status === "Retired");
+      const watched = visible.filter((item) => item.watchers?.length);
+      const compliant = visible.filter((item) => item.complianceStatus === "Compliant");
+      const evidence = visible.filter((item) => item.evidence);
+      const distributed = visible.filter((item) => item.distributedTo);
+      const exceptions = visible.filter((item) => item.exceptionNote);
+      const training = visible.filter((item) => item.trainingAssigned);
+      const holds = visible.filter((item) => item.hold);
+      const linked = visible.filter((item) => item.linkedTask || item.linkedApproval);
+      const archived = state.policies.filter((item) => item.archived);
       return {
         generatedAt: new Date().toISOString(),
-        total: state.policies.length,
+        total: visible.length,
         active: active.length,
         review: review.length,
         draft: draft.length,
         retired: retired.length,
         watched: watched.length,
-        acknowledgements: state.policies.reduce((total, item) => total + item.acknowledgements, 0),
+        compliant: compliant.length,
+        evidence: evidence.length,
+        distributed: distributed.length,
+        exceptions: exceptions.length,
+        training: training.length,
+        holds: holds.length,
+        linked: linked.length,
+        archived: archived.length,
+        acknowledgements: visible.reduce((total, item) => total + item.acknowledgements, 0),
         nextPolicy: review[0]?.title ?? draft[0]?.title ?? active[0]?.title ?? "No policies"
       };
     },

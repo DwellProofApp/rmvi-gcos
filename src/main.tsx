@@ -62,7 +62,7 @@ type Message = { id: string; kind: MessageKind; subject: string; from: string; a
 type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number; evidenceStatus?: string; reviewNote?: string; verified?: boolean; archived?: boolean; watchers?: string[] };
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string; delegate?: string; holdReason?: string; archived?: boolean; watchers?: string[] };
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
-type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[] };
+type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[] };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string };
@@ -386,6 +386,14 @@ type PolicyDigest = {
   draft: number;
   retired: number;
   watched: number;
+  compliant?: number;
+  evidence?: number;
+  distributed?: number;
+  exceptions?: number;
+  training?: number;
+  holds?: number;
+  linked?: number;
+  archived?: number;
   acknowledgements: number;
   nextPolicy: string;
 };
@@ -2075,6 +2083,145 @@ function App() {
       void apiRequest<{ count: number; updated: Policy[] }>("/api/policies/bulk/activate", {
         method: "POST",
         body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function checkPolicyCompliance(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, complianceStatus: "Compliant", complianceScore: 100 } : item));
+    recordAudit("PolicyComplianceChecked", policy.title, "Compliant 100");
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/compliance`, {
+        method: "POST",
+        body: JSON.stringify({ status: "Compliant", score: 100 })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bindPolicyEvidence(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const evidence = "Policy evidence packet";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, evidence } : item));
+    recordAudit("PolicyEvidenceBound", policy.title, evidence);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/evidence`, {
+        method: "POST",
+        body: JSON.stringify({ evidence })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function distributePolicy(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const audience = "All stations";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, distributedTo: audience, distributedAt: new Date().toISOString() } : item));
+    recordAudit("PolicyDistributed", policy.title, audience);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/distribute`, {
+        method: "POST",
+        body: JSON.stringify({ audience })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function grantPolicyException(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const reason = "Exception approved by governance authority";
+    const expires = "Next review";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, exceptionNote: reason, exceptionExpires: expires } : item));
+    recordAudit("PolicyExceptionGranted", policy.title, reason);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/exception`, {
+        method: "POST",
+        body: JSON.stringify({ reason, expires })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function assignPolicyTraining(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const audience = "Station administrators";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, trainingAssigned: true, trainingAudience: audience } : item));
+    recordAudit("PolicyTrainingAssigned", policy.title, audience);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/training`, {
+        method: "POST",
+        body: JSON.stringify({ audience })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function holdPolicy(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const reason = "Legal hold applied";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, hold: true, holdReason: reason } : item));
+    recordAudit("PolicyHoldApplied", policy.title, reason);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/hold`, {
+        method: "POST",
+        body: JSON.stringify({ reason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkPolicyTask(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const taskId = tasks[0]?.id ?? "task-follow-up";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, linkedTask: taskId } : item));
+    recordAudit("PolicyTaskLinked", policy.title, taskId);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/task`, {
+        method: "POST",
+        body: JSON.stringify({ taskId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkPolicyApproval(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const approvalId = approvals[0]?.id ?? "approval-follow-up";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, linkedApproval: approvalId } : item));
+    recordAudit("PolicyApprovalLinked", policy.title, approvalId);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/approval-link`, {
+        method: "POST",
+        body: JSON.stringify({ approvalId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archivePolicy(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    const reason = "Archived from policy registry";
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, archived: true, archiveReason: reason } : item));
+    recordAudit("PolicyArchived", policy.title, reason);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkReviewPolicies(ids: string[]) {
+    const targetIds = ids.length ? ids : policies.filter((policy) => !policy.archived && policy.status !== "Review").slice(0, 3).map((policy) => policy.id);
+    const reviewBy = "Next governance review";
+    setPolicies((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, status: "Review", reviewBy } : item));
+    recordAudit("PoliciesBulkReviewed", "Policy registry", `${targetIds.length} policies marked for review`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: Policy[] }>("/api/policies/bulk/review", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, reviewBy })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -4650,6 +4797,16 @@ function App() {
             onWatchPolicy={watchPolicy}
             onDuplicatePolicy={duplicatePolicy}
             onBulkActivatePolicies={bulkActivatePolicies}
+            onCheckCompliance={checkPolicyCompliance}
+            onBindEvidence={bindPolicyEvidence}
+            onDistributePolicy={distributePolicy}
+            onGrantException={grantPolicyException}
+            onAssignTraining={assignPolicyTraining}
+            onHoldPolicy={holdPolicy}
+            onLinkTask={linkPolicyTask}
+            onLinkApproval={linkPolicyApproval}
+            onArchivePolicy={archivePolicy}
+            onBulkReviewPolicies={bulkReviewPolicies}
             onRefreshDigest={refreshPolicyDigest}
             digest={policyDigest}
           />
@@ -6151,6 +6308,16 @@ function Policies({
   onWatchPolicy,
   onDuplicatePolicy,
   onBulkActivatePolicies,
+  onCheckCompliance,
+  onBindEvidence,
+  onDistributePolicy,
+  onGrantException,
+  onAssignTraining,
+  onHoldPolicy,
+  onLinkTask,
+  onLinkApproval,
+  onArchivePolicy,
+  onBulkReviewPolicies,
   onRefreshDigest,
   digest
 }: {
@@ -6170,6 +6337,16 @@ function Policies({
   onWatchPolicy: (id: string) => void;
   onDuplicatePolicy: (id: string) => void;
   onBulkActivatePolicies: (ids: string[]) => void;
+  onCheckCompliance: (id: string) => void;
+  onBindEvidence: (id: string) => void;
+  onDistributePolicy: (id: string) => void;
+  onGrantException: (id: string) => void;
+  onAssignTraining: (id: string) => void;
+  onHoldPolicy: (id: string) => void;
+  onLinkTask: (id: string) => void;
+  onLinkApproval: (id: string) => void;
+  onArchivePolicy: (id: string) => void;
+  onBulkReviewPolicies: (ids: string[]) => void;
   onRefreshDigest: () => void;
   digest: PolicyDigest | null;
 }) {
@@ -6189,15 +6366,26 @@ function Policies({
   const categoryOptions = React.useMemo(() => ["All categories", ...Array.from(new Set(policies.map((policy) => policy.category))).sort()], [policies]);
   const visiblePolicies = React.useMemo(() => (
     policies.filter((policy) => (
+      !policy.archived
+      &&
       (categoryFilter === "All categories" || policy.category === categoryFilter)
       && (statusFilter === "All statuses" || policy.status === statusFilter)
     ))
   ), [categoryFilter, policies, statusFilter]);
-  const activeCount = policies.filter((policy) => policy.status === "Active").length;
-  const reviewCount = policies.filter((policy) => policy.status === "Review").length;
-  const draftCount = policies.filter((policy) => policy.status === "Draft").length;
-  const watchedCount = policies.filter((policy) => policy.watchers?.length).length;
-  const acknowledgementTotal = policies.reduce((total, policy) => total + policy.acknowledgements, 0);
+  const activePolicies = policies.filter((policy) => !policy.archived);
+  const activeCount = activePolicies.filter((policy) => policy.status === "Active").length;
+  const reviewCount = activePolicies.filter((policy) => policy.status === "Review").length;
+  const draftCount = activePolicies.filter((policy) => policy.status === "Draft").length;
+  const watchedCount = activePolicies.filter((policy) => policy.watchers?.length).length;
+  const compliantCount = activePolicies.filter((policy) => policy.complianceStatus === "Compliant").length;
+  const evidenceCount = activePolicies.filter((policy) => policy.evidence).length;
+  const distributedCount = activePolicies.filter((policy) => policy.distributedTo).length;
+  const exceptionCount = activePolicies.filter((policy) => policy.exceptionNote).length;
+  const trainingCount = activePolicies.filter((policy) => policy.trainingAssigned).length;
+  const holdCount = activePolicies.filter((policy) => policy.hold).length;
+  const linkedCount = activePolicies.filter((policy) => policy.linkedTask || policy.linkedApproval).length;
+  const archivedCount = policies.filter((policy) => policy.archived).length;
+  const acknowledgementTotal = activePolicies.reduce((total, policy) => total + policy.acknowledgements, 0);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -6216,6 +6404,14 @@ function Policies({
           <Insight label="Draft" value={String(digest?.draft ?? draftCount)} />
           <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
           <Insight label="Acknowledgements" value={String(digest?.acknowledgements ?? acknowledgementTotal)} />
+          <Insight label="Compliant" value={String(digest?.compliant ?? compliantCount)} />
+          <Insight label="Evidence" value={String(digest?.evidence ?? evidenceCount)} />
+          <Insight label="Distributed" value={String(digest?.distributed ?? distributedCount)} />
+          <Insight label="Exceptions" value={String(digest?.exceptions ?? exceptionCount)} />
+          <Insight label="Training" value={String(digest?.training ?? trainingCount)} />
+          <Insight label="Holds" value={String(digest?.holds ?? holdCount)} />
+          <Insight label="Linked" value={String(digest?.linked ?? linkedCount)} />
+          <Insight label="Archived" value={String(digest?.archived ?? archivedCount)} />
           <Insight label="Next policy" value={digest?.nextPolicy ?? visiblePolicies[0]?.title ?? "None"} />
           <Insight label="Authority" value={permissions.canApprove ? "Publisher" : "Reader"} />
         </div>
@@ -6234,6 +6430,7 @@ function Policies({
           </label>
           <button onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
           <button disabled={!permissions.canApprove || !visiblePolicies.length} onClick={() => onBulkActivatePolicies(visiblePolicies.slice(0, 3).map((policy) => policy.id))}><CheckCircle2 size={15} /> Bulk active</button>
+          <button disabled={!permissions.canApprove || !visiblePolicies.length} onClick={() => onBulkReviewPolicies(visiblePolicies.slice(0, 3).map((policy) => policy.id))}><ClipboardCheck size={15} /> Bulk review</button>
         </div>
         <div className="policy-list">
           {visiblePolicies.map((policy) => (
@@ -6249,9 +6446,25 @@ function Policies({
                 <small>{policy.acknowledgements} acknowledgements</small>
                 <small>{policy.version ?? "v1"}</small>
                 <small>{policy.watchers?.length ?? 0} watchers</small>
+                <small>{policy.complianceStatus ? `${policy.complianceStatus} ${policy.complianceScore ?? ""}` : "Compliance pending"}</small>
+                <small>{policy.evidence ?? "No evidence"}</small>
+                <small>{policy.distributedTo ? `Distributed to ${policy.distributedTo}` : "Not distributed"}</small>
+                <small>{policy.exceptionNote ? `Exception: ${policy.exceptionExpires ?? "Open"}` : "No exception"}</small>
+                <small>{policy.trainingAssigned ? `Training ${policy.trainingAudience}` : "No training"}</small>
+                <small>{policy.hold ? policy.holdReason ?? "Hold applied" : "No hold"}</small>
+                <small>{policy.linkedTask ? `Task ${policy.linkedTask}` : "No linked task"}</small>
+                <small>{policy.linkedApproval ? `Approval ${policy.linkedApproval}` : "No linked approval"}</small>
               </div>
               <div className="action-row">
                 <button onClick={() => onAcknowledgePolicy(policy.id)}><CheckCircle2 size={15} /> Acknowledge</button>
+                <button disabled={!permissions.canApprove} onClick={() => onCheckCompliance(policy.id)}><ClipboardCheck size={15} /> Compliance</button>
+                <button disabled={!permissions.canApprove} onClick={() => onBindEvidence(policy.id)}><Files size={15} /> Evidence</button>
+                <button disabled={!permissions.canApprove} onClick={() => onDistributePolicy(policy.id)}><Send size={15} /> Distribute</button>
+                <button disabled={!permissions.canApprove} onClick={() => onGrantException(policy.id)}><AlertTriangle size={15} /> Exception</button>
+                <button disabled={!permissions.canApprove} onClick={() => onAssignTraining(policy.id)}><Users size={15} /> Training</button>
+                <button disabled={!permissions.canApprove} onClick={() => onHoldPolicy(policy.id)}><LockKeyhole size={15} /> Hold</button>
+                <button disabled={!permissions.canApprove} onClick={() => onLinkTask(policy.id)}><SquareCheckBig size={15} /> Task link</button>
+                <button disabled={!permissions.canApprove} onClick={() => onLinkApproval(policy.id)}><Signature size={15} /> Approval link</button>
                 <button disabled={!permissions.canApprove} onClick={() => onUpdatePolicyStatus(policy.id, policy.status === "Active" ? "Review" : "Active")}><ShieldCheck size={15} /> Status</button>
                 <button disabled={!permissions.canApprove} onClick={() => onBumpPolicyVersion(policy.id)}><FileClock size={15} /> Version</button>
                 <button disabled={!permissions.canApprove} onClick={() => onSchedulePolicyReview(policy.id)}><TimerReset size={15} /> Review</button>
@@ -6261,6 +6474,7 @@ function Policies({
                 <button onClick={() => onWatchPolicy(policy.id)}><Bell size={15} /> Watch</button>
                 <button disabled={!permissions.canApprove} onClick={() => onDuplicatePolicy(policy.id)}><Files size={15} /> Duplicate</button>
                 <button disabled={!permissions.canApprove} onClick={() => onRetirePolicy(policy.id)}><FileClock size={15} /> Retire</button>
+                <button disabled={!permissions.canApprove} onClick={() => onArchivePolicy(policy.id)}><ArchiveIcon size={15} /> Archive</button>
               </div>
             </article>
           ))}

@@ -1056,6 +1056,52 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(watchedPolicy.watchers.includes("np@rmvi.org"), true);
 
+    const compliancePolicy = await postJson(`/api/policies/${policies[0].id}/compliance`, {
+      status: "Compliant",
+      score: 100
+    }, nationalToken);
+    assert.equal(compliancePolicy.complianceStatus, "Compliant");
+    assert.equal(compliancePolicy.complianceScore, 100);
+
+    const evidencePolicy = await postJson(`/api/policies/${policies[0].id}/evidence`, {
+      evidence: "Automated policy evidence"
+    }, nationalToken);
+    assert.equal(evidencePolicy.evidence, "Automated policy evidence");
+
+    const distributedPolicy = await postJson(`/api/policies/${policies[0].id}/distribute`, {
+      audience: "All stations"
+    }, nationalToken);
+    assert.equal(distributedPolicy.distributedTo, "All stations");
+
+    const exceptionPolicy = await postJson(`/api/policies/${policies[0].id}/exception`, {
+      reason: "Automated exception",
+      expires: "2026-06-30"
+    }, nationalToken);
+    assert.equal(exceptionPolicy.exceptionNote, "Automated exception");
+    assert.equal(exceptionPolicy.exceptionExpires, "2026-06-30");
+
+    const trainingPolicy = await postJson(`/api/policies/${policies[0].id}/training`, {
+      audience: "Station administrators"
+    }, nationalToken);
+    assert.equal(trainingPolicy.trainingAssigned, true);
+    assert.equal(trainingPolicy.trainingAudience, "Station administrators");
+
+    const heldPolicy = await postJson(`/api/policies/${policies[0].id}/hold`, {
+      reason: "Automated legal hold"
+    }, nationalToken);
+    assert.equal(heldPolicy.hold, true);
+    assert.equal(heldPolicy.holdReason, "Automated legal hold");
+
+    const taskLinkedPolicy = await postJson(`/api/policies/${policies[0].id}/task`, {
+      taskId: "tsk-test"
+    }, nationalToken);
+    assert.equal(taskLinkedPolicy.linkedTask, "tsk-test");
+
+    const approvalLinkedPolicy = await postJson(`/api/policies/${policies[0].id}/approval-link`, {
+      approvalId: "app-test"
+    }, nationalToken);
+    assert.equal(approvalLinkedPolicy.linkedApproval, "app-test");
+
     const duplicatedPolicy = await postJson(`/api/policies/${policies[0].id}/duplicate`, {
       title: "Automated duplicate policy revision"
     }, nationalToken);
@@ -1068,10 +1114,32 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(bulkActivatedPolicies.count, 1);
     assert.equal(bulkActivatedPolicies.updated[0].status, "Active");
 
+    const bulkReviewedPolicies = await postJson("/api/policies/bulk/review", {
+      ids: [policies[2].id],
+      reviewBy: "2026-07-15"
+    }, nationalToken);
+    assert.equal(bulkReviewedPolicies.count, 1);
+    assert.equal(bulkReviewedPolicies.updated[0].status, "Review");
+    assert.equal(bulkReviewedPolicies.updated[0].reviewBy, "2026-07-15");
+
+    const archivedPolicy = await postJson(`/api/policies/${createdPolicy.id}/archive`, {
+      reason: "Automated policy archive"
+    }, nationalToken);
+    assert.equal(archivedPolicy.archived, true);
+    assert.equal(archivedPolicy.archiveReason, "Automated policy archive");
+
     const policyDigest = await getJson("/api/policies/digest", nationalToken);
     assert.equal(policyDigest.total > 0, true);
     assert.equal(policyDigest.active >= 1, true);
     assert.equal(policyDigest.watched >= 1, true);
+    assert.equal(policyDigest.compliant >= 1, true);
+    assert.equal(policyDigest.evidence >= 1, true);
+    assert.equal(policyDigest.distributed >= 1, true);
+    assert.equal(policyDigest.exceptions >= 1, true);
+    assert.equal(policyDigest.training >= 1, true);
+    assert.equal(policyDigest.holds >= 1, true);
+    assert.equal(policyDigest.linked >= 1, true);
+    assert.equal(policyDigest.archived >= 1, true);
 
     const calendarEvents = await getJson("/api/calendar-events");
     const invalidCalendarEvent = await rawPost("/api/calendar-events", {
@@ -1938,8 +2006,18 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "PolicyVersionBumped"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyReviewScheduled"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyComplianceChecked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyEvidenceBound"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyDistributed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyExceptionGranted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyTrainingAssigned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyHoldApplied"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyTaskLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyApprovalLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyDuplicated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PoliciesBulkActivated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PoliciesBulkReviewed"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCompleted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarDateUpdated"), true);
