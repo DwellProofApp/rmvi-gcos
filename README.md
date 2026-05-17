@@ -149,8 +149,8 @@ curl -X POST http://127.0.0.1:8787/api/dev/reset
 
 ```text
 international@gcos.org / gcos-global
-np@rmi.org / gcos-national
-district_admin@rmi.org / gcos-district
+np@rmvi.org / gcos-national
+district_admin@rmvi.org / gcos-district
 local_branch_017@gcos.org / gcos-local
 ```
 
@@ -207,7 +207,7 @@ Protected API mutations require the login token:
 ```bash
 curl -X POST http://127.0.0.1:8787/api/auth/login \
   -H "content-type: application/json" \
-  -d '{"email":"np@rmi.org","password":"gcos-national"}'
+  -d '{"email":"np@rmvi.org","password":"gcos-national"}'
 
 curl -X POST http://127.0.0.1:8787/api/approvals/app-001/approve \
   -H "content-type: application/json" \

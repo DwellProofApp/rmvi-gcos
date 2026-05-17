@@ -151,14 +151,14 @@ const stations: StationCard[] = [
     icon: Globe2
   },
   {
-    email: "np@rmi.org",
+    email: "np@rmvi.org",
     title: "National Presidency Workstation",
     level: "National HQ",
     authority: "National directives, county oversight, executive summaries",
     icon: Landmark
   },
   {
-    email: "district_admin@rmi.org",
+    email: "district_admin@rmvi.org",
     title: "District Command Workstation",
     level: "District HQ",
     authority: "Branch oversight, workflow monitor, transfer approvals",
@@ -175,8 +175,8 @@ const stations: StationCard[] = [
 
 const stationPasswords: Record<string, string> = {
   "international@gcos.org": "gcos-global",
-  "np@rmi.org": "gcos-national",
-  "district_admin@rmi.org": "gcos-district",
+  "np@rmvi.org": "gcos-national",
+  "district_admin@rmvi.org": "gcos-district",
   "local_branch_017@gcos.org": "gcos-local"
 };
 
@@ -315,8 +315,8 @@ const initialDocuments: DocumentRecord[] = [
 ];
 
 const initialAuditRows: AuditRow[] = [
-  { id: "aud-001", event: "Login", actor: "np@rmi.org", object: "National Presidency Workstation", result: "Allowed", time: "08:11" },
-  { id: "aud-002", event: "ApprovalGranted", actor: "district_admin@rmi.org", object: "Area vehicle repair release", result: "Logged", time: "08:14" },
+  { id: "aud-001", event: "Login", actor: "np@rmvi.org", object: "National Presidency Workstation", result: "Allowed", time: "08:11" },
+  { id: "aud-002", event: "ApprovalGranted", actor: "district_admin@rmvi.org", object: "Area vehicle repair release", result: "Logged", time: "08:14" },
   { id: "aud-003", event: "EscalationTriggered", actor: "Workflow Engine", object: "Construction milestone report", result: "Executive alert", time: "08:21" },
   { id: "aud-004", event: "TransferExecuted", actor: "Mission Office", object: "Area Coordinator reassignment", result: "Session invalidated", time: "08:27" },
   { id: "aud-005", event: "OfficeCreated", actor: "international@gcos.org", object: "Riverbend Area Office", result: "Graph updated", time: "08:31" }
@@ -442,6 +442,10 @@ function getSessionToken() {
   } catch {
     return "";
   }
+}
+
+function normalizeStationEmail(email: string) {
+  return email.toLowerCase().replace("@rmi.org", "@rmvi.org");
 }
 
 function getPermissions(station: StationCard): Permissions {
@@ -728,7 +732,12 @@ function App() {
       setSession(null);
       return;
     }
-    const station = stationDirectory.find((item) => item.email === session.email);
+    const normalizedEmail = normalizeStationEmail(session.email);
+    if (normalizedEmail !== session.email) {
+      setSession({ ...session, email: normalizedEmail });
+      return;
+    }
+    const station = stationDirectory.find((item) => item.email === normalizedEmail);
     if (station) setActiveStation(station);
   }, [session, stationDirectory]);
 
@@ -806,7 +815,7 @@ function App() {
   }
 
   function handleLogin(email: string, password: string) {
-    const normalizedEmail = email.toLowerCase();
+    const normalizedEmail = normalizeStationEmail(email);
     const station = stationDirectory.find((item) => item.email === normalizedEmail);
     const officePassword = offices.find((office) => office.email === normalizedEmail)?.password;
     const expectedPassword = stationPasswords[normalizedEmail] ?? officePassword;

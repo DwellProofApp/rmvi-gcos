@@ -48,10 +48,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal((await webFallback.text()).includes("GCOS Web"), true);
 
     const login = await postJson("/api/auth/login", {
-      email: "np@rmi.org",
+      email: "np@rmvi.org",
       password: "gcos-national"
     });
-    assert.equal(login.station.email, "np@rmi.org");
+    assert.equal(login.station.email, "np@rmvi.org");
     assert.match(login.token, /^gcos\./);
     assert.equal(Boolean(login.expiresAt), true);
     const nationalToken = login.token;
@@ -65,7 +65,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const denied = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "np@rmi.org", password: "wrong" })
+      body: JSON.stringify({ email: "np@rmvi.org", password: "wrong" })
     });
     assert.equal(denied.status, 401);
 
@@ -78,7 +78,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const missingToken = await rawPost("/api/messages", {
       kind: "Notification",
       subject: "Missing token test",
-      from: "np@rmi.org",
+      from: "np@rmvi.org",
       status: "Ready",
       files: "none"
     });
@@ -87,14 +87,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const invalidMessage = await rawPost("/api/messages", {
       kind: "Memo",
       subject: "Invalid kind",
-      from: "np@rmi.org"
+      from: "np@rmvi.org"
     }, nationalToken);
     assert.equal(invalidMessage.status, 400);
 
     const createdMessage = await postJson("/api/messages", {
       kind: "Notification",
       subject: "Automated API test notice",
-      from: "np@rmi.org",
+      from: "np@rmvi.org",
       status: "Ready",
       files: "none"
     }, nationalToken);
@@ -442,7 +442,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const oversizedBody = await fetch(`${BASE_URL}/api/auth/login`, {
       method: "POST",
       headers: { "content-type": "application/json" },
-      body: JSON.stringify({ email: "np@rmi.org", password: "x".repeat(5000) })
+      body: JSON.stringify({ email: "np@rmvi.org", password: "x".repeat(5000) })
     });
     assert.equal(oversizedBody.status, 413);
 

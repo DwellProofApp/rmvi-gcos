@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 
 export const stationPasswords = {
   "international@gcos.org": "gcos-global",
-  "np@rmi.org": "gcos-national",
-  "district_admin@rmi.org": "gcos-district",
+  "np@rmvi.org": "gcos-national",
+  "district_admin@rmvi.org": "gcos-district",
   "local_branch_017@gcos.org": "gcos-local"
 };
 
@@ -12,8 +12,8 @@ export function createSeedState() {
   return {
     stations: [
       station("international@gcos.org", "International Executive Workstation", "International HQ", "Global override, policy registry, audit control"),
-      station("np@rmi.org", "National Presidency Workstation", "National HQ", "National directives, county oversight, executive summaries"),
-      station("district_admin@rmi.org", "District Command Workstation", "District HQ", "Branch oversight, workflow monitor, transfer approvals"),
+      station("np@rmvi.org", "National Presidency Workstation", "National HQ", "National directives, county oversight, executive summaries"),
+      station("district_admin@rmvi.org", "District Command Workstation", "District HQ", "Branch oversight, workflow monitor, transfer approvals"),
       station("local_branch_017@gcos.org", "Local Branch Workstation", "Local Branch", "Local reports, member registry, directive acknowledgement"),
       station(riverbendOffice.email, `${riverbendOffice.name} Workstation`, riverbendOffice.level, `${riverbendOffice.department}, supervised by ${riverbendOffice.supervisor}`)
     ],

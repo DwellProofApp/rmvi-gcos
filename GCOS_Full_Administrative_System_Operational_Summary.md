@@ -51,8 +51,8 @@ Each office or station receives:
 Example station accounts include:
 
 - `rpbuchanan@gcos.org`
-- `county_finance@rmi.org`
-- `np@rmi.org`
+- `county_finance@rmvi.org`
+- `np@rmvi.org`
 
 After login, GCOS automatically identifies the office or station, loads the appropriate dashboard, applies delegated permissions, connects the user to the correct reporting chain, and activates the relevant workflow environment.
 
