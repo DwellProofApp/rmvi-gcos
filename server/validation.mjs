@@ -486,8 +486,47 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/tasks/:id/unblock": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/tasks/:id/watch": (body) => {
     if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/tasks/:id/dependency": (body) => {
+    if (body.dependency !== undefined) requireString(body.dependency, "dependency");
+  },
+
+  "POST /api/tasks/:id/approval": (body) => {
+    if (body.route !== undefined) requireString(body.route, "route");
+  },
+
+  "POST /api/tasks/:id/sla": (body) => {
+    if (body.sla !== undefined) requireString(body.sla, "sla");
+    if (body.status !== undefined) requireString(body.status, "status");
+  },
+
+  "POST /api/tasks/:id/evidence": (body) => {
+    if (body.evidence !== undefined) requireString(body.evidence, "evidence");
+  },
+
+  "POST /api/tasks/:id/handoff": (body) => {
+    if (body.to !== undefined) requireString(body.to, "to");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/tasks/:id/escalate": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
+  },
+
+  "POST /api/tasks/:id/comment": (body) => {
+    if (body.comment !== undefined) requireString(body.comment, "comment");
+  },
+
+  "POST /api/tasks/:id/checkpoint": (body) => {
+    if (body.checkpoint !== undefined) requireString(body.checkpoint, "checkpoint");
   },
 
   "POST /api/tasks/:id/duplicate": (body) => {
@@ -498,6 +537,11 @@ const validators = {
 
   "POST /api/tasks/bulk/complete": (body) => {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
+  "POST /api/tasks/bulk/escalate": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
   "POST /api/policies": (body) => {

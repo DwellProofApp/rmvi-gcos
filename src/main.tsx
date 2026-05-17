@@ -60,7 +60,7 @@ type StationCard = { id?: string; email: string; title: string; level: StationLe
 type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[] };
 type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number; evidenceStatus?: string; reviewNote?: string; verified?: boolean; archived?: boolean; watchers?: string[] };
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string; delegate?: string; holdReason?: string; archived?: boolean; watchers?: string[] };
-type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[] };
+type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[] };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[] };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[] };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string };
@@ -362,6 +362,11 @@ type TaskDigest = {
   blocked: number;
   critical: number;
   watched: number;
+  escalated?: number;
+  dependencies?: number;
+  approvals?: number;
+  evidence?: number;
+  slaBreaches?: number;
   nextTask: string;
   owner: string;
 };
@@ -1571,6 +1576,19 @@ function App() {
     }
   }
 
+  function unblockTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, status: "In Progress", blocker: undefined } : item));
+    recordAudit("TaskUnblocked", task.title, "Blocker cleared");
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/unblock`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Blocker cleared from task center" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function watchTask(id: string) {
     const task = tasks.find((item) => item.id === id);
     if (!task) return;
@@ -1580,6 +1598,116 @@ function App() {
       void apiRequest<GovernanceTask>(`/api/tasks/${id}/watch`, {
         method: "POST",
         body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function addTaskDependency(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const dependency = "Audit evidence packet";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, dependencies: Array.from(new Set([...(item.dependencies ?? []), dependency])) } : item));
+    recordAudit("TaskDependencyAdded", task.title, dependency);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/dependency`, {
+        method: "POST",
+        body: JSON.stringify({ dependency })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function requestTaskApproval(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const route = `${activeStation.level} -> Delegated Authority`;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, approvalRequired: true, approvalRoute: route } : item));
+    recordAudit("TaskApprovalRequested", task.title, route);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/approval`, {
+        method: "POST",
+        body: JSON.stringify({ route })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateTaskSla(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const slaStatus = task.due === "Overdue" ? "Breached" : "On Track";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, sla: "24h", slaStatus } : item));
+    recordAudit("TaskSlaUpdated", task.title, `24h ${slaStatus}`);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/sla`, {
+        method: "POST",
+        body: JSON.stringify({ sla: "24h", status: slaStatus })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function attachTaskEvidence(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const evidence = "Task evidence packet attached";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, evidence } : item));
+    recordAudit("TaskEvidenceAttached", task.title, evidence);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/evidence`, {
+        method: "POST",
+        body: JSON.stringify({ evidence })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function handoffTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, assignee: activeStation.email, handoffTo: activeStation.email } : item));
+    recordAudit("TaskHandedOff", task.title, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/handoff`, {
+        method: "POST",
+        body: JSON.stringify({ to: activeStation.email, note: "Task handed off from task center" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function escalateTaskOperation(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, escalated: true, escalationReason: "Task escalated from operations board", priority: item.priority === "Critical" ? "Critical" : "High" } : item));
+    recordAudit("TaskEscalated", task.title, "Task escalated from operations board");
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/escalate`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Task escalated from operations board", priority: task.priority === "Critical" ? "Critical" : "High" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function commentTask(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const comment = "Reviewed from task operations board";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, comments: [...(item.comments ?? []), `${activeStation.email}: ${comment}`] } : item));
+    recordAudit("TaskCommentAdded", task.title, comment);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/comment`, {
+        method: "POST",
+        body: JSON.stringify({ comment })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function addTaskCheckpoint(id: string) {
+    const task = tasks.find((item) => item.id === id);
+    if (!task) return;
+    const checkpoint = "Checkpoint recorded from task operations board";
+    setTasks((items) => items.map((item) => item.id === id ? { ...item, checkpoints: [...(item.checkpoints ?? []), checkpoint] } : item));
+    recordAudit("TaskCheckpointAdded", task.title, checkpoint);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/tasks/${id}/checkpoint`, {
+        method: "POST",
+        body: JSON.stringify({ checkpoint })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1606,6 +1734,18 @@ function App() {
       void apiRequest<{ count: number; updated: GovernanceTask[] }>("/api/tasks/bulk/complete", {
         method: "POST",
         body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkEscalateTasks(ids: string[]) {
+    const targetIds = ids.length ? ids : tasks.filter((task) => task.status !== "Complete").slice(0, 3).map((task) => task.id);
+    setTasks((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, escalated: true, priority: item.priority === "Critical" ? "Critical" : "High", escalationReason: "Bulk escalated from task center" } : item));
+    recordAudit("TasksBulkEscalated", "Task center", `${targetIds.length} tasks escalated`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: GovernanceTask[] }>("/api/tasks/bulk/escalate", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, reason: "Bulk escalated from task center" })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -4313,9 +4453,19 @@ function App() {
             onUpdateTaskDue={updateTaskDue}
             onUpdateTaskOwner={updateTaskOwner}
             onBlockTask={blockTask}
+            onUnblockTask={unblockTask}
             onWatchTask={watchTask}
+            onAddDependency={addTaskDependency}
+            onRequestApproval={requestTaskApproval}
+            onUpdateSla={updateTaskSla}
+            onAttachEvidence={attachTaskEvidence}
+            onHandoffTask={handoffTask}
+            onEscalateOperation={escalateTaskOperation}
+            onCommentTask={commentTask}
+            onCheckpointTask={addTaskCheckpoint}
             onDuplicateTask={duplicateTask}
             onBulkCompleteTasks={bulkCompleteTasks}
+            onBulkEscalateTasks={bulkEscalateTasks}
             onRefreshDigest={refreshTaskDigest}
             digest={taskDigest}
             onEscalateTask={triggerEscalation}
@@ -5561,9 +5711,19 @@ function Tasks({
   onUpdateTaskDue,
   onUpdateTaskOwner,
   onBlockTask,
+  onUnblockTask,
   onWatchTask,
+  onAddDependency,
+  onRequestApproval,
+  onUpdateSla,
+  onAttachEvidence,
+  onHandoffTask,
+  onEscalateOperation,
+  onCommentTask,
+  onCheckpointTask,
   onDuplicateTask,
   onBulkCompleteTasks,
+  onBulkEscalateTasks,
   onRefreshDigest,
   digest,
   onEscalateTask
@@ -5578,9 +5738,19 @@ function Tasks({
   onUpdateTaskDue: (id: string) => void;
   onUpdateTaskOwner: (id: string) => void;
   onBlockTask: (id: string) => void;
+  onUnblockTask: (id: string) => void;
   onWatchTask: (id: string) => void;
+  onAddDependency: (id: string) => void;
+  onRequestApproval: (id: string) => void;
+  onUpdateSla: (id: string) => void;
+  onAttachEvidence: (id: string) => void;
+  onHandoffTask: (id: string) => void;
+  onEscalateOperation: (id: string) => void;
+  onCommentTask: (id: string) => void;
+  onCheckpointTask: (id: string) => void;
   onDuplicateTask: (id: string) => void;
   onBulkCompleteTasks: (ids: string[]) => void;
+  onBulkEscalateTasks: (ids: string[]) => void;
   onRefreshDigest: () => void;
   digest: TaskDigest | null;
   onEscalateTask: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
@@ -5609,6 +5779,11 @@ function Tasks({
   const completeCount = tasks.filter((task) => task.status === "Complete").length;
   const criticalCount = tasks.filter((task) => task.priority === "Critical" && task.status !== "Complete").length;
   const watchedCount = tasks.filter((task) => task.watchers?.length).length;
+  const escalatedCount = tasks.filter((task) => task.escalated).length;
+  const dependencyCount = tasks.filter((task) => task.dependencies?.length).length;
+  const approvalCount = tasks.filter((task) => task.approvalRequired).length;
+  const evidenceCount = tasks.filter((task) => task.evidence).length;
+  const slaBreachCount = tasks.filter((task) => task.slaStatus === "Breached" || task.due === "Overdue").length;
   const completionRate = tasks.length ? Math.round((completeCount / tasks.length) * 100) : 100;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -5628,6 +5803,11 @@ function Tasks({
           <Insight label="Blocked" value={String(digest?.blocked ?? blockedCount)} />
           <Insight label="Critical" value={String(digest?.critical ?? criticalCount)} />
           <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Escalated" value={String(digest?.escalated ?? escalatedCount)} />
+          <Insight label="Dependencies" value={String(digest?.dependencies ?? dependencyCount)} />
+          <Insight label="Approvals" value={String(digest?.approvals ?? approvalCount)} />
+          <Insight label="Evidence" value={String(digest?.evidence ?? evidenceCount)} />
+          <Insight label="SLA breaches" value={String(digest?.slaBreaches ?? slaBreachCount)} />
           <Insight label="Next task" value={digest?.nextTask ?? visibleTasks[0]?.title ?? "None"} />
         </div>
         <div className="archive-toolbar">
@@ -5645,6 +5825,7 @@ function Tasks({
           </label>
           <button onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
           <button disabled={!visibleTasks.length} onClick={() => onBulkCompleteTasks(visibleTasks.slice(0, 3).map((task) => task.id))}><CheckCircle2 size={15} /> Bulk complete</button>
+          <button disabled={!visibleTasks.length} onClick={() => onBulkEscalateTasks(visibleTasks.slice(0, 3).map((task) => task.id))}><AlertTriangle size={15} /> Bulk escalate</button>
         </div>
         <div className="task-board">
           {visibleTasks.map((task) => (
@@ -5655,16 +5836,32 @@ function Tasks({
               </div>
               <h2>{task.title}</h2>
               <p>{task.owner} assigned this item to {task.assignee}. Due status: {task.due}.</p>
+              <div className="approval-meta">
+                <small>{task.sla ?? "No SLA"} {task.slaStatus ? `- ${task.slaStatus}` : ""}</small>
+                <small>{task.dependencies?.length ?? 0} dependencies</small>
+                <small>{task.approvalRequired ? task.approvalRoute ?? "Approval required" : "No approval gate"}</small>
+                <small>{task.evidence ?? "No evidence"}</small>
+                <small>{task.comments?.length ?? 0} comments - {task.checkpoints?.length ?? 0} checkpoints</small>
+              </div>
               <div className="action-row">
                 <button onClick={() => onAdvanceTask(task.id, "In Progress")}><TimerReset size={15} /> Start</button>
                 <button onClick={() => onAdvanceTask(task.id, "Complete")}><CheckCircle2 size={15} /> Complete</button>
                 <button onClick={() => onBlockTask(task.id)}><LockKeyhole size={15} /> Block</button>
+                <button onClick={() => onUnblockTask(task.id)}><CheckCircle2 size={15} /> Unblock</button>
                 <button onClick={() => onUpdateTaskDue(task.id)}><CalendarDays size={15} /> Due</button>
                 <button onClick={() => onUpdateTaskAssignee(task.id, station.email)}><Users size={15} /> Assign</button>
                 <button onClick={() => onUpdateTaskOwner(task.id)}><Landmark size={15} /> Owner</button>
                 <button onClick={() => onUpdateTaskPriority(task.id, task.priority === "Critical" ? "High" : "Critical")}><AlertTriangle size={15} /> Priority</button>
+                <button onClick={() => onAddDependency(task.id)}><GitBranch size={15} /> Dependency</button>
+                <button onClick={() => onRequestApproval(task.id)}><Signature size={15} /> Approval</button>
+                <button onClick={() => onUpdateSla(task.id)}><TimerReset size={15} /> SLA</button>
+                <button onClick={() => onAttachEvidence(task.id)}><Files size={15} /> Evidence</button>
+                <button onClick={() => onHandoffTask(task.id)}><Users size={15} /> Handoff</button>
+                <button onClick={() => onCommentTask(task.id)}><MessageSquareText size={15} /> Comment</button>
+                <button onClick={() => onCheckpointTask(task.id)}><FileCheck2 size={15} /> Checkpoint</button>
                 <button onClick={() => onWatchTask(task.id)}><Bell size={15} /> Watch</button>
                 <button onClick={() => onDuplicateTask(task.id)}><Files size={15} /> Duplicate</button>
+                <button onClick={() => onEscalateOperation(task.id)}><RadioTower size={15} /> Ops escalate</button>
                 <button onClick={() => onEscalateTask("Task", task.title, `${task.due} task is ${task.status.toLowerCase()}`, task.owner, task.priority === "Critical" ? "Critical" : "High")}>
                   <AlertTriangle size={15} /> Escalate
                 </button>

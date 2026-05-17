@@ -315,11 +315,87 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    unblockTask(id, body) {
+      const item = findById(state.tasks, id);
+      item.status = "In Progress";
+      item.blocker = undefined;
+      item.unblockReason = body.reason ?? "Blocker cleared";
+      record("TaskUnblocked", body.actor, item.title, item.unblockReason);
+      return item;
+    },
+
     watchTask(id, body) {
       const item = findById(state.tasks, id);
       const watcher = body.watcher ?? body.actor ?? "Watcher";
       item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
       record("TaskWatcherAdded", body.actor, item.title, watcher);
+      return item;
+    },
+
+    addTaskDependency(id, body) {
+      const item = findById(state.tasks, id);
+      const dependency = body.dependency ?? "Supervisory input required";
+      item.dependencies = Array.from(new Set([...(item.dependencies ?? []), dependency]));
+      record("TaskDependencyAdded", body.actor, item.title, dependency);
+      return item;
+    },
+
+    requestTaskApproval(id, body) {
+      const item = findById(state.tasks, id);
+      item.approvalRequired = true;
+      item.approvalRoute = body.route ?? `${item.owner} -> Delegated Authority`;
+      item.status = item.status === "Complete" ? item.status : "In Progress";
+      record("TaskApprovalRequested", body.actor, item.title, item.approvalRoute);
+      return item;
+    },
+
+    updateTaskSla(id, body) {
+      const item = findById(state.tasks, id);
+      item.sla = body.sla ?? "24h";
+      item.slaStatus = body.status ?? (item.due === "Overdue" ? "Breached" : "On Track");
+      record("TaskSlaUpdated", body.actor, item.title, `${item.sla} ${item.slaStatus}`);
+      return item;
+    },
+
+    attachTaskEvidence(id, body) {
+      const item = findById(state.tasks, id);
+      item.evidence = body.evidence ?? "Evidence packet attached";
+      item.evidenceAt = new Date().toISOString();
+      record("TaskEvidenceAttached", body.actor, item.title, item.evidence);
+      return item;
+    },
+
+    handoffTask(id, body) {
+      const item = findById(state.tasks, id);
+      item.handoffTo = body.to ?? item.assignee;
+      item.assignee = item.handoffTo;
+      item.handoffNote = body.note ?? "Task handed off";
+      record("TaskHandedOff", body.actor, item.title, item.handoffTo);
+      return item;
+    },
+
+    escalateTask(id, body) {
+      const item = findById(state.tasks, id);
+      item.escalated = true;
+      item.escalationReason = body.reason ?? "Task escalated";
+      item.priority = body.priority ?? (item.priority === "Critical" ? "Critical" : "High");
+      record("TaskEscalated", body.actor, item.title, item.escalationReason);
+      return item;
+    },
+
+    commentTask(id, body) {
+      const item = findById(state.tasks, id);
+      const comment = body.comment ?? "Task note added";
+      item.comments = [...(item.comments ?? []), `${body.actor}: ${comment}`];
+      record("TaskCommentAdded", body.actor, item.title, comment);
+      return item;
+    },
+
+    addTaskCheckpoint(id, body) {
+      const item = findById(state.tasks, id);
+      const checkpoint = body.checkpoint ?? "Checkpoint recorded";
+      item.checkpoints = [...(item.checkpoints ?? []), checkpoint];
+      record("TaskCheckpointAdded", body.actor, item.title, checkpoint);
       return item;
     },
 
@@ -341,11 +417,28 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { count: updated.length, updated };
     },
 
+    bulkEscalateTasks(body) {
+      const ids = body.ids?.length ? body.ids : state.tasks.filter((item) => item.status !== "Complete").slice(0, 3).map((item) => item.id);
+      const updated = state.tasks.filter((item) => ids.includes(item.id)).map((item) => {
+        item.escalated = true;
+        item.escalationReason = body.reason ?? "Bulk escalated from task center";
+        item.priority = item.priority === "Critical" ? "Critical" : "High";
+        return item;
+      });
+      record("TasksBulkEscalated", body.actor, "Task center", `${updated.length} tasks escalated`);
+      return { count: updated.length, updated };
+    },
+
     taskDigest() {
       const open = state.tasks.filter((item) => item.status !== "Complete");
       const blocked = open.filter((item) => item.status === "Blocked");
       const critical = open.filter((item) => item.priority === "Critical");
       const watched = state.tasks.filter((item) => item.watchers?.length);
+      const escalated = open.filter((item) => item.escalated);
+      const dependencies = state.tasks.filter((item) => item.dependencies?.length);
+      const approvals = state.tasks.filter((item) => item.approvalRequired);
+      const evidence = state.tasks.filter((item) => item.evidence);
+      const slaBreaches = open.filter((item) => item.slaStatus === "Breached" || item.due === "Overdue");
       return {
         generatedAt: new Date().toISOString(),
         total: state.tasks.length,
@@ -353,6 +446,11 @@ export function createServices({ state, record, requirePermission, findById }) {
         blocked: blocked.length,
         critical: critical.length,
         watched: watched.length,
+        escalated: escalated.length,
+        dependencies: dependencies.length,
+        approvals: approvals.length,
+        evidence: evidence.length,
+        slaBreaches: slaBreaches.length,
         nextTask: critical[0]?.title ?? blocked[0]?.title ?? open[0]?.title ?? "No open tasks",
         owner: critical[0]?.owner ?? blocked[0]?.owner ?? open[0]?.owner ?? "None"
       };

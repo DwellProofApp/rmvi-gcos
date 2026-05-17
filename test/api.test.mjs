@@ -834,10 +834,61 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(blockedTask.status, "Blocked");
     assert.equal(blockedTask.blocker, "Awaiting supporting evidence");
 
+    const unblockedTask = await postJson(`/api/tasks/${tasks[1].id}/unblock`, {
+      reason: "Evidence received"
+    }, nationalToken);
+    assert.equal(unblockedTask.status, "In Progress");
+
     const watchedTask = await postJson(`/api/tasks/${tasks[1].id}/watch`, {
       watcher: "np@rmvi.org"
     }, nationalToken);
     assert.equal(watchedTask.watchers.includes("np@rmvi.org"), true);
+
+    const dependentTask = await postJson(`/api/tasks/${tasks[1].id}/dependency`, {
+      dependency: "Automated dependency test"
+    }, nationalToken);
+    assert.equal(dependentTask.dependencies.includes("Automated dependency test"), true);
+
+    const approvalTask = await postJson(`/api/tasks/${tasks[1].id}/approval`, {
+      route: "National -> Executive"
+    }, nationalToken);
+    assert.equal(approvalTask.approvalRequired, true);
+    assert.equal(approvalTask.approvalRoute, "National -> Executive");
+
+    const slaTask = await postJson(`/api/tasks/${tasks[1].id}/sla`, {
+      sla: "12h",
+      status: "Breached"
+    }, nationalToken);
+    assert.equal(slaTask.sla, "12h");
+    assert.equal(slaTask.slaStatus, "Breached");
+
+    const evidencedTask = await postJson(`/api/tasks/${tasks[1].id}/evidence`, {
+      evidence: "Automated task evidence"
+    }, nationalToken);
+    assert.equal(evidencedTask.evidence, "Automated task evidence");
+
+    const handedOffTask = await postJson(`/api/tasks/${tasks[1].id}/handoff`, {
+      to: "district_admin@rmvi.org",
+      note: "Automated handoff"
+    }, nationalToken);
+    assert.equal(handedOffTask.assignee, "district_admin@rmvi.org");
+
+    const escalatedTask = await postJson(`/api/tasks/${tasks[1].id}/escalate`, {
+      reason: "Automated task escalation",
+      priority: "Critical"
+    }, nationalToken);
+    assert.equal(escalatedTask.escalated, true);
+    assert.equal(escalatedTask.priority, "Critical");
+
+    const commentedTask = await postJson(`/api/tasks/${tasks[1].id}/comment`, {
+      comment: "Automated task comment"
+    }, nationalToken);
+    assert.equal(commentedTask.comments.some((comment) => comment.includes("Automated task comment")), true);
+
+    const checkpointTask = await postJson(`/api/tasks/${tasks[1].id}/checkpoint`, {
+      checkpoint: "Automated checkpoint"
+    }, nationalToken);
+    assert.equal(checkpointTask.checkpoints.includes("Automated checkpoint"), true);
 
     const duplicatedTask = await postJson(`/api/tasks/${tasks[1].id}/duplicate`, {
       title: "Automated duplicate task follow-up"
@@ -851,10 +902,21 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(bulkCompletedTasks.count, 1);
     assert.equal(bulkCompletedTasks.updated[0].status, "Complete");
 
+    const bulkEscalatedTasks = await postJson("/api/tasks/bulk/escalate", {
+      ids: [duplicatedTask.id],
+      reason: "Automated bulk task escalation"
+    }, nationalToken);
+    assert.equal(bulkEscalatedTasks.count, 1);
+    assert.equal(bulkEscalatedTasks.updated[0].escalated, true);
+
     const taskDigest = await getJson("/api/tasks/digest", nationalToken);
     assert.equal(taskDigest.total > 0, true);
-    assert.equal(taskDigest.blocked >= 1, true);
     assert.equal(taskDigest.watched >= 1, true);
+    assert.equal(taskDigest.escalated >= 1, true);
+    assert.equal(taskDigest.dependencies >= 1, true);
+    assert.equal(taskDigest.approvals >= 1, true);
+    assert.equal(taskDigest.evidence >= 1, true);
+    assert.equal(taskDigest.slaBreaches >= 1, true);
 
     const policies = await getJson("/api/policies");
     const invalidPolicy = await rawPost("/api/policies", {
@@ -1776,9 +1838,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "TaskDueUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskOwnerUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskBlocked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskUnblocked"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskDependencyAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskApprovalRequested"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskSlaUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskEvidenceAttached"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskHandedOff"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskEscalated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskCommentAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TaskCheckpointAdded"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskDuplicated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TasksBulkCompleted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TasksBulkEscalated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyPublished"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyStatusUpdated"), true);
