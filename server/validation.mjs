@@ -271,6 +271,14 @@ const validators = {
     if (body.supervisor !== undefined) requireString(body.supervisor, "supervisor");
   },
 
+  "POST /api/offices/:id/suspend": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/offices/:id/password/rotate": (body) => {
+    if (body.password !== undefined) requireString(body.password, "password");
+  },
+
   "POST /api/documents": (body) => {
     requireString(body.name, "name");
     requireString(body.classification, "classification");

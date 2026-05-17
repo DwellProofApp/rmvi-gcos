@@ -720,6 +720,7 @@ h1 {
 }
 
 .registry-toolbar select,
+.registry-toolbar button,
 .archive-toolbar select,
 .archive-toolbar button {
   min-height: 38px;
@@ -730,6 +731,7 @@ h1 {
   padding: 0 10px;
 }
 
+.registry-toolbar button,
 .archive-toolbar button {
   align-self: end;
   display: inline-flex;

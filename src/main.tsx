@@ -191,6 +191,15 @@ type TransferDigest = {
   risk: number;
   nextTransfer: string;
 };
+type OfficeDigest = {
+  generatedAt: string;
+  total: number;
+  active: number;
+  provisioned: number;
+  suspended: number;
+  stationIdentities: number;
+  nextOffice: string;
+};
 type CommandBriefing = {
   title: string;
   generatedAt: string;
@@ -592,6 +601,7 @@ function App() {
   const [escalationDigest, setEscalationDigest] = React.useState<EscalationDigest | null>(null);
   const [personnelDigest, setPersonnelDigest] = React.useState<PersonnelDigest | null>(null);
   const [transferDigest, setTransferDigest] = React.useState<TransferDigest | null>(null);
+  const [officeDigest, setOfficeDigest] = React.useState<OfficeDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -789,6 +799,7 @@ function App() {
       void apiRequest<EscalationDigest>("/api/escalations/digest").then(setEscalationDigest).catch(() => undefined);
       void apiRequest<PersonnelDigest>("/api/personnel/digest").then(setPersonnelDigest).catch(() => undefined);
       void apiRequest<TransferDigest>("/api/transfers/digest").then(setTransferDigest).catch(() => undefined);
+      void apiRequest<OfficeDigest>("/api/offices/digest").then(setOfficeDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1814,6 +1825,72 @@ function App() {
     }
   }
 
+  function activateOffice(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, status: "Active" } : item));
+    recordAudit("OfficeActivated", office.name, "Office activated");
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/activate`, {
+        method: "POST",
+        body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function suspendOffice(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, status: "Suspended" } : item));
+    recordAudit("OfficeSuspended", office.name, "Office suspended");
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/suspend`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Suspended from office registry" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function rotateOfficePassword(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    const password = `${office.password}-${Date.now().toString(36)}`;
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, password } : item));
+    recordAudit("OfficePasswordRotated", office.name, "Station credential rotated");
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/password/rotate`, {
+        method: "POST",
+        body: JSON.stringify({ password })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function activateOfficeStation(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, status: "Active" } : item));
+    recordAudit("OfficeStationActivated", office.name, `${office.email} ready`);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/station/activate`, {
+        method: "POST",
+        body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshOfficeDigest() {
+    if (offlineMode) {
+      recordAudit("OfficeDigestRefreshed", "Office digest", "Local office digest refreshed");
+      return;
+    }
+    void apiRequest<OfficeDigest>("/api/offices/digest")
+      .then((digest) => {
+        setOfficeDigest(digest);
+        recordAudit("OfficeDigestRefreshed", "Office digest", `${digest.active} active, ${digest.suspended} suspended`);
+      })
+      .catch(() => undefined);
+  }
+
   function escalateUpward(id: string) {
     const escalation = escalations.find((item) => item.id === id);
     if (!escalation) return;
@@ -2687,7 +2764,7 @@ function App() {
           />
         )}
         {activeSection === "Hierarchy" && <Hierarchy stationDirectory={stationDirectory} offices={offices} />}
-        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} />}
+        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} onActivateOffice={activateOffice} onSuspendOffice={suspendOffice} onRotatePassword={rotateOfficePassword} onActivateStation={activateOfficeStation} onRefreshDigest={refreshOfficeDigest} digest={officeDigest} />}
         {activeSection === "Transfers" && (
           <Transfers
             transfers={transfers}
@@ -4673,7 +4750,13 @@ function Offices({
   permissions,
   onCreateOffice,
   onUpdateOfficeSupervisor,
-  onUpdateOfficeStatus
+  onUpdateOfficeStatus,
+  onActivateOffice,
+  onSuspendOffice,
+  onRotatePassword,
+  onActivateStation,
+  onRefreshDigest,
+  digest
 }: {
   offices: Office[];
   stationDirectory: StationCard[];
@@ -4681,6 +4764,12 @@ function Offices({
   onCreateOffice: (office: Omit<Office, "id" | "password" | "status">) => boolean;
   onUpdateOfficeSupervisor: (id: string, supervisor: string) => void;
   onUpdateOfficeStatus: (id: string, status: Office["status"]) => void;
+  onActivateOffice: (id: string) => void;
+  onSuspendOffice: (id: string) => void;
+  onRotatePassword: (id: string) => void;
+  onActivateStation: (id: string) => void;
+  onRefreshDigest: () => void;
+  digest: OfficeDigest | null;
 }) {
   const [name, setName] = React.useState("New Hope District Office");
   const [email, setEmail] = React.useState("newhope_district@gcos.org");
@@ -4748,7 +4837,15 @@ function Offices({
               ))}
             </select>
           </label>
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
         </div>
+        {digest && (
+          <div className="workflow-digest">
+            <Insight label="Active" value={String(digest.active)} />
+            <Insight label="Suspended" value={String(digest.suspended)} />
+            <Insight label="Next office" value={digest.nextOffice} />
+          </div>
+        )}
         <div className="data-table office-table">
           <div className="table-row table-head">
             <span>Office</span><span>Email</span><span>Level</span><span>Supervisor</span><span>Status</span>
@@ -4763,6 +4860,10 @@ function Offices({
                 <StatusPill status={office.status} />
                 <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeSupervisor(office.id, office.supervisor === "International Headquarters" ? "National Headquarters" : "International Headquarters")}><GitBranch size={14} /> Supervisor</button>
                 <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeStatus(office.id, office.status === "Suspended" ? "Provisioned" : "Suspended")}><LockKeyhole size={14} /> Status</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onActivateOffice(office.id)}><CheckCircle2 size={14} /> Activate</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onSuspendOffice(office.id)}><AlertTriangle size={14} /> Suspend</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onRotatePassword(office.id)}><RefreshCw size={14} /> Rotate</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onActivateStation(office.id)}><RadioTower size={14} /> Station</button>
               </div>
             </div>
           ))}

@@ -609,6 +609,53 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    activateOffice(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.status = "Active";
+      record("OfficeActivated", body.actor, item.name, "Office activated");
+      return item;
+    },
+
+    suspendOffice(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.status = "Suspended";
+      record("OfficeSuspended", body.actor, item.name, body.reason ?? "Office suspended");
+      return item;
+    },
+
+    rotateOfficePassword(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.password = body.password ?? `gcos-${item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString(36)}`;
+      record("OfficePasswordRotated", body.actor, item.name, "Station credential rotated");
+      return item;
+    },
+
+    activateOfficeStation(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      if (!state.stations.some((entry) => entry.email === item.email)) {
+        state.stations.push(station(item.email, `${item.name} Workstation`, item.level, `${item.department}, supervised by ${item.supervisor}`));
+      }
+      item.status = "Active";
+      record("OfficeStationActivated", body.actor, item.name, `${item.email} ready`);
+      return item;
+    },
+
+    officeDigest() {
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.offices.length,
+        active: state.offices.filter((item) => item.status === "Active").length,
+        provisioned: state.offices.filter((item) => item.status === "Provisioned").length,
+        suspended: state.offices.filter((item) => item.status === "Suspended").length,
+        stationIdentities: state.stations.length,
+        nextOffice: state.offices.find((item) => item.status !== "Active")?.name ?? state.offices[0]?.name ?? "No offices"
+      };
+    },
+
     createTransfer(body) {
       requirePermission(body.actor, "canExecuteTransfers");
       const created = transfer(body.person, body.from, body.to, body.step ?? "Recipient acknowledgement", body.risk ?? "Session switch pending");

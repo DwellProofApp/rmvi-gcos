@@ -598,9 +598,29 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(supervisedOffice.supervisor, "International Headquarters");
 
+    const activatedOffice = await postJson(`/api/offices/${office.id}/activate`, {}, nationalToken);
+    assert.equal(activatedOffice.status, "Active");
+
+    const rotatedOffice = await postJson(`/api/offices/${office.id}/password/rotate`, {
+      password: "gcos-automated-rotated"
+    }, nationalToken);
+    assert.equal(rotatedOffice.password, "gcos-automated-rotated");
+
+    const activeStationOffice = await postJson(`/api/offices/${office.id}/station/activate`, {}, nationalToken);
+    assert.equal(activeStationOffice.status, "Active");
+
+    const suspendedAgainOffice = await postJson(`/api/offices/${office.id}/suspend`, {
+      reason: "Automated office suspension test"
+    }, nationalToken);
+    assert.equal(suspendedAgainOffice.status, "Suspended");
+
+    const officeDigest = await getJson("/api/offices/digest");
+    assert.equal(officeDigest.total >= 1, true);
+    assert.equal(officeDigest.stationIdentities >= 1, true);
+
     const officeLogin = await postJson("/api/auth/login", {
       email: "automated_district@gcos.org",
-      password: office.password
+      password: "gcos-automated-rotated"
     });
     assert.equal(officeLogin.station.email, "automated_district@gcos.org");
     assert.equal(officeLogin.station.level, "District HQ");
@@ -849,6 +869,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "PersonClearanceUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeSupervisorUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeActivated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeSuspended"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficePasswordRotated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeStationActivated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationOwnerUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationTriaged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationSlaUpdated"), true);
