@@ -728,9 +728,9 @@ function App() {
       setSession(null);
       return;
     }
-    const station = stations.find((item) => item.email === session.email);
+    const station = stationDirectory.find((item) => item.email === session.email);
     if (station) setActiveStation(station);
-  }, [session]);
+  }, [session, stationDirectory]);
 
   React.useEffect(() => {
     void refreshFromApi();
@@ -806,32 +806,35 @@ function App() {
   }
 
   function handleLogin(email: string, password: string) {
-    const station = stations.find((item) => item.email === email);
-    if (!station || stationPasswords[email] !== password) {
+    const normalizedEmail = email.toLowerCase();
+    const station = stationDirectory.find((item) => item.email === normalizedEmail);
+    const officePassword = offices.find((office) => office.email === normalizedEmail)?.password;
+    const expectedPassword = stationPasswords[normalizedEmail] ?? officePassword;
+    if (!station || expectedPassword !== password) {
       return false;
     }
 
     const startedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    setSession({ email, startedAt });
+    setSession({ email: normalizedEmail, startedAt });
     setActiveStation(station);
     setActiveSection("Control Center");
     setAuditRows((rows) => [
       {
         id: `aud-${Date.now()}`,
         event: "Login",
-        actor: email,
+        actor: normalizedEmail,
         object: station.title,
         result: "Allowed",
         time: startedAt
       },
       ...rows
     ]);
-    setEvents((items) => [`Login: ${email}`, ...items].slice(0, 8));
+    setEvents((items) => [`Login: ${normalizedEmail}`, ...items].slice(0, 8));
     void apiRequest<{ station: StationCard; token: string; expiresAt: string }>("/api/auth/login", {
       method: "POST",
-      body: JSON.stringify({ email, password })
+      body: JSON.stringify({ email: normalizedEmail, password })
     }).then((result) => {
-      setSession({ email, startedAt, token: result.token, expiresAt: result.expiresAt });
+      setSession({ email: normalizedEmail, startedAt, token: result.token, expiresAt: result.expiresAt });
       return refreshFromApi();
     }).catch(() => undefined);
     return true;
@@ -844,7 +847,7 @@ function App() {
   }
 
   if (!session) {
-    return <LoginScreen onLogin={handleLogin} />;
+    return <LoginScreen offices={offices} stationDirectory={stationDirectory} onLogin={handleLogin} />;
   }
 
   function acknowledgeMessage(id: string) {
@@ -1548,12 +1551,27 @@ function App() {
   );
 }
 
-function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) => boolean }) {
+function LoginScreen({
+  offices,
+  stationDirectory,
+  onLogin
+}: {
+  offices: Office[];
+  stationDirectory: StationCard[];
+  onLogin: (email: string, password: string) => boolean;
+}) {
+  const credentialMap = React.useMemo(() => ({
+    ...stationPasswords,
+    ...Object.fromEntries(offices.map((office) => [office.email, office.password]))
+  }), [offices]);
   const [email, setEmail] = React.useState(stations[1].email);
   const [password, setPassword] = React.useState(stationPasswords[stations[1].email]);
   const [error, setError] = React.useState("");
-  const selectedStation = stations.find((station) => station.email === email) ?? stations[1];
+  const selectedStation = stationDirectory.find((station) => station.email === email) ?? stations[1];
   const StationIcon = selectedStation.icon;
+  const visibleCredentials = stationDirectory.filter((station, index, items) => (
+    items.findIndex((item) => item.email === station.email) === index && credentialMap[station.email]
+  ));
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -1563,7 +1581,7 @@ function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) =
 
   function chooseStation(nextEmail: string) {
     setEmail(nextEmail);
-    setPassword(stationPasswords[nextEmail]);
+    setPassword(credentialMap[nextEmail] ?? "");
     setError("");
   }
 
@@ -1594,7 +1612,7 @@ function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) =
           <label>
             <span>Organizational email</span>
             <select value={email} onChange={(event) => chooseStation(event.target.value)} aria-label="Organizational email">
-              {stations.map((station) => (
+              {visibleCredentials.map((station) => (
                 <option key={station.email} value={station.email}>{station.email}</option>
               ))}
             </select>
@@ -1619,10 +1637,10 @@ function LoginScreen({ onLogin }: { onLogin: (email: string, password: string) =
         </form>
 
         <div className="credential-grid" aria-label="Demo credentials">
-          {stations.map((station) => (
+          {visibleCredentials.map((station) => (
             <button key={station.email} onClick={() => chooseStation(station.email)}>
               <strong>{station.email}</strong>
-              <span>{stationPasswords[station.email]}</span>
+              <span>{credentialMap[station.email]}</span>
             </button>
           ))}
         </div>

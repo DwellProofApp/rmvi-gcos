@@ -8,12 +8,14 @@ export const stationPasswords = {
 };
 
 export function createSeedState() {
+  const riverbendOffice = office("Riverbend Area Office", "riverbend_area@gcos.org", "Area HQ", "Area Coordination", "Buchanan District");
   return {
     stations: [
       station("international@gcos.org", "International Executive Workstation", "International HQ", "Global override, policy registry, audit control"),
       station("np@rmi.org", "National Presidency Workstation", "National HQ", "National directives, county oversight, executive summaries"),
       station("district_admin@rmi.org", "District Command Workstation", "District HQ", "Branch oversight, workflow monitor, transfer approvals"),
-      station("local_branch_017@gcos.org", "Local Branch Workstation", "Local Branch", "Local reports, member registry, directive acknowledgement")
+      station("local_branch_017@gcos.org", "Local Branch Workstation", "Local Branch", "Local reports, member registry, directive acknowledgement"),
+      station(riverbendOffice.email, `${riverbendOffice.name} Workstation`, riverbendOffice.level, `${riverbendOffice.department}, supervised by ${riverbendOffice.supervisor}`)
     ],
     messages: [
       message("Directive", "Q2 governance reporting directive", "Regional HQ - West Africa", "Ready", "Policy memo"),
@@ -59,9 +61,7 @@ export function createSeedState() {
       transfer("Rev. Daniel Moore", "Buchanan District", "Riverbend Area Office", "Recipient acknowledgement", "Session switch pending"),
       transfer("Sis. Amelia Hart", "Local Branch 017", "County Education Desk", "Permissions migration", "Role graph update ready")
     ],
-    offices: [
-      office("Riverbend Area Office", "riverbend_area@gcos.org", "Area HQ", "Area Coordination", "Buchanan District")
-    ],
+    offices: [riverbendOffice],
     documents: [
       documentRecord("Q2 governance directive.pdf", "Policy memo", "ChurchMail", "Regional HQ - West Africa", "PDF", "Archived"),
       documentRecord("Construction progress photos.zip", "Report evidence", "Report", "Buchanan District Office", "Images", "In Review"),

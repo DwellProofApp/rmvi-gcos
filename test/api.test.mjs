@@ -286,6 +286,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       supervisor: "County HQ"
     }, nationalToken);
     assert.equal(office.email, "automated_district@gcos.org");
+    assert.equal(office.password, "gcos-automated-district-office");
+
+    const officeLogin = await postJson("/api/auth/login", {
+      email: "automated_district@gcos.org",
+      password: office.password
+    });
+    assert.equal(officeLogin.station.email, "automated_district@gcos.org");
+    assert.equal(officeLogin.station.level, "District HQ");
 
     const duplicateOffice = await fetch(`${BASE_URL}/api/offices`, {
       method: "POST",

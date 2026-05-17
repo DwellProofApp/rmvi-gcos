@@ -236,8 +236,17 @@ export function createServices({ state, record, requirePermission, findById }) {
     },
 
     login(body) {
-      const foundStation = state.stations.find((item) => item.email === body.email);
-      if (!foundStation || stationPasswords[body.email] !== body.password) return { unauthorized: true, error: "Invalid station credentials" };
+      const normalizedEmail = body.email.toLowerCase();
+      const foundOffice = state.offices.find((item) => item.email === normalizedEmail);
+      const configuredPassword = stationPasswords[normalizedEmail] ?? foundOffice?.password;
+      if (configuredPassword !== body.password) return { unauthorized: true, error: "Invalid station credentials" };
+
+      let foundStation = state.stations.find((item) => item.email === normalizedEmail);
+      if (!foundStation && foundOffice) {
+        foundStation = station(foundOffice.email, `${foundOffice.name} Workstation`, foundOffice.level, `${foundOffice.department}, supervised by ${foundOffice.supervisor}`);
+        state.stations.push(foundStation);
+      }
+      if (!foundStation) return { unauthorized: true, error: "Invalid station credentials" };
       record("Login", body.email, foundStation.title, "Allowed");
       return { station: foundStation, token: `demo.${Buffer.from(body.email).toString("base64url")}` };
     }
