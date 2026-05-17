@@ -73,8 +73,62 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     });
     const localToken = localLogin.token;
 
+    const internationalLogin = await postJson("/api/auth/login", {
+      email: "international@gcos.org",
+      password: "gcos-global"
+    });
+    const internationalToken = internationalLogin.token;
+
+    const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
+      reason: "Automated readiness acknowledgement"
+    }, nationalToken);
+    assert.equal(acknowledgedReadiness.check.acknowledged, true);
+
+    const ownedReadiness = await postJson("/api/readiness/web/owner", {
+      owner: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(ownedReadiness.check.owner, "np@rmvi.org");
+
+    const scheduledReadiness = await postJson("/api/readiness/web/recheck", {
+      recheckAt: "2026-05-18T12:00:00.000Z"
+    }, nationalToken);
+    assert.equal(scheduledReadiness.check.recheckAt, "2026-05-18T12:00:00.000Z");
+
+    const remediationReadiness = await postJson("/api/readiness/web/remediation", {
+      assignee: "np@rmvi.org",
+      priority: "High",
+      due: "Today"
+    }, nationalToken);
+    assert.match(remediationReadiness.title, /^Remediate readiness:/);
+
+    const forbiddenReadinessOverride = await rawPost("/api/readiness/web/override", {
+      reason: "Forbidden override"
+    }, localToken);
+    assert.equal(forbiddenReadinessOverride.status, 403);
+
+    const overrideReadiness = await postJson("/api/readiness/web/override", {
+      reason: "Automated readiness override"
+    }, internationalToken);
+    assert.equal(overrideReadiness.check.override, true);
+
+    const bulkReadiness = await postJson("/api/readiness/bulk/acknowledge", {
+      names: ["persistence", "stations"],
+      reason: "Automated bulk readiness acknowledgement"
+    }, nationalToken);
+    assert.equal(bulkReadiness.count, 2);
+
+    const readinessDigest = await getJson("/api/readiness/digest", nationalToken);
+    assert.equal(readinessDigest.total >= 6, true);
+    assert.equal(readinessDigest.acknowledged >= 2, true);
+    assert.equal(readinessDigest.owned >= 1, true);
+
+    const archivedReadiness = await postJson("/api/readiness/exports/archive", {
+      reason: "Automated readiness archive"
+    }, nationalToken);
+    assert.equal(archivedReadiness.readiness.checks.some((check) => check.name === "exports"), false);
+
     const statusAfterSecondLogin = await getJson("/api/status");
-    assert.equal(statusAfterSecondLogin.sessions.active, 2);
+    assert.equal(statusAfterSecondLogin.sessions.active, 3);
     assert.equal(Boolean(statusAfterSecondLogin.sessions.stations[0].id), true);
 
     const renewedSession = await postJson("/api/sessions/renew", {}, nationalToken);
@@ -94,7 +148,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const revokedLocalSession = await postJson(`/api/sessions/${spareLocalLogin.token}/revoke`, {}, nationalToken);
     assert.equal(revokedLocalSession.revoked, spareLocalLogin.token);
-    assert.equal(revokedLocalSession.sessions.active, 2);
+    assert.equal(revokedLocalSession.sessions.active, 3);
 
     const extraLogin = await postJson("/api/auth/login", {
       email: "np@rmvi.org",
@@ -1362,6 +1416,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "SessionFlagged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SessionRevoked"), true);
     assert.equal(persisted.audit.some((row) => row.event === "StationSessionsRevoked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReadinessAcknowledged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReadinessOwnerAssigned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReadinessRecheckScheduled"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReadinessRemediationCreated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReadinessOverrideApproved"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReadinessBulkAcknowledged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReadinessCheckArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandBriefingArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandDirectiveIssued"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CommandTaskCreated"), true);

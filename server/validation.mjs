@@ -60,6 +60,38 @@ const validators = {
     if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
   },
 
+  "POST /api/readiness/:name/acknowledge": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/readiness/:name/override": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/readiness/:name/owner": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
+  "POST /api/readiness/:name/recheck": (body) => {
+    if (body.recheckAt !== undefined) requireString(body.recheckAt, "recheckAt");
+  },
+
+  "POST /api/readiness/:name/remediation": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
+    if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/readiness/:name/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/readiness/bulk/acknowledge": (body) => {
+    if (body.names !== undefined) requireStringArray(body.names, "names");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/stations/:id/level": (body) => {
     if (body.level !== undefined) requireEnum(body.level, stationLevels, "level");
   },

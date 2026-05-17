@@ -29,6 +29,14 @@ const sessions = new Map();
 const routes = {
   "GET /health": () => ok({ status: "ok", service: "gcos-api", time: new Date().toISOString() }),
   "GET /api/readiness": () => ok(readinessReport()),
+  "GET /api/readiness/digest": () => ok(readinessDigest()),
+  "POST /api/readiness/bulk/acknowledge": ({ body, session }) => ok(bulkAcknowledgeReadiness(body, session.email)),
+  "POST /api/readiness/:name/acknowledge": ({ params, body, session }) => ok(acknowledgeReadiness(params.name, body, session.email)),
+  "POST /api/readiness/:name/override": ({ params, body, session }) => ok(overrideReadiness(params.name, body, session.email)),
+  "POST /api/readiness/:name/owner": ({ params, body, session }) => ok(assignReadinessOwner(params.name, body, session.email)),
+  "POST /api/readiness/:name/recheck": ({ params, body, session }) => ok(scheduleReadinessRecheck(params.name, body, session.email)),
+  "POST /api/readiness/:name/remediation": ({ params, body, session }) => createdResponse(createReadinessRemediation(params.name, body, session.email)),
+  "POST /api/readiness/:name/archive": ({ params, body, session }) => ok(archiveReadiness(params.name, body, session.email)),
   "GET /api/status": () => ok(operationalStatus()),
   "GET /api/sessions": () => ok(sessionSummary()),
   "POST /api/sessions/renew": ({ session }) => ok(renewSession(session.token, session.email)),
@@ -326,6 +334,7 @@ function operationalStatus() {
 
 function readinessReport() {
   const status = operationalStatus();
+  const actions = ensureReadinessActions();
   const checks = [
     { name: "web", ok: SERVE_WEB, detail: SERVE_WEB ? "Web shell served by API" : "API-only mode" },
     { name: "persistence", ok: Boolean(DATA_PATH), detail: DATA_PATH },
@@ -335,11 +344,103 @@ function readinessReport() {
     { name: "exports", ok: true, detail: "Governance snapshot endpoint available" },
     { name: "sessions", ok: status.sessions.active >= 0, detail: `${status.sessions.active} active sessions` },
     { name: "workflows", ok: state.reports.length > 0 && state.approvals.length > 0, detail: `${state.reports.length} reports, ${state.approvals.length} approvals` }
-  ];
+  ].map((check) => ({ ...check, ...(actions[check.name] ?? {}) })).filter((check) => !check.archived);
   return {
     status: checks.every((check) => check.ok) ? "ready" : "attention",
     checkedAt: new Date().toISOString(),
     checks
+  };
+}
+
+function ensureReadinessActions() {
+  state.readinessActions ??= {};
+  return state.readinessActions;
+}
+
+function getReadinessCheck(name) {
+  const decoded = decodeURIComponent(String(name ?? ""));
+  const check = readinessReport().checks.find((item) => item.name === decoded);
+  if (!check) throw new HttpError(404, "Readiness check not found");
+  return check;
+}
+
+function patchReadiness(name, patch, actor, event, result) {
+  const check = getReadinessCheck(name);
+  const actions = ensureReadinessActions();
+  actions[check.name] = { ...(actions[check.name] ?? {}), ...patch };
+  record(event, actor, check.name, result);
+  return { check: { ...check, ...actions[check.name] }, readiness: readinessReport() };
+}
+
+function acknowledgeReadiness(name, body, actor) {
+  return patchReadiness(name, {
+    acknowledged: true,
+    acknowledgedBy: actor,
+    acknowledgedAt: new Date().toISOString()
+  }, actor, "ReadinessAcknowledged", body.reason ?? "Readiness check acknowledged");
+}
+
+function overrideReadiness(name, body, actor) {
+  requirePermission(actor, "canOverride");
+  return patchReadiness(name, {
+    override: true,
+    overrideReason: body.reason ?? "Readiness override approved",
+    ok: true
+  }, actor, "ReadinessOverrideApproved", body.reason ?? "Readiness override approved");
+}
+
+function assignReadinessOwner(name, body, actor) {
+  return patchReadiness(name, {
+    owner: body.owner ?? actor
+  }, actor, "ReadinessOwnerAssigned", body.owner ?? actor);
+}
+
+function scheduleReadinessRecheck(name, body, actor) {
+  return patchReadiness(name, {
+    recheckAt: body.recheckAt ?? new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString()
+  }, actor, "ReadinessRecheckScheduled", body.recheckAt ?? "Next 24 hours");
+}
+
+function archiveReadiness(name, body, actor) {
+  return patchReadiness(name, {
+    archived: true,
+    archiveReason: body.reason ?? "Readiness check archived"
+  }, actor, "ReadinessCheckArchived", body.reason ?? "Readiness check archived");
+}
+
+function bulkAcknowledgeReadiness(body, actor) {
+  const names = body.names?.length ? body.names : readinessReport().checks.slice(0, 3).map((item) => item.name);
+  const updated = names.map((name) => acknowledgeReadiness(name, body, actor).check);
+  record("ReadinessBulkAcknowledged", actor, "Readiness checks", `${updated.length} checks acknowledged`);
+  return { count: updated.length, updated, readiness: readinessReport() };
+}
+
+function createReadinessRemediation(name, body, actor) {
+  const check = getReadinessCheck(name);
+  const created = services.createTask({
+    title: body.title ?? `Remediate readiness: ${check.name}`,
+    owner: "Platform Readiness",
+    assignee: body.assignee ?? actor,
+    priority: body.priority ?? (check.ok ? "Medium" : "High"),
+    due: body.due ?? "Today",
+    actor
+  });
+  patchReadiness(name, { remediationTaskId: created.id, owner: body.assignee ?? actor }, actor, "ReadinessRemediationCreated", created.title);
+  return created;
+}
+
+function readinessDigest() {
+  const report = readinessReport();
+  return {
+    generatedAt: new Date().toISOString(),
+    total: report.checks.length,
+    ready: report.checks.filter((check) => check.ok).length,
+    attention: report.checks.filter((check) => !check.ok).length,
+    acknowledged: report.checks.filter((check) => check.acknowledged).length,
+    overrides: report.checks.filter((check) => check.override).length,
+    owned: report.checks.filter((check) => check.owner).length,
+    scheduled: report.checks.filter((check) => check.recheckAt).length,
+    nextCheck: report.checks.find((check) => !check.acknowledged)?.name ?? report.checks[0]?.name ?? "No checks"
   };
 }
 
@@ -491,7 +592,8 @@ async function loadState() {
       aiDrafts: persisted.aiDrafts?.length ? persisted.aiDrafts : seed.aiDrafts,
       audit: persisted.audit ?? seed.audit,
       events: persisted.events ?? seed.events,
-      offlineQueue: persisted.offlineQueue ?? seed.offlineQueue
+      offlineQueue: persisted.offlineQueue ?? seed.offlineQueue,
+      readinessActions: persisted.readinessActions ?? seed.readinessActions ?? {}
     });
   } catch (error) {
     if (error.code !== "ENOENT") console.warn(`Unable to load persisted state: ${error.message}`);

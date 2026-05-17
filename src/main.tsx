@@ -147,7 +147,24 @@ type ReadinessReport = {
     name: string;
     ok: boolean;
     detail: string;
+    acknowledged?: boolean;
+    owner?: string;
+    override?: boolean;
+    recheckAt?: string;
+    remediationTaskId?: string;
+    archived?: boolean;
   }[];
+};
+type ReadinessDigest = {
+  generatedAt: string;
+  total: number;
+  ready: number;
+  attention: number;
+  acknowledged: number;
+  overrides: number;
+  owned: number;
+  scheduled: number;
+  nextCheck: string;
 };
 type ArchiveManifest = {
   generatedAt: string;
@@ -723,6 +740,7 @@ function App() {
   const [hierarchyDigest, setHierarchyDigest] = React.useState<HierarchyDigest | null>(null);
   const [auditDigest, setAuditDigest] = React.useState<AuditDigest | null>(null);
   const [eventDigest, setEventDigest] = React.useState<EventDigest | null>(null);
+  const [readinessDigest, setReadinessDigest] = React.useState<ReadinessDigest | null>(null);
   const [taskDigest, setTaskDigest] = React.useState<TaskDigest | null>(null);
   const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
   const [calendarDigest, setCalendarDigest] = React.useState<CalendarDigest | null>(null);
@@ -940,6 +958,7 @@ function App() {
       void apiRequest<HierarchyDigest>("/api/hierarchy/digest").then(setHierarchyDigest).catch(() => undefined);
       void apiRequest<AuditDigest>("/api/audit/digest").then(setAuditDigest).catch(() => undefined);
       void apiRequest<EventDigest>("/api/events/digest").then(setEventDigest).catch(() => undefined);
+      void apiRequest<ReadinessDigest>("/api/readiness/digest").then(setReadinessDigest).catch(() => undefined);
       void apiRequest<TaskDigest>("/api/tasks/digest").then(setTaskDigest).catch(() => undefined);
       void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
       void apiRequest<CalendarDigest>("/api/calendar-events/digest").then(setCalendarDigest).catch(() => undefined);
@@ -4307,6 +4326,8 @@ function App() {
             onRefreshAuditDigest={refreshAuditDigest}
             digest={auditDigest}
             eventDigest={eventDigest}
+            readinessDigest={readinessDigest}
+            onSetReadinessDigest={setReadinessDigest}
           />
         )}
       </section>
@@ -7171,7 +7192,9 @@ function Audit({
   onBulkVerifyAuditRows,
   onRefreshAuditDigest,
   digest,
-  eventDigest
+  eventDigest,
+  readinessDigest,
+  onSetReadinessDigest
 }: {
   auditRows: AuditRow[];
   events: string[];
@@ -7212,6 +7235,8 @@ function Audit({
   onRefreshAuditDigest: () => void;
   digest: AuditDigest | null;
   eventDigest: EventDigest | null;
+  readinessDigest: ReadinessDigest | null;
+  onSetReadinessDigest: React.Dispatch<React.SetStateAction<ReadinessDigest | null>>;
 }) {
   const [query, setQuery] = React.useState("");
   const [eventFilter, setEventFilter] = React.useState("All events");
@@ -7248,6 +7273,62 @@ function Audit({
 
   function refreshReadiness() {
     void apiRequest<ReadinessReport>("/api/readiness").then(setReadiness).catch(() => undefined);
+    void apiRequest<ReadinessDigest>("/api/readiness/digest").then(onSetReadinessDigest).catch(() => undefined);
+  }
+
+  function updateReadinessFromResult(result: { readiness: ReadinessReport }) {
+    setReadiness(result.readiness);
+    void apiRequest<ReadinessDigest>("/api/readiness/digest").then(onSetReadinessDigest).catch(() => undefined);
+  }
+
+  function acknowledgeCheck(name: string) {
+    void apiRequest<{ readiness: ReadinessReport }>(`/api/readiness/${encodeURIComponent(name)}/acknowledge`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Acknowledged from audit desk" })
+    }).then(updateReadinessFromResult).catch(() => undefined);
+  }
+
+  function overrideCheck(name: string) {
+    void apiRequest<{ readiness: ReadinessReport }>(`/api/readiness/${encodeURIComponent(name)}/override`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Executive override from audit desk" })
+    }).then(updateReadinessFromResult).catch(() => undefined);
+  }
+
+  function assignCheckOwner(name: string) {
+    void apiRequest<{ readiness: ReadinessReport }>(`/api/readiness/${encodeURIComponent(name)}/owner`, {
+      method: "POST",
+      body: JSON.stringify({ owner: session.email })
+    }).then(updateReadinessFromResult).catch(() => undefined);
+  }
+
+  function scheduleCheck(name: string) {
+    void apiRequest<{ readiness: ReadinessReport }>(`/api/readiness/${encodeURIComponent(name)}/recheck`, {
+      method: "POST",
+      body: JSON.stringify({ recheckAt: new Date(Date.now() + 1000 * 60 * 60 * 24).toISOString() })
+    }).then(updateReadinessFromResult).catch(() => undefined);
+  }
+
+  function createRemediation(name: string) {
+    void apiRequest<GovernanceTask>(`/api/readiness/${encodeURIComponent(name)}/remediation`, {
+      method: "POST",
+      body: JSON.stringify({ assignee: session.email, priority: "High", due: "Today" })
+    }).then(refreshReadiness).catch(() => undefined);
+  }
+
+  function archiveCheck(name: string) {
+    void apiRequest<{ readiness: ReadinessReport }>(`/api/readiness/${encodeURIComponent(name)}/archive`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Archived from audit desk" })
+    }).then(updateReadinessFromResult).catch(() => undefined);
+  }
+
+  function bulkAcknowledgeChecks() {
+    const names = (readiness?.checks ?? []).slice(0, 3).map((check) => check.name);
+    void apiRequest<{ readiness: ReadinessReport }>("/api/readiness/bulk/acknowledge", {
+      method: "POST",
+      body: JSON.stringify({ names, reason: "Bulk acknowledged from audit desk" })
+    }).then(updateReadinessFromResult).catch(() => undefined);
   }
 
   function exportAuditPacket() {
@@ -7377,15 +7458,32 @@ function Audit({
         <PanelHeader icon={ClipboardCheck} title="Readiness Checks" action={readiness?.status ?? "checking"} />
         <div className="action-row">
           <button onClick={refreshReadiness}><RefreshCw size={15} /> Refresh</button>
+          <button disabled={!readiness?.checks.length} onClick={bulkAcknowledgeChecks}><CheckCircle2 size={15} /> Bulk ack</button>
           <button onClick={onRecordManualEvent}><RadioTower size={15} /> Record event</button>
           <button onClick={onClearEventLog}><TimerReset size={15} /> Clear events</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Ready" value={String(readinessDigest?.ready ?? readiness?.checks.filter((check) => check.ok).length ?? 0)} />
+          <Insight label="Attention" value={String(readinessDigest?.attention ?? readiness?.checks.filter((check) => !check.ok).length ?? 0)} />
+          <Insight label="Acknowledged" value={String(readinessDigest?.acknowledged ?? readiness?.checks.filter((check) => check.acknowledged).length ?? 0)} />
+          <Insight label="Owners" value={String(readinessDigest?.owned ?? readiness?.checks.filter((check) => check.owner).length ?? 0)} />
+          <Insight label="Scheduled" value={String(readinessDigest?.scheduled ?? readiness?.checks.filter((check) => check.recheckAt).length ?? 0)} />
+          <Insight label="Next check" value={readinessDigest?.nextCheck ?? readiness?.checks[0]?.name ?? "None"} />
         </div>
         <div className="source-map-list">
           {(readiness?.checks ?? []).map((check) => (
             <article className="source-map-item" key={check.name}>
-              <span>{check.ok ? "Ready" : "Attention"}</span>
+              <span>{check.override ? "Override" : check.ok ? "Ready" : "Attention"}</span>
               <strong>{check.name}</strong>
-              <small>{check.detail}</small>
+              <small>{check.detail} - {check.owner ?? "unowned"}{check.recheckAt ? ` - recheck ${formatDateTime(check.recheckAt)}` : ""}</small>
+              <div className="action-row compact-actions">
+                <button onClick={() => acknowledgeCheck(check.name)}><CheckCircle2 size={14} /> Ack</button>
+                <button onClick={() => overrideCheck(check.name)}><ShieldCheck size={14} /> Override</button>
+                <button onClick={() => assignCheckOwner(check.name)}><Users size={14} /> Owner</button>
+                <button onClick={() => scheduleCheck(check.name)}><TimerReset size={14} /> Recheck</button>
+                <button onClick={() => createRemediation(check.name)}><SquareCheckBig size={14} /> Task</button>
+                <button onClick={() => archiveCheck(check.name)}><Files size={14} /> Archive</button>
+              </div>
             </article>
           ))}
           {!readiness && <div className="empty-state">Checking platform readiness.</div>}
