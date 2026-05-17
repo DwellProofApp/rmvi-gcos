@@ -329,6 +329,30 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    bulkSubmitReports(body) {
+      const ids = Array.isArray(body.ids) && body.ids.length ? body.ids : state.reports.filter((item) => item.state !== "Approved").map((item) => item.id);
+      const updated = ids.map((id) => {
+        const item = findById(state.reports, id);
+        item.state = "Approved";
+        item.score = 100;
+        return item;
+      });
+      record("ReportsBulkSubmitted", body.actor, "Reporting center", `${updated.length} reports submitted`);
+      return { updated, count: updated.length };
+    },
+
+    bulkRequestReportCorrections(body) {
+      const ids = Array.isArray(body.ids) && body.ids.length ? body.ids : state.reports.filter((item) => item.state !== "Approved").map((item) => item.id);
+      const updated = ids.map((id) => {
+        const item = findById(state.reports, id);
+        item.state = "Correction Requested";
+        item.score = Math.min(item.score, 45);
+        return item;
+      });
+      record("ReportsBulkCorrectionRequested", body.actor, "Reporting center", body.reason ?? `${updated.length} corrections requested`);
+      return { updated, count: updated.length };
+    },
+
     approveRequest(id, body) {
       requirePermission(body.actor, "canApprove");
       const item = findById(state.approvals, id);
@@ -372,6 +396,48 @@ export function createServices({ state, record, requirePermission, findById }) {
       item.signatures = "closed";
       record("ApprovalRejected", body.actor, item.request, body.reason ?? "Request rejected");
       return item;
+    },
+
+    bulkApproveRequests(body) {
+      requirePermission(body.actor, "canApprove");
+      const ids = Array.isArray(body.ids) && body.ids.length ? body.ids : state.approvals.filter((item) => item.state !== "Approved").map((item) => item.id);
+      const updated = ids.map((id) => {
+        const item = findById(state.approvals, id);
+        item.state = "Approved";
+        item.signatures = "complete";
+        return item;
+      });
+      record("ApprovalsBulkApproved", body.actor, "Approval engine", `${updated.length} approvals granted`);
+      return { updated, count: updated.length };
+    },
+
+    bulkRejectRequests(body) {
+      requirePermission(body.actor, "canApprove");
+      const ids = Array.isArray(body.ids) && body.ids.length ? body.ids : state.approvals.filter((item) => item.state !== "Approved").map((item) => item.id);
+      const updated = ids.map((id) => {
+        const item = findById(state.approvals, id);
+        item.state = "Rejected";
+        item.signatures = "closed";
+        return item;
+      });
+      record("ApprovalsBulkRejected", body.actor, "Approval engine", body.reason ?? `${updated.length} approvals rejected`);
+      return { updated, count: updated.length };
+    },
+
+    workflowDigest() {
+      const reportsOpen = state.reports.filter((item) => item.state !== "Approved");
+      const approvalsOpen = state.approvals.filter((item) => item.state !== "Approved");
+      const escalatedReports = state.reports.filter((item) => item.state === "Escalated" || item.due === "Overdue");
+      const escalatedApprovals = state.approvals.filter((item) => item.state === "Escalated");
+      return {
+        generatedAt: new Date().toISOString(),
+        reportsOpen: reportsOpen.length,
+        approvalsOpen: approvalsOpen.length,
+        escalatedReports: escalatedReports.length,
+        escalatedApprovals: escalatedApprovals.length,
+        nextReport: reportsOpen[0]?.name ?? "No open reports",
+        nextApproval: approvalsOpen[0]?.request ?? "No open approvals"
+      };
     },
 
     createEscalation(body) {

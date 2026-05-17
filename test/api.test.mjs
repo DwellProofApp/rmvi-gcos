@@ -238,6 +238,31 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(dueReport.due, "Overdue");
 
+    const bulkReport = await postJson("/api/reports", {
+      name: "Automated bulk workflow report",
+      path: "Local -> National",
+      owner: "Workflow Test",
+      due: "Today"
+    }, nationalToken);
+    const bulkSubmittedReports = await postJson("/api/reports/bulk/submit", {
+      ids: [bulkReport.id]
+    }, nationalToken);
+    assert.equal(bulkSubmittedReports.count, 1);
+    assert.equal(bulkSubmittedReports.updated[0].state, "Approved");
+
+    const correctionBulkReport = await postJson("/api/reports", {
+      name: "Automated bulk correction report",
+      path: "Local -> District",
+      owner: "Workflow Test",
+      due: "Overdue"
+    }, nationalToken);
+    const bulkCorrectedReports = await postJson("/api/reports/bulk/correction", {
+      ids: [correctionBulkReport.id],
+      reason: "Automated bulk correction test"
+    }, nationalToken);
+    assert.equal(bulkCorrectedReports.count, 1);
+    assert.equal(bulkCorrectedReports.updated[0].state, "Correction Requested");
+
     const approvals = await getJson("/api/approvals");
     const invalidCreatedApproval = await rawPost("/api/approvals", {
       route: "National -> Regional",
@@ -252,6 +277,33 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(createdApproval.request, "Automated approval creation test");
     assert.equal(createdApproval.state, "Validation");
+
+    const bulkApproval = await postJson("/api/approvals", {
+      request: "Automated bulk approval test",
+      route: "National -> Executive",
+      limit: "$9,100"
+    }, nationalToken);
+    const bulkApproved = await postJson("/api/approvals/bulk/approve", {
+      ids: [bulkApproval.id]
+    }, nationalToken);
+    assert.equal(bulkApproved.count, 1);
+    assert.equal(bulkApproved.updated[0].state, "Approved");
+
+    const bulkRejectApproval = await postJson("/api/approvals", {
+      request: "Automated bulk reject test",
+      route: "District -> National",
+      limit: "$700"
+    }, nationalToken);
+    const bulkRejected = await postJson("/api/approvals/bulk/reject", {
+      ids: [bulkRejectApproval.id],
+      reason: "Automated bulk rejection test"
+    }, nationalToken);
+    assert.equal(bulkRejected.count, 1);
+    assert.equal(bulkRejected.updated[0].state, "Rejected");
+
+    const workflowDigest = await getJson("/api/workflows/digest");
+    assert.equal(workflowDigest.reportsOpen >= 0, true);
+    assert.equal(workflowDigest.approvalsOpen >= 0, true);
 
     const forbiddenApproval = await rawPost(`/api/approvals/${approvals[0].id}/approve`, {}, localToken);
     assert.equal(forbiddenApproval.status, 403);
@@ -697,8 +749,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "EmailStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportScoreUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReportDueUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReportsBulkSubmitted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ReportsBulkCorrectionRequested"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ApprovalSigned"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ApprovalRouteUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalsBulkApproved"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "ApprovalsBulkRejected"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AIDraftGenerated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TaskAdvanced"), true);
@@ -741,10 +797,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(messagesAfterRestart[0].subject, "Automated API test notice");
 
     const reportsAfterRestart = await getJson("/api/reports");
-    assert.equal(reportsAfterRestart[0].name, "Automated mission finance report");
+    assert.equal(reportsAfterRestart.some((item) => item.name === "Automated mission finance report"), true);
 
     const approvalsAfterRestart = await getJson("/api/approvals");
-    assert.equal(approvalsAfterRestart[0].request, "Automated approval creation test");
+    assert.equal(approvalsAfterRestart.some((item) => item.request === "Automated approval creation test"), true);
 
     const tasksAfterRestart = await getJson("/api/tasks");
     assert.equal(tasksAfterRestart[0].title, "Automated task creation test");

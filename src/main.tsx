@@ -156,6 +156,15 @@ type ArchiveManifest = {
   bySource: Record<string, number>;
   permanent: number;
 };
+type WorkflowDigest = {
+  generatedAt: string;
+  reportsOpen: number;
+  approvalsOpen: number;
+  escalatedReports: number;
+  escalatedApprovals: number;
+  nextReport: string;
+  nextApproval: string;
+};
 type CommandBriefing = {
   title: string;
   generatedAt: string;
@@ -553,6 +562,7 @@ function App() {
   const [apiStatusError, setApiStatusError] = React.useState("");
   const [commandBriefing, setCommandBriefing] = React.useState<CommandBriefing | null>(null);
   const [archiveManifest, setArchiveManifest] = React.useState<ArchiveManifest | null>(null);
+  const [workflowDigest, setWorkflowDigest] = React.useState<WorkflowDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => [
     ...stations,
     ...offices.map((office) => ({
@@ -746,6 +756,7 @@ function App() {
       setEvents(data.events);
       void apiRequest<CommandBriefing>("/api/command-center/briefing").then(setCommandBriefing).catch(() => undefined);
       void apiRequest<ArchiveManifest>("/api/archive/manifest").then(setArchiveManifest).catch(() => undefined);
+      void apiRequest<WorkflowDigest>("/api/workflows/digest").then(setWorkflowDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
@@ -1362,6 +1373,43 @@ function App() {
     }
   }
 
+  function bulkSubmitReports(ids: string[]) {
+    const targetIds = ids.length ? ids : reports.filter((item) => item.state !== "Approved").map((item) => item.id);
+    setReports((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Approved", score: 100 } : item));
+    recordAudit("ReportsBulkSubmitted", "Reporting center", `${targetIds.length} reports submitted`);
+    if (!offlineMode) {
+      void apiRequest<{ updated: Report[]; count: number }>("/api/reports/bulk/submit", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkRequestReportCorrections(ids: string[]) {
+    const targetIds = ids.length ? ids : reports.filter((item) => item.state !== "Approved").map((item) => item.id);
+    setReports((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Correction Requested", score: Math.min(item.score, 45) } : item));
+    recordAudit("ReportsBulkCorrectionRequested", "Reporting center", `${targetIds.length} corrections requested`);
+    if (!offlineMode) {
+      void apiRequest<{ updated: Report[]; count: number }>("/api/reports/bulk/correction", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, reason: "Bulk correction from reporting center" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshWorkflowDigest() {
+    if (offlineMode) {
+      recordAudit("WorkflowDigestRefreshed", "Workflow digest", "Local workflow digest refreshed");
+      return;
+    }
+    void apiRequest<WorkflowDigest>("/api/workflows/digest")
+      .then((digest) => {
+        setWorkflowDigest(digest);
+        recordAudit("WorkflowDigestRefreshed", "Workflow digest", `${digest.reportsOpen} reports, ${digest.approvalsOpen} approvals open`);
+      })
+      .catch(() => undefined);
+  }
+
   function archiveReportEvidence(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
@@ -1456,6 +1504,30 @@ function App() {
       void apiRequest<Approval>(`/api/approvals/${id}/route`, {
         method: "POST",
         body: JSON.stringify({ route, state: "Validation" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkApproveRequests(ids: string[]) {
+    const targetIds = ids.length ? ids : approvals.filter((item) => item.state !== "Approved").map((item) => item.id);
+    setApprovals((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Approved", signatures: "complete" } : item));
+    recordAudit("ApprovalsBulkApproved", "Approval engine", `${targetIds.length} approvals granted`);
+    if (!offlineMode) {
+      void apiRequest<{ updated: Approval[]; count: number }>("/api/approvals/bulk/approve", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkRejectRequests(ids: string[]) {
+    const targetIds = ids.length ? ids : approvals.filter((item) => item.state !== "Approved").map((item) => item.id);
+    setApprovals((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Rejected", signatures: "closed" } : item));
+    recordAudit("ApprovalsBulkRejected", "Approval engine", `${targetIds.length} approvals rejected`);
+    if (!offlineMode) {
+      void apiRequest<{ updated: Approval[]; count: number }>("/api/approvals/bulk/reject", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, reason: "Bulk rejection from approval engine" })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -2269,6 +2341,10 @@ function App() {
             onUpdateScore={updateReportScore}
             onEscalateReport={triggerEscalation}
             onArchiveEvidence={archiveReportEvidence}
+            onBulkSubmit={bulkSubmitReports}
+            onBulkCorrection={bulkRequestReportCorrections}
+            onRefreshDigest={refreshWorkflowDigest}
+            digest={workflowDigest}
           />
         )}
         {activeSection === "Approvals" && (
@@ -2282,6 +2358,10 @@ function App() {
             onSign={signApproval}
             onReject={rejectApproval}
             onEscalateApproval={triggerEscalation}
+            onBulkApprove={bulkApproveRequests}
+            onBulkReject={bulkRejectRequests}
+            onRefreshDigest={refreshWorkflowDigest}
+            digest={workflowDigest}
           />
         )}
         {activeSection === "Tasks" && (
@@ -3036,7 +3116,11 @@ function Reports({
   onUpdateDue,
   onUpdateScore,
   onEscalateReport,
-  onArchiveEvidence
+  onArchiveEvidence,
+  onBulkSubmit,
+  onBulkCorrection,
+  onRefreshDigest,
+  digest
 }: {
   reports: Report[];
   station: StationCard;
@@ -3047,6 +3131,10 @@ function Reports({
   onUpdateScore: (id: string, score: number) => void;
   onEscalateReport: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
   onArchiveEvidence: (id: string) => void;
+  onBulkSubmit: (ids: string[]) => void;
+  onBulkCorrection: (ids: string[]) => void;
+  onRefreshDigest: () => void;
+  digest: WorkflowDigest | null;
 }) {
   const [name, setName] = React.useState("Monthly branch administration report");
   const [owner, setOwner] = React.useState(String(station.level));
@@ -3082,7 +3170,17 @@ function Reports({
               {stateOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <button type="button" onClick={() => onBulkSubmit(visibleReports.map((report) => report.id))}><Send size={14} /> Submit visible</button>
+          <button type="button" onClick={() => onBulkCorrection(visibleReports.map((report) => report.id))}><FileClock size={14} /> Correct visible</button>
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
         </div>
+        {digest && (
+          <div className="workflow-digest">
+            <Insight label="Open reports" value={String(digest.reportsOpen)} />
+            <Insight label="Open approvals" value={String(digest.approvalsOpen)} />
+            <Insight label="Next report" value={digest.nextReport} />
+          </div>
+        )}
         <div className="data-table">
           <div className="table-row table-head">
             <span>Report</span><span>Owner</span><span>Route</span><span>Due</span><span>Status</span>
@@ -3163,7 +3261,11 @@ function Approvals({
   onUpdateRoute,
   onSign,
   onReject,
-  onEscalateApproval
+  onEscalateApproval,
+  onBulkApprove,
+  onBulkReject,
+  onRefreshDigest,
+  digest
 }: {
   approvals: Approval[];
   station: StationCard;
@@ -3174,6 +3276,10 @@ function Approvals({
   onSign: (id: string) => void;
   onReject: (id: string) => void;
   onEscalateApproval: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
+  onBulkApprove: (ids: string[]) => void;
+  onBulkReject: (ids: string[]) => void;
+  onRefreshDigest: () => void;
+  digest: WorkflowDigest | null;
 }) {
   const [request, setRequest] = React.useState("Mission outreach budget release");
   const [route, setRoute] = React.useState(`${station.level} -> Delegated Authority`);
@@ -3199,6 +3305,18 @@ function Approvals({
           <div className="permission-warning">
             <LockKeyhole size={16} />
             <span>This station can prepare requests, but delegated approval authority is not active.</span>
+          </div>
+        )}
+        <div className="archive-toolbar">
+          <button disabled={!permissions.canApprove} type="button" onClick={() => onBulkApprove(approvals.filter((approval) => approval.state !== "Approved").map((approval) => approval.id))}><CheckCircle2 size={14} /> Approve open</button>
+          <button disabled={!permissions.canApprove} type="button" onClick={() => onBulkReject(approvals.filter((approval) => approval.state !== "Approved").map((approval) => approval.id))}><AlertTriangle size={14} /> Reject open</button>
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
+        </div>
+        {digest && (
+          <div className="workflow-digest">
+            <Insight label="Open approvals" value={String(digest.approvalsOpen)} />
+            <Insight label="Escalated approvals" value={String(digest.escalatedApprovals)} />
+            <Insight label="Next approval" value={digest.nextApproval} />
           </div>
         )}
         <div className="approval-board">

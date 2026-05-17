@@ -93,6 +93,15 @@ const validators = {
     if (body.due !== undefined) requireString(body.due, "due");
   },
 
+  "POST /api/reports/bulk/submit": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
+  "POST /api/reports/bulk/correction": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/approvals": (body) => {
     requireString(body.request, "request");
     requireString(body.route, "route");
@@ -109,6 +118,15 @@ const validators = {
   "POST /api/approvals/:id/route": (body) => {
     if (body.route !== undefined) requireString(body.route, "route");
     if (body.state !== undefined) requireString(body.state, "state");
+  },
+
+  "POST /api/approvals/bulk/approve": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
+  "POST /api/approvals/bulk/reject": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
   "POST /api/tasks": (body) => {
@@ -358,5 +376,11 @@ function requireEnum(value, allowed, field) {
 function requireNumber(value, field) {
   if (typeof value !== "number" || Number.isNaN(value)) {
     throw new ValidationError(`${field} must be a number`);
+  }
+}
+
+function requireStringArray(value, field) {
+  if (!Array.isArray(value) || value.some((item) => typeof item !== "string" || item.trim().length === 0)) {
+    throw new ValidationError(`${field} must be an array of strings`);
   }
 }
