@@ -64,7 +64,9 @@ Current deployment state as of May 17, 2026:
 - `rmvi.org` was removed from the unrelated Asset Manager / DwellProof Replit deployment.
 - The GCOS source is published to `https://github.com/DwellProofApp/rmvi-gcos`.
 - Replit imported the repository into a new `rmvi-gcos` project.
-- The remaining step is to attach `rmvi.org` to the `rmvi-gcos` deployment in Replit and publish it.
+- The Replit production deployment is live at `https://rmvi-gcos.replit.app`.
+- `rmvi.org` is attached to the `rmvi-gcos` deployment and shows `Verified` in Replit.
+- `npm run domain:check` passes for `https://rmvi.org`, including DNS, `/health`, `/api/status`, and the web shell.
 
 1. Open the Replit `rmvi-gcos` project.
 2. Run the app once and confirm Replit can build it.
@@ -86,6 +88,8 @@ Current deployment state as of May 17, 2026:
 - ChurchMail, Reports, Approvals, Tasks, Policies, Calendar, Personnel, Archive, and Audit open from the sidebar.
 
 If `npm run domain:check` reports that DNS is not ready, Replit is still waiting on DNS records or propagation.
+
+If the local Mac browser or `curl` briefly says it cannot resolve `rmvi.org` while `npm run domain:check` passes, wait a few minutes for the local system DNS cache to catch up. Public DNS already resolves `rmvi.org` to Replit when the domain check passes.
 
 If `rmvi.org` resolves but serves another app, remove `rmvi.org` from the other Replit deployment first, then attach it to this GCOS deployment. The correct GCOS checks are:
 
