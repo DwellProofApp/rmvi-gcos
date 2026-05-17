@@ -115,6 +115,14 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    retirePolicy(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.status = "Retired";
+      record("PolicyRetired", body.actor, item.title, body.reason ?? "Policy retired");
+      return item;
+    },
+
     createCalendarEvent(body) {
       const created = calendarEvent(body.title, body.category, body.owner ?? body.actor, body.date, body.priority ?? "Medium", body.status ?? "Scheduled");
       state.calendarEvents.unshift(created);
@@ -126,6 +134,13 @@ export function createServices({ state, record, requirePermission, findById }) {
       const item = findById(state.calendarEvents, id);
       item.status = "Complete";
       record("CalendarEventCompleted", body.actor, item.title, "Calendar item closed");
+      return item;
+    },
+
+    markCalendarEventAtRisk(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.status = "At Risk";
+      record("CalendarEventAtRisk", body.actor, item.title, body.reason ?? "Calendar risk flagged");
       return item;
     },
 
@@ -152,12 +167,29 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    requestReportCorrection(id, body) {
+      const item = findById(state.reports, id);
+      item.state = "Correction Requested";
+      item.score = Math.min(item.score, 45);
+      record("ReportCorrectionRequested", body.actor, item.name, body.reason ?? "Correction requested");
+      return item;
+    },
+
     approveRequest(id, body) {
       requirePermission(body.actor, "canApprove");
       const item = findById(state.approvals, id);
       item.state = "Approved";
       item.signatures = "complete";
       record("ApprovalGranted", body.actor, item.request, "Execution authorized");
+      return item;
+    },
+
+    rejectRequest(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.state = "Rejected";
+      item.signatures = "closed";
+      record("ApprovalRejected", body.actor, item.request, body.reason ?? "Request rejected");
       return item;
     },
 

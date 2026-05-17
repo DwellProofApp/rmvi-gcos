@@ -28,6 +28,7 @@ const sessions = new Map();
 
 const routes = {
   "GET /health": () => ok({ status: "ok", service: "gcos-api", time: new Date().toISOString() }),
+  "GET /api/readiness": () => ok(readinessReport()),
   "GET /api/status": () => ok(operationalStatus()),
   "GET /api/bootstrap": () => ok(services.publicState()),
   "POST /api/dev/reset": () => {
@@ -42,18 +43,22 @@ const routes = {
   "GET /api/reports": () => ok(state.reports),
   "POST /api/reports": ({ body }) => createdResponse(services.createReport(body)),
   "POST /api/reports/:id/submit": ({ params, body }) => ok(services.submitReport(params.id, body)),
+  "POST /api/reports/:id/correction": ({ params, body }) => ok(services.requestReportCorrection(params.id, body)),
   "GET /api/approvals": () => ok(state.approvals),
   "POST /api/approvals": ({ body }) => createdResponse(services.createApproval(body)),
   "POST /api/approvals/:id/approve": ({ params, body }) => ok(services.approveRequest(params.id, body)),
+  "POST /api/approvals/:id/reject": ({ params, body }) => ok(services.rejectRequest(params.id, body)),
   "GET /api/tasks": () => ok(state.tasks),
   "POST /api/tasks": ({ body }) => createdResponse(services.createTask(body)),
   "POST /api/tasks/:id/advance": ({ params, body }) => ok(services.advanceTask(params.id, body)),
   "GET /api/policies": () => ok(state.policies),
   "POST /api/policies": ({ body }) => createdResponse(services.createPolicy(body)),
   "POST /api/policies/:id/acknowledge": ({ params, body }) => ok(services.acknowledgePolicy(params.id, body)),
+  "POST /api/policies/:id/retire": ({ params, body }) => ok(services.retirePolicy(params.id, body)),
   "GET /api/calendar-events": () => ok(state.calendarEvents),
   "POST /api/calendar-events": ({ body }) => createdResponse(services.createCalendarEvent(body)),
   "POST /api/calendar-events/:id/complete": ({ params, body }) => ok(services.completeCalendarEvent(params.id, body)),
+  "POST /api/calendar-events/:id/risk": ({ params, body }) => ok(services.markCalendarEventAtRisk(params.id, body)),
   "GET /api/personnel": () => ok(state.personnel),
   "POST /api/personnel": ({ body }) => createdResponse(services.createPerson(body)),
   "POST /api/personnel/:id/status": ({ params, body }) => ok(services.updatePersonStatus(params.id, body)),
@@ -153,6 +158,25 @@ function operationalStatus() {
       audit: state.audit.length,
       events: state.events.length
     }
+  };
+}
+
+function readinessReport() {
+  const status = operationalStatus();
+  const checks = [
+    { name: "web", ok: SERVE_WEB, detail: SERVE_WEB ? "Web shell served by API" : "API-only mode" },
+    { name: "persistence", ok: Boolean(DATA_PATH), detail: DATA_PATH },
+    { name: "stations", ok: state.stations.length >= 4, detail: `${state.stations.length} station identities` },
+    { name: "audit", ok: state.audit.length > 0, detail: `${state.audit.length} audit rows` },
+    { name: "security", ok: DEV_RESET_ENABLED === false || process.env.NODE_ENV !== "production", detail: DEV_RESET_ENABLED ? "Development reset enabled" : "Development reset disabled" },
+    { name: "exports", ok: true, detail: "Governance snapshot endpoint available" },
+    { name: "sessions", ok: status.sessions.active >= 0, detail: `${status.sessions.active} active sessions` },
+    { name: "workflows", ok: state.reports.length > 0 && state.approvals.length > 0, detail: `${state.reports.length} reports, ${state.approvals.length} approvals` }
+  ];
+  return {
+    status: checks.every((check) => check.ok) ? "ready" : "attention",
+    checkedAt: new Date().toISOString(),
+    checks
   };
 }
 

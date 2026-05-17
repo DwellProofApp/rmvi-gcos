@@ -137,6 +137,15 @@ type ExportSnapshot = {
     events: string[];
   };
 };
+type ReadinessReport = {
+  status: "ready" | "attention";
+  checkedAt: string;
+  checks: {
+    name: string;
+    ok: boolean;
+    detail: string;
+  }[];
+};
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
   userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
@@ -1025,6 +1034,19 @@ function App() {
     }
   }
 
+  function retirePolicy(id: string) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, status: "Retired" } : item));
+    recordAudit("PolicyRetired", policy.title, "Policy retired");
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/retire`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Retired from policy registry" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function createCalendarEvent(draft: Omit<CalendarEvent, "id">) {
     const event: CalendarEvent = {
       ...draft,
@@ -1049,6 +1071,19 @@ function App() {
       void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/complete`, {
         method: "POST",
         body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function markCalendarEventAtRisk(id: string) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, status: "At Risk" } : item));
+    recordAudit("CalendarEventAtRisk", event.title, "Risk flag applied");
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/risk`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Risk flagged from calendar control" })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1129,6 +1164,19 @@ function App() {
     }
   }
 
+  function requestReportCorrection(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    setReports((items) => items.map((item) => item.id === id ? { ...item, state: "Correction Requested", score: Math.min(item.score, 45) } : item));
+    recordAudit("ReportCorrectionRequested", report.name, "Correction requested");
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/correction`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Correction requested from reporting center" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function archiveReportEvidence(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
@@ -1172,6 +1220,19 @@ function App() {
       void apiRequest<Approval>(`/api/approvals/${id}/approve`, {
         method: "POST",
         body: JSON.stringify({ actor: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function rejectApproval(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    setApprovals((items) => items.map((item) => item.id === id ? { ...item, state: "Rejected", signatures: "closed" } : item));
+    recordAudit("ApprovalRejected", approval.request, "Request rejected");
+    if (!offlineMode) {
+      void apiRequest<Approval>(`/api/approvals/${id}/reject`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Rejected from approval console" })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1502,6 +1563,7 @@ function App() {
             station={activeStation}
             onCreateReport={createReportDraft}
             onSubmitReport={submitReport}
+            onRequestCorrection={requestReportCorrection}
             onEscalateReport={triggerEscalation}
             onArchiveEvidence={archiveReportEvidence}
           />
@@ -1513,6 +1575,7 @@ function App() {
             permissions={permissions}
             onCreateApproval={createApprovalRequest}
             onApprove={approveRequest}
+            onReject={rejectApproval}
             onEscalateApproval={triggerEscalation}
           />
         )}
@@ -1534,6 +1597,7 @@ function App() {
             offlineMode={offlineMode}
             onCreatePolicy={createPolicy}
             onAcknowledgePolicy={acknowledgePolicy}
+            onRetirePolicy={retirePolicy}
           />
         )}
         {activeSection === "Calendar" && (
@@ -1543,6 +1607,7 @@ function App() {
             offlineMode={offlineMode}
             onCreateCalendarEvent={createCalendarEvent}
             onCompleteCalendarEvent={completeCalendarEvent}
+            onMarkCalendarEventAtRisk={markCalendarEventAtRisk}
             onEscalateCalendarEvent={triggerEscalation}
           />
         )}
@@ -2015,7 +2080,13 @@ function ChurchMail({
   const [composeSubject, setComposeSubject] = React.useState("Administrative follow-up memo");
   const [composeFiles, setComposeFiles] = React.useState("Memo PDF");
   const [composeFeedback, setComposeFeedback] = React.useState("");
-  const selected = messages.find((message) => message.id === selectedId) ?? messages[0];
+  const [kindFilter, setKindFilter] = React.useState<MessageKind | "All kinds">("All kinds");
+  const [statusFilter, setStatusFilter] = React.useState<Status | "All statuses">("All statuses");
+  const visibleMessages = React.useMemo(() => messages.filter((message) => (
+    (kindFilter === "All kinds" || message.kind === kindFilter)
+    && (statusFilter === "All statuses" || message.status === statusFilter)
+  )), [kindFilter, messages, statusFilter]);
+  const selected = visibleMessages.find((message) => message.id === selectedId) ?? visibleMessages[0] ?? messages[0];
 
   function submitMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -2033,9 +2104,23 @@ function ChurchMail({
     <section className="module-grid">
       <div className="panel module-primary">
         <PanelHeader icon={Mail} title="ChurchMail Governance Inbox" action="Classified routing" />
+        <div className="archive-toolbar">
+          <label>
+            <span>Classification</span>
+            <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as MessageKind | "All kinds")}>
+              {["All kinds", "Directive", "Report", "Approval", "Notification", "Transfer"].map((kind) => <option key={kind} value={kind}>{kind}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Status</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Status | "All statuses")}>
+              {["All statuses", "Ready", "In Review", "Escalated", "Approved", "Queued"].map((status) => <option key={status} value={status}>{status}</option>)}
+            </select>
+          </label>
+        </div>
         <div className="mail-layout">
           <div className="message-list">
-            {messages.map((message) => (
+            {visibleMessages.map((message) => (
               <button
                 className={message.id === selected?.id ? "message-button selected" : "message-button"}
                 key={message.id}
@@ -2045,6 +2130,7 @@ function ChurchMail({
                 <MessageCard message={message} />
               </button>
             ))}
+            {visibleMessages.length === 0 && <div className="empty-state">No ChurchMail messages match the current filters.</div>}
           </div>
           {selected && (
             <div className="mail-preview">
@@ -2108,6 +2194,7 @@ function Reports({
   station,
   onCreateReport,
   onSubmitReport,
+  onRequestCorrection,
   onEscalateReport,
   onArchiveEvidence
 }: {
@@ -2115,6 +2202,7 @@ function Reports({
   station: StationCard;
   onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => void;
   onSubmitReport: (id: string) => void;
+  onRequestCorrection: (id: string) => void;
   onEscalateReport: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
   onArchiveEvidence: (id: string) => void;
 }) {
@@ -2153,6 +2241,7 @@ function Reports({
               <div className="table-actions">
                 <StatusPill status={report.state} />
                 <button aria-label={`Submit ${report.name}`} onClick={() => onSubmitReport(report.id)}><Send size={14} /> Submit</button>
+                <button aria-label={`Request correction for ${report.name}`} onClick={() => onRequestCorrection(report.id)}><FileClock size={14} /> Correct</button>
                 <button aria-label={`Vault evidence for ${report.name}`} onClick={() => onArchiveEvidence(report.id)}><Files size={14} /> Vault</button>
                 <button
                   aria-label={`Escalate ${report.name}`}
@@ -2213,6 +2302,7 @@ function Approvals({
   permissions,
   onCreateApproval,
   onApprove,
+  onReject,
   onEscalateApproval
 }: {
   approvals: Approval[];
@@ -2220,6 +2310,7 @@ function Approvals({
   permissions: Permissions;
   onCreateApproval: (draft: Omit<Approval, "id" | "state" | "signatures">) => void;
   onApprove: (id: string) => void;
+  onReject: (id: string) => void;
   onEscalateApproval: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
 }) {
   const [request, setRequest] = React.useState("Mission outreach budget release");
@@ -2265,6 +2356,13 @@ function Approvals({
                   onClick={() => onApprove(approval.id)}
                 >
                   <CheckCircle2 size={15} /> Approve
+                </button>
+                <button
+                  aria-label={`Reject ${approval.request}`}
+                  disabled={!permissions.canApprove}
+                  onClick={() => onReject(approval.id)}
+                >
+                  <AlertTriangle size={15} /> Reject
                 </button>
                 <button
                   aria-label={`Escalate ${approval.request}`}
@@ -2439,7 +2537,8 @@ function Policies({
   permissions,
   offlineMode,
   onCreatePolicy,
-  onAcknowledgePolicy
+  onAcknowledgePolicy,
+  onRetirePolicy
 }: {
   policies: Policy[];
   station: StationCard;
@@ -2447,6 +2546,7 @@ function Policies({
   offlineMode: boolean;
   onCreatePolicy: (policy: Omit<Policy, "id" | "acknowledgements">) => void;
   onAcknowledgePolicy: (id: string) => void;
+  onRetirePolicy: (id: string) => void;
 }) {
   const [title, setTitle] = React.useState("Branch reporting compliance policy");
   const [category, setCategory] = React.useState("Reports");
@@ -2506,6 +2606,7 @@ function Policies({
               </div>
               <div className="action-row">
                 <button onClick={() => onAcknowledgePolicy(policy.id)}><CheckCircle2 size={15} /> Acknowledge</button>
+                <button disabled={!permissions.canApprove} onClick={() => onRetirePolicy(policy.id)}><FileClock size={15} /> Retire</button>
               </div>
             </article>
           ))}
@@ -2566,6 +2667,7 @@ function GovernanceCalendar({
   offlineMode,
   onCreateCalendarEvent,
   onCompleteCalendarEvent,
+  onMarkCalendarEventAtRisk,
   onEscalateCalendarEvent
 }: {
   calendarEvents: CalendarEvent[];
@@ -2573,6 +2675,7 @@ function GovernanceCalendar({
   offlineMode: boolean;
   onCreateCalendarEvent: (event: Omit<CalendarEvent, "id">) => void;
   onCompleteCalendarEvent: (id: string) => void;
+  onMarkCalendarEventAtRisk: (id: string) => void;
   onEscalateCalendarEvent: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
 }) {
   const [title, setTitle] = React.useState("Monthly compliance review");
@@ -2631,6 +2734,7 @@ function GovernanceCalendar({
               <p>{event.category} owned by {event.owner}. Date: {event.date}.</p>
               <div className="action-row">
                 <button onClick={() => onCompleteCalendarEvent(event.id)}><CheckCircle2 size={15} /> Complete</button>
+                <button onClick={() => onMarkCalendarEventAtRisk(event.id)}><TimerReset size={15} /> Mark risk</button>
                 <button onClick={() => onEscalateCalendarEvent("Calendar", event.title, `${event.date} calendar item is ${event.status.toLowerCase()}`, event.owner, event.priority === "Critical" ? "Critical" : "High")}>
                   <AlertTriangle size={15} /> Escalate
                 </button>
@@ -3543,6 +3647,7 @@ function Archive({
 function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiStatus: ApiStatus | null; session: Session }) {
   const [query, setQuery] = React.useState("");
   const [eventFilter, setEventFilter] = React.useState("All events");
+  const [readiness, setReadiness] = React.useState<ReadinessReport | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -3560,6 +3665,10 @@ function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiSt
   }];
   const activeSessionCount = Math.max(apiStatus?.sessions?.active ?? 0, sessionEntries.length);
   const expiringSoonCount = apiStatus?.sessions?.expiringSoon ?? sessionEntries.filter((item) => item.minutesRemaining <= 30).length;
+
+  React.useEffect(() => {
+    void apiRequest<ReadinessReport>("/api/readiness").then(setReadiness).catch(() => undefined);
+  }, []);
 
   function exportAuditPacket() {
     const headers = ["Event", "Actor", "Object", "Result", "Time"];
@@ -3642,6 +3751,19 @@ function Audit({ auditRows, apiStatus, session }: { auditRows: AuditRow[]; apiSt
               <small>Started {formatDateTime(item.startedAt)} - expires {formatDateTime(item.expiresAt)}</small>
             </article>
           ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={ClipboardCheck} title="Readiness Checks" action={readiness?.status ?? "checking"} />
+        <div className="source-map-list">
+          {(readiness?.checks ?? []).map((check) => (
+            <article className="source-map-item" key={check.name}>
+              <span>{check.ok ? "Ready" : "Attention"}</span>
+              <strong>{check.name}</strong>
+              <small>{check.detail}</small>
+            </article>
+          ))}
+          {!readiness && <div className="empty-state">Checking platform readiness.</div>}
         </div>
       </div>
     </section>

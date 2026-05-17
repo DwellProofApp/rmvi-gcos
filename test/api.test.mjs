@@ -37,6 +37,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(status.counts.personnel > 0, true);
     assert.equal(status.counts.audit > 0, true);
 
+    const readiness = await getJson("/api/readiness");
+    assert.equal(readiness.status, "ready");
+    assert.equal(readiness.checks.length >= 6, true);
+
     const webShell = await fetch(`${BASE_URL}/`);
     assert.equal(webShell.status, 200);
     assert.equal((await webShell.text()).includes("GCOS Web"), true);
@@ -139,6 +143,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(submittedReport.state, "Approved");
     assert.equal(submittedReport.score, 100);
 
+    const correctionReport = await postJson(`/api/reports/${reports[1].id}/correction`, {
+      reason: "Supporting documents need revision"
+    }, nationalToken);
+    assert.equal(correctionReport.state, "Correction Requested");
+    assert.equal(correctionReport.score <= 45, true);
+
     const approvals = await getJson("/api/approvals");
     const invalidCreatedApproval = await rawPost("/api/approvals", {
       route: "National -> Regional",
@@ -160,6 +170,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const approvedRequest = await postJson(`/api/approvals/${approvals[0].id}/approve`, {}, nationalToken);
     assert.equal(approvedRequest.state, "Approved");
     assert.equal(approvedRequest.signatures, "complete");
+
+    const rejectedRequest = await postJson(`/api/approvals/${approvals[1].id}/reject`, {
+      reason: "Authority documentation incomplete"
+    }, nationalToken);
+    assert.equal(rejectedRequest.state, "Rejected");
+    assert.equal(rejectedRequest.signatures, "closed");
 
     const tasks = await getJson("/api/tasks");
     const invalidTask = await rawPost("/api/tasks", {
@@ -210,6 +226,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const acknowledgedPolicy = await postJson(`/api/policies/${policies[0].id}/acknowledge`, {}, localToken);
     assert.equal(acknowledgedPolicy.acknowledgements > 0, true);
 
+    const retiredPolicy = await postJson(`/api/policies/${policies[1].id}/retire`, {
+      reason: "Replaced by updated transfer policy"
+    }, nationalToken);
+    assert.equal(retiredPolicy.status, "Retired");
+
     const calendarEvents = await getJson("/api/calendar-events");
     const invalidCalendarEvent = await rawPost("/api/calendar-events", {
       category: "Audit",
@@ -229,6 +250,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const completedCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[0].id}/complete`, {}, nationalToken);
     assert.equal(completedCalendarEvent.status, "Complete");
+
+    const atRiskCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/risk`, {
+      reason: "Deadline requires attention"
+    }, nationalToken);
+    assert.equal(atRiskCalendarEvent.status, "At Risk");
 
     const personnel = await getJson("/api/personnel");
     const invalidPerson = await rawPost("/api/personnel", {
