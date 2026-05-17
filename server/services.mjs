@@ -17,6 +17,13 @@ import {
 } from "./domain.mjs";
 
 export function createServices({ state, record, requirePermission, findById }) {
+  function findStationIdentity(id) {
+    const decoded = decodeURIComponent(String(id ?? ""));
+    const item = state.stations.find((entry) => entry.id === decoded || entry.email === decoded);
+    if (item) return item;
+    return findById(state.stations, id);
+  }
+
   function publicState() {
     return {
       stations: state.stations,
@@ -1138,6 +1145,104 @@ export function createServices({ state, record, requirePermission, findById }) {
         suspended: state.offices.filter((item) => item.status === "Suspended").length,
         stationIdentities: state.stations.length,
         nextOffice: state.offices.find((item) => item.status !== "Active")?.name ?? state.offices[0]?.name ?? "No offices"
+      };
+    },
+
+    updateStationLevel(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findStationIdentity(id);
+      item.level = body.level ?? item.level;
+      item.status = item.status ?? "Active";
+      record("StationLevelUpdated", body.actor, item.email, item.level);
+      return item;
+    },
+
+    updateStationAuthority(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findStationIdentity(id);
+      item.authority = body.authority ?? item.authority;
+      item.status = item.status ?? "Active";
+      record("StationAuthorityUpdated", body.actor, item.email, item.authority);
+      return item;
+    },
+
+    verifyStation(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findStationIdentity(id);
+      item.verified = true;
+      item.status = "Verified";
+      record("StationVerified", body.actor, item.email, body.result ?? "Station identity verified");
+      return item;
+    },
+
+    watchStation(id, body) {
+      const item = findStationIdentity(id);
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), body.watcher ?? body.actor ?? "System"]));
+      record("StationWatcherAdded", body.actor, item.email, item.watchers.join(", "));
+      return item;
+    },
+
+    suspendStation(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findStationIdentity(id);
+      item.status = "Suspended";
+      item.suspensionReason = body.reason ?? "Station suspended from hierarchy graph";
+      record("StationSuspended", body.actor, item.email, item.suspensionReason);
+      return item;
+    },
+
+    activateStation(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findStationIdentity(id);
+      item.status = "Active";
+      item.suspensionReason = undefined;
+      record("StationActivated", body.actor, item.email, body.reason ?? "Station reactivated");
+      return item;
+    },
+
+    mirrorStation(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findStationIdentity(id);
+      const emailPrefix = item.email.split("@")[0].replace(/[^a-z0-9_]+/gi, "_");
+      const emailDomain = item.email.split("@")[1] ?? "rmvi.org";
+      const mirrorEmail = normalizeStationEmail(body.email ?? `${emailPrefix}.mirror.${Date.now().toString(36)}@${emailDomain}`);
+      const created = station(mirrorEmail, body.title ?? `${item.title} Mirror`, item.level, body.authority ?? `${item.authority} | Mirror station`);
+      created.status = "Provisioned";
+      created.mirrorOf = item.id;
+      state.stations.push(created);
+      record("StationMirrorCreated", body.actor, created.email, `Mirror of ${item.email}`);
+      return created;
+    },
+
+    bulkVerifyStations(body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const ids = body.ids?.length ? body.ids : state.stations.slice(0, 3).map((item) => item.id);
+      const decoded = ids.map((id) => decodeURIComponent(id));
+      const updated = state.stations.filter((item) => decoded.includes(item.id) || decoded.includes(item.email)).map((item) => {
+        item.verified = true;
+        item.status = "Verified";
+        return item;
+      });
+      record("StationsBulkVerified", body.actor, "Hierarchy graph", `${updated.length} stations verified`);
+      return { count: updated.length, updated };
+    },
+
+    hierarchyDigest() {
+      const byLevel = state.stations.reduce((counts, item) => {
+        counts[item.level] = (counts[item.level] ?? 0) + 1;
+        return counts;
+      }, {});
+      const topLevel = Object.entries(byLevel).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "No levels";
+      return {
+        generatedAt: new Date().toISOString(),
+        stations: state.stations.length,
+        levels: Object.keys(byLevel).length,
+        verified: state.stations.filter((item) => item.verified || item.status === "Verified").length,
+        suspended: state.stations.filter((item) => item.status === "Suspended").length,
+        watched: state.stations.filter((item) => item.watchers?.length).length,
+        mirrors: state.stations.filter((item) => item.mirrorOf).length,
+        topLevel,
+        nextStation: state.stations.find((item) => !item.verified)?.email ?? state.stations[0]?.email ?? "No stations"
       };
     },
 

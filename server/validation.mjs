@@ -59,6 +59,40 @@ const validators = {
     if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
   },
 
+  "POST /api/stations/:id/level": (body) => {
+    if (body.level !== undefined) requireEnum(body.level, stationLevels, "level");
+  },
+
+  "POST /api/stations/:id/authority": (body) => {
+    if (body.authority !== undefined) requireString(body.authority, "authority");
+  },
+
+  "POST /api/stations/:id/verify": (body) => {
+    if (body.result !== undefined) requireString(body.result, "result");
+  },
+
+  "POST /api/stations/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/stations/:id/suspend": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/stations/:id/activate": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/stations/:id/mirror": (body) => {
+    if (body.email !== undefined) requireEmail(body.email, "email");
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.authority !== undefined) requireString(body.authority, "authority");
+  },
+
+  "POST /api/stations/bulk/verify": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
   "POST /api/messages": (body) => {
     requireEnum(body.kind, messageKinds, "kind");
     requireString(body.subject, "subject");

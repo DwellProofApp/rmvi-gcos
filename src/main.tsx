@@ -56,7 +56,7 @@ type StationLevel =
 type Section = "Control Center" | "ChurchMail" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit";
 type MessageKind = "Directive" | "Report" | "Approval" | "Notification" | "Transfer";
 type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
-type StationCard = { email: string; title: string; level: StationLevel | string; authority: string; icon: React.ElementType };
+type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string };
 type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[] };
 type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number; evidenceStatus?: string; reviewNote?: string; verified?: boolean; archived?: boolean; watchers?: string[] };
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string; delegate?: string; holdReason?: string; archived?: boolean; watchers?: string[] };
@@ -199,6 +199,17 @@ type OfficeDigest = {
   suspended: number;
   stationIdentities: number;
   nextOffice: string;
+};
+type HierarchyDigest = {
+  generatedAt: string;
+  stations: number;
+  levels: number;
+  verified: number;
+  suspended: number;
+  watched: number;
+  mirrors: number;
+  topLevel: string;
+  nextStation: string;
 };
 type AuditDigest = {
   generatedAt: string;
@@ -640,6 +651,13 @@ function getSessionToken() {
   }
 }
 
+function iconForLevel(level: StationLevel | string) {
+  if (level === "International HQ") return Globe2;
+  if (level === "National HQ") return Landmark;
+  if (level === "Local Branch") return Inbox;
+  return Building2;
+}
+
 function normalizeStationEmail(email: string) {
   return email.toLowerCase().replace("@rmi.org", "@rmvi.org");
 }
@@ -672,6 +690,7 @@ function App() {
   const [personnel, setPersonnel] = usePersistentState("gcos.personnel", initialPersonnel);
   const [transfers, setTransfers] = usePersistentState("gcos.transfers", initialTransfers);
   const [offices, setOffices] = usePersistentState("gcos.offices", initialOffices);
+  const [apiStations, setApiStations] = usePersistentState<StationCard[]>("gcos.stations", stations);
   const [escalations, setEscalations] = usePersistentState("gcos.escalations", initialEscalations);
   const [aiDrafts, setAiDrafts] = usePersistentState("gcos.aiDrafts", initialAiDrafts);
   const [documents, setDocuments] = usePersistentState("gcos.documents", initialDocuments);
@@ -687,6 +706,7 @@ function App() {
   const [personnelDigest, setPersonnelDigest] = React.useState<PersonnelDigest | null>(null);
   const [transferDigest, setTransferDigest] = React.useState<TransferDigest | null>(null);
   const [officeDigest, setOfficeDigest] = React.useState<OfficeDigest | null>(null);
+  const [hierarchyDigest, setHierarchyDigest] = React.useState<HierarchyDigest | null>(null);
   const [auditDigest, setAuditDigest] = React.useState<AuditDigest | null>(null);
   const [taskDigest, setTaskDigest] = React.useState<TaskDigest | null>(null);
   const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
@@ -695,17 +715,25 @@ function App() {
   const [reportDigest, setReportDigest] = React.useState<ReportDigest | null>(null);
   const [approvalDigest, setApprovalDigest] = React.useState<ApprovalDigest | null>(null);
   const [aiDraftDigest, setAiDraftDigest] = React.useState<AiDraftDigest | null>(null);
-  const stationDirectory = React.useMemo<StationCard[]>(() => [
-    ...stations,
-    ...offices.map((office) => ({
+  const stationDirectory = React.useMemo<StationCard[]>(() => {
+    const directory = new Map<string, StationCard>();
+    const baseStations = apiStations.length ? apiStations : stations;
+    baseStations.forEach((station) => {
+      directory.set(station.email, { ...station, icon: station.icon ?? iconForLevel(station.level) });
+    });
+    offices.forEach((office) => {
+      directory.set(office.email, {
       email: office.email,
       title: `${office.name} Workstation`,
       level: office.level,
       authority: `${office.department}, supervised by ${office.supervisor}`,
-      icon: Building2
-    }))
-  ], [offices]);
-  const StationIcon = activeStation.icon;
+      icon: Building2,
+      status: office.status
+      });
+    });
+    return Array.from(directory.values());
+  }, [apiStations, offices]);
+  const StationIcon = activeStation.icon ?? iconForLevel(activeStation.level);
   const permissions = getPermissions(activeStation);
   const operatingMetrics = React.useMemo(() => {
     const commandCount = messages.filter((item) => ["Directive", "Notification", "Transfer"].includes(item.kind)).length + transfers.length;
@@ -872,6 +900,7 @@ function App() {
         audit: AuditRow[];
         events: string[];
       }>("/api/bootstrap");
+      setApiStations(data.stations.length ? data.stations : stations);
       setMessages(data.messages);
       setReports(data.reports);
       setApprovals(data.approvals);
@@ -893,6 +922,7 @@ function App() {
       void apiRequest<PersonnelDigest>("/api/personnel/digest").then(setPersonnelDigest).catch(() => undefined);
       void apiRequest<TransferDigest>("/api/transfers/digest").then(setTransferDigest).catch(() => undefined);
       void apiRequest<OfficeDigest>("/api/offices/digest").then(setOfficeDigest).catch(() => undefined);
+      void apiRequest<HierarchyDigest>("/api/hierarchy/digest").then(setHierarchyDigest).catch(() => undefined);
       void apiRequest<AuditDigest>("/api/audit/digest").then(setAuditDigest).catch(() => undefined);
       void apiRequest<TaskDigest>("/api/tasks/digest").then(setTaskDigest).catch(() => undefined);
       void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
@@ -903,7 +933,7 @@ function App() {
       void apiRequest<AiDraftDigest>("/api/ai-drafts/digest").then(setAiDraftDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
-        setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority }));
+        setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority, icon: current.icon ?? iconForLevel(serverStation.level) }));
       }
     } catch {
       setApiStatusError("API unavailable");
@@ -930,6 +960,7 @@ function App() {
         audit: AuditRow[];
         events: string[];
       }>("/api/dev/reset", { method: "POST", body: JSON.stringify({}) });
+      setApiStations(data.stations.length ? data.stations : stations);
       setMessages(data.messages);
       setReports(data.reports);
       setApprovals(data.approvals);
@@ -2660,6 +2691,145 @@ function App() {
       .catch(() => undefined);
   }
 
+  function stationKey(station: StationCard) {
+    return station.id ?? station.email;
+  }
+
+  function patchStation(id: string, updates: Partial<StationCard>) {
+    setApiStations((items) => items.map((item) => stationKey(item) === id || item.email === id ? { ...item, ...updates } : item));
+  }
+
+  function updateStationLevel(id: string) {
+    const station = stationDirectory.find((item) => stationKey(item) === id || item.email === id);
+    if (!station) return;
+    const levels = hierarchy.map((item) => item.level);
+    const nextLevel = levels[(levels.indexOf(station.level as StationLevel) + 1 || 1) % levels.length];
+    patchStation(id, { level: nextLevel });
+    recordAudit("StationLevelUpdated", station.email, nextLevel);
+    if (!offlineMode) {
+      void apiRequest<StationCard>(`/api/stations/${encodeURIComponent(id)}/level`, {
+        method: "POST",
+        body: JSON.stringify({ level: nextLevel, actor: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateStationAuthority(id: string) {
+    const station = stationDirectory.find((item) => stationKey(item) === id || item.email === id);
+    if (!station) return;
+    const authority = `${station.authority} | Supervisor route checked`;
+    patchStation(id, { authority });
+    recordAudit("StationAuthorityUpdated", station.email, "Supervisor route checked");
+    if (!offlineMode) {
+      void apiRequest<StationCard>(`/api/stations/${encodeURIComponent(id)}/authority`, {
+        method: "POST",
+        body: JSON.stringify({ authority, actor: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function verifyStation(id: string) {
+    const station = stationDirectory.find((item) => stationKey(item) === id || item.email === id);
+    if (!station) return;
+    patchStation(id, { verified: true, status: "Verified" });
+    recordAudit("StationVerified", station.email, "Station identity verified");
+    if (!offlineMode) {
+      void apiRequest<StationCard>(`/api/stations/${encodeURIComponent(id)}/verify`, {
+        method: "POST",
+        body: JSON.stringify({ actor: activeStation.email, result: "Station identity verified" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchStation(id: string) {
+    const station = stationDirectory.find((item) => stationKey(item) === id || item.email === id);
+    if (!station) return;
+    const watchers = Array.from(new Set([...(station.watchers ?? []), activeStation.email]));
+    patchStation(id, { watchers });
+    recordAudit("StationWatcherAdded", station.email, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<StationCard>(`/api/stations/${encodeURIComponent(id)}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ actor: activeStation.email, watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function suspendStation(id: string) {
+    const station = stationDirectory.find((item) => stationKey(item) === id || item.email === id);
+    if (!station) return;
+    patchStation(id, { status: "Suspended" });
+    recordAudit("StationSuspended", station.email, "Station suspended from hierarchy graph");
+    if (!offlineMode) {
+      void apiRequest<StationCard>(`/api/stations/${encodeURIComponent(id)}/suspend`, {
+        method: "POST",
+        body: JSON.stringify({ actor: activeStation.email, reason: "Station suspended from hierarchy graph" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function activateStation(id: string) {
+    const station = stationDirectory.find((item) => stationKey(item) === id || item.email === id);
+    if (!station) return;
+    patchStation(id, { status: "Active" });
+    recordAudit("StationActivated", station.email, "Station reactivated");
+    if (!offlineMode) {
+      void apiRequest<StationCard>(`/api/stations/${encodeURIComponent(id)}/activate`, {
+        method: "POST",
+        body: JSON.stringify({ actor: activeStation.email, reason: "Station reactivated" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function mirrorStation(id: string) {
+    const station = stationDirectory.find((item) => stationKey(item) === id || item.email === id);
+    if (!station) return;
+    const mirrorEmail = `${station.email.split("@")[0]}.mirror.${Date.now().toString(36)}@rmvi.org`;
+    const mirror: StationCard = {
+      id: `mirror-${Date.now()}`,
+      email: mirrorEmail,
+      title: `${station.title} Mirror`,
+      level: station.level,
+      authority: `${station.authority} | Mirror station`,
+      icon: iconForLevel(station.level),
+      status: "Provisioned",
+      mirrorOf: station.id ?? station.email
+    };
+    setApiStations((items) => [...items, mirror]);
+    recordAudit("StationMirrorCreated", mirror.email, `Mirror of ${station.email}`);
+    if (!offlineMode) {
+      void apiRequest<StationCard>(`/api/stations/${encodeURIComponent(id)}/mirror`, {
+        method: "POST",
+        body: JSON.stringify({ actor: activeStation.email, email: mirrorEmail, title: mirror.title, authority: mirror.authority })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkVerifyStations() {
+    const ids = stationDirectory.slice(0, 3).map(stationKey);
+    setApiStations((items) => items.map((item) => ids.includes(stationKey(item)) ? { ...item, verified: true, status: "Verified" } : item));
+    recordAudit("StationsBulkVerified", "Hierarchy graph", `${ids.length} stations verified`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: StationCard[] }>("/api/stations/bulk/verify", {
+        method: "POST",
+        body: JSON.stringify({ actor: activeStation.email, ids })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshHierarchyDigest() {
+    if (offlineMode) {
+      recordAudit("HierarchyDigestRefreshed", "Hierarchy digest", "Local hierarchy digest refreshed");
+      return;
+    }
+    void apiRequest<HierarchyDigest>("/api/hierarchy/digest")
+      .then((digest) => {
+        setHierarchyDigest(digest);
+        recordAudit("HierarchyDigestRefreshed", "Hierarchy digest", `${digest.verified} verified, ${digest.suspended} suspended`);
+      })
+      .catch(() => undefined);
+  }
+
   function escalateUpward(id: string) {
     const escalation = escalations.find((item) => item.id === id);
     if (!escalation) return;
@@ -3423,7 +3593,7 @@ function App() {
         <section className="station-switcher" aria-label="Station switcher">
           <p>Station Identity</p>
           {stationDirectory.map((station) => {
-            const Icon = station.icon;
+            const Icon = station.icon ?? iconForLevel(station.level);
             return (
               <button
                 key={station.email}
@@ -3768,7 +3938,22 @@ function App() {
             digest={aiDraftDigest}
           />
         )}
-        {activeSection === "Hierarchy" && <Hierarchy stationDirectory={stationDirectory} offices={offices} />}
+        {activeSection === "Hierarchy" && (
+          <Hierarchy
+            stationDirectory={stationDirectory}
+            offices={offices}
+            digest={hierarchyDigest}
+            onUpdateStationLevel={updateStationLevel}
+            onUpdateStationAuthority={updateStationAuthority}
+            onVerifyStation={verifyStation}
+            onWatchStation={watchStation}
+            onSuspendStation={suspendStation}
+            onActivateStation={activateStation}
+            onMirrorStation={mirrorStation}
+            onBulkVerifyStations={bulkVerifyStations}
+            onRefreshDigest={refreshHierarchyDigest}
+          />
+        )}
         {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} onActivateOffice={activateOffice} onSuspendOffice={suspendOffice} onRotatePassword={rotateOfficePassword} onActivateStation={activateOfficeStation} onRefreshDigest={refreshOfficeDigest} digest={officeDigest} />}
         {activeSection === "Transfers" && (
           <Transfers
@@ -3832,7 +4017,7 @@ function LoginScreen({
   const [password, setPassword] = React.useState(stationPasswords[stations[1].email]);
   const [error, setError] = React.useState("");
   const selectedStation = stationDirectory.find((station) => station.email === email) ?? stations[1];
-  const StationIcon = selectedStation.icon;
+  const StationIcon = selectedStation.icon ?? iconForLevel(selectedStation.level);
   const visibleCredentials = stationDirectory.filter((station, index, items) => (
     items.findIndex((item) => item.email === station.email) === index && credentialMap[station.email]
   ));
@@ -5953,10 +6138,30 @@ function AiDesk({
 
 function Hierarchy({
   stationDirectory,
-  offices
+  offices,
+  digest,
+  onUpdateStationLevel,
+  onUpdateStationAuthority,
+  onVerifyStation,
+  onWatchStation,
+  onSuspendStation,
+  onActivateStation,
+  onMirrorStation,
+  onBulkVerifyStations,
+  onRefreshDigest
 }: {
   stationDirectory: StationCard[];
   offices: Office[];
+  digest: HierarchyDigest | null;
+  onUpdateStationLevel: (id: string) => void;
+  onUpdateStationAuthority: (id: string) => void;
+  onVerifyStation: (id: string) => void;
+  onWatchStation: (id: string) => void;
+  onSuspendStation: (id: string) => void;
+  onActivateStation: (id: string) => void;
+  onMirrorStation: (id: string) => void;
+  onBulkVerifyStations: () => void;
+  onRefreshDigest: () => void;
 }) {
   const levelCounts = React.useMemo(() => hierarchy.reduce<Record<string, number>>((counts, node) => {
     counts[node.level] = stationDirectory.filter((station) => station.level === node.level).length;
@@ -5964,15 +6169,29 @@ function Hierarchy({
   }, {}), [stationDirectory]);
   const supervisorCount = new Set(offices.map((office) => office.supervisor)).size;
   const dynamicLevels = hierarchy.filter((node) => (levelCounts[node.level] ?? 0) > 0).length;
+  const verifiedCount = stationDirectory.filter((station) => station.verified || station.status === "Verified").length;
+  const suspendedCount = stationDirectory.filter((station) => station.status === "Suspended").length;
+  const watchedCount = stationDirectory.filter((station) => station.watchers?.length).length;
+  const mirrorCount = stationDirectory.filter((station) => station.mirrorOf).length;
+  const stationRows = stationDirectory.slice(0, 8);
 
   return (
     <section className="module-grid">
       <div className="panel module-primary">
         <PanelHeader icon={GitBranch} title="Organizational Hierarchy Graph" action={`${stationDirectory.length} stations`} />
         <div className="office-summary-grid">
-          <Insight label="Active stations" value={String(stationDirectory.length)} />
-          <Insight label="Active levels" value={`${dynamicLevels}/7`} />
+          <Insight label="Stations" value={String(digest?.stations ?? stationDirectory.length)} />
+          <Insight label="Active levels" value={`${digest?.levels ?? dynamicLevels}/7`} />
           <Insight label="Supervisors" value={String(supervisorCount)} />
+          <Insight label="Verified" value={String(digest?.verified ?? verifiedCount)} />
+          <Insight label="Suspended" value={String(digest?.suspended ?? suspendedCount)} />
+          <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Mirrors" value={String(digest?.mirrors ?? mirrorCount)} />
+          <Insight label="Next station" value={digest?.nextStation ?? stationRows[0]?.email ?? "None"} />
+        </div>
+        <div className="registry-toolbar">
+          <button type="button" onClick={onBulkVerifyStations}><ShieldCheck size={14} /> Bulk verify</button>
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
         </div>
         <div className="hierarchy-list">
           {hierarchy.map((node, index) => (
@@ -5987,6 +6206,31 @@ function Hierarchy({
               <FlowMeter label="RPT" value={node.reports} />
             </article>
           ))}
+        </div>
+        <div className="hierarchy-list">
+          {stationRows.map((station) => {
+            const key = station.id ?? station.email;
+            const StationRowIcon = station.icon ?? iconForLevel(station.level);
+            return (
+              <article className="hierarchy-row" key={key}>
+                <div className="node-badge"><StationRowIcon size={16} /></div>
+                <div className="node-main">
+                  <strong>{station.title}</strong>
+                  <span>{station.email} - {station.level} - {station.status ?? "Active"}</span>
+                </div>
+                <div className="node-metric">{station.watchers?.length ?? 0} watchers</div>
+                <div className="action-row compact-actions">
+                  <button type="button" onClick={() => onUpdateStationLevel(key)}>Level</button>
+                  <button type="button" onClick={() => onUpdateStationAuthority(key)}>Authority</button>
+                  <button type="button" onClick={() => onVerifyStation(key)}>Verify</button>
+                  <button type="button" onClick={() => onWatchStation(key)}>Watch</button>
+                  <button type="button" onClick={() => onSuspendStation(key)}>Suspend</button>
+                  <button type="button" onClick={() => onActivateStation(key)}>Activate</button>
+                  <button type="button" onClick={() => onMirrorStation(key)}>Mirror</button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       </div>
       <div className="panel module-side">
@@ -6004,6 +6248,13 @@ function Hierarchy({
           <strong>Supervisor coverage</strong>
           <span>{supervisorCount} supervising offices are currently referenced by provisioned workstations.</span>
         </div>
+        {digest && (
+          <div className="workflow-digest">
+            <Insight label="Top level" value={digest.topLevel} />
+            <Insight label="Verified" value={String(digest.verified)} />
+            <Insight label="Generated" value={new Date(digest.generatedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} />
+          </div>
+        )}
       </div>
     </section>
   );

@@ -911,6 +911,67 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const stations = await getJson("/api/stations");
     assert.equal(stations.some((station) => station.email === "automated_district@gcos.org"), true);
+    const stationId = stations[0].id;
+
+    const invalidStationLevel = await rawPost(`/api/stations/${stationId}/level`, {
+      level: "Planetary HQ"
+    }, nationalToken);
+    assert.equal(invalidStationLevel.status, 400);
+
+    const forbiddenStationLevel = await rawPost(`/api/stations/${stationId}/level`, {
+      level: "Regional HQ"
+    }, localToken);
+    assert.equal(forbiddenStationLevel.status, 403);
+
+    const levelStation = await postJson(`/api/stations/${stationId}/level`, {
+      level: "Regional HQ"
+    }, nationalToken);
+    assert.equal(levelStation.level, "Regional HQ");
+
+    const authorityStation = await postJson(`/api/stations/${stationId}/authority`, {
+      authority: "Automated supervisor route"
+    }, nationalToken);
+    assert.equal(authorityStation.authority, "Automated supervisor route");
+
+    const verifiedStation = await postJson(`/api/stations/${stationId}/verify`, {
+      result: "Automated station verification"
+    }, nationalToken);
+    assert.equal(verifiedStation.verified, true);
+    assert.equal(verifiedStation.status, "Verified");
+
+    const watchedStation = await postJson(`/api/stations/${stationId}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedStation.watchers.includes("np@rmvi.org"), true);
+
+    const suspendedStation = await postJson(`/api/stations/${stationId}/suspend`, {
+      reason: "Automated station suspension"
+    }, nationalToken);
+    assert.equal(suspendedStation.status, "Suspended");
+
+    const activatedStation = await postJson(`/api/stations/${stationId}/activate`, {
+      reason: "Automated station activation"
+    }, nationalToken);
+    assert.equal(activatedStation.status, "Active");
+
+    const mirroredStation = await postJson(`/api/stations/${stationId}/mirror`, {
+      email: "automated_mirror@rmvi.org",
+      title: "Automated Mirror Station"
+    }, nationalToken);
+    assert.equal(mirroredStation.email, "automated_mirror@rmvi.org");
+    assert.equal(mirroredStation.mirrorOf, stationId);
+
+    const bulkVerifiedStations = await postJson("/api/stations/bulk/verify", {
+      ids: [stationId, mirroredStation.id]
+    }, nationalToken);
+    assert.equal(bulkVerifiedStations.count, 2);
+    assert.equal(bulkVerifiedStations.updated.every((station) => station.verified), true);
+
+    const hierarchyDigest = await getJson("/api/hierarchy/digest");
+    assert.equal(hierarchyDigest.stations >= stations.length, true);
+    assert.equal(hierarchyDigest.verified >= 2, true);
+    assert.equal(hierarchyDigest.watched >= 1, true);
+    assert.equal(hierarchyDigest.mirrors >= 1, true);
 
     const transfers = await getJson("/api/transfers");
     const forbiddenCreatedTransfer = await rawPost("/api/transfers", {
@@ -1269,6 +1330,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "OfficeSuspended"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficePasswordRotated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeStationActivated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationLevelUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationAuthorityUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationSuspended"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationActivated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationMirrorCreated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationsBulkVerified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationOwnerUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationTriaged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationSlaUpdated"), true);
