@@ -247,6 +247,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const acknowledgedPolicy = await postJson(`/api/policies/${policies[0].id}/acknowledge`, {}, localToken);
     assert.equal(acknowledgedPolicy.acknowledgements > 0, true);
 
+    const statusPolicy = await postJson(`/api/policies/${policies[0].id}/status`, {
+      status: "Review"
+    }, nationalToken);
+    assert.equal(statusPolicy.status, "Review");
+
     const retiredPolicy = await postJson(`/api/policies/${policies[1].id}/retire`, {
       reason: "Replaced by updated transfer policy"
     }, nationalToken);
@@ -271,6 +276,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const completedCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[0].id}/complete`, {}, nationalToken);
     assert.equal(completedCalendarEvent.status, "Complete");
+
+    const priorityCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/priority`, {
+      priority: "Critical"
+    }, nationalToken);
+    assert.equal(priorityCalendarEvent.priority, "Critical");
 
     const atRiskCalendarEvent = await postJson(`/api/calendar-events/${calendarEvents[1].id}/risk`, {
       reason: "Deadline requires attention"
@@ -308,6 +318,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(updatedPerson.status, "Assigned");
 
+    const reassignedPerson = await postJson(`/api/personnel/${personnel[0].id}/assignment`, {
+      assignedStation: "Regional Review Desk",
+      status: "Transfer Pending"
+    }, nationalToken);
+    assert.equal(reassignedPerson.assignedStation, "Regional Review Desk");
+    assert.equal(reassignedPerson.status, "Transfer Pending");
+
     const deactivatedPerson = await postJson(`/api/personnel/${personnel[1].id}/deactivate`, {
       reason: "Automated deactivation test"
     }, nationalToken);
@@ -327,6 +344,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const routedEscalation = await postJson(`/api/escalations/${escalation.id}/route`, {}, nationalToken);
     assert.equal(routedEscalation.status, "Upward");
+
+    const ownedEscalation = await postJson(`/api/escalations/${escalation.id}/owner`, {
+      owner: "National Presidency Workstation"
+    }, nationalToken);
+    assert.equal(ownedEscalation.owner, "National Presidency Workstation");
 
     const severityEscalation = await postJson(`/api/escalations/${escalation.id}/severity`, {
       severity: "Critical"
@@ -464,6 +486,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(draft.title, "Executive Summary: Automated workflow test");
     assert.equal(draft.sourceCount > 0, true);
 
+    const refreshedDraft = await postJson(`/api/ai-drafts/${draft.id}/refresh`, {
+      focus: "Automated refreshed workflow test"
+    }, nationalToken);
+    assert.equal(refreshedDraft.title, "Executive Summary: Automated refreshed workflow test");
+    assert.equal(refreshedDraft.sourceCount > 0, true);
+
     const archivedDraft = await postJson(`/api/ai-drafts/${draft.id}/archive`, {
       reason: "Automated AI archive test"
     }, nationalToken);
@@ -492,14 +520,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "TaskAdvanced"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyPublished"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PolicyAcknowledged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PolicyStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "CalendarEventCompleted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "CalendarPriorityUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonRegistered"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersonStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersonAssignmentUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeStatusUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationOwnerUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferExecuted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "AIDraftRefreshed"), true);
 
     await stopApi(api);
     api = await startApi(dataPath, webDistPath);

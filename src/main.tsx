@@ -1059,6 +1059,19 @@ function App() {
     }
   }
 
+  function updatePolicyStatus(id: string, status: Policy["status"]) {
+    const policy = policies.find((item) => item.id === id);
+    if (!policy) return;
+    setPolicies((items) => items.map((item) => item.id === id ? { ...item, status } : item));
+    recordAudit("PolicyStatusUpdated", policy.title, status);
+    if (!offlineMode) {
+      void apiRequest<Policy>(`/api/policies/${id}/status`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function retirePolicy(id: string) {
     const policy = policies.find((item) => item.id === id);
     if (!policy) return;
@@ -1100,6 +1113,19 @@ function App() {
     }
   }
 
+  function updateCalendarEventPriority(id: string, priority: CalendarEvent["priority"]) {
+    const event = calendarEvents.find((item) => item.id === id);
+    if (!event) return;
+    setCalendarEvents((items) => items.map((item) => item.id === id ? { ...item, priority } : item));
+    recordAudit("CalendarPriorityUpdated", event.title, priority);
+    if (!offlineMode) {
+      void apiRequest<CalendarEvent>(`/api/calendar-events/${id}/priority`, {
+        method: "POST",
+        body: JSON.stringify({ priority })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function markCalendarEventAtRisk(id: string) {
     const event = calendarEvents.find((item) => item.id === id);
     if (!event) return;
@@ -1137,6 +1163,19 @@ function App() {
       void apiRequest<PersonRecord>(`/api/personnel/${id}/status`, {
         method: "POST",
         body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updatePersonAssignment(id: string, assignedStation: string) {
+    const person = personnel.find((item) => item.id === id);
+    if (!person) return;
+    setPersonnel((items) => items.map((item) => item.id === id ? { ...item, assignedStation, status: "Transfer Pending" } : item));
+    recordAudit("PersonAssignmentUpdated", person.name, `${person.currentStation} -> ${assignedStation}`);
+    if (!offlineMode) {
+      void apiRequest<PersonRecord>(`/api/personnel/${id}/assignment`, {
+        method: "POST",
+        body: JSON.stringify({ assignedStation, status: "Transfer Pending" })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1434,6 +1473,19 @@ function App() {
     }
   }
 
+  function updateEscalationOwner(id: string, owner: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, owner } : item));
+    recordAudit("EscalationOwnerUpdated", escalation.item, owner);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/owner`, {
+        method: "POST",
+        body: JSON.stringify({ owner })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function resolveEscalation(id: string) {
     const escalation = escalations.find((item) => item.id === id);
     if (!escalation) return;
@@ -1494,6 +1546,39 @@ function App() {
       void apiRequest<DocumentRecord>(`/api/ai-drafts/${id}/archive`, {
         method: "POST",
         body: JSON.stringify({ reason: "Archived from AI Desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshAiDraft(id: string) {
+    const draft = aiDrafts.find((item) => item.id === id);
+    if (!draft) return;
+    const focus = draft.title.replace(`${draft.kind}: `, "");
+    const openEscalations = escalations.filter((item) => item.status !== "Resolved");
+    const pendingApprovals = approvals.filter((item) => item.state !== "Approved");
+    const activeReports = reports.filter((item) => item.state !== "Approved");
+    const activeTasks = tasks.filter((item) => item.status !== "Complete");
+    const sourceCount = activeReports.length + openEscalations.length + pendingApprovals.length + activeTasks.length + messages.length;
+    const body = [
+      `${activeStation.title} refreshed this ${draft.kind.toLowerCase()} for ${focus}.`,
+      `Reports needing attention: ${activeReports.length}. Highest risk report: ${activeReports[0]?.name ?? "none"}.`,
+      `Active tasks: ${activeTasks.length}. Current task risk: ${activeTasks[0]?.title ?? "none"}.`,
+      `Open escalations: ${openEscalations.length}. Priority item: ${openEscalations[0]?.item ?? "none"}.`,
+      `Pending approvals: ${pendingApprovals.length}. Current approval route: ${pendingApprovals[0]?.route ?? "none"}.`,
+      `Latest ChurchMail signal: ${messages[0]?.subject ?? "no current messages"}.`
+    ].join("\n");
+    setAiDrafts((items) => items.map((item) => item.id === id ? {
+      ...item,
+      title: `${draft.kind}: ${focus}`,
+      body,
+      sourceCount,
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    } : item));
+    recordAudit("AIDraftRefreshed", draft.title, "Draft regenerated from current records");
+    if (!offlineMode) {
+      void apiRequest<AiDraft>(`/api/ai-drafts/${id}/refresh`, {
+        method: "POST",
+        body: JSON.stringify({ focus })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -1767,6 +1852,7 @@ function App() {
             offlineMode={offlineMode}
             onCreatePolicy={createPolicy}
             onAcknowledgePolicy={acknowledgePolicy}
+            onUpdatePolicyStatus={updatePolicyStatus}
             onRetirePolicy={retirePolicy}
           />
         )}
@@ -1777,6 +1863,7 @@ function App() {
             offlineMode={offlineMode}
             onCreateCalendarEvent={createCalendarEvent}
             onCompleteCalendarEvent={completeCalendarEvent}
+            onUpdateCalendarEventPriority={updateCalendarEventPriority}
             onMarkCalendarEventAtRisk={markCalendarEventAtRisk}
             onEscalateCalendarEvent={triggerEscalation}
           />
@@ -1789,6 +1876,7 @@ function App() {
             offlineMode={offlineMode}
             onCreatePerson={createPerson}
             onUpdatePersonStatus={updatePersonStatus}
+            onUpdatePersonAssignment={updatePersonAssignment}
             onDeactivatePerson={deactivatePerson}
             onCreateTransfer={createTransferRequest}
           />
@@ -1796,9 +1884,11 @@ function App() {
         {activeSection === "Escalations" && (
           <Escalations
             escalations={escalations}
+            station={activeStation}
             permissions={permissions}
             events={events}
             onCreateEscalation={triggerEscalation}
+            onUpdateOwner={updateEscalationOwner}
             onUpdateSeverity={updateEscalationSeverity}
             onEscalateUpward={escalateUpward}
             onResolveEscalation={resolveEscalation}
@@ -1816,6 +1906,7 @@ function App() {
             escalations={escalations}
             messages={messages}
             onGenerateDraft={generateAiDraft}
+            onRefreshDraft={refreshAiDraft}
             onArchiveDraft={archiveAiDraft}
           />
         )}
@@ -2754,6 +2845,7 @@ function Policies({
   offlineMode,
   onCreatePolicy,
   onAcknowledgePolicy,
+  onUpdatePolicyStatus,
   onRetirePolicy
 }: {
   policies: Policy[];
@@ -2762,6 +2854,7 @@ function Policies({
   offlineMode: boolean;
   onCreatePolicy: (policy: Omit<Policy, "id" | "acknowledgements">) => void;
   onAcknowledgePolicy: (id: string) => void;
+  onUpdatePolicyStatus: (id: string, status: Policy["status"]) => void;
   onRetirePolicy: (id: string) => void;
 }) {
   const [title, setTitle] = React.useState("Branch reporting compliance policy");
@@ -2770,6 +2863,7 @@ function Policies({
   const [status, setStatus] = React.useState<Policy["status"]>("Draft");
   const [summary, setSummary] = React.useState("Local branch reports must include evidence packets before upward submission.");
   const [categoryFilter, setCategoryFilter] = React.useState("All categories");
+  const [statusFilter, setStatusFilter] = React.useState<Policy["status"] | "All statuses">("All statuses");
   const [feedback, setFeedback] = React.useState("");
 
   React.useEffect(() => {
@@ -2778,8 +2872,11 @@ function Policies({
 
   const categoryOptions = React.useMemo(() => ["All categories", ...Array.from(new Set(policies.map((policy) => policy.category))).sort()], [policies]);
   const visiblePolicies = React.useMemo(() => (
-    categoryFilter === "All categories" ? policies : policies.filter((policy) => policy.category === categoryFilter)
-  ), [categoryFilter, policies]);
+    policies.filter((policy) => (
+      (categoryFilter === "All categories" || policy.category === categoryFilter)
+      && (statusFilter === "All statuses" || policy.status === statusFilter)
+    ))
+  ), [categoryFilter, policies, statusFilter]);
   const activeCount = policies.filter((policy) => policy.status === "Active").length;
   const acknowledgementTotal = policies.reduce((total, policy) => total + policy.acknowledgements, 0);
 
@@ -2806,6 +2903,12 @@ function Policies({
               {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <label>
+            <span>Status</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Policy["status"] | "All statuses")}>
+              {["All statuses", "Draft", "Active", "Review", "Retired"].map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
         </div>
         <div className="policy-list">
           {visiblePolicies.map((policy) => (
@@ -2822,6 +2925,7 @@ function Policies({
               </div>
               <div className="action-row">
                 <button onClick={() => onAcknowledgePolicy(policy.id)}><CheckCircle2 size={15} /> Acknowledge</button>
+                <button disabled={!permissions.canApprove} onClick={() => onUpdatePolicyStatus(policy.id, policy.status === "Active" ? "Review" : "Active")}><ShieldCheck size={15} /> Status</button>
                 <button disabled={!permissions.canApprove} onClick={() => onRetirePolicy(policy.id)}><FileClock size={15} /> Retire</button>
               </div>
             </article>
@@ -2883,6 +2987,7 @@ function GovernanceCalendar({
   offlineMode,
   onCreateCalendarEvent,
   onCompleteCalendarEvent,
+  onUpdateCalendarEventPriority,
   onMarkCalendarEventAtRisk,
   onEscalateCalendarEvent
 }: {
@@ -2891,6 +2996,7 @@ function GovernanceCalendar({
   offlineMode: boolean;
   onCreateCalendarEvent: (event: Omit<CalendarEvent, "id">) => void;
   onCompleteCalendarEvent: (id: string) => void;
+  onUpdateCalendarEventPriority: (id: string, priority: CalendarEvent["priority"]) => void;
   onMarkCalendarEventAtRisk: (id: string) => void;
   onEscalateCalendarEvent: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
 }) {
@@ -2901,6 +3007,7 @@ function GovernanceCalendar({
   const [priority, setPriority] = React.useState<CalendarEvent["priority"]>("High");
   const [status, setStatus] = React.useState<CalendarEvent["status"]>("Scheduled");
   const [categoryFilter, setCategoryFilter] = React.useState("All categories");
+  const [statusFilter, setStatusFilter] = React.useState<CalendarEvent["status"] | "All statuses">("All statuses");
   const [feedback, setFeedback] = React.useState("");
 
   React.useEffect(() => {
@@ -2909,8 +3016,11 @@ function GovernanceCalendar({
 
   const categoryOptions = React.useMemo(() => ["All categories", ...Array.from(new Set(calendarEvents.map((event) => event.category))).sort()], [calendarEvents]);
   const visibleEvents = React.useMemo(() => (
-    categoryFilter === "All categories" ? calendarEvents : calendarEvents.filter((event) => event.category === categoryFilter)
-  ), [categoryFilter, calendarEvents]);
+    calendarEvents.filter((event) => (
+      (categoryFilter === "All categories" || event.category === categoryFilter)
+      && (statusFilter === "All statuses" || event.status === statusFilter)
+    ))
+  ), [calendarEvents, categoryFilter, statusFilter]);
   const atRiskCount = calendarEvents.filter((event) => event.status === "At Risk").length;
   const scheduledCount = calendarEvents.filter((event) => event.status === "Scheduled").length;
   const completeCount = calendarEvents.filter((event) => event.status === "Complete").length;
@@ -2938,6 +3048,12 @@ function GovernanceCalendar({
               {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
+          <label>
+            <span>Status</span>
+            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as CalendarEvent["status"] | "All statuses")}>
+              {["All statuses", "Scheduled", "At Risk", "Complete"].map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
         </div>
         <div className="calendar-list">
           {visibleEvents.map((event) => (
@@ -2950,6 +3066,7 @@ function GovernanceCalendar({
               <p>{event.category} owned by {event.owner}. Date: {event.date}.</p>
               <div className="action-row">
                 <button onClick={() => onCompleteCalendarEvent(event.id)}><CheckCircle2 size={15} /> Complete</button>
+                <button onClick={() => onUpdateCalendarEventPriority(event.id, event.priority === "Critical" ? "High" : "Critical")}><AlertTriangle size={15} /> Priority</button>
                 <button onClick={() => onMarkCalendarEventAtRisk(event.id)}><TimerReset size={15} /> Mark risk</button>
                 <button onClick={() => onEscalateCalendarEvent("Calendar", event.title, `${event.date} calendar item is ${event.status.toLowerCase()}`, event.owner, event.priority === "Critical" ? "Critical" : "High")}>
                   <AlertTriangle size={15} /> Escalate
@@ -3015,6 +3132,7 @@ function PersonnelDirectory({
   offlineMode,
   onCreatePerson,
   onUpdatePersonStatus,
+  onUpdatePersonAssignment,
   onDeactivatePerson,
   onCreateTransfer
 }: {
@@ -3024,6 +3142,7 @@ function PersonnelDirectory({
   offlineMode: boolean;
   onCreatePerson: (person: Omit<PersonRecord, "id">) => void;
   onUpdatePersonStatus: (id: string, status: PersonRecord["status"]) => void;
+  onUpdatePersonAssignment: (id: string, assignedStation: string) => void;
   onDeactivatePerson: (id: string) => void;
   onCreateTransfer: (transfer: Omit<Transfer, "id" | "step" | "risk">) => void;
 }) {
@@ -3089,6 +3208,7 @@ function PersonnelDirectory({
               <p>{person.currentStation} to {person.assignedStation}</p>
               <div className="action-row">
                 <button onClick={() => onUpdatePersonStatus(person.id, "Assigned")}><CheckCircle2 size={15} /> Mark assigned</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onUpdatePersonAssignment(person.id, station.level)}><RefreshCw size={15} /> Reassign</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => onDeactivatePerson(person.id)}><LockKeyhole size={15} /> Deactivate</button>
                 <button disabled={!permissions.canExecuteTransfers} onClick={() => createTransfer(person)}><Signature size={15} /> Create transfer</button>
               </div>
@@ -3147,17 +3267,21 @@ function PersonnelDirectory({
 
 function Escalations({
   escalations,
+  station,
   permissions,
   events,
   onCreateEscalation,
+  onUpdateOwner,
   onUpdateSeverity,
   onEscalateUpward,
   onResolveEscalation
 }: {
   escalations: Escalation[];
+  station: StationCard;
   permissions: Permissions;
   events: string[];
   onCreateEscalation: (source: Escalation["source"], item: string, reason: string, owner: string, severity?: Escalation["severity"]) => void;
+  onUpdateOwner: (id: string, owner: string) => void;
   onUpdateSeverity: (id: string, severity: Escalation["severity"]) => void;
   onEscalateUpward: (id: string) => void;
   onResolveEscalation: (id: string) => void;
@@ -3169,10 +3293,14 @@ function Escalations({
   const [owner, setOwner] = React.useState("Workflow Engine");
   const [severity, setSeverity] = React.useState<Escalation["severity"]>("High");
   const [severityFilter, setSeverityFilter] = React.useState<Escalation["severity"] | "All severities">("All severities");
+  const [sourceFilter, setSourceFilter] = React.useState<Escalation["source"] | "All sources">("All sources");
   const [feedback, setFeedback] = React.useState("");
   const visibleEscalations = React.useMemo(() => (
-    severityFilter === "All severities" ? escalations : escalations.filter((escalation) => escalation.severity === severityFilter)
-  ), [escalations, severityFilter]);
+    escalations.filter((escalation) => (
+      (severityFilter === "All severities" || escalation.severity === severityFilter)
+      && (sourceFilter === "All sources" || escalation.source === sourceFilter)
+    ))
+  ), [escalations, severityFilter, sourceFilter]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -3196,6 +3324,12 @@ function Escalations({
             <span>Severity</span>
             <select value={severityFilter} onChange={(event) => setSeverityFilter(event.target.value as Escalation["severity"] | "All severities")}>
               {["All severities", "Medium", "High", "Critical"].map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <label>
+            <span>Source</span>
+            <select value={sourceFilter} onChange={(event) => setSourceFilter(event.target.value as Escalation["source"] | "All sources")}>
+              {["All sources", "Report", "Approval", "Transfer", "Audit", "Calendar", "Task"].map((option) => <option key={option} value={option}>{option}</option>)}
             </select>
           </label>
         </div>
@@ -3229,6 +3363,13 @@ function Escalations({
                   onClick={() => onUpdateSeverity(escalation.id, escalation.severity === "Critical" ? "High" : "Critical")}
                 >
                   <AlertTriangle size={15} /> Severity
+                </button>
+                <button
+                  aria-label={`Claim ${escalation.item}`}
+                  disabled={!permissions.canApprove || escalation.status === "Resolved"}
+                  onClick={() => onUpdateOwner(escalation.id, station.email)}
+                >
+                  <Users size={15} /> Claim
                 </button>
                 <button
                   aria-label={`Resolve ${escalation.item}: ${escalation.reason}`}
@@ -3295,6 +3436,7 @@ function AiDesk({
   escalations,
   messages,
   onGenerateDraft,
+  onRefreshDraft,
   onArchiveDraft
 }: {
   drafts: AiDraft[];
@@ -3307,6 +3449,7 @@ function AiDesk({
   escalations: Escalation[];
   messages: Message[];
   onGenerateDraft: (kind: AiDraft["kind"], focus: string) => void;
+  onRefreshDraft: (id: string) => void;
   onArchiveDraft: (id: string) => void;
 }) {
   const [kind, setKind] = React.useState<AiDraft["kind"]>("Executive Summary");
@@ -3390,6 +3533,7 @@ function AiDesk({
               <h2>{draft.title}</h2>
               <pre>{draft.body}</pre>
               <div className="action-row">
+                <button onClick={() => onRefreshDraft(draft.id)}><RefreshCw size={15} /> Refresh</button>
                 <button onClick={() => onArchiveDraft(draft.id)}><Files size={15} /> Archive draft</button>
               </div>
             </article>

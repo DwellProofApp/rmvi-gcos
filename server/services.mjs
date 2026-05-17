@@ -129,6 +129,14 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updatePolicyStatus(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.policies, id);
+      item.status = body.status ?? "Review";
+      record("PolicyStatusUpdated", body.actor, item.title, item.status);
+      return item;
+    },
+
     retirePolicy(id, body) {
       requirePermission(body.actor, "canApprove");
       const item = findById(state.policies, id);
@@ -151,6 +159,13 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateCalendarEventPriority(id, body) {
+      const item = findById(state.calendarEvents, id);
+      item.priority = body.priority ?? "High";
+      record("CalendarPriorityUpdated", body.actor, item.title, item.priority);
+      return item;
+    },
+
     markCalendarEventAtRisk(id, body) {
       const item = findById(state.calendarEvents, id);
       item.status = "At Risk";
@@ -164,6 +179,16 @@ export function createServices({ state, record, requirePermission, findById }) {
       state.personnel.unshift(created);
       record("PersonRegistered", body.actor, created.name, `${created.role} assigned to ${created.assignedStation}`);
       return created;
+    },
+
+    updatePersonAssignment(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.personnel, id);
+      if (body.currentStation) item.currentStation = body.currentStation;
+      if (body.assignedStation) item.assignedStation = body.assignedStation;
+      if (body.status) item.status = body.status;
+      record("PersonAssignmentUpdated", body.actor, item.name, `${item.currentStation} -> ${item.assignedStation}`);
+      return item;
     },
 
     updatePersonStatus(id, body) {
@@ -246,6 +271,14 @@ export function createServices({ state, record, requirePermission, findById }) {
       state.escalations.unshift(created);
       record("EscalationTriggered", body.actor, created.item, created.reason);
       return created;
+    },
+
+    updateEscalationOwner(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.owner = body.owner ?? body.actor ?? item.owner;
+      record("EscalationOwnerUpdated", body.actor, item.item, item.owner);
+      return item;
     },
 
     routeEscalation(id, body) {
@@ -364,6 +397,17 @@ export function createServices({ state, record, requirePermission, findById }) {
       state.documents.unshift(created);
       record("AIDraftArchived", body.actor, draft.title, created.storageKey);
       return created;
+    },
+
+    refreshAiDraft(id, body) {
+      const draft = findById(state.aiDrafts, id);
+      const refreshed = generateDraft(draft.kind, body.focus ?? draft.title.replace(`${draft.kind}: `, ""), body.actor);
+      draft.title = refreshed.title;
+      draft.body = refreshed.body;
+      draft.sourceCount = refreshed.sourceCount;
+      draft.createdAt = refreshed.createdAt;
+      record("AIDraftRefreshed", body.actor, draft.title, `${draft.sourceCount} governance records summarized`);
+      return draft;
     },
 
     syncOfflineActions(body) {

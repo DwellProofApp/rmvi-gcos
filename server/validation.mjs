@@ -92,6 +92,10 @@ const validators = {
     if (body.acknowledgements !== undefined) requireNumber(body.acknowledgements, "acknowledgements");
   },
 
+  "POST /api/policies/:id/status": (body) => {
+    if (body.status !== undefined) requireEnum(body.status, policyStatuses, "status");
+  },
+
   "POST /api/calendar-events": (body) => {
     requireString(body.title, "title");
     requireString(body.category, "category");
@@ -101,11 +105,21 @@ const validators = {
     if (body.status !== undefined) requireEnum(body.status, calendarStatuses, "status");
   },
 
+  "POST /api/calendar-events/:id/priority": (body) => {
+    if (body.priority !== undefined) requireEnum(body.priority, calendarPriorities, "priority");
+  },
+
   "POST /api/personnel": (body) => {
     requireString(body.name, "name");
     requireString(body.role, "role");
     requireString(body.currentStation, "currentStation");
     requireString(body.assignedStation, "assignedStation");
+    if (body.status !== undefined) requireEnum(body.status, personnelStatuses, "status");
+  },
+
+  "POST /api/personnel/:id/assignment": (body) => {
+    if (body.currentStation !== undefined) requireString(body.currentStation, "currentStation");
+    if (body.assignedStation !== undefined) requireString(body.assignedStation, "assignedStation");
     if (body.status !== undefined) requireEnum(body.status, personnelStatuses, "status");
   },
 
@@ -122,6 +136,10 @@ const validators = {
     requireString(body.item, "item");
     requireString(body.reason, "reason");
     if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
+  "POST /api/escalations/:id/owner": (body) => {
     if (body.owner !== undefined) requireString(body.owner, "owner");
   },
 
@@ -177,6 +195,10 @@ const validators = {
 
   "POST /api/ai-drafts/:id/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/ai-drafts/:id/refresh": (body) => {
+    if (body.focus !== undefined) requireString(body.focus, "focus");
   },
 
   "POST /api/offline-sync": (body) => {
