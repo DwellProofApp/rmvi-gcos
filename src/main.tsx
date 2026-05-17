@@ -224,6 +224,16 @@ type AuditDigest = {
   topEvent: string;
   latestObject: string;
 };
+type EventDigest = {
+  generatedAt: string;
+  total: number;
+  pinned: number;
+  acknowledged: number;
+  critical: number;
+  muted: number;
+  routed: number;
+  latest: string;
+};
 type TaskDigest = {
   generatedAt: string;
   total: number;
@@ -712,6 +722,7 @@ function App() {
   const [officeDigest, setOfficeDigest] = React.useState<OfficeDigest | null>(null);
   const [hierarchyDigest, setHierarchyDigest] = React.useState<HierarchyDigest | null>(null);
   const [auditDigest, setAuditDigest] = React.useState<AuditDigest | null>(null);
+  const [eventDigest, setEventDigest] = React.useState<EventDigest | null>(null);
   const [taskDigest, setTaskDigest] = React.useState<TaskDigest | null>(null);
   const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
   const [calendarDigest, setCalendarDigest] = React.useState<CalendarDigest | null>(null);
@@ -928,6 +939,7 @@ function App() {
       void apiRequest<OfficeDigest>("/api/offices/digest").then(setOfficeDigest).catch(() => undefined);
       void apiRequest<HierarchyDigest>("/api/hierarchy/digest").then(setHierarchyDigest).catch(() => undefined);
       void apiRequest<AuditDigest>("/api/audit/digest").then(setAuditDigest).catch(() => undefined);
+      void apiRequest<EventDigest>("/api/events/digest").then(setEventDigest).catch(() => undefined);
       void apiRequest<TaskDigest>("/api/tasks/digest").then(setTaskDigest).catch(() => undefined);
       void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
       void apiRequest<CalendarDigest>("/api/calendar-events/digest").then(setCalendarDigest).catch(() => undefined);
@@ -3432,6 +3444,151 @@ function App() {
     }
   }
 
+  function eventKey(event: string, index: number) {
+    return encodeURIComponent(event || String(index));
+  }
+
+  function updateEventAt(index: number, event: string) {
+    setEvents((items) => items.map((item, itemIndex) => itemIndex === index ? event : item).slice(0, 20));
+  }
+
+  function acknowledgeEvent(index: number) {
+    const event = events[index];
+    if (!event) return;
+    const next = `Acknowledged: ${event}`;
+    updateEventAt(index, next);
+    recordAudit("EventAcknowledged", event, "Event acknowledged");
+    if (!offlineMode) {
+      void apiRequest<{ event: string; events: string[] }>(`/api/events/${eventKey(event, index)}/acknowledge`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Acknowledged from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function pinEvent(index: number) {
+    const event = events[index];
+    if (!event) return;
+    const next = event.startsWith("Pinned:") ? event : `Pinned: ${event}`;
+    setEvents((items) => [next, ...items.filter((_, itemIndex) => itemIndex !== index)].slice(0, 20));
+    recordAudit("EventPinned", event, "Event pinned");
+    if (!offlineMode) {
+      void apiRequest<{ event: string; events: string[] }>(`/api/events/${eventKey(event, index)}/pin`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Pinned from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateEventSeverity(index: number) {
+    const event = events[index];
+    if (!event) return;
+    const next = `Critical: ${event.replace(/^(Info|Low|Medium|High|Critical): /, "")}`;
+    updateEventAt(index, next);
+    recordAudit("EventSeverityUpdated", event, "Critical");
+    if (!offlineMode) {
+      void apiRequest<{ event: string; events: string[] }>(`/api/events/${eventKey(event, index)}/severity`, {
+        method: "POST",
+        body: JSON.stringify({ severity: "Critical" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function routeEvent(index: number) {
+    const event = events[index];
+    if (!event) return;
+    const next = `Routed to National Audit Desk: ${event}`;
+    updateEventAt(index, next);
+    recordAudit("EventRouted", event, "National Audit Desk");
+    if (!offlineMode) {
+      void apiRequest<{ event: string; events: string[] }>(`/api/events/${eventKey(event, index)}/route`, {
+        method: "POST",
+        body: JSON.stringify({ route: "National Audit Desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function replayEvent(index: number) {
+    const event = events[index];
+    if (!event) return;
+    const next = `Replayed: ${event}`;
+    setEvents((items) => [next, ...items].slice(0, 20));
+    recordAudit("EventReplayed", event, "Event replayed");
+    if (!offlineMode) {
+      void apiRequest<{ event: string; events: string[] }>(`/api/events/${eventKey(event, index)}/replay`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Replayed from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function muteEvent(index: number) {
+    const event = events[index];
+    if (!event) return;
+    const next = `Muted: ${event}`;
+    updateEventAt(index, next);
+    recordAudit("EventMuted", event, "Event muted");
+    if (!offlineMode) {
+      void apiRequest<{ event: string; events: string[] }>(`/api/events/${eventKey(event, index)}/mute`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Muted from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function assignEventOwner(index: number) {
+    const event = events[index];
+    if (!event) return;
+    const next = `Owner ${activeStation.email}: ${event}`;
+    updateEventAt(index, next);
+    recordAudit("EventOwnerAssigned", event, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<{ event: string; events: string[] }>(`/api/events/${eventKey(event, index)}/owner`, {
+        method: "POST",
+        body: JSON.stringify({ owner: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveEvent(index: number) {
+    const event = events[index];
+    if (!event) return;
+    setEvents((items) => items.filter((_, itemIndex) => itemIndex !== index));
+    recordAudit("EventArchived", event, "Event archived");
+    if (!offlineMode) {
+      void apiRequest<{ event: string; events: string[] }>(`/api/events/${eventKey(event, index)}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Archived from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkArchiveEvents(indices: number[]) {
+    const targetIndices = indices.length ? indices : events.slice(0, 3).map((_, index) => index);
+    const targetEvents = targetIndices.map((index) => events[index]).filter(Boolean);
+    setEvents((items) => items.filter((_, index) => !targetIndices.includes(index)));
+    recordAudit("EventsBulkArchived", "Event bus", `${targetEvents.length} events archived`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; archived: string[]; events: string[] }>("/api/events/bulk/archive", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetEvents, reason: "Bulk archived from audit desk" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function refreshEventDigest() {
+    if (offlineMode) {
+      recordAudit("EventDigestRefreshed", "Event bus", "Local event digest refreshed");
+      return;
+    }
+    void apiRequest<EventDigest>("/api/events/digest")
+      .then((digest) => {
+        setEventDigest(digest);
+        recordAudit("EventDigestRefreshed", "Event bus", `${digest.total} events, ${digest.critical} critical`);
+      })
+      .catch(() => undefined);
+  }
+
   function clearEventLog() {
     setEvents(["EventLogCleared: Event bus"]);
     recordAudit("EventLogCleared", "Event bus", "Event log cleared");
@@ -4112,12 +4269,23 @@ function App() {
         {activeSection === "Audit" && (
           <Audit
             auditRows={auditRows}
+            events={events}
             apiStatus={apiStatus}
             session={session}
             onCreateAuditNote={createAuditNote}
             onFlagAuditRow={flagAuditRow}
             onRecordManualEvent={recordManualEvent}
             onClearEventLog={clearEventLog}
+            onAcknowledgeEvent={acknowledgeEvent}
+            onPinEvent={pinEvent}
+            onUpdateEventSeverity={updateEventSeverity}
+            onRouteEvent={routeEvent}
+            onReplayEvent={replayEvent}
+            onMuteEvent={muteEvent}
+            onAssignEventOwner={assignEventOwner}
+            onArchiveEvent={archiveEvent}
+            onBulkArchiveEvents={bulkArchiveEvents}
+            onRefreshEventDigest={refreshEventDigest}
             onArchiveGovernanceSnapshot={archiveGovernanceSnapshot}
             onRenewSession={renewCurrentSession}
             onRevokeSession={revokeSession}
@@ -4138,6 +4306,7 @@ function App() {
             onBulkVerifyAuditRows={bulkVerifyAuditRows}
             onRefreshAuditDigest={refreshAuditDigest}
             digest={auditDigest}
+            eventDigest={eventDigest}
           />
         )}
       </section>
@@ -6965,12 +7134,23 @@ function Archive({
 
 function Audit({
   auditRows,
+  events,
   apiStatus,
   session,
   onCreateAuditNote,
   onFlagAuditRow,
   onRecordManualEvent,
   onClearEventLog,
+  onAcknowledgeEvent,
+  onPinEvent,
+  onUpdateEventSeverity,
+  onRouteEvent,
+  onReplayEvent,
+  onMuteEvent,
+  onAssignEventOwner,
+  onArchiveEvent,
+  onBulkArchiveEvents,
+  onRefreshEventDigest,
   onArchiveGovernanceSnapshot,
   onRenewSession,
   onRevokeSession,
@@ -6990,15 +7170,27 @@ function Audit({
   onBulkSealAuditRows,
   onBulkVerifyAuditRows,
   onRefreshAuditDigest,
-  digest
+  digest,
+  eventDigest
 }: {
   auditRows: AuditRow[];
+  events: string[];
   apiStatus: ApiStatus | null;
   session: Session;
   onCreateAuditNote: () => void;
   onFlagAuditRow: (id: string) => void;
   onRecordManualEvent: () => void;
   onClearEventLog: () => void;
+  onAcknowledgeEvent: (index: number) => void;
+  onPinEvent: (index: number) => void;
+  onUpdateEventSeverity: (index: number) => void;
+  onRouteEvent: (index: number) => void;
+  onReplayEvent: (index: number) => void;
+  onMuteEvent: (index: number) => void;
+  onAssignEventOwner: (index: number) => void;
+  onArchiveEvent: (index: number) => void;
+  onBulkArchiveEvents: (indices: number[]) => void;
+  onRefreshEventDigest: () => void;
   onArchiveGovernanceSnapshot: () => void;
   onRenewSession: () => void;
   onRevokeSession: (id: string) => void;
@@ -7019,6 +7211,7 @@ function Audit({
   onBulkVerifyAuditRows: (ids: string[]) => void;
   onRefreshAuditDigest: () => void;
   digest: AuditDigest | null;
+  eventDigest: EventDigest | null;
 }) {
   const [query, setQuery] = React.useState("");
   const [eventFilter, setEventFilter] = React.useState("All events");
@@ -7196,6 +7389,41 @@ function Audit({
             </article>
           ))}
           {!readiness && <div className="empty-state">Checking platform readiness.</div>}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={RadioTower} title="Event Bus Operations" action={`${eventDigest?.total ?? events.length} live`} />
+        <div className="action-row">
+          <button disabled={!events.length} onClick={() => onBulkArchiveEvents(events.slice(0, 3).map((_, index) => index))}><Files size={15} /> Bulk archive</button>
+          <button onClick={onRefreshEventDigest}><RefreshCw size={15} /> Digest</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Pinned" value={String(eventDigest?.pinned ?? events.filter((event) => event.startsWith("Pinned:")).length)} />
+          <Insight label="Ack" value={String(eventDigest?.acknowledged ?? events.filter((event) => event.startsWith("Acknowledged:")).length)} />
+          <Insight label="Critical" value={String(eventDigest?.critical ?? events.filter((event) => event.startsWith("Critical:")).length)} />
+          <Insight label="Muted" value={String(eventDigest?.muted ?? events.filter((event) => event.startsWith("Muted:")).length)} />
+          <Insight label="Routed" value={String(eventDigest?.routed ?? events.filter((event) => event.startsWith("Routed to")).length)} />
+          <Insight label="Latest" value={eventDigest?.latest ?? events[0] ?? "None"} />
+        </div>
+        <div className="source-map-list">
+          {events.slice(0, 6).map((event, index) => (
+            <article className="source-map-item" key={`${event}-${index}`}>
+              <span>Event {index + 1}</span>
+              <strong>{event}</strong>
+              <small>{event.includes(":") ? event.split(":")[0] : "Live bus"}</small>
+              <div className="action-row compact-actions">
+                <button onClick={() => onAcknowledgeEvent(index)}><CheckCircle2 size={14} /> Ack</button>
+                <button onClick={() => onPinEvent(index)}><ShieldCheck size={14} /> Pin</button>
+                <button onClick={() => onUpdateEventSeverity(index)}><AlertTriangle size={14} /> Severity</button>
+                <button onClick={() => onRouteEvent(index)}><GitBranch size={14} /> Route</button>
+                <button onClick={() => onReplayEvent(index)}><RadioTower size={14} /> Replay</button>
+                <button onClick={() => onMuteEvent(index)}><Bell size={14} /> Mute</button>
+                <button onClick={() => onAssignEventOwner(index)}><Users size={14} /> Owner</button>
+                <button onClick={() => onArchiveEvent(index)}><Files size={14} /> Archive</button>
+              </div>
+            </article>
+          ))}
+          {events.length === 0 && <div className="empty-state">No live event bus records.</div>}
         </div>
       </div>
     </section>

@@ -1207,6 +1207,65 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.match(manualEvent.event, /^ManualEventRecorded:/);
 
+    const invalidEventSeverity = await rawPost(`/api/events/${encodeURIComponent(manualEvent.event)}/severity`, {
+      severity: "Emergency"
+    }, nationalToken);
+    assert.equal(invalidEventSeverity.status, 400);
+
+    const acknowledgedEvent = await postJson(`/api/events/${encodeURIComponent(manualEvent.event)}/acknowledge`, {
+      reason: "Automated event acknowledgement"
+    }, nationalToken);
+    assert.match(acknowledgedEvent.event, /^Acknowledged:/);
+
+    const pinnedEvent = await postJson(`/api/events/${encodeURIComponent(acknowledgedEvent.event)}/pin`, {
+      reason: "Automated event pin"
+    }, nationalToken);
+    assert.match(pinnedEvent.event, /^Pinned:/);
+
+    const severityEvent = await postJson(`/api/events/${encodeURIComponent(pinnedEvent.event)}/severity`, {
+      severity: "Critical"
+    }, nationalToken);
+    assert.match(severityEvent.event, /^Critical:/);
+
+    const routedEvent = await postJson(`/api/events/${encodeURIComponent(severityEvent.event)}/route`, {
+      route: "National Audit Desk"
+    }, nationalToken);
+    assert.match(routedEvent.event, /^Routed to National Audit Desk:/);
+
+    const replayedEvent = await postJson(`/api/events/${encodeURIComponent(routedEvent.event)}/replay`, {
+      reason: "Automated replay test"
+    }, nationalToken);
+    assert.match(replayedEvent.event, /^Replayed:/);
+
+    const mutedEvent = await postJson(`/api/events/${encodeURIComponent(replayedEvent.event)}/mute`, {
+      reason: "Automated mute test"
+    }, nationalToken);
+    assert.match(mutedEvent.event, /^Muted:/);
+
+    const ownedEvent = await postJson(`/api/events/${encodeURIComponent(mutedEvent.event)}/owner`, {
+      owner: "np@rmvi.org"
+    }, nationalToken);
+    assert.match(ownedEvent.event, /^Owner np@rmvi.org:/);
+
+    const eventDigest = await getJson("/api/events/digest", nationalToken);
+    assert.equal(eventDigest.total > 0, true);
+    assert.equal(eventDigest.routed >= 1, true);
+
+    const archivedEvent = await postJson(`/api/events/${encodeURIComponent(ownedEvent.event)}/archive`, {
+      reason: "Automated event archive"
+    }, nationalToken);
+    assert.equal(archivedEvent.event, ownedEvent.event);
+
+    const bulkEvent = await postJson("/api/events", {
+      object: "Automated bulk event test",
+      result: "Bulk event test"
+    }, nationalToken);
+    const bulkArchivedEvents = await postJson("/api/events/bulk/archive", {
+      ids: [bulkEvent.event],
+      reason: "Automated bulk event archive"
+    }, nationalToken);
+    assert.equal(bulkArchivedEvents.count, 1);
+
     const archivedSnapshotDocument = await postJson("/api/export/archive", {
       reason: "Automated snapshot archive test"
     }, nationalToken);
@@ -1439,6 +1498,15 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "AuditRowsBulkSealed"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditRowsBulkVerified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ManualEventRecorded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventAcknowledged"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventPinned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventSeverityUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventRouted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventReplayed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventMuted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventOwnerAssigned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EventsBulkArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "GovernanceSnapshotArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EventLogCleared"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AIDraftRefreshed"), true);

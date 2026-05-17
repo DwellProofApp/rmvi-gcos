@@ -608,6 +608,43 @@ const validators = {
     if (body.result !== undefined) requireString(body.result, "result");
   },
 
+  "POST /api/events/:id/acknowledge": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/events/:id/pin": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/events/:id/severity": (body) => {
+    if (body.severity !== undefined) requireEnum(body.severity, auditSeverities, "severity");
+  },
+
+  "POST /api/events/:id/route": (body) => {
+    if (body.route !== undefined) requireString(body.route, "route");
+  },
+
+  "POST /api/events/:id/replay": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/events/:id/mute": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/events/:id/owner": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
+  "POST /api/events/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/events/bulk/archive": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/events/clear": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },

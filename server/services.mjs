@@ -24,6 +24,15 @@ export function createServices({ state, record, requirePermission, findById }) {
     return findById(state.stations, id);
   }
 
+  function findEventIndex(id) {
+    const decoded = decodeURIComponent(String(id ?? ""));
+    const numeric = Number(decoded);
+    if (Number.isInteger(numeric) && numeric >= 0 && numeric < state.events.length) return numeric;
+    const index = state.events.findIndex((entry) => entry === decoded);
+    if (index >= 0) return index;
+    throw Object.assign(new Error("Event not found"), { status: 404 });
+  }
+
   function publicState() {
     return {
       stations: state.stations,
@@ -1586,6 +1595,97 @@ export function createServices({ state, record, requirePermission, findById }) {
     recordManualEvent(body) {
       record("ManualEventRecorded", body.actor, body.object ?? "Event bus", body.result ?? "Manual event recorded");
       return { event: state.events[0], audit: state.audit[0] };
+    },
+
+    acknowledgeEvent(id, body) {
+      const index = findEventIndex(id);
+      const updated = `Acknowledged: ${state.events[index]}`;
+      state.events[index] = updated;
+      record("EventAcknowledged", body.actor, updated, body.reason ?? "Event acknowledged");
+      return { event: updated, events: state.events };
+    },
+
+    pinEvent(id, body) {
+      const index = findEventIndex(id);
+      const [event] = state.events.splice(index, 1);
+      const pinned = event.startsWith("Pinned:") ? event : `Pinned: ${event}`;
+      state.events.unshift(pinned);
+      record("EventPinned", body.actor, pinned, body.reason ?? "Event pinned");
+      return { event: pinned, events: state.events };
+    },
+
+    updateEventSeverity(id, body) {
+      const index = findEventIndex(id);
+      const severity = body.severity ?? "High";
+      const updated = `${severity}: ${state.events[index].replace(/^(Info|Low|Medium|High|Critical): /, "")}`;
+      state.events[index] = updated;
+      record("EventSeverityUpdated", body.actor, updated, severity);
+      return { event: updated, events: state.events };
+    },
+
+    routeEvent(id, body) {
+      const index = findEventIndex(id);
+      const updated = `Routed to ${body.route ?? "Audit desk"}: ${state.events[index]}`;
+      state.events[index] = updated;
+      record("EventRouted", body.actor, updated, body.route ?? "Audit desk");
+      return { event: updated, events: state.events };
+    },
+
+    replayEvent(id, body) {
+      const index = findEventIndex(id);
+      const replayed = `Replayed: ${state.events[index]}`;
+      state.events.unshift(replayed);
+      record("EventReplayed", body.actor, replayed, body.reason ?? "Event replayed");
+      return { event: replayed, events: state.events };
+    },
+
+    muteEvent(id, body) {
+      const index = findEventIndex(id);
+      const updated = `Muted: ${state.events[index]}`;
+      state.events[index] = updated;
+      record("EventMuted", body.actor, updated, body.reason ?? "Event muted");
+      return { event: updated, events: state.events };
+    },
+
+    assignEventOwner(id, body) {
+      const index = findEventIndex(id);
+      const updated = `Owner ${body.owner ?? body.actor}: ${state.events[index]}`;
+      state.events[index] = updated;
+      record("EventOwnerAssigned", body.actor, updated, body.owner ?? body.actor);
+      return { event: updated, events: state.events };
+    },
+
+    archiveEvent(id, body) {
+      const index = findEventIndex(id);
+      const [event] = state.events.splice(index, 1);
+      record("EventArchived", body.actor, event, body.reason ?? "Event archived");
+      return { event, events: state.events };
+    },
+
+    bulkArchiveEvents(body) {
+      const ids = body.ids?.length ? body.ids : state.events.slice(0, 3);
+      const decoded = ids.map((id) => decodeURIComponent(id));
+      const archived = [];
+      state.events = state.events.filter((event, index) => {
+        const shouldArchive = decoded.includes(event) || decoded.includes(String(index));
+        if (shouldArchive) archived.push(event);
+        return !shouldArchive;
+      });
+      record("EventsBulkArchived", body.actor, "Event bus", `${archived.length} events archived`);
+      return { count: archived.length, archived, events: state.events };
+    },
+
+    eventDigest() {
+      return {
+        generatedAt: new Date().toISOString(),
+        total: state.events.length,
+        pinned: state.events.filter((event) => event.startsWith("Pinned:")).length,
+        acknowledged: state.events.filter((event) => event.startsWith("Acknowledged:")).length,
+        critical: state.events.filter((event) => event.startsWith("Critical:")).length,
+        muted: state.events.filter((event) => event.startsWith("Muted:")).length,
+        routed: state.events.filter((event) => event.startsWith("Routed to")).length,
+        latest: state.events[0] ?? "No events"
+      };
     },
 
     clearEventLog(body) {
