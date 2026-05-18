@@ -2014,12 +2014,18 @@ h1 {
   }
 
   .login-intro {
-    padding: 32px;
+    padding: 26px;
+    gap: 16px;
+  }
+
+  .login-emblem {
+    width: 88px;
+    height: 88px;
   }
 
   .login-intro h1 {
     max-width: 100%;
-    font-size: clamp(32px, 6vw, 44px);
+    font-size: clamp(28px, 5.5vw, 40px);
   }
 
   .credential-grid {
@@ -2130,6 +2136,58 @@ h1 {
   }
 }
 
+@media (max-width: 760px) {
+  .login-shell {
+    gap: 14px;
+    padding: 18px;
+  }
+
+  .public-gateway-header {
+    min-height: auto;
+  }
+
+  .login-panel {
+    align-self: start;
+  }
+
+  .login-intro {
+    padding: 18px;
+    gap: 12px;
+  }
+
+  .login-emblem {
+    display: none;
+  }
+
+  .login-intro h1 {
+    margin: 6px 0;
+    font-size: 28px;
+    line-height: 1.08;
+  }
+
+  .login-intro p {
+    font-size: 14px;
+    line-height: 1.45;
+  }
+
+  .login-stat-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .login-stat-grid div {
+    padding: 10px;
+  }
+
+  .login-trust-row span {
+    min-height: 28px;
+    padding-inline: 9px;
+  }
+
+  .login-card {
+    margin: 10px;
+  }
+}
+
 @media (max-width: 540px) {
   .login-shell {
     padding: 16px;
@@ -2150,12 +2208,11 @@ h1 {
   }
 
   .login-emblem {
-    width: 86px;
-    height: 86px;
+    display: none;
   }
 
   .login-intro h1 {
-    font-size: 32px;
+    font-size: 26px;
     max-width: 100%;
   }
 
