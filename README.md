@@ -137,6 +137,7 @@ GCOS_LOGIN_RATE_LIMIT Login attempts allowed per station/IP window, defaults to 
 GCOS_LOGIN_RATE_WINDOW_MS Login rate-limit window in milliseconds, defaults to 300000
 GCOS_MUTATION_RATE_LIMIT Non-login API mutations allowed per IP window, defaults to 2000
 GCOS_MUTATION_RATE_WINDOW_MS Mutation rate-limit window in milliseconds, defaults to 60000
+GCOS_MANAGED_RESTORE_DRILL Set to 1 after a managed database restore drill is complete
 GCOS_ENABLE_DEV_RESET Set to 1 to allow POST /api/dev/reset in production
 ```
 

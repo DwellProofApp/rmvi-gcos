@@ -666,7 +666,8 @@ async function launchDeploymentPlan() {
     { name: "GCOS_LOGIN_RATE_LIMIT", value: String(LOGIN_RATE_LIMIT), configured: LOGIN_RATE_LIMIT >= 5, sensitive: false },
     { name: "GCOS_LOGIN_RATE_WINDOW_MS", value: String(LOGIN_RATE_WINDOW_MS), configured: LOGIN_RATE_WINDOW_MS >= 60000, sensitive: false },
     { name: "GCOS_MUTATION_RATE_LIMIT", value: String(MUTATION_RATE_LIMIT), configured: MUTATION_RATE_LIMIT >= 100, sensitive: false },
-    { name: "GCOS_MUTATION_RATE_WINDOW_MS", value: String(MUTATION_RATE_WINDOW_MS), configured: MUTATION_RATE_WINDOW_MS >= 60000, sensitive: false }
+    { name: "GCOS_MUTATION_RATE_WINDOW_MS", value: String(MUTATION_RATE_WINDOW_MS), configured: MUTATION_RATE_WINDOW_MS >= 60000, sensitive: false },
+    { name: "GCOS_MANAGED_RESTORE_DRILL", value: "1", configured: process.env.GCOS_MANAGED_RESTORE_DRILL === "1", sensitive: false }
   ];
   const commands = [
     "npm install",

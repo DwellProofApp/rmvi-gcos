@@ -216,10 +216,11 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
     async restoreDrill(state) {
       const manifest = await this.backupManifest(state);
       const latest = manifest.latest;
+      const managedRestoreConfirmed = process.env.GCOS_MANAGED_RESTORE_DRILL === "1" || Boolean(state.persistenceMeta?.lastRestoreDrill?.valid);
       const checks = [
         { name: "backup-readable", ok: Boolean(latest?.hash), detail: latest ? `${latest.label} snapshot metadata recorded` : "No database snapshot metadata" },
         { name: "provider", ok: configured, detail: configured ? "database provider configured" : "GCOS_DATABASE_URL not configured" },
-        { name: "managed-restore", ok: false, detail: "Run managed database restore in the hosting provider before production cutover" }
+        { name: "managed-restore", ok: managedRestoreConfirmed, detail: managedRestoreConfirmed ? "Managed restore drill confirmed" : "Set GCOS_MANAGED_RESTORE_DRILL=1 after hosting-provider restore drill" }
       ];
       return {
         generatedAt: new Date().toISOString(),

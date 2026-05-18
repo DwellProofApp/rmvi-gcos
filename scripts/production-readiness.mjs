@@ -14,7 +14,8 @@ const required = [
   ["GCOS_LOGIN_RATE_LIMIT", (value) => Number(value) >= 5, "set GCOS_LOGIN_RATE_LIMIT to at least 5"],
   ["GCOS_LOGIN_RATE_WINDOW_MS", (value) => Number(value) >= 60000, "set GCOS_LOGIN_RATE_WINDOW_MS to at least 60000"],
   ["GCOS_MUTATION_RATE_LIMIT", (value) => Number(value) >= 100, "set GCOS_MUTATION_RATE_LIMIT to at least 100"],
-  ["GCOS_MUTATION_RATE_WINDOW_MS", (value) => Number(value) >= 60000, "set GCOS_MUTATION_RATE_WINDOW_MS to at least 60000"]
+  ["GCOS_MUTATION_RATE_WINDOW_MS", (value) => Number(value) >= 60000, "set GCOS_MUTATION_RATE_WINDOW_MS to at least 60000"],
+  ["GCOS_MANAGED_RESTORE_DRILL", (value) => value === "1", "set GCOS_MANAGED_RESTORE_DRILL=1 after a managed restore drill"]
 ];
 
 const results = required.map(([name, verify, fix]) => {
