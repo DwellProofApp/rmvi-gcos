@@ -1728,15 +1728,103 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateOfficeDepartment(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.department = body.department ?? item.department;
+      const stationRecord = state.stations.find((entry) => entry.email === item.email);
+      if (stationRecord) stationRecord.authority = `${item.department}, supervised by ${item.supervisor}`;
+      record("OfficeDepartmentUpdated", body.actor, item.name, item.department);
+      return item;
+    },
+
+    updateOfficeLevel(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.level = body.level ?? item.level;
+      const stationRecord = state.stations.find((entry) => entry.email === item.email);
+      if (stationRecord) stationRecord.level = item.level;
+      record("OfficeLevelUpdated", body.actor, item.name, item.level);
+      return item;
+    },
+
+    verifyOfficeEmail(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.emailVerified = true;
+      record("OfficeEmailVerified", body.actor, item.name, item.email);
+      return item;
+    },
+
+    watchOffice(id, body) {
+      const item = findById(state.offices, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
+      record("OfficeWatcherAdded", body.actor, item.name, watcher);
+      return item;
+    },
+
+    noteOffice(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      const note = body.note ?? "Office reviewed";
+      item.notes = [...(item.notes ?? []), `${body.actor ?? "System"}: ${note}`];
+      record("OfficeNoteAdded", body.actor, item.name, note);
+      return item;
+    },
+
+    updateOfficeCapacity(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.capacity = body.capacity ?? 12;
+      record("OfficeCapacityUpdated", body.actor, item.name, `${item.capacity}`);
+      return item;
+    },
+
+    reviewOfficeCompliance(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.complianceStatus = body.status ?? "Reviewed";
+      record("OfficeComplianceReviewed", body.actor, item.name, item.complianceStatus);
+      return item;
+    },
+
+    archiveOffice(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.archived = true;
+      item.archiveReason = body.reason ?? "Office archived";
+      record("OfficeArchived", body.actor, item.name, item.archiveReason);
+      return item;
+    },
+
+    bulkActivateOffices(body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const ids = body.ids?.length ? body.ids : state.offices.filter((item) => !item.archived && item.status !== "Active").slice(0, 3).map((item) => item.id);
+      const updated = state.offices.filter((item) => ids.includes(item.id)).map((item) => {
+        item.status = "Active";
+        return item;
+      });
+      record("OfficesBulkActivated", body.actor, "Office registry", `${updated.length} offices activated`);
+      return { count: updated.length, updated };
+    },
+
     officeDigest() {
+      const visible = state.offices.filter((item) => !item.archived);
       return {
         generatedAt: new Date().toISOString(),
-        total: state.offices.length,
-        active: state.offices.filter((item) => item.status === "Active").length,
-        provisioned: state.offices.filter((item) => item.status === "Provisioned").length,
-        suspended: state.offices.filter((item) => item.status === "Suspended").length,
+        total: visible.length,
+        active: visible.filter((item) => item.status === "Active").length,
+        provisioned: visible.filter((item) => item.status === "Provisioned").length,
+        suspended: visible.filter((item) => item.status === "Suspended").length,
         stationIdentities: state.stations.length,
-        nextOffice: state.offices.find((item) => item.status !== "Active")?.name ?? state.offices[0]?.name ?? "No offices"
+        verified: visible.filter((item) => item.emailVerified).length,
+        watched: visible.filter((item) => item.watchers?.length).length,
+        noted: visible.filter((item) => item.notes?.length).length,
+        capacity: visible.filter((item) => item.capacity !== undefined).length,
+        compliant: visible.filter((item) => item.complianceStatus).length,
+        archived: state.offices.filter((item) => item.archived).length,
+        nextOffice: visible.find((item) => item.status !== "Active")?.name ?? visible[0]?.name ?? "No offices"
       };
     },
 

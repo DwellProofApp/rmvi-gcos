@@ -1582,6 +1582,59 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const activeStationOffice = await postJson(`/api/offices/${office.id}/station/activate`, {}, nationalToken);
     assert.equal(activeStationOffice.status, "Active");
 
+    const departmentOffice = await postJson(`/api/offices/${office.id}/department`, {
+      department: "Mission Administration"
+    }, nationalToken);
+    assert.equal(departmentOffice.department, "Mission Administration");
+
+    const levelOffice = await postJson(`/api/offices/${office.id}/level`, {
+      level: "Area HQ"
+    }, nationalToken);
+    assert.equal(levelOffice.level, "Area HQ");
+
+    const verifiedOffice = await postJson(`/api/offices/${office.id}/email/verify`, {}, nationalToken);
+    assert.equal(verifiedOffice.emailVerified, true);
+
+    const watchedOffice = await postJson(`/api/offices/${office.id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedOffice.watchers.includes("np@rmvi.org"), true);
+
+    const notedOffice = await postJson(`/api/offices/${office.id}/note`, {
+      note: "Automated office note"
+    }, nationalToken);
+    assert.equal(notedOffice.notes.some((note) => note.includes("Automated office note")), true);
+
+    const capacityOffice = await postJson(`/api/offices/${office.id}/capacity`, {
+      capacity: 12
+    }, nationalToken);
+    assert.equal(capacityOffice.capacity, 12);
+
+    const complianceOffice = await postJson(`/api/offices/${office.id}/compliance`, {
+      status: "Reviewed"
+    }, nationalToken);
+    assert.equal(complianceOffice.complianceStatus, "Reviewed");
+
+    const bulkOffice = await postJson("/api/offices", {
+      name: "Automated Bulk Office",
+      email: "automated_bulk@gcos.org",
+      level: "Area HQ",
+      department: "Area Coordination",
+      supervisor: "District HQ"
+    }, nationalToken);
+
+    const bulkActivatedOffices = await postJson("/api/offices/bulk/activate", {
+      ids: [bulkOffice.id]
+    }, nationalToken);
+    assert.equal(bulkActivatedOffices.count, 1);
+    assert.equal(bulkActivatedOffices.updated[0].status, "Active");
+
+    const archivedOffice = await postJson(`/api/offices/${bulkOffice.id}/archive`, {
+      reason: "Automated office archive"
+    }, nationalToken);
+    assert.equal(archivedOffice.archived, true);
+    assert.equal(archivedOffice.archiveReason, "Automated office archive");
+
     const suspendedAgainOffice = await postJson(`/api/offices/${office.id}/suspend`, {
       reason: "Automated office suspension test"
     }, nationalToken);
@@ -1590,13 +1643,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const officeDigest = await getJson("/api/offices/digest");
     assert.equal(officeDigest.total >= 1, true);
     assert.equal(officeDigest.stationIdentities >= 1, true);
+    assert.equal(officeDigest.verified >= 1, true);
+    assert.equal(officeDigest.watched >= 1, true);
+    assert.equal(officeDigest.noted >= 1, true);
+    assert.equal(officeDigest.capacity >= 1, true);
+    assert.equal(officeDigest.compliant >= 1, true);
+    assert.equal(officeDigest.archived >= 1, true);
 
     const officeLogin = await postJson("/api/auth/login", {
       email: "automated_district@gcos.org",
       password: "gcos-automated-rotated"
     });
     assert.equal(officeLogin.station.email, "automated_district@gcos.org");
-    assert.equal(officeLogin.station.level, "District HQ");
+    assert.equal(officeLogin.station.level, "Area HQ");
 
     const duplicateOffice = await fetch(`${BASE_URL}/api/offices`, {
       method: "POST",
@@ -2252,6 +2311,15 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "OfficeSuspended"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficePasswordRotated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "OfficeStationActivated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeDepartmentUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeLevelUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeEmailVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeNoteAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeCapacityUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeComplianceReviewed"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficeArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "OfficesBulkActivated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "StationLevelUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "StationAuthorityUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "StationVerified"), true);

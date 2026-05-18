@@ -940,6 +940,40 @@ const validators = {
     if (body.password !== undefined) requireString(body.password, "password");
   },
 
+  "POST /api/offices/:id/department": (body) => {
+    if (body.department !== undefined) requireString(body.department, "department");
+  },
+
+  "POST /api/offices/:id/level": (body) => {
+    if (body.level !== undefined) requireEnum(body.level, stationLevels, "level");
+  },
+
+  "POST /api/offices/:id/email/verify": () => {},
+
+  "POST /api/offices/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/offices/:id/note": (body) => {
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/offices/:id/capacity": (body) => {
+    if (body.capacity !== undefined) requireNumber(body.capacity, "capacity");
+  },
+
+  "POST /api/offices/:id/compliance": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+  },
+
+  "POST /api/offices/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/offices/bulk/activate": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
   "POST /api/documents": (body) => {
     requireString(body.name, "name");
     requireString(body.classification, "classification");

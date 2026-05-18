@@ -70,7 +70,7 @@ type Transfer = { id: string; person: string; from: string; to: string; step: st
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
 type OfflineAction = AuditRow & { queuedAt: string };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string };
-type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string };
+type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
 type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[]; evidence?: string; comments?: string[]; resolutionNote?: string; due?: string; linkedTask?: string; linkedReport?: string; linkedApproval?: string; impactScore?: number; impactSummary?: string; archived?: boolean; archiveReason?: string };
 type AiDraft = { id: string; kind: "Executive Summary" | "Memo" | "Report Brief"; title: string; body: string; sourceCount: number; createdAt: string; status?: string; confidence?: number; sourceNote?: string; sealed?: boolean; chainHash?: string; publishedBy?: string; watchers?: string[] };
 type DocumentRecord = { id: string; name: string; classification: string; source: string; owner: string; fileType: string; status: string; storageKey: string; retainedUntil: string; createdAt: string };
@@ -324,6 +324,12 @@ type OfficeDigest = {
   provisioned: number;
   suspended: number;
   stationIdentities: number;
+  verified?: number;
+  watched?: number;
+  noted?: number;
+  capacity?: number;
+  compliant?: number;
+  archived?: number;
   nextOffice: string;
 };
 type HierarchyDigest = {
@@ -3530,6 +3536,128 @@ function App() {
     }
   }
 
+  function updateOfficeDepartment(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    const department = office.department === "Mission Administration" ? "District Command" : "Mission Administration";
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, department } : item));
+    recordAudit("OfficeDepartmentUpdated", office.name, department);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/department`, {
+        method: "POST",
+        body: JSON.stringify({ department })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateOfficeLevel(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    const level: StationLevel = office.level === "District HQ" ? "Area HQ" : "District HQ";
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, level } : item));
+    recordAudit("OfficeLevelUpdated", office.name, level);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/level`, {
+        method: "POST",
+        body: JSON.stringify({ level })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function verifyOfficeEmail(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, emailVerified: true } : item));
+    recordAudit("OfficeEmailVerified", office.name, office.email);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/email/verify`, {
+        method: "POST",
+        body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchOffice(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("OfficeWatcherAdded", office.name, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function noteOffice(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    const note = "Office reviewed from registry";
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, notes: [...(item.notes ?? []), `${activeStation.email}: ${note}`] } : item));
+    recordAudit("OfficeNoteAdded", office.name, note);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/note`, {
+        method: "POST",
+        body: JSON.stringify({ note })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateOfficeCapacity(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    const capacity = 12;
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, capacity } : item));
+    recordAudit("OfficeCapacityUpdated", office.name, `${capacity}`);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/capacity`, {
+        method: "POST",
+        body: JSON.stringify({ capacity })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function reviewOfficeCompliance(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    const status = "Reviewed";
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, complianceStatus: status } : item));
+    recordAudit("OfficeComplianceReviewed", office.name, status);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/compliance`, {
+        method: "POST",
+        body: JSON.stringify({ status })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveOffice(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    const reason = "Archived from office registry";
+    setOffices((items) => items.map((item) => item.id === id ? { ...item, archived: true, archiveReason: reason } : item));
+    recordAudit("OfficeArchived", office.name, reason);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkActivateOffices(ids: string[]) {
+    const targetIds = ids.length ? ids : offices.filter((office) => !office.archived && office.status !== "Active").slice(0, 3).map((office) => office.id);
+    setOffices((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, status: "Active" } : item));
+    recordAudit("OfficesBulkActivated", "Office registry", `${targetIds.length} offices activated`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: Office[] }>("/api/offices/bulk/activate", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function refreshOfficeDigest() {
     if (offlineMode) {
       recordAudit("OfficeDigestRefreshed", "Office digest", "Local office digest refreshed");
@@ -5351,7 +5479,7 @@ function App() {
             onRefreshDigest={refreshHierarchyDigest}
           />
         )}
-        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} onActivateOffice={activateOffice} onSuspendOffice={suspendOffice} onRotatePassword={rotateOfficePassword} onActivateStation={activateOfficeStation} onRefreshDigest={refreshOfficeDigest} digest={officeDigest} />}
+        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} onActivateOffice={activateOffice} onSuspendOffice={suspendOffice} onRotatePassword={rotateOfficePassword} onActivateStation={activateOfficeStation} onUpdateDepartment={updateOfficeDepartment} onUpdateLevel={updateOfficeLevel} onVerifyEmail={verifyOfficeEmail} onWatchOffice={watchOffice} onNoteOffice={noteOffice} onUpdateCapacity={updateOfficeCapacity} onReviewCompliance={reviewOfficeCompliance} onArchiveOffice={archiveOffice} onBulkActivate={bulkActivateOffices} onRefreshDigest={refreshOfficeDigest} digest={officeDigest} />}
         {activeSection === "Transfers" && (
           <Transfers
             transfers={transfers}
@@ -8023,6 +8151,15 @@ function Offices({
   onSuspendOffice,
   onRotatePassword,
   onActivateStation,
+  onUpdateDepartment,
+  onUpdateLevel,
+  onVerifyEmail,
+  onWatchOffice,
+  onNoteOffice,
+  onUpdateCapacity,
+  onReviewCompliance,
+  onArchiveOffice,
+  onBulkActivate,
   onRefreshDigest,
   digest
 }: {
@@ -8036,6 +8173,15 @@ function Offices({
   onSuspendOffice: (id: string) => void;
   onRotatePassword: (id: string) => void;
   onActivateStation: (id: string) => void;
+  onUpdateDepartment: (id: string) => void;
+  onUpdateLevel: (id: string) => void;
+  onVerifyEmail: (id: string) => void;
+  onWatchOffice: (id: string) => void;
+  onNoteOffice: (id: string) => void;
+  onUpdateCapacity: (id: string) => void;
+  onReviewCompliance: (id: string) => void;
+  onArchiveOffice: (id: string) => void;
+  onBulkActivate: (ids: string[]) => void;
   onRefreshDigest: () => void;
   digest: OfficeDigest | null;
 }) {
@@ -8047,9 +8193,10 @@ function Offices({
   const [levelFilter, setLevelFilter] = React.useState<StationLevel | "All levels">("All levels");
   const [feedback, setFeedback] = React.useState("");
   const filteredOffices = React.useMemo(() => (
-    levelFilter === "All levels" ? offices : offices.filter((office) => office.level === levelFilter)
+    offices.filter((office) => !office.archived && (levelFilter === "All levels" || office.level === levelFilter))
   ), [levelFilter, offices]);
-  const provisionedCount = offices.filter((office) => office.status === "Provisioned").length;
+  const activeOffices = offices.filter((office) => !office.archived);
+  const provisionedCount = activeOffices.filter((office) => office.status === "Provisioned").length;
   const supervisorCount = new Set(offices.map((office) => office.supervisor)).size;
   const officeEmailSet = React.useMemo(() => new Set(offices.map((office) => office.email)), [offices]);
   const stationRows = React.useMemo(() => stationDirectory.map((station) => {
@@ -8094,6 +8241,12 @@ function Offices({
           <Insight label="Total offices" value={String(offices.length)} />
           <Insight label="Provisioned" value={String(provisionedCount)} />
           <Insight label="Station identities" value={String(stationDirectory.length)} />
+          <Insight label="Verified" value={String(digest?.verified ?? activeOffices.filter((office) => office.emailVerified).length)} />
+          <Insight label="Watched" value={String(digest?.watched ?? activeOffices.filter((office) => office.watchers?.length).length)} />
+          <Insight label="Noted" value={String(digest?.noted ?? activeOffices.filter((office) => office.notes?.length).length)} />
+          <Insight label="Capacity set" value={String(digest?.capacity ?? activeOffices.filter((office) => office.capacity !== undefined).length)} />
+          <Insight label="Compliant" value={String(digest?.compliant ?? activeOffices.filter((office) => office.complianceStatus).length)} />
+          <Insight label="Archived" value={String(digest?.archived ?? offices.filter((office) => office.archived).length)} />
         </div>
         <div className="registry-toolbar">
           <label>
@@ -8106,6 +8259,7 @@ function Offices({
             </select>
           </label>
           <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
+          <button disabled={!permissions.canCreateOffices || !filteredOffices.length} type="button" onClick={() => onBulkActivate(filteredOffices.slice(0, 3).map((office) => office.id))}><CheckCircle2 size={14} /> Bulk activate</button>
         </div>
         {digest && (
           <div className="workflow-digest">
@@ -8126,12 +8280,25 @@ function Offices({
               <span>{office.supervisor}</span>
               <div className="table-actions">
                 <StatusPill status={office.status} />
+                {office.emailVerified && <span>Verified</span>}
+                {office.watchers?.length ? <span>{office.watchers.length} watchers</span> : null}
+                {office.notes?.length ? <span>{office.notes.length} notes</span> : null}
+                {office.capacity !== undefined && <span>{office.capacity} capacity</span>}
+                {office.complianceStatus && <span>{office.complianceStatus}</span>}
                 <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeSupervisor(office.id, office.supervisor === "International Headquarters" ? "National Headquarters" : "International Headquarters")}><GitBranch size={14} /> Supervisor</button>
                 <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeStatus(office.id, office.status === "Suspended" ? "Provisioned" : "Suspended")}><LockKeyhole size={14} /> Status</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateDepartment(office.id)}><ScrollText size={14} /> Department</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateLevel(office.id)}><Building2 size={14} /> Level</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onVerifyEmail(office.id)}><ShieldCheck size={14} /> Verify</button>
+                <button onClick={() => onWatchOffice(office.id)}><Bell size={14} /> Watch</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onNoteOffice(office.id)}><MessageSquareText size={14} /> Note</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateCapacity(office.id)}><Users size={14} /> Capacity</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onReviewCompliance(office.id)}><ClipboardCheck size={14} /> Compliance</button>
                 <button disabled={!permissions.canCreateOffices} onClick={() => onActivateOffice(office.id)}><CheckCircle2 size={14} /> Activate</button>
                 <button disabled={!permissions.canCreateOffices} onClick={() => onSuspendOffice(office.id)}><AlertTriangle size={14} /> Suspend</button>
                 <button disabled={!permissions.canCreateOffices} onClick={() => onRotatePassword(office.id)}><RefreshCw size={14} /> Rotate</button>
                 <button disabled={!permissions.canCreateOffices} onClick={() => onActivateStation(office.id)}><RadioTower size={14} /> Station</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onArchiveOffice(office.id)}><ArchiveIcon size={14} /> Archive</button>
               </div>
             </div>
           ))}
