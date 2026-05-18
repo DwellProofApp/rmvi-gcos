@@ -223,6 +223,17 @@ type PersistenceCutoverChecklist = {
   rollbackPlan: string[];
   nextAction: string;
 };
+type LaunchReadiness = {
+  generatedAt: string;
+  targetDomain: string;
+  status: string;
+  mvpScore: number;
+  productionScore: number;
+  checks: { name: string; category: "mvp" | "production"; ok: boolean; detail: string }[];
+  blockers: string[];
+  nextActions: string[];
+  summary: string;
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -9430,6 +9441,7 @@ function Audit({
   const [schemaPlan, setSchemaPlan] = React.useState<PersistenceSchemaPlan | null>(null);
   const [importDryRun, setImportDryRun] = React.useState<PersistenceImportDryRun | null>(null);
   const [cutoverChecklist, setCutoverChecklist] = React.useState<PersistenceCutoverChecklist | null>(null);
+  const [launchReadiness, setLaunchReadiness] = React.useState<LaunchReadiness | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -9473,6 +9485,7 @@ function Audit({
     void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
     void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
     void apiRequest<PersistenceCutoverChecklist>("/api/persistence/cutover-checklist").then(setCutoverChecklist).catch(() => undefined);
+    void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -9559,6 +9572,21 @@ function Audit({
       body: JSON.stringify({})
     }).then((result) => {
       setCutoverChecklist(result.checklist);
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function refreshLaunchReadiness() {
+    void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
+  }
+
+  function recordLaunchReadiness() {
+    void apiRequest<{ launch: LaunchReadiness; status: PersistenceStatus }>("/api/launch/readiness", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setLaunchReadiness(result.launch);
       setPersistenceStatus(result.status);
       onRefreshAuditDigest();
     }).catch(() => undefined);
@@ -10089,6 +10117,7 @@ function Audit({
         <div className="action-row">
           <button onClick={refreshCutoverChecklist}><RefreshCw size={15} /> Check</button>
           <button onClick={recordCutoverChecklist}><ShieldCheck size={15} /> Record</button>
+          <button onClick={recordLaunchReadiness}><Globe2 size={15} /> Launch</button>
         </div>
         <div className="office-summary-grid">
           <Insight label="Ready" value={cutoverChecklist?.ready ? "Yes" : "No"} />
@@ -10107,6 +10136,35 @@ function Audit({
           {(cutoverChecklist?.checks ?? []).map((check) => (
             <article className="source-map-item" key={check.name}>
               <span>{check.ok ? "Pass" : "Hold"}</span>
+              <strong>{check.name}</strong>
+              <small>{check.detail}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={Globe2} title="Launch Readiness" action={launchReadiness?.status ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshLaunchReadiness}><RefreshCw size={15} /> Check</button>
+          <button onClick={recordLaunchReadiness}><ShieldCheck size={15} /> Record</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="MVP" value={`${launchReadiness?.mvpScore ?? 0}%`} />
+          <Insight label="Production" value={`${launchReadiness?.productionScore ?? 0}%`} />
+          <Insight label="Blockers" value={String(launchReadiness?.blockers.length ?? 0)} />
+          <Insight label="Domain" value={launchReadiness?.targetDomain ?? "rmvi.org"} />
+          <Insight label="MVP checks" value={String(launchReadiness?.checks.filter((check) => check.category === "mvp" && check.ok).length ?? 0)} />
+          <Insight label="Prod checks" value={String(launchReadiness?.checks.filter((check) => check.category === "production" && check.ok).length ?? 0)} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{launchReadiness ? formatDateTime(launchReadiness.generatedAt) : "No launch check loaded"}</span>
+            <strong>{launchReadiness?.summary ?? "Launch score will appear here"}</strong>
+            <small>{launchReadiness?.nextActions[0] ?? "Run launch readiness before public rollout."}</small>
+          </article>
+          {(launchReadiness?.checks ?? []).map((check) => (
+            <article className="source-map-item" key={check.name}>
+              <span>{check.category} - {check.ok ? "Pass" : "Hold"}</span>
               <strong>{check.name}</strong>
               <small>{check.detail}</small>
             </article>

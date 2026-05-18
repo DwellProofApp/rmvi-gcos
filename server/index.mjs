@@ -54,6 +54,8 @@ const routes = {
   "POST /api/security-controls/:name/remediation": ({ params, body, session }) => createdResponse(createSecurityControlRemediation(params.name, body, session.email)),
   "POST /api/security-controls/:name/verify": ({ params, body, session }) => ok(verifySecurityControl(params.name, body, session.email)),
   "GET /api/status": () => ok(operationalStatus()),
+  "GET /api/launch/readiness": async () => ok(await launchReadiness()),
+  "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
   "GET /api/files": () => ok(state.files ?? []),
   "POST /api/files/upload": async ({ body, session }) => createdResponse(await uploadFile(body, session.email)),
   "GET /api/files/:id/download": async ({ params, session }) => readStoredFile(params.id, session.email),
@@ -491,6 +493,66 @@ function operationalStatus() {
       events: state.events.length
     }
   };
+}
+
+async function launchReadiness() {
+  const status = operationalStatus();
+  const persistence = await persistenceStatus();
+  const cutover = persistenceCutoverChecklist();
+  const counts = status.counts;
+  const checks = [
+    { name: "web-shell", category: "mvp", ok: SERVE_WEB, detail: SERVE_WEB ? "API serves the built web app" : "Set GCOS_SERVE_WEB=1 for web delivery" },
+    { name: "workflow-data", category: "mvp", ok: counts.stations > 0 && counts.messages > 0 && counts.reports > 0 && counts.approvals > 0 && counts.tasks > 0, detail: `${counts.stations} stations, ${counts.tasks} tasks, ${counts.approvals} approvals` },
+    { name: "auth-sessions", category: "mvp", ok: state.authCredentials && Object.keys(state.authCredentials).length > 0, detail: `${Object.keys(state.authCredentials ?? {}).length} station credentials` },
+    { name: "audit-ledger", category: "mvp", ok: counts.audit > 0, detail: `${counts.audit} audit rows` },
+    { name: "object-vault", category: "mvp", ok: Boolean(OBJECT_VAULT_PATH), detail: OBJECT_VAULT_PATH },
+    { name: "persistence", category: "mvp", ok: Boolean(persistence.hash), detail: `${persistence.provider}/${persistence.mode}` },
+    { name: "migration-cockpit", category: "mvp", ok: persistenceCutoverChecklist().checks.length >= 3, detail: cutover.nextAction },
+    { name: "public-domain", category: "production", ok: ALLOWED_ORIGIN.includes("rmvi.org"), detail: ALLOWED_ORIGIN },
+    { name: "production-reset-lock", category: "production", ok: !DEV_RESET_ENABLED, detail: DEV_RESET_ENABLED ? "Development reset enabled" : "Development reset disabled" },
+    { name: "managed-database", category: "production", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? "Database provider selected" : "JSON provider active" },
+    { name: "database-ssl", category: "production", ok: process.env.GCOS_DATABASE_SSL === "1" || STORAGE_PROVIDER !== "database", detail: process.env.GCOS_DATABASE_SSL === "1" ? "Database SSL enabled" : "Database SSL not required for current provider" },
+    { name: "cors-origin", category: "production", ok: ALLOWED_ORIGIN !== "*", detail: ALLOWED_ORIGIN },
+    { name: "healthcheck-domain", category: "production", ok: (process.env.GCOS_HEALTHCHECK_URL ?? "").includes("rmvi.org"), detail: process.env.GCOS_HEALTHCHECK_URL ?? "not configured" }
+  ];
+  const mvpChecks = checks.filter((check) => check.category === "mvp");
+  const productionChecks = checks.filter((check) => check.category === "production");
+  const mvpScore = scoreChecks(mvpChecks);
+  const productionScore = scoreChecks(productionChecks);
+  return {
+    generatedAt: new Date().toISOString(),
+    targetDomain: "rmvi.org",
+    status: mvpScore >= 95 ? "mvp-launch-ready" : "mvp-hold",
+    mvpScore,
+    productionScore,
+    checks,
+    blockers: checks.filter((check) => !check.ok).map((check) => check.name),
+    nextActions: checks.filter((check) => !check.ok).slice(0, 4).map((check) => check.detail),
+    summary: mvpScore >= 95
+      ? "GCOS is ready for a controlled web MVP launch."
+      : "Complete remaining MVP launch checks before public rollout."
+  };
+}
+
+async function recordLaunchReadiness(actor) {
+  requirePermission(actor, "canApprove");
+  const launch = await launchReadiness();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastLaunchReadiness = {
+    generatedAt: launch.generatedAt,
+    actor,
+    status: launch.status,
+    mvpScore: launch.mvpScore,
+    productionScore: launch.productionScore,
+    blockers: launch.blockers.length
+  };
+  record("LaunchReadinessChecked", actor, "GCOS launch", `${launch.status} ${launch.mvpScore}% MVP`);
+  return { launch, status: persistenceStatusSync() };
+}
+
+function scoreChecks(checks) {
+  if (!checks.length) return 0;
+  return Math.round((checks.filter((check) => check.ok).length / checks.length) * 100);
 }
 
 function persistenceStatusSync() {

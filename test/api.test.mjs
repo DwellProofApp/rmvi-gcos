@@ -41,6 +41,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(readiness.status, "ready");
     assert.equal(readiness.checks.length >= 6, true);
 
+    const launchReadiness = await getJson("/api/launch/readiness");
+    assert.equal(launchReadiness.targetDomain, "rmvi.org");
+    assert.equal(launchReadiness.mvpScore >= 95, true);
+    assert.equal(launchReadiness.productionScore < launchReadiness.mvpScore, true);
+    assert.equal(launchReadiness.checks.some((check) => check.name === "managed-database"), true);
+
     const webShell = await fetch(`${BASE_URL}/`);
     assert.equal(webShell.status, 200);
     assert.equal((await webShell.text()).includes("GCOS Web"), true);
@@ -159,6 +165,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(recordedCutoverChecklist.checklist.ready, true);
     assert.equal(recordedCutoverChecklist.checklist.requiredSwitches.some((item) => item.name === "GCOS_DATABASE_URL"), true);
     assert.equal(recordedCutoverChecklist.status.records.stations > 0, true);
+
+    const recordedLaunchReadiness = await postJson("/api/launch/readiness", {}, nationalToken);
+    assert.equal(recordedLaunchReadiness.launch.status, "mvp-launch-ready");
+    assert.equal(recordedLaunchReadiness.launch.mvpScore >= 95, true);
+    assert.equal(recordedLaunchReadiness.status.records.stations > 0, true);
 
     const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
       reason: "Automated readiness acknowledgement"

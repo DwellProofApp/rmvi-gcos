@@ -146,6 +146,8 @@ const validators = {
 
   "POST /api/persistence/cutover-checklist": () => {},
 
+  "POST /api/launch/readiness": () => {},
+
   "POST /api/files/upload": (body) => {
     requireString(body.name, "name");
     requireString(body.contentType, "contentType");

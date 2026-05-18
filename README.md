@@ -40,6 +40,7 @@ Production domain target: `rmvi.org`
 - Database import dry-run validation with ordered batches
 - Database cutover checklist with go/no-go provider switch gates
 - Live Postgres JSONB storage adapter for database-backed persistence
+- Launch readiness scoring for MVP and production rollout gates
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
@@ -172,6 +173,8 @@ local_branch_017@gcos.org / gcos-local
 ```text
 GET  /health
 GET  /api/status
+GET  /api/launch/readiness
+POST /api/launch/readiness
 GET  /api/persistence/status
 POST /api/persistence/backup
 POST /api/persistence/verify
