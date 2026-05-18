@@ -87,6 +87,7 @@ type ApiStatus = {
   uptimeSeconds: number;
   serveWeb: boolean;
   persistence: string;
+  persistenceStatus?: PersistenceStatus;
   limits: {
     maxBodyBytes: number;
     devResetEnabled: boolean;
@@ -125,6 +126,18 @@ type ApiStatus = {
     audit: number;
     events: number;
   };
+};
+type PersistenceStatus = {
+  mode: string;
+  path: string;
+  hash: string;
+  records: Record<string, number>;
+  lastBackup?: { path: string; label: string; hash: string; createdAt: string; createdBy: string } | null;
+  lastVerifiedAt?: string | null;
+  lastVerifiedBy?: string | null;
+  file?: { exists: boolean; bytes: number; updatedAt: string | null };
+  backupsPath?: string;
+  readyForExternalDatabase?: boolean;
 };
 type ExportSnapshot = {
   exportedAt: string;
@@ -9206,6 +9219,7 @@ function Audit({
   const [complianceDigest, setComplianceDigest] = React.useState<ComplianceDigest | null>(null);
   const [evidenceVault, setEvidenceVault] = React.useState<EvidenceRecord[]>([]);
   const [evidenceDigest, setEvidenceDigest] = React.useState<EvidenceDigest | null>(null);
+  const [persistenceStatus, setPersistenceStatus] = React.useState<PersistenceStatus | null>(apiStatus?.persistenceStatus ?? null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -9244,7 +9258,37 @@ function Audit({
     void apiRequest<ComplianceDigest>("/api/compliance-reviews/digest").then(setComplianceDigest).catch(() => undefined);
     void apiRequest<EvidenceRecord[]>("/api/evidence-vault").then(setEvidenceVault).catch(() => undefined);
     void apiRequest<EvidenceDigest>("/api/evidence-vault/digest").then(setEvidenceDigest).catch(() => undefined);
+    void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
   }, []);
+
+  function refreshPersistenceStatus() {
+    void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
+  }
+
+  function createPersistenceBackup() {
+    void apiRequest<{ status: PersistenceStatus }>("/api/persistence/backup", {
+      method: "POST",
+      body: JSON.stringify({ label: "audit-desk" })
+    }).then((result) => {
+      setPersistenceStatus(result.status);
+    }).catch(() => undefined);
+  }
+
+  function verifyPersistenceStore() {
+    void apiRequest<{ status: PersistenceStatus }>("/api/persistence/verify", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function exportPersistenceStore() {
+    void apiRequest<{ status: PersistenceStatus }>("/api/persistence/export")
+      .then((result) => setPersistenceStatus(result.status))
+      .catch(() => undefined);
+  }
 
   function refreshReadiness() {
     void apiRequest<ReadinessReport>("/api/readiness").then(setReadiness).catch(() => undefined);
@@ -9623,6 +9667,32 @@ function Audit({
             </div>
           ))}
           {visibleRows.length === 0 && <div className="empty-state">No audit records match the current filters.</div>}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={Server} title="Persistence Store" action={persistenceStatus?.mode ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshPersistenceStatus}><RefreshCw size={15} /> Status</button>
+          <button onClick={createPersistenceBackup}><Download size={15} /> Backup</button>
+          <button onClick={verifyPersistenceStore}><ShieldCheck size={15} /> Verify</button>
+          <button onClick={exportPersistenceStore}><Files size={15} /> Export</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="File" value={persistenceStatus?.file?.exists ? "Present" : "Pending"} />
+          <Insight label="Bytes" value={String(persistenceStatus?.file?.bytes ?? 0)} />
+          <Insight label="Audit rows" value={String(persistenceStatus?.records?.audit ?? auditRows.length)} />
+          <Insight label="Documents" value={String(persistenceStatus?.records?.documents ?? 0)} />
+          <Insight label="Hash" value={persistenceStatus?.hash ? persistenceStatus.hash.slice(0, 18) : "None"} />
+          <Insight label="External DB" value={persistenceStatus?.readyForExternalDatabase ? "Ready" : "Planned"} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{persistenceStatus?.file?.updatedAt ? formatDateTime(persistenceStatus.file.updatedAt) : "No file"}</span>
+            <strong>{persistenceStatus?.path ?? apiStatus?.persistence ?? "Persistence path unavailable"}</strong>
+            <small>Backups: {persistenceStatus?.backupsPath ?? "not checked"}</small>
+            <small>Last backup: {persistenceStatus?.lastBackup ? `${persistenceStatus.lastBackup.label} by ${persistenceStatus.lastBackup.createdBy}` : "none recorded"}</small>
+            <small>Last verify: {persistenceStatus?.lastVerifiedAt ? `${formatDateTime(persistenceStatus.lastVerifiedAt)} by ${persistenceStatus.lastVerifiedBy}` : "not verified yet"}</small>
+          </article>
         </div>
       </div>
       <div className="panel module-side">

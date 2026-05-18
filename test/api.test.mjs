@@ -66,6 +66,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(statusAfterLogin.sessions.active, 1);
     assert.equal(statusAfterLogin.sessions.stations[0].email, "np@rmvi.org");
     assert.equal(statusAfterLogin.sessions.stations[0].minutesRemaining > 0, true);
+    assert.equal(statusAfterLogin.persistenceStatus.mode, "json-file");
+    assert.match(statusAfterLogin.persistenceStatus.hash, /^sha256:/);
+
+    const persistenceStatus = await getJson("/api/persistence/status");
+    assert.equal(persistenceStatus.mode, "json-file");
+    assert.equal(persistenceStatus.records.stations > 0, true);
+    assert.match(persistenceStatus.hash, /^sha256:/);
 
     const localLogin = await postJson("/api/auth/login", {
       email: "local_branch_017@gcos.org",
@@ -78,6 +85,24 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       password: "gcos-global"
     });
     const internationalToken = internationalLogin.token;
+
+    const forbiddenPersistenceExport = await fetch(`${BASE_URL}/api/persistence/export`);
+    assert.equal(forbiddenPersistenceExport.status, 401);
+
+    const persistenceBackup = await postJson("/api/persistence/backup", {
+      label: "automated-test"
+    }, nationalToken);
+    assert.equal(persistenceBackup.backup.label, "automated-test");
+    assert.match(persistenceBackup.backup.hash, /^sha256:/);
+    assert.equal((await readFile(persistenceBackup.backup.path, "utf8")).includes("\"label\": \"automated-test\""), true);
+
+    const verifiedPersistence = await postJson("/api/persistence/verify", {}, nationalToken);
+    assert.equal(verifiedPersistence.verified, true);
+    assert.match(verifiedPersistence.status.hash, /^sha256:/);
+
+    const persistenceExport = await getJson("/api/persistence/export", nationalToken);
+    assert.equal(persistenceExport.exportedBy, "np@rmvi.org");
+    assert.equal(persistenceExport.state.stations.length > 0, true);
 
     const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
       reason: "Automated readiness acknowledgement"
@@ -2253,6 +2278,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessOverrideApproved"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessBulkAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessCheckArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersistenceBackupCreated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "PersistenceVerified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SecurityControlStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SecurityControlOwnerAssigned"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SecurityControlEvidenceAttached"), true);

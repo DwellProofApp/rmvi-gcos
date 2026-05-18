@@ -1,6 +1,6 @@
 import { createServer } from "node:http";
-import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { createHash, randomUUID } from "node:crypto";
+import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { audit, createSeedState, getPermissions, normalizeStationEmail } from "./domain.mjs";
@@ -49,6 +49,10 @@ const routes = {
   "POST /api/security-controls/:name/remediation": ({ params, body, session }) => createdResponse(createSecurityControlRemediation(params.name, body, session.email)),
   "POST /api/security-controls/:name/verify": ({ params, body, session }) => ok(verifySecurityControl(params.name, body, session.email)),
   "GET /api/status": () => ok(operationalStatus()),
+  "GET /api/persistence/status": async () => ok(await persistenceStatus()),
+  "POST /api/persistence/backup": async ({ body, session }) => createdResponse(await createPersistenceBackup(body, session.email)),
+  "POST /api/persistence/verify": async ({ session }) => ok(await verifyPersistence(session.email)),
+  "GET /api/persistence/export": ({ session }) => ok(persistenceExport(session.email)),
   "GET /api/sessions": () => ok(sessionSummary()),
   "GET /api/sessions/digest": () => ok(sessionDigest()),
   "POST /api/sessions/renew": ({ session }) => ok(renewSession(session.token, session.email)),
@@ -436,6 +440,7 @@ function operationalStatus() {
     uptimeSeconds: Math.round(process.uptime()),
     serveWeb: SERVE_WEB,
     persistence: DATA_PATH,
+    persistenceStatus: persistenceStatusSync(),
     limits: {
       maxBodyBytes: MAX_BODY_BYTES,
       devResetEnabled: DEV_RESET_ENABLED
@@ -458,6 +463,112 @@ function operationalStatus() {
       events: state.events.length
     }
   };
+}
+
+function persistenceStatusSync() {
+  const serialized = JSON.stringify(state);
+  return {
+    mode: "json-file",
+    path: DATA_PATH,
+    hash: hashText(serialized),
+    records: persistenceRecordCounts(),
+    lastBackup: state.persistenceMeta?.lastBackup ?? null,
+    lastVerifiedAt: state.persistenceMeta?.lastVerifiedAt ?? null,
+    lastVerifiedBy: state.persistenceMeta?.lastVerifiedBy ?? null
+  };
+}
+
+async function persistenceStatus() {
+  let file = null;
+  try {
+    const details = await stat(DATA_PATH);
+    file = {
+      exists: true,
+      bytes: details.size,
+      updatedAt: details.mtime.toISOString()
+    };
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+    file = { exists: false, bytes: 0, updatedAt: null };
+  }
+  return {
+    ...persistenceStatusSync(),
+    file,
+    backupsPath: join(dirname(DATA_PATH), "backups"),
+    readyForExternalDatabase: true
+  };
+}
+
+async function createPersistenceBackup(body, actor) {
+  requirePermission(actor, "canApprove");
+  const backupDir = join(dirname(DATA_PATH), "backups");
+  await mkdir(backupDir, { recursive: true });
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const label = String(body.label ?? "manual").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/(^-|-$)/g, "") || "manual";
+  const backupPath = join(backupDir, `gcos-${timestamp}-${label}.json`);
+  const snapshot = {
+    exportedAt: new Date().toISOString(),
+    exportedBy: actor,
+    label,
+    sourcePath: DATA_PATH,
+    hash: persistenceStatusSync().hash,
+    state
+  };
+  await writeFile(backupPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastBackup = {
+    path: backupPath,
+    label,
+    hash: snapshot.hash,
+    createdAt: snapshot.exportedAt,
+    createdBy: actor
+  };
+  record("PersistenceBackupCreated", actor, "Persistence store", backupPath);
+  return { backup: state.persistenceMeta.lastBackup, status: await persistenceStatus() };
+}
+
+async function verifyPersistence(actor) {
+  requirePermission(actor, "canApprove");
+  const status = await persistenceStatus();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastVerifiedAt = new Date().toISOString();
+  state.persistenceMeta.lastVerifiedBy = actor;
+  state.persistenceMeta.lastVerifiedHash = status.hash;
+  record("PersistenceVerified", actor, "Persistence store", status.hash);
+  return { verified: true, status: await persistenceStatus() };
+}
+
+function persistenceExport(actor) {
+  return {
+    exportedAt: new Date().toISOString(),
+    exportedBy: actor,
+    status: persistenceStatusSync(),
+    state
+  };
+}
+
+function persistenceRecordCounts() {
+  return {
+    stations: state.stations.length,
+    messages: state.messages.length,
+    reports: state.reports.length,
+    approvals: state.approvals.length,
+    tasks: state.tasks.length,
+    policies: state.policies.length,
+    calendarEvents: state.calendarEvents.length,
+    personnel: state.personnel.length,
+    escalations: state.escalations.length,
+    transfers: state.transfers.length,
+    offices: state.offices.length,
+    documents: state.documents.length,
+    aiDrafts: state.aiDrafts.length,
+    audit: state.audit.length,
+    events: state.events.length
+  };
+}
+
+function hashText(text) {
+  return `sha256:${createHash("sha256").update(text).digest("hex")}`;
 }
 
 function readinessReport() {
@@ -1242,7 +1353,7 @@ function authenticateRequest(request, pathname) {
   const requiresSession = pathname.startsWith("/api/")
     && pathname !== "/api/auth/login"
     && pathname !== "/api/dev/reset"
-    && (request.method !== "GET" || pathname === "/api/export");
+    && (request.method !== "GET" || pathname === "/api/export" || pathname === "/api/persistence/export");
   if (!requiresSession) return null;
 
   const token = readBearerToken(request.headers.authorization);
@@ -1296,7 +1407,8 @@ async function loadState() {
       readinessActions: persisted.readinessActions ?? seed.readinessActions ?? {},
       securityControls: persisted.securityControls ?? seed.securityControls ?? {},
       complianceReviews: persisted.complianceReviews ?? seed.complianceReviews ?? {},
-      evidenceVault: persisted.evidenceVault ?? seed.evidenceVault ?? {}
+      evidenceVault: persisted.evidenceVault ?? seed.evidenceVault ?? {},
+      persistenceMeta: persisted.persistenceMeta ?? seed.persistenceMeta ?? {}
     });
   } catch (error) {
     if (error.code !== "ENOENT") console.warn(`Unable to load persisted state: ${error.message}`);

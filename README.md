@@ -32,6 +32,7 @@ Production domain target: `rmvi.org`
 - Deployment-ready frontend API base configuration
 - Same-origin production serving for the built web app and API
 - Operational status endpoint with workflow counts and runtime limits
+- Persistence operations for JSON store status, backup, verification, and protected export
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
@@ -159,6 +160,10 @@ local_branch_017@gcos.org / gcos-local
 ```text
 GET  /health
 GET  /api/status
+GET  /api/persistence/status
+POST /api/persistence/backup
+POST /api/persistence/verify
+GET  /api/persistence/export
 GET  /api/bootstrap
 POST /api/dev/reset
 POST /api/auth/login

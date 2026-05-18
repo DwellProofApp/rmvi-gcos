@@ -128,6 +128,12 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/persistence/backup": (body) => {
+    if (body.label !== undefined) requireString(body.label, "label");
+  },
+
+  "POST /api/persistence/verify": () => {},
+
   "POST /api/security-controls/:name/status": (body) => {
     if (body.status !== undefined) requireEnum(body.status, securityControlStatuses, "status");
     if (body.reason !== undefined) requireString(body.reason, "reason");
