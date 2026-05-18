@@ -182,6 +182,8 @@ GET  /api/launch/readiness
 POST /api/launch/readiness
 GET  /api/launch/deployment-plan
 POST /api/launch/deployment-plan
+GET  /api/launch/signoff
+POST /api/launch/signoff
 GET  /api/persistence/status
 POST /api/persistence/backup
 GET  /api/persistence/backup-manifest

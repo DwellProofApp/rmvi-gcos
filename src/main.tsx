@@ -288,6 +288,22 @@ type OperationalMonitor = {
   criticalSignals: { name: string; severity: string; detail: string }[];
   nextActions: string[];
 };
+type LaunchSignoff = {
+  generatedAt: string;
+  targetDomain: string;
+  overallScore: number;
+  status: string;
+  tracks: {
+    id: string;
+    name: string;
+    score: number;
+    status: string;
+    gates: { name: string; ok: boolean; detail: string }[];
+    blockers: string[];
+  }[];
+  blockers: string[];
+  nextActions: string[];
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -9502,6 +9518,7 @@ function Audit({
   const [launchReadiness, setLaunchReadiness] = React.useState<LaunchReadiness | null>(null);
   const [deploymentPlan, setDeploymentPlan] = React.useState<DeploymentPlan | null>(null);
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
+  const [launchSignoff, setLaunchSignoff] = React.useState<LaunchSignoff | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -9550,6 +9567,7 @@ function Audit({
     void apiRequest<OperationalMonitor>("/api/ops/monitor").then(setOperationalMonitor).catch(() => undefined);
     void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
     void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
+    void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -9687,6 +9705,21 @@ function Audit({
       body: JSON.stringify({})
     }).then((result) => {
       setOperationalMonitor(result.monitor);
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function refreshLaunchSignoff() {
+    void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
+  }
+
+  function recordLaunchSignoff() {
+    void apiRequest<{ signoff: LaunchSignoff; status: PersistenceStatus }>("/api/launch/signoff", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setLaunchSignoff(result.signoff);
       setPersistenceStatus(result.status);
       onRefreshAuditDigest();
     }).catch(() => undefined);
@@ -10295,6 +10328,35 @@ function Audit({
               <span>{check.ok ? "Pass" : "Hold"}</span>
               <strong>{check.name}</strong>
               <small>{check.detail}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={BadgeCheck} title="Launch Signoff Matrix" action={launchSignoff?.status ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshLaunchSignoff}><RefreshCw size={15} /> Matrix</button>
+          <button onClick={recordLaunchSignoff}><ShieldCheck size={15} /> Signoff</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Overall" value={`${launchSignoff?.overallScore ?? 0}%`} />
+          <Insight label="MVP" value={`${launchSignoff?.tracks.find((track) => track.id === "usable-web-mvp")?.score ?? 0}%`} />
+          <Insight label="Production" value={`${launchSignoff?.tracks.find((track) => track.id === "production-readiness")?.score ?? 0}%`} />
+          <Insight label="Enterprise" value={`${launchSignoff?.tracks.find((track) => track.id === "enterprise-deployment")?.score ?? 0}%`} />
+          <Insight label="Blockers" value={String(launchSignoff?.blockers.length ?? 0)} />
+          <Insight label="Domain" value={launchSignoff?.targetDomain ?? "rmvi.org"} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{launchSignoff ? formatDateTime(launchSignoff.generatedAt) : "No signoff matrix loaded"}</span>
+            <strong>{launchSignoff?.nextActions[0] ?? "Complete all gates to reach 100% on each readiness track."}</strong>
+            <small>{launchSignoff ? `${launchSignoff.tracks.length} tracks, ${launchSignoff.blockers.length} blockers` : "MVP, production, and enterprise tracks appear here."}</small>
+          </article>
+          {(launchSignoff?.tracks ?? []).map((track) => (
+            <article className="source-map-item" key={track.id}>
+              <span>{track.status}</span>
+              <strong>{track.name}: {track.score}%</strong>
+              <small>{track.blockers.length ? `${track.blockers.length} blockers: ${track.blockers.slice(0, 3).join(", ")}` : "All gates complete"}</small>
             </article>
           ))}
         </div>

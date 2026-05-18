@@ -67,6 +67,8 @@ const routes = {
   "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
   "GET /api/launch/deployment-plan": async () => ok(await launchDeploymentPlan()),
   "POST /api/launch/deployment-plan": async ({ session }) => ok(await recordLaunchDeploymentPlan(session.email)),
+  "GET /api/launch/signoff": async () => ok(await launchSignoffMatrix()),
+  "POST /api/launch/signoff": async ({ session }) => ok(await recordLaunchSignoff(session.email)),
   "GET /api/files": () => ok(state.files ?? []),
   "POST /api/files/upload": async ({ body, session }) => createdResponse(await uploadFile(body, session.email)),
   "GET /api/files/:id/download": async ({ params, session }) => readStoredFile(params.id, session.email),
@@ -697,6 +699,79 @@ async function launchDeploymentPlan() {
     nextAction: launch.productionScore >= 90
       ? "Run production smoke checks and sign off the rmvi.org deployment"
       : "Set the missing Replit secrets, then rerun npm run production:check"
+  };
+}
+
+async function launchSignoffMatrix() {
+  const launch = await launchReadiness();
+  const monitor = await operationalMonitor();
+  const cutover = persistenceCutoverChecklist();
+  const backupManifest = await persistenceBackupManifest();
+  const restoreDrill = await persistenceRestoreDrill();
+  const security = securityControlsDigest();
+  const compliance = complianceReviewDigest();
+  const evidence = evidenceVaultDigest();
+  const mvpGates = [
+    { name: "web-workstation", ok: launch.checks.find((check) => check.name === "web-shell")?.ok ?? false, detail: "Web app served from the API process" },
+    { name: "workflow-coverage", ok: ["stations", "messages", "reports", "approvals", "tasks"].every((key) => operationalStatus().counts[key] > 0), detail: "Core governance modules have seed data and API coverage" },
+    { name: "audit-operations", ok: operationalStatus().counts.audit > 0, detail: "Audit ledger is recording actions" },
+    { name: "operator-cockpit", ok: monitor.score > 0, detail: `Operational monitor score ${monitor.score}%` }
+  ];
+  const productionGates = [
+    { name: "production-env", ok: process.env.NODE_ENV === "production", detail: process.env.NODE_ENV ?? "not set" },
+    { name: "domain-and-cors", ok: DOMAIN === "rmvi.org" && ALLOWED_ORIGIN === "https://rmvi.org", detail: `${DOMAIN} / ${ALLOWED_ORIGIN}` },
+    { name: "managed-database", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? "Database provider selected" : "JSON provider active" },
+    { name: "backup-and-restore", ok: backupManifest.status === "protected" && restoreDrill.valid, detail: `${backupManifest.status} / ${restoreDrill.status}` },
+    { name: "deployment-monitor", ok: monitor.status === "healthy", detail: `${monitor.status} with ${monitor.criticalSignals.length} signals` }
+  ];
+  const enterpriseGates = [
+    { name: "security-controls", ok: security.verified >= 2 && security.exceptions === 0, detail: `${security.verified} verified, ${security.exceptions} exceptions` },
+    { name: "compliance-evidence", ok: compliance.attested >= 1 && evidence.sealed >= 1 && evidence.verified >= 1, detail: `${compliance.attested} attestations, ${evidence.sealed} sealed evidence` },
+    { name: "immutable-audit", ok: services.auditDigest().sealed >= 1 && services.auditDigest().verified >= 1, detail: "Audit rows sealed and verified" },
+    { name: "database-cutover", ok: cutover.ready || cutover.status === "go", detail: cutover.nextAction },
+    { name: "operational-signals", ok: monitor.criticalSignals.length === 0, detail: `${monitor.criticalSignals.length} critical signals` }
+  ];
+  const tracks = [
+    readinessTrack("usable-web-mvp", "Usable web MVP", mvpGates),
+    readinessTrack("production-readiness", "Production readiness", productionGates),
+    readinessTrack("enterprise-deployment", "Enterprise deployment", enterpriseGates)
+  ];
+  const overallScore = Math.round(tracks.reduce((sum, track) => sum + track.score, 0) / tracks.length);
+  return {
+    generatedAt: new Date().toISOString(),
+    targetDomain: DOMAIN,
+    overallScore,
+    status: tracks.every((track) => track.score === 100) ? "signed-off" : "in-progress",
+    tracks,
+    blockers: tracks.flatMap((track) => track.blockers.map((blocker) => `${track.name}: ${blocker}`)),
+    nextActions: tracks.flatMap((track) => track.gates.filter((gate) => !gate.ok).slice(0, 2).map((gate) => gate.detail)).slice(0, 6)
+  };
+}
+
+async function recordLaunchSignoff(actor) {
+  requirePermission(actor, "canApprove");
+  const signoff = await launchSignoffMatrix();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastLaunchSignoff = {
+    generatedAt: signoff.generatedAt,
+    actor,
+    status: signoff.status,
+    overallScore: signoff.overallScore,
+    blockers: signoff.blockers.length
+  };
+  record("LaunchSignoffRecorded", actor, "GCOS launch signoff", `${signoff.status} / ${signoff.overallScore}%`);
+  return { signoff, status: persistenceStatusSync() };
+}
+
+function readinessTrack(id, name, gates) {
+  const score = scoreChecks(gates);
+  return {
+    id,
+    name,
+    score,
+    status: score === 100 ? "complete" : "in-progress",
+    gates,
+    blockers: gates.filter((gate) => !gate.ok).map((gate) => gate.name)
   };
 }
 

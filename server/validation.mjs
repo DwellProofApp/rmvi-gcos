@@ -154,6 +154,8 @@ const validators = {
 
   "POST /api/launch/deployment-plan": () => {},
 
+  "POST /api/launch/signoff": () => {},
+
   "POST /api/ops/monitor": () => {},
 
   "POST /api/files/upload": (body) => {

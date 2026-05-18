@@ -67,6 +67,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(deploymentPlan.commands.includes("npm run production:check"), true);
     assert.equal(deploymentPlan.smokeUrls.includes("https://rmvi.org/health"), true);
 
+    const launchSignoff = await getJson("/api/launch/signoff");
+    assert.equal(launchSignoff.tracks.length, 3);
+    assert.equal(launchSignoff.tracks.some((track) => track.id === "usable-web-mvp" && track.score >= 90), true);
+    assert.equal(launchSignoff.tracks.some((track) => track.id === "production-readiness"), true);
+    assert.equal(launchSignoff.tracks.some((track) => track.id === "enterprise-deployment"), true);
+
     const webShell = await fetch(`${BASE_URL}/`);
     assert.equal(webShell.status, 200);
     assert.equal((await webShell.text()).includes("GCOS Web"), true);
@@ -222,6 +228,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(recordedOperationalMonitor.monitor.service, "gcos-api");
     assert.equal(recordedOperationalMonitor.monitor.score > 0, true);
     assert.equal(recordedOperationalMonitor.status.records.stations > 0, true);
+
+    const recordedLaunchSignoff = await postJson("/api/launch/signoff", {}, nationalToken);
+    assert.equal(recordedLaunchSignoff.signoff.tracks.length, 3);
+    assert.equal(recordedLaunchSignoff.signoff.overallScore > 0, true);
+    assert.equal(recordedLaunchSignoff.status.records.stations > 0, true);
 
     const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
       reason: "Automated readiness acknowledgement"
