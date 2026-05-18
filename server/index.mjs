@@ -63,6 +63,7 @@ const routes = {
   "GET /api/status": () => ok(operationalStatus()),
   "GET /api/ops/monitor": async () => ok(await operationalMonitor()),
   "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
+  "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/launch/readiness": async () => ok(await launchReadiness()),
   "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
   "GET /api/launch/deployment-plan": async () => ok(await launchDeploymentPlan()),
@@ -618,6 +619,64 @@ async function operationalMonitor() {
     nextActions: criticalSignals.length
       ? criticalSignals.slice(0, 4).map((signal) => signal.detail)
       : ["Continue scheduled production smoke checks"]
+  };
+}
+
+async function projectCompletionReport() {
+  const status = operationalStatus();
+  const launch = await launchReadiness();
+  const signoff = await launchSignoffMatrix();
+  const deployment = await launchDeploymentPlan();
+  const persistence = await persistenceStatus();
+  const security = securityControlsDigest();
+  const evidence = evidenceVaultDigest();
+  const modules = [
+    { name: "Sign-in portal", complete: state.stations.length >= 7 && Object.keys(state.authCredentials ?? {}).length >= 7 },
+    { name: "Station workstations", complete: status.counts.stations >= 7 },
+    { name: "ChurchMail", complete: status.counts.messages > 0 },
+    { name: "Reports", complete: status.counts.reports > 0 },
+    { name: "Approvals", complete: status.counts.approvals > 0 },
+    { name: "Tasks", complete: status.counts.tasks > 0 },
+    { name: "Policies", complete: status.counts.policies > 0 },
+    { name: "Calendar", complete: status.counts.calendarEvents > 0 },
+    { name: "Personnel and transfers", complete: status.counts.personnel > 0 && status.counts.transfers > 0 },
+    { name: "Offices and hierarchy", complete: status.counts.offices > 0 && status.counts.stations > 0 },
+    { name: "Archive and evidence", complete: status.counts.documents > 0 && evidence.total > 0 },
+    { name: "Audit and security", complete: status.counts.audit > 0 && security.total > 0 },
+    { name: "Persistence and backups", complete: Boolean(persistence.hash) && persistence.backupSupport !== false },
+    { name: "Deployment readiness", complete: deployment.smokeUrls.length >= 5 && deployment.commands.includes("npm run domain:check") }
+  ];
+  const moduleScore = scoreChecks(modules.map((module) => ({ ok: module.complete })));
+  const productionBlockers = deployment.requiredSecrets.filter((secret) => !secret.configured).map((secret) => secret.name);
+  return {
+    generatedAt: new Date().toISOString(),
+    project: "Remedy Movement International GCOS",
+    targetDomain: DOMAIN,
+    status: launch.mvpScore >= 95 ? "controlled-mvp-ready" : "build-hold",
+    moduleScore,
+    mvpScore: launch.mvpScore,
+    productionScore: launch.productionScore,
+    enterpriseScore: signoff.tracks.find((track) => track.id === "enterprise-deployment")?.score ?? 0,
+    modules,
+    releaseCommands: [
+      "npm test",
+      "npm run build",
+      "npm run release:check",
+      "npm run production:check",
+      "npm run replit:run",
+      "GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck",
+      "npm run domain:check"
+    ],
+    smokeUrls: deployment.smokeUrls,
+    productionBlockers,
+    nextActions: productionBlockers.length
+      ? [
+        "Set the missing Replit production secrets.",
+        "Switch GCOS_STORAGE_PROVIDER to database after GCOS_DATABASE_URL is configured.",
+        "Run backup, restore drill, launch readiness, and launch signoff from the Audit workspace.",
+        "Run domain smoke checks after rmvi.org points to this Replit deployment."
+      ]
+      : ["Run the release commands and record launch signoff."]
   };
 }
 

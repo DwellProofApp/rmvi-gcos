@@ -45,6 +45,7 @@ Production domain target: `rmvi.org`
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
+- Final release handoff and project completion report
 - Persistent browser prototype state
 - In-memory backend domain resources
 - Web install/PWA shell with service worker caching
@@ -79,6 +80,7 @@ Deployment smoke check:
 npm run healthcheck
 npm run domain:check
 npm run production:check
+npm run release:check
 ```
 
 Frontend:
@@ -114,6 +116,13 @@ Deployment checklist:
 ```text
 docs/DEPLOYMENT_CHECKLIST.md
 docs/REPLIT_RMVI_DOMAIN.md
+docs/FINAL_RELEASE_HANDOFF.md
+```
+
+Final release handoff:
+
+```text
+docs/FINAL_RELEASE_HANDOFF.md
 ```
 
 ## Environment
@@ -179,6 +188,7 @@ GET  /health
 GET  /api/status
 GET  /api/ops/monitor
 POST /api/ops/monitor
+GET  /api/project/completion
 GET  /api/launch/readiness
 POST /api/launch/readiness
 GET  /api/launch/deployment-plan
