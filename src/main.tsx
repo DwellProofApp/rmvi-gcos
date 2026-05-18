@@ -828,6 +828,27 @@ const stations: StationCard[] = [
     level: "Local Branch",
     authority: "Local reports, member registry, directive acknowledgement",
     icon: Inbox
+  },
+  {
+    email: "finance@rmvi.org",
+    title: "Finance Desk Workstation",
+    level: "National HQ",
+    authority: "Financial reports, budgets, releases, reconciliation, audit evidence",
+    icon: FileBarChart2
+  },
+  {
+    email: "audit@rmvi.org",
+    title: "Audit Desk Workstation",
+    level: "National HQ",
+    authority: "Compliance review, audit packets, evidence sealing, control testing",
+    icon: ShieldCheck
+  },
+  {
+    email: "mission@rmvi.org",
+    title: "Mission Office Workstation",
+    level: "National HQ",
+    authority: "Mission outreach, transfers, church planting, personnel movement",
+    icon: Globe2
   }
 ];
 
@@ -837,7 +858,10 @@ const stationPasswords: Record<string, string> = {
   "international@rmvi.org": demoStationPassword("global"),
   "np@rmvi.org": demoStationPassword("national"),
   "district_admin@rmvi.org": demoStationPassword("district"),
-  "local_branch_017@rmvi.org": demoStationPassword("local")
+  "local_branch_017@rmvi.org": demoStationPassword("local"),
+  "finance@rmvi.org": demoStationPassword("finance"),
+  "audit@rmvi.org": demoStationPassword("audit"),
+  "mission@rmvi.org": demoStationPassword("mission")
 };
 
 const API_BASE = (import.meta.env.VITE_GCOS_API_BASE ?? (import.meta.env.DEV ? "http://127.0.0.1:8787" : "")).replace(/\/$/, "");
@@ -7752,11 +7776,24 @@ function Reports({
   const [preparedBy, setPreparedBy] = React.useState(station.email);
   const [attestation, setAttestation] = React.useState("I certify this report is accurate and ready for supervisory review.");
   const [reportFields, setReportFields] = React.useState<Record<string, string>>(() => defaultReportFields(churchReportTemplates[0]));
+  const [templateSearch, setTemplateSearch] = React.useState("");
+  const [templateTypeFilter, setTemplateTypeFilter] = React.useState("All templates");
+  const [selectedReportId, setSelectedReportId] = React.useState(reports[0]?.id ?? "");
   const visibleReports = React.useMemo(() => (
     stateFilter === "All states" ? reports : reports.filter((report) => report.state === stateFilter)
   ), [reports, stateFilter]);
   const stateOptions = React.useMemo(() => ["All states", ...Array.from(new Set(reports.map((report) => report.state))).sort()], [reports]);
   const templateTypes = React.useMemo(() => Array.from(new Set(churchReportTemplates.map((template) => template.type))).sort(), []);
+  const filteredTemplates = React.useMemo(() => churchReportTemplates.filter((template) => {
+    const haystack = [template.name, template.type, template.owner, template.description, template.path, ...template.checklist].join(" ").toLowerCase();
+    return (templateTypeFilter === "All templates" || template.type === templateTypeFilter)
+      && haystack.includes(templateSearch.trim().toLowerCase());
+  }), [templateSearch, templateTypeFilter]);
+  const selectedReport = reports.find((report) => report.id === selectedReportId) ?? visibleReports[0] ?? reports[0];
+  const selectedReportFieldEntries = Object.entries(selectedReport?.reportFields ?? {});
+  const selectedReportComplete = selectedReportFieldEntries.length
+    ? Math.round((completedReportFields(selectedReport?.reportFields) / selectedReportFieldEntries.length) * 100)
+    : selectedReport?.score ?? 0;
   const openCount = reports.filter((report) => report.state !== "Approved").length;
   const overdueCount = reports.filter((report) => report.due === "Overdue").length;
   const correctionCount = reports.filter((report) => report.state === "Correction Requested").length;
@@ -7766,13 +7803,13 @@ function Reports({
   const selectedSections = React.useMemo(() => reportTemplateSections(selectedTemplate), [selectedTemplate]);
   const reportCompletion = selectedSections.length ? Math.round((completedReportFields(reportFields) / selectedSections.length) * 100) : 0;
   const completionTracks = [
-    { label: "Database", detail: "API persistence and migration plan", done: true },
-    { label: "Accounts", detail: "Station sign-in and permission controls", done: true },
-    { label: "Forms", detail: `${selectedSections.length} sections in selected report`, done: reportCompletion >= 60 },
-    { label: "Evidence", detail: "Object-vault upload link", done: true },
-    { label: "Approvals", detail: selectedTemplate.approvalLimit, done: true },
-    { label: "Deploy", detail: "Launch plan and production check", done: true },
-    { label: "Security", detail: "Session, audit, and control monitor", done: true }
+    { label: "Sign-in", detail: "7 official RMVI station accounts seeded", done: true },
+    { label: "Template search", detail: `${filteredTemplates.length} matching designed reports`, done: true },
+    { label: "Detail view", detail: selectedReport ? `${selectedReport.name} workspace open` : "No report selected", done: Boolean(selectedReport) },
+    { label: "Database", detail: "Persistence, migration, backup, restore checks", done: true },
+    { label: "Deploy", detail: "rmvi.org launch plan and smoke URLs", done: true },
+    { label: "Accounts", detail: "Finance, Audit, Mission desks added", done: true },
+    { label: "Security", detail: "Sessions, audit, controls, evidence chain", done: true }
   ];
 
   React.useEffect(() => {
@@ -7873,13 +7910,14 @@ function Reports({
             <span>Report</span><span>Owner</span><span>Route</span><span>Due</span><span>Status</span>
           </div>
           {visibleReports.map((report) => (
-            <div className="table-row" key={report.name}>
+            <div className={selectedReport?.id === report.id ? "table-row selected-report-row" : "table-row"} key={report.name}>
               <strong>{report.name}<small>{report.type ?? "Administrative"} - {report.period ?? "Current period"}</small></strong>
               <span>{report.owner}<small>{report.routingStage ?? report.state}</small></span>
               <span>{report.path}</span>
               <span>{report.due}<small>{report.evidenceStatus ?? "Evidence pending"}</small></span>
               <div className="table-actions">
                 <StatusPill status={report.state} />
+                <button aria-label={`Open ${report.name}`} onClick={() => setSelectedReportId(report.id)}><PanelLeft size={14} /> Open</button>
                 <button aria-label={`Submit ${report.name}`} onClick={() => onSubmitReport(report.id)}><Send size={14} /> Submit</button>
                 <button aria-label={`Request correction for ${report.name}`} onClick={() => onRequestCorrection(report.id)}><FileClock size={14} /> Correct</button>
                 <button aria-label={`Review ${report.name}`} onClick={() => onReviewReport(report.id)}><FileCheck2 size={14} /> Review</button>
@@ -7923,6 +7961,49 @@ function Reports({
           {visibleReports.length === 0 && <div className="empty-state">No reports match the current state filter.</div>}
         </div>
       </div>
+      {selectedReport && (
+        <div className="panel module-primary report-workspace">
+          <PanelHeader icon={FileText} title="Report Detail Workspace" action={selectedReport.state} />
+          <div className="report-workspace-head">
+            <div>
+              <span>{selectedReport.type ?? "Administrative"} - {selectedReport.period ?? "Current period"}</span>
+              <h2>{selectedReport.name}</h2>
+              <p>{selectedReport.path}</p>
+            </div>
+            <FlowMeter label={`${selectedReportComplete}% form complete`} value={selectedReportComplete} />
+          </div>
+          <div className="office-summary-grid">
+            <Insight label="Prepared by" value={selectedReport.preparedBy ?? selectedReport.owner} />
+            <Insight label="Approval" value={selectedReport.approvalLimit ?? "Delegated review"} />
+            <Insight label="Evidence" value={selectedReport.evidenceStatus ?? "Pending"} />
+            <Insight label="Files" value={String(selectedReport.evidenceFiles?.length ?? 0)} />
+          </div>
+          <div className="report-detail-grid">
+            <div className="report-detail-card">
+              <strong>Report Sections</strong>
+              {selectedReportFieldEntries.length ? selectedReportFieldEntries.map(([section, value]) => (
+                <article key={section}>
+                  <span>{section}</span>
+                  <p>{value || "Not completed yet"}</p>
+                </article>
+              )) : <p>No section fields were saved for this report yet.</p>}
+            </div>
+            <div className="report-detail-card">
+              <strong>Checklist and Signoff</strong>
+              <ul>
+                {(selectedReport.templateChecklist ?? []).map((item) => <li key={item}>{item}</li>)}
+              </ul>
+              <p>{selectedReport.attestation ?? "No attestation recorded yet."}</p>
+              <div className="compact-actions">
+                <button onClick={() => onReviewReport(selectedReport.id)}><FileCheck2 size={14} /> Review</button>
+                <button onClick={() => onBuildGovernancePacket(selectedReport.id)}><Workflow size={14} /> Packet</button>
+                <button onClick={() => onVerifyReport(selectedReport.id)}><CheckCircle2 size={14} /> Verify</button>
+                <button onClick={() => onSubmitReport(selectedReport.id)}><Send size={14} /> Submit</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="panel module-side">
         <PanelHeader icon={Plus} title="Draft Report" action="Create" />
         <form className="office-form" onSubmit={submit}>
@@ -8001,9 +8082,19 @@ function Reports({
         </div>
       </div>
       <div className="panel module-side">
-        <PanelHeader icon={ScrollText} title="Preloaded Church Reports" action={`${churchReportTemplates.length} templates`} />
+        <PanelHeader icon={ScrollText} title="Preloaded Church Reports" action={`${filteredTemplates.length}/${churchReportTemplates.length}`} />
+        <div className="template-filter-bar">
+          <label>
+            <Search size={14} />
+            <input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search reports" />
+          </label>
+          <select value={templateTypeFilter} onChange={(event) => setTemplateTypeFilter(event.target.value)}>
+            <option>All templates</option>
+            {templateTypes.map((option) => <option key={option}>{option}</option>)}
+          </select>
+        </div>
         <div className="template-list">
-          {churchReportTemplates.map((template) => (
+          {filteredTemplates.map((template) => (
             <button
               type="button"
               key={template.id}
@@ -8015,6 +8106,7 @@ function Reports({
               <small>{template.description}</small>
             </button>
           ))}
+          {filteredTemplates.length === 0 && <div className="empty-state">No report templates match this search.</div>}
         </div>
         <div className="template-preview">
           <div>

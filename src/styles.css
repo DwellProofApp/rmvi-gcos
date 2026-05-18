@@ -1829,6 +1829,41 @@ h1 {
   padding-right: 2px;
 }
 
+.template-filter-bar {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(120px, 0.55fr);
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.template-filter-bar label {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border: 1px solid #d8e2f2;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #5b6680;
+  padding: 0 10px;
+}
+
+.template-filter-bar input,
+.template-filter-bar select {
+  width: 100%;
+  min-height: 38px;
+  border: 0;
+  background: transparent;
+  color: #10213f;
+  font-weight: 700;
+}
+
+.template-filter-bar select {
+  border: 1px solid #d8e2f2;
+  border-radius: 7px;
+  background: #ffffff;
+  padding: 0 9px;
+}
+
 .template-list button {
   width: 100%;
   border: 1px solid #d8e2f2;
@@ -1985,6 +2020,91 @@ h1 {
 .completion-track span {
   font-size: 12px;
   font-weight: 700;
+}
+
+.selected-report-row {
+  outline: 2px solid rgba(214, 166, 49, 0.45);
+  outline-offset: -2px;
+  background: #fffaf0;
+}
+
+.report-workspace {
+  grid-column: 1 / -1;
+}
+
+.report-workspace-head {
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) minmax(220px, 0.32fr);
+  gap: 14px;
+  align-items: center;
+  border: 1px solid #d8e2f2;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.report-workspace-head span {
+  color: #8a6818;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.report-workspace-head h2 {
+  color: #0b2f6b;
+  margin: 4px 0;
+  font-size: 22px;
+  letter-spacing: 0;
+}
+
+.report-workspace-head p,
+.report-detail-card p {
+  color: #5b6680;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.report-detail-grid {
+  display: grid;
+  grid-template-columns: minmax(280px, 1.2fr) minmax(260px, 0.8fr);
+  gap: 12px;
+  margin-top: 12px;
+}
+
+.report-detail-card {
+  border: 1px solid #d8e2f2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 13px;
+}
+
+.report-detail-card > strong {
+  display: block;
+  color: #0b2f6b;
+  font-size: 14px;
+  margin-bottom: 10px;
+}
+
+.report-detail-card article {
+  border-top: 1px dashed #d8e2f2;
+  padding: 9px 0;
+}
+
+.report-detail-card article span {
+  display: block;
+  color: #10213f;
+  font-size: 12px;
+  font-weight: 850;
+  margin-bottom: 4px;
+}
+
+.report-detail-card ul {
+  margin: 0 0 12px;
+  padding-left: 18px;
+  color: #33405c;
+  font-size: 12px;
+  font-weight: 750;
 }
 
 .table-actions .file-action,

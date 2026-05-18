@@ -137,6 +137,24 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     });
     const localToken = localLogin.token;
 
+    const financeLogin = await postJson("/api/auth/login", {
+      email: "finance@rmvi.org",
+      password: demoPassword("finance")
+    });
+    assert.equal(financeLogin.station.email, "finance@rmvi.org");
+
+    const auditLogin = await postJson("/api/auth/login", {
+      email: "audit@rmvi.org",
+      password: demoPassword("audit")
+    });
+    assert.equal(auditLogin.station.email, "audit@rmvi.org");
+
+    const missionLogin = await postJson("/api/auth/login", {
+      email: "mission@rmvi.org",
+      password: demoPassword("mission")
+    });
+    assert.equal(missionLogin.station.email, "mission@rmvi.org");
+
     const internationalLogin = await postJson("/api/auth/login", {
       email: "international@rmvi.org",
       password: demoPassword("global")
@@ -493,13 +511,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(evidenceDigest.exported >= 1, true);
 
     const statusAfterSecondLogin = await getJson("/api/status");
-    assert.equal(statusAfterSecondLogin.sessions.active, 3);
+    assert.equal(statusAfterSecondLogin.sessions.active, 6);
     assert.equal("id" in statusAfterSecondLogin.sessions.stations[0], false);
 
     const publicSessionsResponse = await fetch(`${BASE_URL}/api/sessions`);
     assert.equal(publicSessionsResponse.status, 401);
     const privateSessions = await getJson("/api/sessions", nationalToken);
-    assert.equal(privateSessions.active, 3);
+    assert.equal(privateSessions.active, 6);
     assert.equal(Boolean(privateSessions.stations[0].id), true);
     assert.equal(privateSessions.stations[0].id.startsWith("sid_"), true);
     assert.notEqual(privateSessions.stations[0].id, nationalToken);
@@ -572,7 +590,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const revokedLocalSession = await postJson(`/api/sessions/${spareLocalSession.id}/revoke`, {}, nationalToken);
     assert.equal(revokedLocalSession.revoked, spareLocalSession.id);
-    assert.equal(revokedLocalSession.sessions.active, 3);
+    assert.equal(revokedLocalSession.sessions.active, 6);
 
     const bulkSessionLogin = await postJson("/api/auth/login", {
       email: "district_admin@rmvi.org",

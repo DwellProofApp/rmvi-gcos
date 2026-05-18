@@ -10,7 +10,10 @@ export const stationPasswords = {
   "international@rmvi.org": demoStationPassword("global"),
   "np@rmvi.org": demoStationPassword("national"),
   "district_admin@rmvi.org": demoStationPassword("district"),
-  "local_branch_017@rmvi.org": demoStationPassword("local")
+  "local_branch_017@rmvi.org": demoStationPassword("local"),
+  "finance@rmvi.org": demoStationPassword("finance"),
+  "audit@rmvi.org": demoStationPassword("audit"),
+  "mission@rmvi.org": demoStationPassword("mission")
 };
 
 export function normalizeStationEmail(email) {
@@ -25,6 +28,9 @@ export function createSeedState() {
       station("np@rmvi.org", "National Presidency Workstation", "National HQ", "National directives, county oversight, executive summaries"),
       station("district_admin@rmvi.org", "District Command Workstation", "District HQ", "Branch oversight, workflow monitor, transfer approvals"),
       station("local_branch_017@rmvi.org", "Local Branch Workstation", "Local Branch", "Local reports, member registry, directive acknowledgement"),
+      station("finance@rmvi.org", "Finance Desk Workstation", "National HQ", "Financial reports, budgets, releases, reconciliation, audit evidence"),
+      station("audit@rmvi.org", "Audit Desk Workstation", "National HQ", "Compliance review, audit packets, evidence sealing, control testing"),
+      station("mission@rmvi.org", "Mission Office Workstation", "National HQ", "Mission outreach, transfers, church planting, personnel movement"),
       station(riverbendOffice.email, `${riverbendOffice.name} Workstation`, riverbendOffice.level, `${riverbendOffice.department}, supervised by ${riverbendOffice.supervisor}`)
     ],
     messages: [
