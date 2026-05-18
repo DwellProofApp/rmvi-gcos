@@ -71,7 +71,7 @@ type AuditRow = { id: string; event: string; actor: string; object: string; resu
 type OfflineAction = AuditRow & { queuedAt: string };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string };
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string };
-type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[] };
+type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[]; evidence?: string; comments?: string[]; resolutionNote?: string; due?: string; linkedTask?: string; linkedReport?: string; linkedApproval?: string; impactScore?: number; impactSummary?: string; archived?: boolean; archiveReason?: string };
 type AiDraft = { id: string; kind: "Executive Summary" | "Memo" | "Report Brief"; title: string; body: string; sourceCount: number; createdAt: string; status?: string; confidence?: number; sourceNote?: string; sealed?: boolean; chainHash?: string; publishedBy?: string; watchers?: string[] };
 type DocumentRecord = { id: string; name: string; classification: string; source: string; owner: string; fileType: string; status: string; storageKey: string; retainedUntil: string; createdAt: string };
 type SearchResult = { id: string; section: Section; title: string; meta: string; status: string };
@@ -283,6 +283,13 @@ type EscalationDigest = {
   critical: number;
   watched: number;
   resolved: number;
+  evidence?: number;
+  comments?: number;
+  resolutionNotes?: number;
+  due?: number;
+  linked?: number;
+  impact?: number;
+  archived?: number;
   primary: string;
   owner: string;
 };
@@ -3781,6 +3788,143 @@ function App() {
     }
   }
 
+  function attachEscalationEvidence(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const evidence = "Escalation evidence packet";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, evidence } : item));
+    recordAudit("EscalationEvidenceAttached", escalation.item, evidence);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/evidence`, {
+        method: "POST",
+        body: JSON.stringify({ evidence })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function commentEscalation(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const comment = "Escalation reviewed from engine";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, comments: [...(item.comments ?? []), `${activeStation.email}: ${comment}`] } : item));
+    recordAudit("EscalationCommentAdded", escalation.item, comment);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/comment`, {
+        method: "POST",
+        body: JSON.stringify({ comment })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function noteEscalationResolution(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const note = "Resolution note recorded";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, resolutionNote: note } : item));
+    recordAudit("EscalationResolutionNoted", escalation.item, note);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/resolution-note`, {
+        method: "POST",
+        body: JSON.stringify({ note })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateEscalationDue(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const due = escalation.due === "Today" ? "Tomorrow" : "Today";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, due } : item));
+    recordAudit("EscalationDueUpdated", escalation.item, due);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/due`, {
+        method: "POST",
+        body: JSON.stringify({ due })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkEscalationTask(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const taskId = tasks[0]?.id ?? "task-follow-up";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, linkedTask: taskId } : item));
+    recordAudit("EscalationTaskLinked", escalation.item, taskId);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/task`, {
+        method: "POST",
+        body: JSON.stringify({ taskId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkEscalationReport(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const reportId = reports[0]?.id ?? "report-follow-up";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, linkedReport: reportId } : item));
+    recordAudit("EscalationReportLinked", escalation.item, reportId);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/report`, {
+        method: "POST",
+        body: JSON.stringify({ reportId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkEscalationApproval(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const approvalId = approvals[0]?.id ?? "approval-follow-up";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, linkedApproval: approvalId } : item));
+    recordAudit("EscalationApprovalLinked", escalation.item, approvalId);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/approval-link`, {
+        method: "POST",
+        body: JSON.stringify({ approvalId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function scoreEscalationImpact(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, impactScore: 90, impactSummary: "High governance impact" } : item));
+    recordAudit("EscalationImpactScored", escalation.item, "90");
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/impact`, {
+        method: "POST",
+        body: JSON.stringify({ score: 90, summary: "High governance impact" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveEscalation(id: string) {
+    const escalation = escalations.find((item) => item.id === id);
+    if (!escalation) return;
+    const reason = "Archived from escalation engine";
+    setEscalations((items) => items.map((item) => item.id === id ? { ...item, archived: true, archiveReason: reason } : item));
+    recordAudit("EscalationArchived", escalation.item, reason);
+    if (!offlineMode) {
+      void apiRequest<Escalation>(`/api/escalations/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkResolveEscalations(ids: string[]) {
+    const targetIds = ids.length ? ids : escalations.filter((escalation) => !escalation.archived && escalation.status !== "Resolved").slice(0, 3).map((escalation) => escalation.id);
+    setEscalations((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, status: "Resolved", resolutionNote: "Bulk resolved" } : item));
+    recordAudit("EscalationsBulkResolved", "Escalation engine", `${targetIds.length} escalations resolved`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: Escalation[] }>("/api/escalations/bulk/resolve", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, note: "Bulk resolved" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function refreshEscalationDigest() {
     if (offlineMode) {
       recordAudit("EscalationDigestRefreshed", "Escalation digest", "Local escalation digest refreshed");
@@ -5151,6 +5295,16 @@ function App() {
             onUpdateSla={updateEscalationSla}
             onWatchEscalation={watchEscalation}
             onMergeEscalation={mergeEscalation}
+            onAttachEvidence={attachEscalationEvidence}
+            onCommentEscalation={commentEscalation}
+            onNoteResolution={noteEscalationResolution}
+            onUpdateDue={updateEscalationDue}
+            onLinkTask={linkEscalationTask}
+            onLinkReport={linkEscalationReport}
+            onLinkApproval={linkEscalationApproval}
+            onScoreImpact={scoreEscalationImpact}
+            onArchiveEscalation={archiveEscalation}
+            onBulkResolve={bulkResolveEscalations}
             onRefreshDigest={refreshEscalationDigest}
             digest={escalationDigest}
           />
@@ -7279,6 +7433,16 @@ function Escalations({
   onUpdateSla,
   onWatchEscalation,
   onMergeEscalation,
+  onAttachEvidence,
+  onCommentEscalation,
+  onNoteResolution,
+  onUpdateDue,
+  onLinkTask,
+  onLinkReport,
+  onLinkApproval,
+  onScoreImpact,
+  onArchiveEscalation,
+  onBulkResolve,
   onRefreshDigest,
   digest
 }: {
@@ -7295,10 +7459,21 @@ function Escalations({
   onUpdateSla: (id: string) => void;
   onWatchEscalation: (id: string) => void;
   onMergeEscalation: (id: string) => void;
+  onAttachEvidence: (id: string) => void;
+  onCommentEscalation: (id: string) => void;
+  onNoteResolution: (id: string) => void;
+  onUpdateDue: (id: string) => void;
+  onLinkTask: (id: string) => void;
+  onLinkReport: (id: string) => void;
+  onLinkApproval: (id: string) => void;
+  onScoreImpact: (id: string) => void;
+  onArchiveEscalation: (id: string) => void;
+  onBulkResolve: (ids: string[]) => void;
   onRefreshDigest: () => void;
   digest: EscalationDigest | null;
 }) {
-  const openCount = escalations.filter((item) => item.status !== "Resolved").length;
+  const activeEscalations = escalations.filter((item) => !item.archived);
+  const openCount = activeEscalations.filter((item) => item.status !== "Resolved").length;
   const [source, setSource] = React.useState<Escalation["source"]>("Report");
   const [item, setItem] = React.useState("Urgent governance review");
   const [reason, setReason] = React.useState("Deadline risk requires supervisory attention");
@@ -7309,10 +7484,19 @@ function Escalations({
   const [feedback, setFeedback] = React.useState("");
   const visibleEscalations = React.useMemo(() => (
     escalations.filter((escalation) => (
+      !escalation.archived
+      &&
       (severityFilter === "All severities" || escalation.severity === severityFilter)
       && (sourceFilter === "All sources" || escalation.source === sourceFilter)
     ))
   ), [escalations, severityFilter, sourceFilter]);
+  const evidenceCount = activeEscalations.filter((item) => item.evidence).length;
+  const commentCount = activeEscalations.filter((item) => item.comments?.length).length;
+  const noteCount = activeEscalations.filter((item) => item.resolutionNote).length;
+  const dueCount = activeEscalations.filter((item) => item.due).length;
+  const linkedCount = activeEscalations.filter((item) => item.linkedTask || item.linkedReport || item.linkedApproval).length;
+  const impactCount = activeEscalations.filter((item) => item.impactScore !== undefined).length;
+  const archivedCount = escalations.filter((item) => item.archived).length;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -7345,11 +7529,19 @@ function Escalations({
             </select>
           </label>
           <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
+          <button disabled={!permissions.canApprove || !visibleEscalations.length} type="button" onClick={() => onBulkResolve(visibleEscalations.slice(0, 3).map((escalation) => escalation.id))}><CheckCircle2 size={14} /> Bulk resolve</button>
         </div>
         {digest && (
           <div className="workflow-digest">
             <Insight label="Open" value={String(digest.open)} />
             <Insight label="Critical" value={String(digest.critical)} />
+            <Insight label="Evidence" value={String(digest.evidence ?? evidenceCount)} />
+            <Insight label="Comments" value={String(digest.comments ?? commentCount)} />
+            <Insight label="Notes" value={String(digest.resolutionNotes ?? noteCount)} />
+            <Insight label="Due" value={String(digest.due ?? dueCount)} />
+            <Insight label="Linked" value={String(digest.linked ?? linkedCount)} />
+            <Insight label="Impact" value={String(digest.impact ?? impactCount)} />
+            <Insight label="Archived" value={String(digest.archived ?? archivedCount)} />
             <Insight label="Primary" value={digest.primary} />
           </div>
         )}
@@ -7368,6 +7560,16 @@ function Escalations({
               <div className="route-box">
                 <strong>Owner</strong>
                 <span>{escalation.owner}{escalation.sla ? ` | SLA ${escalation.sla}` : ""}{escalation.watchers?.length ? ` | ${escalation.watchers.length} watching` : ""}</span>
+              </div>
+              <div className="approval-meta">
+                <small>{escalation.evidence ?? "No evidence"}</small>
+                <small>{escalation.comments?.length ?? 0} comments</small>
+                <small>{escalation.resolutionNote ?? "No resolution note"}</small>
+                <small>{escalation.due ? `Due ${escalation.due}` : "No due date"}</small>
+                <small>{escalation.linkedTask ? `Task ${escalation.linkedTask}` : "No linked task"}</small>
+                <small>{escalation.linkedReport ? `Report ${escalation.linkedReport}` : "No linked report"}</small>
+                <small>{escalation.linkedApproval ? `Approval ${escalation.linkedApproval}` : "No linked approval"}</small>
+                <small>{escalation.impactScore !== undefined ? `${escalation.impactScore}: ${escalation.impactSummary}` : "No impact score"}</small>
               </div>
               <div className="action-row">
                 <button
@@ -7391,6 +7593,14 @@ function Escalations({
                 >
                   <Bell size={15} /> Watch
                 </button>
+                <button disabled={!permissions.canApprove || escalation.status === "Resolved"} onClick={() => onAttachEvidence(escalation.id)}><Files size={15} /> Evidence</button>
+                <button disabled={escalation.status === "Resolved"} onClick={() => onCommentEscalation(escalation.id)}><MessageSquareText size={15} /> Comment</button>
+                <button disabled={!permissions.canApprove} onClick={() => onNoteResolution(escalation.id)}><FileCheck2 size={15} /> Note</button>
+                <button disabled={!permissions.canApprove || escalation.status === "Resolved"} onClick={() => onUpdateDue(escalation.id)}><CalendarDays size={15} /> Due</button>
+                <button disabled={!permissions.canApprove || escalation.status === "Resolved"} onClick={() => onLinkTask(escalation.id)}><SquareCheckBig size={15} /> Task link</button>
+                <button disabled={!permissions.canApprove || escalation.status === "Resolved"} onClick={() => onLinkReport(escalation.id)}><FileCheck2 size={15} /> Report link</button>
+                <button disabled={!permissions.canApprove || escalation.status === "Resolved"} onClick={() => onLinkApproval(escalation.id)}><Signature size={15} /> Approval link</button>
+                <button disabled={!permissions.canApprove || escalation.status === "Resolved"} onClick={() => onScoreImpact(escalation.id)}><SlidersHorizontal size={15} /> Impact</button>
                 <button
                   aria-label={`Route ${escalation.item}: ${escalation.reason} upward`}
                   disabled={!permissions.canApprove || escalation.status === "Resolved"}
@@ -7426,6 +7636,7 @@ function Escalations({
                 >
                   <GitBranch size={15} /> Merge
                 </button>
+                <button disabled={!permissions.canApprove} onClick={() => onArchiveEscalation(escalation.id)}><ArchiveIcon size={15} /> Archive</button>
               </div>
             </article>
           ))}

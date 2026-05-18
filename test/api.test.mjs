@@ -1453,9 +1453,77 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(watchedEscalation.watchers.includes("np@rmvi.org"), true);
 
+    const evidencedEscalation = await postJson(`/api/escalations/${escalation.id}/evidence`, {
+      evidence: "Automated escalation evidence"
+    }, nationalToken);
+    assert.equal(evidencedEscalation.evidence, "Automated escalation evidence");
+
+    const commentedEscalation = await postJson(`/api/escalations/${escalation.id}/comment`, {
+      comment: "Automated escalation comment"
+    }, nationalToken);
+    assert.equal(commentedEscalation.comments.some((comment) => comment.includes("Automated escalation comment")), true);
+
+    const notedEscalation = await postJson(`/api/escalations/${escalation.id}/resolution-note`, {
+      note: "Automated resolution note"
+    }, nationalToken);
+    assert.equal(notedEscalation.resolutionNote, "Automated resolution note");
+
+    const dueEscalation = await postJson(`/api/escalations/${escalation.id}/due`, {
+      due: "Today"
+    }, nationalToken);
+    assert.equal(dueEscalation.due, "Today");
+
+    const taskLinkedEscalation = await postJson(`/api/escalations/${escalation.id}/task`, {
+      taskId: "tsk-test"
+    }, nationalToken);
+    assert.equal(taskLinkedEscalation.linkedTask, "tsk-test");
+
+    const reportLinkedEscalation = await postJson(`/api/escalations/${escalation.id}/report`, {
+      reportId: "rep-test"
+    }, nationalToken);
+    assert.equal(reportLinkedEscalation.linkedReport, "rep-test");
+
+    const approvalLinkedEscalation = await postJson(`/api/escalations/${escalation.id}/approval-link`, {
+      approvalId: "app-test"
+    }, nationalToken);
+    assert.equal(approvalLinkedEscalation.linkedApproval, "app-test");
+
+    const impactEscalation = await postJson(`/api/escalations/${escalation.id}/impact`, {
+      score: 90,
+      summary: "High governance impact"
+    }, nationalToken);
+    assert.equal(impactEscalation.impactScore, 90);
+    assert.equal(impactEscalation.impactSummary, "High governance impact");
+
     const escalationDigest = await getJson("/api/escalations/digest");
     assert.equal(escalationDigest.open >= 1, true);
     assert.equal(escalationDigest.critical >= 1, true);
+    assert.equal(escalationDigest.evidence >= 1, true);
+    assert.equal(escalationDigest.comments >= 1, true);
+    assert.equal(escalationDigest.resolutionNotes >= 1, true);
+    assert.equal(escalationDigest.due >= 1, true);
+    assert.equal(escalationDigest.linked >= 1, true);
+    assert.equal(escalationDigest.impact >= 1, true);
+
+    const bulkEscalation = await postJson("/api/escalations", {
+      source: "Task",
+      item: "Automated bulk escalation",
+      reason: "Bulk resolution test",
+      severity: "Medium",
+      owner: "Test Office"
+    }, nationalToken);
+    const bulkResolvedEscalations = await postJson("/api/escalations/bulk/resolve", {
+      ids: [bulkEscalation.id],
+      note: "Automated bulk resolution"
+    }, nationalToken);
+    assert.equal(bulkResolvedEscalations.count, 1);
+    assert.equal(bulkResolvedEscalations.updated[0].status, "Resolved");
+
+    const archivedEscalation = await postJson(`/api/escalations/${bulkEscalation.id}/archive`, {
+      reason: "Automated escalation archive"
+    }, nationalToken);
+    assert.equal(archivedEscalation.archived, true);
+    assert.equal(archivedEscalation.archiveReason, "Automated escalation archive");
 
     const mergedEscalation = await postJson(`/api/escalations/${escalation.id}/merge`, {
       target: "Automated primary escalation"
@@ -2196,6 +2264,16 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "EscalationTriaged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationSlaUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationEvidenceAttached"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationCommentAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationResolutionNoted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationDueUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationTaskLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationReportLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationApprovalLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationImpactScored"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationArchived"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "EscalationsBulkResolved"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationMerged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferAcknowledged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferRiskUpdated"), true);

@@ -874,6 +874,48 @@ const validators = {
     if (body.target !== undefined) requireString(body.target, "target");
   },
 
+  "POST /api/escalations/:id/evidence": (body) => {
+    if (body.evidence !== undefined) requireString(body.evidence, "evidence");
+  },
+
+  "POST /api/escalations/:id/comment": (body) => {
+    if (body.comment !== undefined) requireString(body.comment, "comment");
+  },
+
+  "POST /api/escalations/:id/resolution-note": (body) => {
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/escalations/:id/due": (body) => {
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/escalations/:id/task": (body) => {
+    if (body.taskId !== undefined) requireString(body.taskId, "taskId");
+  },
+
+  "POST /api/escalations/:id/report": (body) => {
+    if (body.reportId !== undefined) requireString(body.reportId, "reportId");
+  },
+
+  "POST /api/escalations/:id/approval-link": (body) => {
+    if (body.approvalId !== undefined) requireString(body.approvalId, "approvalId");
+  },
+
+  "POST /api/escalations/:id/impact": (body) => {
+    if (body.score !== undefined) requireNumber(body.score, "score");
+    if (body.summary !== undefined) requireString(body.summary, "summary");
+  },
+
+  "POST /api/escalations/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/escalations/bulk/resolve": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
   "POST /api/offices": (body) => {
     requireString(body.name, "name");
     requireEmail(body.email, "email");

@@ -1547,16 +1547,117 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    attachEscalationEvidence(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.evidence = body.evidence ?? "Escalation evidence packet";
+      record("EscalationEvidenceAttached", body.actor, item.item, item.evidence);
+      return item;
+    },
+
+    commentEscalation(id, body) {
+      const item = findById(state.escalations, id);
+      const comment = body.comment ?? "Escalation reviewed";
+      item.comments = [...(item.comments ?? []), `${body.actor ?? "System"}: ${comment}`];
+      record("EscalationCommentAdded", body.actor, item.item, comment);
+      return item;
+    },
+
+    noteEscalationResolution(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.resolutionNote = body.note ?? "Resolution note recorded";
+      record("EscalationResolutionNoted", body.actor, item.item, item.resolutionNote);
+      return item;
+    },
+
+    updateEscalationDue(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.due = body.due ?? "Today";
+      record("EscalationDueUpdated", body.actor, item.item, item.due);
+      return item;
+    },
+
+    linkEscalationTask(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.linkedTask = body.taskId ?? "task-follow-up";
+      record("EscalationTaskLinked", body.actor, item.item, item.linkedTask);
+      return item;
+    },
+
+    linkEscalationReport(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.linkedReport = body.reportId ?? "report-follow-up";
+      record("EscalationReportLinked", body.actor, item.item, item.linkedReport);
+      return item;
+    },
+
+    linkEscalationApproval(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.linkedApproval = body.approvalId ?? "approval-follow-up";
+      record("EscalationApprovalLinked", body.actor, item.item, item.linkedApproval);
+      return item;
+    },
+
+    scoreEscalationImpact(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.impactScore = body.score ?? 90;
+      item.impactSummary = body.summary ?? "High governance impact";
+      record("EscalationImpactScored", body.actor, item.item, `${item.impactScore}`);
+      return item;
+    },
+
+    archiveEscalation(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.escalations, id);
+      item.archived = true;
+      item.archiveReason = body.reason ?? "Escalation archived";
+      record("EscalationArchived", body.actor, item.item, item.archiveReason);
+      return item;
+    },
+
+    bulkResolveEscalations(body) {
+      requirePermission(body.actor, "canApprove");
+      const ids = body.ids?.length ? body.ids : state.escalations.filter((item) => !item.archived && item.status !== "Resolved").slice(0, 3).map((item) => item.id);
+      const updated = state.escalations.filter((item) => ids.includes(item.id)).map((item) => {
+        item.status = "Resolved";
+        item.resolutionNote = body.note ?? "Bulk resolved";
+        return item;
+      });
+      record("EscalationsBulkResolved", body.actor, "Escalation engine", `${updated.length} escalations resolved`);
+      return { count: updated.length, updated };
+    },
+
     escalationDigest() {
-      const open = state.escalations.filter((item) => item.status !== "Resolved" && item.status !== "Merged");
+      const visible = state.escalations.filter((item) => !item.archived);
+      const open = visible.filter((item) => item.status !== "Resolved" && item.status !== "Merged");
       const critical = open.filter((item) => item.severity === "Critical");
       const watched = open.filter((item) => item.watchers?.length);
+      const evidence = visible.filter((item) => item.evidence);
+      const comments = visible.filter((item) => item.comments?.length);
+      const resolutionNotes = visible.filter((item) => item.resolutionNote);
+      const due = visible.filter((item) => item.due);
+      const linked = visible.filter((item) => item.linkedTask || item.linkedReport || item.linkedApproval);
+      const impact = visible.filter((item) => item.impactScore !== undefined);
+      const archived = state.escalations.filter((item) => item.archived);
       return {
         generatedAt: new Date().toISOString(),
         open: open.length,
         critical: critical.length,
         watched: watched.length,
-        resolved: state.escalations.filter((item) => item.status === "Resolved").length,
+        resolved: visible.filter((item) => item.status === "Resolved").length,
+        evidence: evidence.length,
+        comments: comments.length,
+        resolutionNotes: resolutionNotes.length,
+        due: due.length,
+        linked: linked.length,
+        impact: impact.length,
+        archived: archived.length,
         primary: critical[0]?.item ?? open[0]?.item ?? "No open escalations",
         owner: critical[0]?.owner ?? open[0]?.owner ?? "None"
       };
