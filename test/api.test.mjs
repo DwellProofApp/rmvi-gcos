@@ -97,6 +97,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const statusAfterLogin = await getJson("/api/status");
     assert.equal(statusAfterLogin.sessions.active, 1);
     assert.equal(statusAfterLogin.sessions.stations[0].email, "np@rmvi.org");
+    assert.equal("id" in statusAfterLogin.sessions.stations[0], false);
     assert.equal(statusAfterLogin.sessions.stations[0].minutesRemaining > 0, true);
     assert.equal(statusAfterLogin.storageProvider, "json");
     assert.equal(statusAfterLogin.persistenceStatus.provider, "json");
@@ -493,7 +494,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const statusAfterSecondLogin = await getJson("/api/status");
     assert.equal(statusAfterSecondLogin.sessions.active, 3);
-    assert.equal(Boolean(statusAfterSecondLogin.sessions.stations[0].id), true);
+    assert.equal("id" in statusAfterSecondLogin.sessions.stations[0], false);
+
+    const publicSessionsResponse = await fetch(`${BASE_URL}/api/sessions`);
+    assert.equal(publicSessionsResponse.status, 401);
+    const privateSessions = await getJson("/api/sessions", nationalToken);
+    assert.equal(privateSessions.active, 3);
+    assert.equal(Boolean(privateSessions.stations[0].id), true);
 
     const renewedSession = await postJson("/api/sessions/renew", {}, nationalToken);
     assert.equal(renewedSession.session.email, "np@rmvi.org");
