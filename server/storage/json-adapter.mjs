@@ -124,6 +124,10 @@ export function createJsonStorageAdapter({ dataPath }) {
       return buildMigrationPlan(state, { provider: "json", mode: "json-file", source: dataPath });
     },
 
+    schemaPlan(state) {
+      return buildSchemaPlan(this.migrationPlan(state));
+    },
+
     async exportMigrationBundle(state, { actor, label }) {
       const migrationDir = join(dirname(dataPath), "migrations");
       await mkdir(migrationDir, { recursive: true });
@@ -149,6 +153,24 @@ export function createJsonStorageAdapter({ dataPath }) {
         createdAt: bundle.exportedAt,
         createdBy: actor,
         plan
+      };
+    },
+
+    async exportSchemaPackage(state, { actor, label }) {
+      const schemaDir = join(dirname(dataPath), "migrations");
+      await mkdir(schemaDir, { recursive: true });
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeLabel = String(label ?? "schema").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/(^-|-$)/g, "") || "schema";
+      const schemaPath = join(schemaDir, `gcos-schema-${timestamp}-${safeLabel}.sql`);
+      const schema = this.schemaPlan(state);
+      await writeFile(schemaPath, `${schema.sql}\n`);
+      return {
+        path: schemaPath,
+        label: safeLabel,
+        hash: `sha256:${createHash("sha256").update(schema.sql).digest("hex")}`,
+        createdAt: new Date().toISOString(),
+        createdBy: actor,
+        schema
       };
     }
   };
@@ -226,4 +248,58 @@ function buildMigrationPlan(state, source) {
 
 function tableNameFor(collection) {
   return `gcos_${collection.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`;
+}
+
+function buildSchemaPlan(plan) {
+  const tables = plan.collections.map((item) => ({
+    name: item.targetTable,
+    collection: item.collection,
+    records: item.records,
+    primaryKey: item.identityKey,
+    columns: [
+      { name: item.identityKey, type: "text", nullable: false },
+      { name: "payload", type: "jsonb", nullable: false },
+      { name: "source_collection", type: "text", nullable: false },
+      { name: "created_at", type: "timestamptz", nullable: false, default: "now()" },
+      { name: "updated_at", type: "timestamptz", nullable: false, default: "now()" }
+    ],
+    indexes: [
+      `${item.targetTable}_payload_gin`,
+      `${item.targetTable}_source_collection_idx`
+    ],
+    importStrategy: item.strategy
+  }));
+  const importOrder = tables.map((table) => table.name);
+  const sql = [
+    "-- GCOS database schema package",
+    `-- Generated at ${new Date().toISOString()}`,
+    "create schema if not exists gcos_core;",
+    ...tables.flatMap((table) => [
+      "",
+      `create table if not exists gcos_core.${table.name} (`,
+      `  ${table.primaryKey} text primary key,`,
+      "  payload jsonb not null,",
+      "  source_collection text not null,",
+      "  created_at timestamptz not null default now(),",
+      "  updated_at timestamptz not null default now()",
+      ");",
+      `create index if not exists ${table.name}_payload_gin on gcos_core.${table.name} using gin (payload);`,
+      `create index if not exists ${table.name}_source_collection_idx on gcos_core.${table.name} (source_collection);`
+    ])
+  ].join("\n");
+  return {
+    generatedAt: new Date().toISOString(),
+    schema: "gcos_core",
+    dialect: "postgresql",
+    tableCount: tables.length,
+    estimatedRows: plan.estimatedRows,
+    importOrder,
+    tables,
+    sql,
+    checks: [
+      { name: "schema-name", ok: true, detail: "gcos_core" },
+      { name: "table-count", ok: tables.length > 0, detail: `${tables.length} tables` },
+      { name: "import-order", ok: importOrder.length === tables.length, detail: `${importOrder.length} ordered imports` }
+    ]
+  };
 }

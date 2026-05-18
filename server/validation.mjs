@@ -138,6 +138,10 @@ const validators = {
     if (body.label !== undefined) requireString(body.label, "label");
   },
 
+  "POST /api/persistence/schema-export": (body) => {
+    if (body.label !== undefined) requireString(body.label, "label");
+  },
+
   "POST /api/files/upload": (body) => {
     requireString(body.name, "name");
     requireString(body.contentType, "contentType");

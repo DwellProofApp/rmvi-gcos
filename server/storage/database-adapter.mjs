@@ -110,8 +110,37 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
       };
     },
 
+    schemaPlan(state) {
+      const plan = this.migrationPlan(state);
+      return {
+        generatedAt: new Date().toISOString(),
+        schema: "gcos_core",
+        dialect: "postgresql",
+        tableCount: plan.collections.length,
+        estimatedRows: plan.estimatedRows,
+        importOrder: plan.collections.map((item) => item.targetTable),
+        tables: plan.collections.map((item) => ({
+          name: item.targetTable,
+          collection: item.collection,
+          records: item.records,
+          primaryKey: item.identityKey,
+          columns: [],
+          indexes: [],
+          importStrategy: item.strategy
+        })),
+        sql: "-- Database provider schema is managed by the configured adapter.",
+        checks: [
+          { name: "database-provider", ok: configured, detail: configured ? "Configured" : "Missing GCOS_DATABASE_URL" }
+        ]
+      };
+    },
+
     async exportMigrationBundle() {
       throw new Error("Database migration export is only available from the JSON provider");
+    },
+
+    async exportSchemaPackage() {
+      throw new Error("Database schema export is only available from the JSON provider");
     }
   };
 }

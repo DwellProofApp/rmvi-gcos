@@ -167,6 +167,25 @@ type PersistenceMigrationPlan = {
   blockers: string[];
   nextSteps: string[];
 };
+type PersistenceSchemaPlan = {
+  generatedAt: string;
+  schema: string;
+  dialect: string;
+  tableCount: number;
+  estimatedRows: number;
+  importOrder: string[];
+  tables: {
+    name: string;
+    collection: string;
+    records: number;
+    primaryKey: string;
+    columns: { name: string; type: string; nullable: boolean; default?: string }[];
+    indexes: string[];
+    importStrategy: string;
+  }[];
+  sql: string;
+  checks: { name: string; ok: boolean; detail: string }[];
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -9371,6 +9390,7 @@ function Audit({
   const [evidenceDigest, setEvidenceDigest] = React.useState<EvidenceDigest | null>(null);
   const [persistenceStatus, setPersistenceStatus] = React.useState<PersistenceStatus | null>(apiStatus?.persistenceStatus ?? null);
   const [migrationPlan, setMigrationPlan] = React.useState<PersistenceMigrationPlan | null>(null);
+  const [schemaPlan, setSchemaPlan] = React.useState<PersistenceSchemaPlan | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -9411,6 +9431,7 @@ function Audit({
     void apiRequest<EvidenceDigest>("/api/evidence-vault/digest").then(setEvidenceDigest).catch(() => undefined);
     void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
     void apiRequest<PersistenceMigrationPlan>("/api/persistence/migration-plan").then(setMigrationPlan).catch(() => undefined);
+    void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -9452,6 +9473,21 @@ function Audit({
       body: JSON.stringify({ label: "database-ready" })
     }).then((result) => {
       setMigrationPlan(result.migration.plan);
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function refreshSchemaPlan() {
+    void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
+  }
+
+  function exportSchemaPackage() {
+    void apiRequest<{ schema: { schema: PersistenceSchemaPlan }; status: PersistenceStatus }>("/api/persistence/schema-export", {
+      method: "POST",
+      body: JSON.stringify({ label: "postgres-schema" })
+    }).then((result) => {
+      setSchemaPlan(result.schema.schema);
       setPersistenceStatus(result.status);
       onRefreshAuditDigest();
     }).catch(() => undefined);
@@ -9891,6 +9927,7 @@ function Audit({
         <div className="action-row">
           <button onClick={refreshMigrationPlan}><RefreshCw size={15} /> Plan</button>
           <button onClick={exportMigrationBundle}><Download size={15} /> Bundle</button>
+          <button onClick={exportSchemaPackage}><Server size={15} /> Schema</button>
         </div>
         <div className="office-summary-grid">
           <Insight label="Tables" value={String(migrationPlan?.collections.length ?? 0)} />
@@ -9912,6 +9949,35 @@ function Audit({
               <span>{item.strategy}</span>
               <strong>{item.collection} &gt; {item.targetTable}</strong>
               <small>{item.records} records using {item.identityKey} as identity key</small>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={Server} title="Postgres Schema" action={schemaPlan ? `${schemaPlan.tableCount} tables` : "pending"} />
+        <div className="action-row">
+          <button onClick={refreshSchemaPlan}><RefreshCw size={15} /> Plan</button>
+          <button onClick={exportSchemaPackage}><Download size={15} /> SQL</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Dialect" value={schemaPlan?.dialect ?? "Postgres"} />
+          <Insight label="Schema" value={schemaPlan?.schema ?? "gcos_core"} />
+          <Insight label="Tables" value={String(schemaPlan?.tableCount ?? 0)} />
+          <Insight label="Rows" value={String(schemaPlan?.estimatedRows ?? 0)} />
+          <Insight label="Import order" value={String(schemaPlan?.importOrder.length ?? 0)} />
+          <Insight label="Checks" value={String(schemaPlan?.checks.filter((check) => check.ok).length ?? 0)} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{schemaPlan ? formatDateTime(schemaPlan.generatedAt) : "No schema plan loaded"}</span>
+            <strong>{schemaPlan ? `${schemaPlan.schema}.${schemaPlan.importOrder[0] ?? "tables"}` : "Postgres DDL package"}</strong>
+            <small>{schemaPlan ? `${schemaPlan.sql.split("\n").length} SQL lines ready for migration` : "Generated SQL appears after schema planning."}</small>
+          </article>
+          {(schemaPlan?.tables.slice(0, 5) ?? []).map((table) => (
+            <article className="source-map-item" key={table.name}>
+              <span>{table.importStrategy}</span>
+              <strong>{table.name}</strong>
+              <small>{table.columns.length} columns, {table.indexes.length} indexes, {table.records} records</small>
             </article>
           ))}
         </div>

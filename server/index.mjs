@@ -65,6 +65,8 @@ const routes = {
   "GET /api/persistence/export": ({ session }) => ok(persistenceExport(session.email)),
   "GET /api/persistence/migration-plan": () => ok(persistenceMigrationPlan()),
   "POST /api/persistence/migration-export": async ({ body, session }) => createdResponse(await createPersistenceMigrationExport(body, session.email)),
+  "GET /api/persistence/schema-plan": () => ok(persistenceSchemaPlan()),
+  "POST /api/persistence/schema-export": async ({ body, session }) => createdResponse(await createPersistenceSchemaExport(body, session.email)),
   "GET /api/sessions": () => ok(sessionSummary()),
   "GET /api/sessions/digest": () => ok(sessionDigest()),
   "POST /api/sessions/renew": ({ session }) => ok(renewSession(session.token, session.email)),
@@ -523,6 +525,10 @@ function persistenceMigrationPlan() {
   return storage.migrationPlan(state);
 }
 
+function persistenceSchemaPlan() {
+  return storage.schemaPlan(state);
+}
+
 async function createPersistenceMigrationExport(body, actor) {
   requirePermission(actor, "canApprove");
   const migration = await storage.exportMigrationBundle(state, { actor, label: body.label });
@@ -537,6 +543,22 @@ async function createPersistenceMigrationExport(body, actor) {
   };
   record("PersistenceMigrationExported", actor, "Database migration bundle", migration.path ?? migration.label);
   return { migration, status: await persistenceStatus() };
+}
+
+async function createPersistenceSchemaExport(body, actor) {
+  requirePermission(actor, "canApprove");
+  const schema = await storage.exportSchemaPackage(state, { actor, label: body.label });
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastSchemaExport = {
+    path: schema.path,
+    label: schema.label,
+    hash: schema.hash,
+    createdAt: schema.createdAt,
+    createdBy: schema.createdBy,
+    tableCount: schema.schema.tableCount
+  };
+  record("PersistenceSchemaExported", actor, "Database schema package", schema.path ?? schema.label);
+  return { schema, status: await persistenceStatus() };
 }
 
 async function uploadFile(body, actor) {

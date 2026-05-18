@@ -85,6 +85,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(migrationPlan.estimatedRows > 0, true);
     assert.equal(migrationPlan.collections.some((item) => item.collection === "stations" && item.targetTable === "gcos_stations"), true);
 
+    const schemaPlan = await getJson("/api/persistence/schema-plan");
+    assert.equal(schemaPlan.schema, "gcos_core");
+    assert.equal(schemaPlan.dialect, "postgresql");
+    assert.equal(schemaPlan.tableCount, migrationPlan.collections.length);
+    assert.equal(schemaPlan.sql.includes("create schema if not exists gcos_core;"), true);
+    assert.equal(schemaPlan.importOrder.includes("gcos_stations"), true);
+
     const localLogin = await postJson("/api/auth/login", {
       email: "local_branch_017@gcos.org",
       password: "gcos-local"
@@ -122,6 +129,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.match(migrationExport.migration.hash, /^sha256:/);
     assert.equal(migrationExport.migration.plan.target.schema, "gcos_core");
     assert.equal((await readFile(migrationExport.migration.path, "utf8")).includes("\"label\": \"automated-migration\""), true);
+
+    const schemaExport = await postJson("/api/persistence/schema-export", {
+      label: "automated-schema"
+    }, nationalToken);
+    assert.equal(schemaExport.schema.label, "automated-schema");
+    assert.match(schemaExport.schema.hash, /^sha256:/);
+    assert.equal(schemaExport.schema.schema.schema, "gcos_core");
+    assert.equal((await readFile(schemaExport.schema.path, "utf8")).includes("create table if not exists gcos_core.gcos_stations"), true);
 
     const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
       reason: "Automated readiness acknowledgement"

@@ -36,6 +36,7 @@ Production domain target: `rmvi.org`
 - Operational status endpoint with workflow counts and runtime limits
 - Persistence operations for JSON store status, backup, verification, and protected export
 - Database migration planning and JSON-to-database bundle export
+- Postgres schema planning and SQL package export
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
@@ -172,6 +173,8 @@ POST /api/persistence/verify
 GET  /api/persistence/export
 GET  /api/persistence/migration-plan
 POST /api/persistence/migration-export
+GET  /api/persistence/schema-plan
+POST /api/persistence/schema-export
 GET  /api/files
 POST /api/files/upload
 GET  /api/files/:id/download
