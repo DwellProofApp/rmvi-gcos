@@ -149,6 +149,19 @@ type PersistenceStatus = {
   readyForExternalDatabase?: boolean;
   note?: string;
 };
+type PersistenceBackupManifest = {
+  generatedAt: string;
+  provider: string;
+  mode: string;
+  backupsPath: string | null;
+  total: number;
+  totalBytes: number;
+  latest?: { path?: string; label: string; hash: string; createdAt: string; createdBy: string; provider?: string } | null;
+  backups: { path?: string; file?: string; bytes: number; label: string; hash: string; createdAt: string; createdBy: string; provider: string }[];
+  checks: { name: string; ok: boolean; detail: string }[];
+  status: string;
+  nextAction: string;
+};
 type PersistenceMigrationPlan = {
   generatedAt: string;
   source: { provider: string; mode: string; source: string };
@@ -9450,6 +9463,7 @@ function Audit({
   const [evidenceVault, setEvidenceVault] = React.useState<EvidenceRecord[]>([]);
   const [evidenceDigest, setEvidenceDigest] = React.useState<EvidenceDigest | null>(null);
   const [persistenceStatus, setPersistenceStatus] = React.useState<PersistenceStatus | null>(apiStatus?.persistenceStatus ?? null);
+  const [backupManifest, setBackupManifest] = React.useState<PersistenceBackupManifest | null>(null);
   const [migrationPlan, setMigrationPlan] = React.useState<PersistenceMigrationPlan | null>(null);
   const [schemaPlan, setSchemaPlan] = React.useState<PersistenceSchemaPlan | null>(null);
   const [importDryRun, setImportDryRun] = React.useState<PersistenceImportDryRun | null>(null);
@@ -9495,6 +9509,7 @@ function Audit({
     void apiRequest<EvidenceRecord[]>("/api/evidence-vault").then(setEvidenceVault).catch(() => undefined);
     void apiRequest<EvidenceDigest>("/api/evidence-vault/digest").then(setEvidenceDigest).catch(() => undefined);
     void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
+    void apiRequest<PersistenceBackupManifest>("/api/persistence/backup-manifest").then(setBackupManifest).catch(() => undefined);
     void apiRequest<PersistenceMigrationPlan>("/api/persistence/migration-plan").then(setMigrationPlan).catch(() => undefined);
     void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
     void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
@@ -9508,11 +9523,27 @@ function Audit({
   }
 
   function createPersistenceBackup() {
-    void apiRequest<{ status: PersistenceStatus }>("/api/persistence/backup", {
+    void apiRequest<{ status: PersistenceStatus; backup: PersistenceBackupManifest["backups"][number] }>("/api/persistence/backup", {
       method: "POST",
       body: JSON.stringify({ label: "audit-desk" })
     }).then((result) => {
       setPersistenceStatus(result.status);
+      void apiRequest<PersistenceBackupManifest>("/api/persistence/backup-manifest").then(setBackupManifest).catch(() => undefined);
+    }).catch(() => undefined);
+  }
+
+  function refreshBackupManifest() {
+    void apiRequest<PersistenceBackupManifest>("/api/persistence/backup-manifest").then(setBackupManifest).catch(() => undefined);
+  }
+
+  function recordBackupManifest() {
+    void apiRequest<{ manifest: PersistenceBackupManifest; status: PersistenceStatus }>("/api/persistence/backup-manifest", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setBackupManifest(result.manifest);
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
     }).catch(() => undefined);
   }
 
@@ -10025,6 +10056,8 @@ function Audit({
         <div className="action-row">
           <button onClick={refreshPersistenceStatus}><RefreshCw size={15} /> Status</button>
           <button onClick={createPersistenceBackup}><Download size={15} /> Backup</button>
+          <button onClick={refreshBackupManifest}><Files size={15} /> Manifest</button>
+          <button onClick={recordBackupManifest}><ShieldCheck size={15} /> Record</button>
           <button onClick={verifyPersistenceStore}><ShieldCheck size={15} /> Verify</button>
           <button onClick={exportPersistenceStore}><Files size={15} /> Export</button>
           <button onClick={exportMigrationBundle}><ArrowUpFromLine size={15} /> Migration</button>
@@ -10037,6 +10070,8 @@ function Audit({
           <Insight label="Documents" value={String(persistenceStatus?.records?.documents ?? 0)} />
           <Insight label="Hash" value={persistenceStatus?.hash ? persistenceStatus.hash.slice(0, 18) : "None"} />
           <Insight label="Backups" value={persistenceStatus?.backupSupport === false ? "Unavailable" : "Available"} />
+          <Insight label="Manifest" value={backupManifest?.status ?? "Pending"} />
+          <Insight label="Backup files" value={String(backupManifest?.total ?? 0)} />
           <Insight label="Migration" value={persistenceStatus?.migrationReady ? "Ready" : "Planned"} />
           <Insight label="External DB" value={persistenceStatus?.readyForExternalDatabase ? "Ready" : "Planned"} />
         </div>
@@ -10047,8 +10082,23 @@ function Audit({
             <small>Backups: {persistenceStatus?.backupsPath ?? "not checked"}</small>
             <small>Last backup: {persistenceStatus?.lastBackup ? `${persistenceStatus.lastBackup.label} by ${persistenceStatus.lastBackup.createdBy}` : "none recorded"}</small>
             <small>Last verify: {persistenceStatus?.lastVerifiedAt ? `${formatDateTime(persistenceStatus.lastVerifiedAt)} by ${persistenceStatus.lastVerifiedBy}` : "not verified yet"}</small>
+            <small>Manifest: {backupManifest ? `${backupManifest.total} backups, ${backupManifest.totalBytes} bytes` : "not loaded"}</small>
             {persistenceStatus?.note && <small>{persistenceStatus.note}</small>}
           </article>
+          {(backupManifest?.backups.slice(0, 3) ?? []).map((backup) => (
+            <article className="source-map-item" key={`${backup.hash}-${backup.createdAt}`}>
+              <span>{backup.label}</span>
+              <strong>{backup.hash.slice(0, 24)}</strong>
+              <small>{formatDateTime(backup.createdAt)} by {backup.createdBy} - {backup.bytes} bytes</small>
+            </article>
+          ))}
+          {(backupManifest?.checks ?? []).map((check) => (
+            <article className="source-map-item" key={check.name}>
+              <span>{check.ok ? "Pass" : "Hold"}</span>
+              <strong>{check.name}</strong>
+              <small>{check.detail}</small>
+            </article>
+          ))}
         </div>
       </div>
       <div className="panel module-side">

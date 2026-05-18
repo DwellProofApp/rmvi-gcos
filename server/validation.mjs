@@ -132,6 +132,8 @@ const validators = {
     if (body.label !== undefined) requireString(body.label, "label");
   },
 
+  "POST /api/persistence/backup-manifest": () => {},
+
   "POST /api/persistence/verify": () => {},
 
   "POST /api/persistence/migration-export": (body) => {

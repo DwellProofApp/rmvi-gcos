@@ -181,6 +181,38 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
       };
     },
 
+    async backupManifest(state) {
+      const latest = state.persistenceMeta?.lastBackup ?? null;
+      const backups = latest ? [{
+        path: latest.path,
+        file: latest.label,
+        bytes: 0,
+        label: latest.label,
+        hash: latest.hash,
+        createdAt: latest.createdAt,
+        createdBy: latest.createdBy,
+        provider: latest.provider ?? "database"
+      }] : [];
+      const checks = [
+        { name: "backup-present", ok: Boolean(latest?.hash), detail: latest ? `${latest.label} recorded` : "No database snapshot recorded" },
+        { name: "provider", ok: configured, detail: configured ? "database provider configured" : "GCOS_DATABASE_URL not configured" },
+        { name: "hashes", ok: backups.every((backup) => String(backup.hash ?? "").startsWith("sha256:")), detail: backups.length ? `${backups.length} hashes recorded` : "No hashes recorded" }
+      ];
+      return {
+        generatedAt: new Date().toISOString(),
+        provider: "database",
+        mode: this.mode,
+        backupsPath: null,
+        total: backups.length,
+        totalBytes: 0,
+        latest,
+        backups,
+        checks,
+        status: checks.every((check) => check.ok) ? "protected" : "needs-backup",
+        nextAction: latest ? "Confirm external managed database backups are enabled" : "Create a database snapshot record"
+      };
+    },
+
     exportState(state, actor) {
       return {
         exportedAt: new Date().toISOString(),

@@ -52,6 +52,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(launchReadiness.checks.some((check) => check.name === "deployment-target"), true);
     assert.equal(launchReadiness.checks.some((check) => check.name === "database-pool"), true);
     assert.equal(launchReadiness.checks.some((check) => check.name === "rate-limit-protection"), true);
+    assert.equal(launchReadiness.checks.some((check) => check.name === "backup-manifest"), true);
 
     const deploymentPlan = await getJson("/api/launch/deployment-plan");
     assert.equal(deploymentPlan.targetDomain, "rmvi.org");
@@ -137,6 +138,16 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persistenceBackup.backup.label, "automated-test");
     assert.match(persistenceBackup.backup.hash, /^sha256:/);
     assert.equal((await readFile(persistenceBackup.backup.path, "utf8")).includes("\"label\": \"automated-test\""), true);
+
+    const backupManifest = await getJson("/api/persistence/backup-manifest");
+    assert.equal(backupManifest.status, "protected");
+    assert.equal(backupManifest.total >= 1, true);
+    assert.equal(backupManifest.backups.some((backup) => backup.label === "automated-test"), true);
+    assert.equal(backupManifest.checks.some((check) => check.name === "hashes" && check.ok), true);
+
+    const recordedBackupManifest = await postJson("/api/persistence/backup-manifest", {}, nationalToken);
+    assert.equal(recordedBackupManifest.manifest.status, "protected");
+    assert.equal(recordedBackupManifest.status.records.stations > 0, true);
 
     const verifiedPersistence = await postJson("/api/persistence/verify", {}, nationalToken);
     assert.equal(verifiedPersistence.verified, true);

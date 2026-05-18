@@ -72,6 +72,8 @@ const routes = {
   "POST /api/evidence-vault/:id/file": ({ params, body, session }) => ok(linkEvidenceFile(params.id, body, session.email)),
   "GET /api/persistence/status": async () => ok(await persistenceStatus()),
   "POST /api/persistence/backup": async ({ body, session }) => createdResponse(await createPersistenceBackup(body, session.email)),
+  "GET /api/persistence/backup-manifest": async () => ok(await persistenceBackupManifest()),
+  "POST /api/persistence/backup-manifest": async ({ session }) => ok(await recordPersistenceBackupManifest(session.email)),
   "POST /api/persistence/verify": async ({ session }) => ok(await verifyPersistence(session.email)),
   "GET /api/persistence/export": ({ session }) => ok(persistenceExport(session.email)),
   "GET /api/persistence/migration-plan": () => ok(persistenceMigrationPlan()),
@@ -510,6 +512,7 @@ function operationalStatus() {
 async function launchReadiness() {
   const status = operationalStatus();
   const persistence = await persistenceStatus();
+  const backupManifest = await persistenceBackupManifest();
   const cutover = persistenceCutoverChecklist();
   const counts = status.counts;
   const checks = [
@@ -532,6 +535,7 @@ async function launchReadiness() {
     { name: "object-vault-path", category: "production", ok: !OBJECT_VAULT_PATH.includes("/data/object-vault") || process.env.GCOS_OBJECT_VAULT_PATH !== undefined, detail: OBJECT_VAULT_PATH },
     { name: "body-limit", category: "production", ok: MAX_BODY_BYTES >= 1048576, detail: `${MAX_BODY_BYTES} bytes` },
     { name: "rate-limit-protection", category: "production", ok: LOGIN_RATE_LIMIT > 0 && MUTATION_RATE_LIMIT > 0, detail: `${LOGIN_RATE_LIMIT} login attempts / ${Math.round(LOGIN_RATE_WINDOW_MS / 1000)}s` },
+    { name: "backup-manifest", category: "production", ok: backupManifest.status === "protected", detail: `${backupManifest.total} backups, ${backupManifest.totalBytes} bytes` },
     { name: "database-pool", category: "production", ok: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, detail: process.env.GCOS_DATABASE_POOL_SIZE ?? "default" }
   ];
   const mvpChecks = checks.filter((check) => check.category === "mvp");
@@ -719,6 +723,26 @@ async function createPersistenceBackup(body, actor) {
   state.persistenceMeta.lastBackup = backup;
   record("PersistenceBackupCreated", actor, "Persistence store", backup.path ?? backup.label);
   return { backup, status: await persistenceStatus() };
+}
+
+async function persistenceBackupManifest() {
+  return storage.backupManifest(state);
+}
+
+async function recordPersistenceBackupManifest(actor) {
+  requirePermission(actor, "canApprove");
+  const manifest = await persistenceBackupManifest();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastBackupManifest = {
+    generatedAt: manifest.generatedAt,
+    actor,
+    status: manifest.status,
+    total: manifest.total,
+    totalBytes: manifest.totalBytes,
+    latestHash: manifest.latest?.hash ?? null
+  };
+  record("PersistenceBackupManifestRecorded", actor, "Persistence backups", `${manifest.total} backups / ${manifest.status}`);
+  return { manifest, status: await persistenceStatus() };
 }
 
 async function verifyPersistence(actor) {

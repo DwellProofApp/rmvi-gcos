@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, readdir, stat, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 export function createJsonStorageAdapter({ dataPath }) {
@@ -110,6 +110,52 @@ export function createJsonStorageAdapter({ dataPath }) {
       };
     },
 
+    async backupManifest(state) {
+      const backupDir = join(dirname(dataPath), "backups");
+      let files = [];
+      try {
+        files = (await readdir(backupDir)).filter((file) => file.endsWith(".json"));
+      } catch (error) {
+        if (error.code !== "ENOENT") throw error;
+      }
+      const backups = await Promise.all(files.map(async (file) => {
+        const path = join(backupDir, file);
+        const details = await stat(path);
+        let metadata = {};
+        try {
+          const parsed = JSON.parse(await readFile(path, "utf8"));
+          metadata = {
+            label: parsed.label ?? file.replace(/^gcos-/, "").replace(/\.json$/, ""),
+            hash: parsed.hash ?? `sha256:${createHash("sha256").update(JSON.stringify(parsed.state ?? parsed)).digest("hex")}`,
+            createdAt: parsed.exportedAt ?? details.mtime.toISOString(),
+            createdBy: parsed.exportedBy ?? "unknown",
+            provider: parsed.provider ?? "json"
+          };
+        } catch {
+          metadata = {
+            label: file.replace(/^gcos-/, "").replace(/\.json$/, ""),
+            hash: `sha256:${createHash("sha256").update(await readFile(path)).digest("hex")}`,
+            createdAt: details.mtime.toISOString(),
+            createdBy: "unknown",
+            provider: "json"
+          };
+        }
+        return {
+          path,
+          file,
+          bytes: details.size,
+          ...metadata
+        };
+      }));
+      backups.sort((a, b) => String(b.createdAt).localeCompare(String(a.createdAt)));
+      return buildBackupManifest(state, {
+        provider: "json",
+        mode: "json-file",
+        backupsPath: backupDir,
+        backups
+      });
+    },
+
     exportState(state, actor) {
       return {
         exportedAt: new Date().toISOString(),
@@ -206,6 +252,30 @@ function recordCounts(state) {
     aiDrafts: state.aiDrafts.length,
     audit: state.audit.length,
     events: state.events.length
+  };
+}
+
+function buildBackupManifest(state, { provider, mode, backupsPath, backups }) {
+  const totalBytes = backups.reduce((sum, backup) => sum + (backup.bytes ?? 0), 0);
+  const latest = backups[0] ?? state.persistenceMeta?.lastBackup ?? null;
+  const checks = [
+    { name: "backup-present", ok: backups.length > 0 || Boolean(state.persistenceMeta?.lastBackup), detail: backups.length ? `${backups.length} backup files` : "No backup file found" },
+    { name: "hashes", ok: backups.every((backup) => String(backup.hash ?? "").startsWith("sha256:")), detail: backups.length ? `${backups.length} hashes recorded` : "No hashes recorded" },
+    { name: "latest-known", ok: Boolean(latest?.createdAt), detail: latest?.createdAt ?? "No latest backup timestamp" }
+  ];
+  const status = checks.every((check) => check.ok) ? "protected" : "needs-backup";
+  return {
+    generatedAt: new Date().toISOString(),
+    provider,
+    mode,
+    backupsPath,
+    total: backups.length,
+    totalBytes,
+    latest,
+    backups,
+    checks,
+    status,
+    nextAction: status === "protected" ? "Record backup manifest before database cutover" : "Create a persistence backup"
   };
 }
 

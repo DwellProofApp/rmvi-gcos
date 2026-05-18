@@ -98,6 +98,7 @@ MVP persistence can run from the live Postgres JSONB adapter.
 - Set `GCOS_DATABASE_SSL=1` for managed providers that require TLS.
 - Set `GCOS_OBJECT_VAULT_PATH` to a durable path for uploaded files.
 - Keep JSON backup/export artifacts until the database cutover checklist is clean.
+- Record `/api/persistence/backup-manifest` after creating a backup so launch readiness can verify the backup set.
 
 ## 7. Production Hardening
 
