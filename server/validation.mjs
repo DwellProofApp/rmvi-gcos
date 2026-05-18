@@ -502,6 +502,10 @@ const validators = {
     if (body.state !== undefined) requireString(body.state, "state");
   },
 
+  "POST /api/approvals/:id/execute": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+  },
+
   "POST /api/approvals/:id/watch": (body) => {
     if (body.watcher !== undefined) requireString(body.watcher, "watcher");
   },

@@ -174,6 +174,7 @@ const routes = {
   "POST /api/approvals/:id/delegate": ({ params, body }) => ok(services.delegateApproval(params.id, body)),
   "POST /api/approvals/:id/hold": ({ params, body }) => ok(services.holdApproval(params.id, body)),
   "POST /api/approvals/:id/release": ({ params, body }) => ok(services.releaseApprovalHold(params.id, body)),
+  "POST /api/approvals/:id/execute": ({ params, body, session }) => createdResponse(services.executeApproval(params.id, { ...body, actor: session.email })),
   "POST /api/approvals/:id/watch": ({ params, body }) => ok(services.watchApproval(params.id, body)),
   "POST /api/approvals/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateApproval(params.id, body)),
   "POST /api/approvals/:id/archive": ({ params, body }) => ok(services.archiveApproval(params.id, body)),

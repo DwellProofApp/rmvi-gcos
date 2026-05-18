@@ -1539,6 +1539,37 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    executeApproval(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.state = "Approved";
+      item.signatures = "complete";
+      item.executionStatus = body.status ?? "Executed";
+      item.executedAt = new Date().toISOString();
+      item.executedBy = body.actor;
+      item.auditTrail = [
+        ...(item.auditTrail ?? []),
+        `${item.executedAt}: ${item.executionStatus} by ${body.actor}`
+      ];
+
+      const authorization = documentRecord(
+        `${item.request} authorization record.pdf`,
+        "Approval authorization",
+        "Approval",
+        body.actor,
+        "PDF",
+        "Archived"
+      );
+      authorization.linkedApproval = item.id;
+      if (item.linkedReport) authorization.linkedReport = item.linkedReport;
+      authorization.verified = true;
+      authorization.verificationNote = "Approval execution archived";
+      state.documents.unshift(authorization);
+
+      record("ApprovalExecuted", body.actor, item.request, authorization.name);
+      return { approval: item, document: authorization };
+    },
+
     watchApproval(id, body) {
       const item = findById(state.approvals, id);
       const watcher = body.watcher ?? body.actor ?? "Watcher";
@@ -1584,6 +1615,8 @@ export function createServices({ state, record, requirePermission, findById }) {
       const signed = state.approvals.filter((item) => /signature|complete|\d+\/\d+/i.test(item.signatures));
       const watched = state.approvals.filter((item) => item.watchers?.length);
       const archived = state.approvals.filter((item) => item.archived);
+      const executed = state.approvals.filter((item) => item.executionStatus === "Executed");
+      const linked = state.approvals.filter((item) => item.linkedReport || item.linkedTask);
       return {
         generatedAt: new Date().toISOString(),
         total: state.approvals.length,
@@ -1593,6 +1626,8 @@ export function createServices({ state, record, requirePermission, findById }) {
         signed: signed.length,
         watched: watched.length,
         archived: archived.length,
+        executed: executed.length,
+        linked: linked.length,
         nextApproval: held[0]?.request ?? delegated[0]?.request ?? open[0]?.request ?? state.approvals[0]?.request ?? "No approvals"
       };
     },

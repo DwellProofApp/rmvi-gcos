@@ -86,7 +86,25 @@ type Report = {
   archived?: boolean;
   watchers?: string[];
 };
-type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string; delegate?: string; holdReason?: string; archived?: boolean; watchers?: string[] };
+type Approval = {
+  id: string;
+  request: string;
+  route: string;
+  limit: string;
+  state: string;
+  signatures: string;
+  delegate?: string;
+  holdReason?: string;
+  linkedReport?: string;
+  linkedTask?: string;
+  evidenceStatus?: string;
+  executionStatus?: string;
+  executedAt?: string;
+  executedBy?: string;
+  auditTrail?: string[];
+  archived?: boolean;
+  watchers?: string[];
+};
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
@@ -694,6 +712,8 @@ type ApprovalDigest = {
   signed: number;
   watched: number;
   archived: number;
+  executed?: number;
+  linked?: number;
   nextApproval: string;
 };
 type AiDraftDigest = {
@@ -3548,6 +3568,38 @@ function App() {
     }
   }
 
+  function executeApproval(id: string) {
+    const approval = approvals.find((item) => item.id === id);
+    if (!approval) return;
+    const executedAt = new Date().toISOString();
+    setApprovals((items) => items.map((item) => item.id === id ? {
+      ...item,
+      state: "Approved",
+      signatures: "complete",
+      executionStatus: "Executed",
+      executedAt,
+      executedBy: activeStation.email,
+      auditTrail: [...(item.auditTrail ?? []), `${executedAt}: Executed by ${activeStation.email}`]
+    } : item));
+    archiveDocument({
+      name: `${approval.request} authorization record.pdf`,
+      classification: "Approval authorization",
+      source: "Approval",
+      owner: activeStation.email,
+      fileType: "PDF",
+      status: offlineMode ? "Queued" : "Archived",
+      linkedApproval: approval.id,
+      linkedReport: approval.linkedReport
+    });
+    recordAudit("ApprovalExecuted", approval.request, "Execution archived");
+    if (!offlineMode) {
+      void apiRequest<{ approval: Approval; document: DocumentRecord }>(`/api/approvals/${id}/execute`, {
+        method: "POST",
+        body: JSON.stringify({ status: "Executed" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function watchApproval(id: string) {
     const approval = approvals.find((item) => item.id === id);
     if (!approval) return;
@@ -5874,6 +5926,7 @@ function App() {
             onDelegate={delegateApproval}
             onHold={holdApproval}
             onReleaseHold={releaseApprovalHold}
+            onExecute={executeApproval}
             onWatch={watchApproval}
             onDuplicate={duplicateApproval}
             onArchive={archiveApproval}
@@ -7167,6 +7220,7 @@ function Approvals({
   onDelegate,
   onHold,
   onReleaseHold,
+  onExecute,
   onWatch,
   onDuplicate,
   onArchive,
@@ -7189,6 +7243,7 @@ function Approvals({
   onDelegate: (id: string) => void;
   onHold: (id: string) => void;
   onReleaseHold: (id: string) => void;
+  onExecute: (id: string) => void;
   onWatch: (id: string) => void;
   onDuplicate: (id: string) => void;
   onArchive: (id: string) => void;
@@ -7242,6 +7297,8 @@ function Approvals({
           <Insight label="Signed" value={String(digest?.signed ?? approvals.filter((approval) => approval.signatures !== "0/2").length)} />
           <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
           <Insight label="Archived" value={String(digest?.archived ?? approvals.filter((approval) => approval.archived).length)} />
+          <Insight label="Executed" value={String(digest?.executed ?? approvals.filter((approval) => approval.executionStatus === "Executed").length)} />
+          <Insight label="Linked" value={String(digest?.linked ?? approvals.filter((approval) => approval.linkedReport || approval.linkedTask).length)} />
           <Insight label="Next approval" value={digest?.nextApproval ?? approvals[0]?.request ?? "None"} />
         </div>
         <div className="approval-board">
@@ -7255,6 +7312,8 @@ function Approvals({
                 <small>{approval.signatures} signatures</small>
                 <small>{approval.delegate ?? "No delegate"}</small>
                 <small>{approval.watchers?.length ?? 0} watchers</small>
+                <small>{approval.executionStatus ?? "Not executed"}</small>
+                <small>{approval.linkedReport ? "Report linked" : "No report link"}</small>
               </div>
               <div className="action-row">
                 <button
@@ -7282,6 +7341,7 @@ function Approvals({
                 <button disabled={!permissions.canApprove} onClick={() => onDelegate(approval.id)}><Users size={15} /> Delegate</button>
                 <button disabled={!permissions.canApprove} onClick={() => onHold(approval.id)}><LockKeyhole size={15} /> Hold</button>
                 <button disabled={!permissions.canApprove} onClick={() => onReleaseHold(approval.id)}><TimerReset size={15} /> Release</button>
+                <button disabled={!permissions.canApprove} onClick={() => onExecute(approval.id)}><FileCheck2 size={15} /> Execute</button>
                 <button onClick={() => onWatch(approval.id)}><Bell size={15} /> Watch</button>
                 <button disabled={!permissions.canApprove} onClick={() => onDuplicate(approval.id)}><Files size={15} /> Duplicate</button>
                 <button disabled={!permissions.canApprove} onClick={() => onArchive(approval.id)}><FileClock size={15} /> Archive</button>
@@ -7300,10 +7360,11 @@ function Approvals({
                 </button>
               </div>
               <div className="pipeline mini">
-                {["Request", "Validation", "Delegation", "Approval", "Audit"].map((step) => (
+                {["Request", "Validation", "Delegation", "Approval", "Execute", "Audit"].map((step) => (
                   <div className="pipeline-step" key={step}>{step}</div>
                 ))}
               </div>
+              {approval.auditTrail?.length ? <p className="approval-trail">{approval.auditTrail.at(-1)}</p> : null}
             </article>
           ))}
         </div>

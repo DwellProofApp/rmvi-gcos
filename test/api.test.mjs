@@ -977,6 +977,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(releasedApproval.state, "Validation");
 
+    const executedApproval = await postJson(`/api/approvals/${createdApproval.id}/execute`, {
+      status: "Executed"
+    }, nationalToken);
+    assert.equal(executedApproval.approval.executionStatus, "Executed");
+    assert.equal(executedApproval.approval.executedBy, "np@rmvi.org");
+    assert.equal(executedApproval.document.linkedApproval, createdApproval.id);
+    assert.equal(executedApproval.document.classification, "Approval authorization");
+
     const watchedApproval = await postJson(`/api/approvals/${createdApproval.id}/watch`, {
       watcher: "np@rmvi.org"
     }, nationalToken);
@@ -1004,6 +1012,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(approvalDigest.total > 0, true);
     assert.equal(approvalDigest.watched >= 1, true);
     assert.equal(approvalDigest.archived >= 1, true);
+    assert.equal(approvalDigest.executed >= 1, true);
 
     const rejectedRequest = await postJson(`/api/approvals/${approvals[1].id}/reject`, {
       reason: "Authority documentation incomplete"

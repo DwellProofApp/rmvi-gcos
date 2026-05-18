@@ -1348,8 +1348,18 @@ h1 {
 .approval-meta {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   justify-content: space-between;
   gap: 8px;
+}
+
+.approval-trail {
+  margin: 0;
+  border-left: 3px solid #f4c542;
+  padding-left: 10px;
+  color: #5b6680;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .status {
