@@ -39,6 +39,7 @@ Production domain target: `rmvi.org`
 - Postgres schema planning and SQL package export
 - Database import dry-run validation with ordered batches
 - Database cutover checklist with go/no-go provider switch gates
+- Live Postgres JSONB storage adapter for database-backed persistence
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
@@ -118,8 +119,10 @@ docs/REPLIT_RMVI_DOMAIN.md
 VITE_GCOS_API_BASE  Frontend API origin; leave empty for same-origin production serving
 GCOS_API_PORT       API/web server port, defaults to 8787
 GCOS_HOST           Bind host, use 127.0.0.1 locally and 0.0.0.0 on Replit/hosting
-GCOS_STORAGE_PROVIDER Storage adapter, use json now or database for the migration shell
-GCOS_DATABASE_URL   Future database connection string used by the database adapter
+GCOS_STORAGE_PROVIDER Storage adapter, use json by default or database for Postgres JSONB
+GCOS_DATABASE_URL   Postgres connection string used when GCOS_STORAGE_PROVIDER=database
+GCOS_DATABASE_SSL   Set to 1 when the managed Postgres host requires SSL
+GCOS_DATABASE_POOL_SIZE Max Postgres pool connections, defaults to 5
 GCOS_DATA_PATH      JSON persistence path, defaults to data/gcos-state.json
 GCOS_OBJECT_VAULT_PATH Local file vault directory, defaults beside GCOS_DATA_PATH
 GCOS_SERVE_WEB      Set to 1 to serve the built web app from the API server
@@ -295,7 +298,7 @@ The current API test suite covers:
 
 ## Next Build Milestones
 
-1. Add database adapters for PostgreSQL, MongoDB, Neo4j, Redis, and object storage.
+1. Add production session storage and token rotation.
 2. Add frontend component tests for the workstation modules.
-3. Add production session storage and token rotation.
+3. Add specialized MongoDB, Neo4j, Redis, and object storage adapters.
 4. Add binary file upload adapters for ChurchMail/report attachments.
