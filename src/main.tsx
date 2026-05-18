@@ -85,6 +85,13 @@ type Report = {
   verified?: boolean;
   archived?: boolean;
   watchers?: string[];
+  templateId?: string;
+  preparedBy?: string;
+  attestation?: string;
+  approvalLimit?: string;
+  reportFields?: Record<string, string>;
+  templateChecklist?: string[];
+  evidenceFiles?: FileReference[];
 };
 type ReportTemplate = {
   id: string;
@@ -1530,6 +1537,26 @@ const churchReportTemplates: ReportTemplate[] = [
   }
 ];
 
+function reportTemplateSections(template: ReportTemplate) {
+  return Array.from(new Set([
+    "Executive summary",
+    "Reporting period activity",
+    "Attendance / participation",
+    "Financial or resource notes",
+    ...template.checklist,
+    "Risks, corrections, and needs",
+    "Next actions"
+  ])).slice(0, 9);
+}
+
+function defaultReportFields(template: ReportTemplate) {
+  return Object.fromEntries(reportTemplateSections(template).map((section) => [section, ""])) as Record<string, string>;
+}
+
+function completedReportFields(fields?: Record<string, string>) {
+  return Object.values(fields ?? {}).filter((value) => value.trim().length > 0).length;
+}
+
 const workflows = [
   { label: "Financial approvals", count: 18, status: "5 awaiting signatures", progress: 72, tone: "green" },
   { label: "Mission reports", count: 43, status: "9 corrections requested", progress: 64, tone: "blue" },
@@ -2491,6 +2518,28 @@ function App() {
         body: JSON.stringify(reportDraft)
       }).then(refreshFromApi).catch(() => undefined);
     }
+  }
+
+  async function uploadReportEvidenceFile(id: string, file: File) {
+    const targetReport = reports.find((item) => item.id === id);
+    if (!targetReport) return;
+    const contentBase64 = await readFileAsDataUrl(file);
+    const uploaded = await apiRequest<FileRecord>("/api/files/upload", {
+      method: "POST",
+      body: JSON.stringify({
+        name: file.name,
+        contentType: file.type || "application/octet-stream",
+        contentBase64,
+        source: `Report:${targetReport.name}`
+      })
+    });
+    const updated = await apiRequest<Report>(`/api/reports/${id}/file`, {
+      method: "POST",
+      body: JSON.stringify({ fileId: uploaded.id })
+    });
+    setReports((items) => items.map((item) => item.id === id ? updated : item));
+    recordAudit("ReportEvidenceFileLinked", targetReport.name, uploaded.hash);
+    void refreshFromApi();
   }
 
   function requestApprovalFromMessage(id: string) {
@@ -6595,6 +6644,7 @@ function App() {
             onDuplicateReport={duplicateReport}
             onArchiveReport={archiveReportRecord}
             onBuildGovernancePacket={buildReportGovernancePacket}
+            onUploadReportEvidence={uploadReportEvidenceFile}
             onBulkSubmit={bulkSubmitReports}
             onBulkCorrection={bulkRequestReportCorrections}
             onRefreshDigest={refreshReportDigest}
@@ -7660,6 +7710,7 @@ function Reports({
   onDuplicateReport,
   onArchiveReport,
   onBuildGovernancePacket,
+  onUploadReportEvidence,
   onBulkSubmit,
   onBulkCorrection,
   onRefreshDigest,
@@ -7683,6 +7734,7 @@ function Reports({
   onDuplicateReport: (id: string) => void;
   onArchiveReport: (id: string) => void;
   onBuildGovernancePacket: (id: string) => void;
+  onUploadReportEvidence: (id: string, file: File) => void;
   onBulkSubmit: (ids: string[]) => void;
   onBulkCorrection: (ids: string[]) => void;
   onRefreshDigest: () => void;
@@ -7697,6 +7749,9 @@ function Reports({
   const [stateFilter, setStateFilter] = React.useState("All states");
   const [feedback, setFeedback] = React.useState("");
   const [selectedTemplate, setSelectedTemplate] = React.useState<ReportTemplate>(churchReportTemplates[0]);
+  const [preparedBy, setPreparedBy] = React.useState(station.email);
+  const [attestation, setAttestation] = React.useState("I certify this report is accurate and ready for supervisory review.");
+  const [reportFields, setReportFields] = React.useState<Record<string, string>>(() => defaultReportFields(churchReportTemplates[0]));
   const visibleReports = React.useMemo(() => (
     stateFilter === "All states" ? reports : reports.filter((report) => report.state === stateFilter)
   ), [reports, stateFilter]);
@@ -7708,11 +7763,23 @@ function Reports({
   const watchedCount = reports.filter((report) => report.watchers?.length).length;
   const evidenceReadyCount = reports.filter((report) => report.evidenceStatus?.toLowerCase().includes("attached") || report.evidenceStatus?.toLowerCase().includes("verified")).length;
   const approvalReadyCount = reports.filter((report) => report.score >= 80 && report.state !== "Approved").length;
+  const selectedSections = React.useMemo(() => reportTemplateSections(selectedTemplate), [selectedTemplate]);
+  const reportCompletion = selectedSections.length ? Math.round((completedReportFields(reportFields) / selectedSections.length) * 100) : 0;
+  const completionTracks = [
+    { label: "Database", detail: "API persistence and migration plan", done: true },
+    { label: "Accounts", detail: "Station sign-in and permission controls", done: true },
+    { label: "Forms", detail: `${selectedSections.length} sections in selected report`, done: reportCompletion >= 60 },
+    { label: "Evidence", detail: "Object-vault upload link", done: true },
+    { label: "Approvals", detail: selectedTemplate.approvalLimit, done: true },
+    { label: "Deploy", detail: "Launch plan and production check", done: true },
+    { label: "Security", detail: "Session, audit, and control monitor", done: true }
+  ];
 
   React.useEffect(() => {
     setOwner(String(station.level));
     setPath(`${station.level} -> Supervising Office`);
-  }, [station.level]);
+    setPreparedBy(station.email);
+  }, [station.email, station.level]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -7725,7 +7792,13 @@ function Reports({
       period,
       routingStage: selectedTemplate.routingStage,
       evidenceStatus: selectedTemplate.evidenceStatus,
-      reviewNote: `Template checklist: ${selectedTemplate.checklist.join("; ")}. Approval: ${selectedTemplate.approvalLimit}.`
+      reviewNote: `Template checklist: ${selectedTemplate.checklist.join("; ")}. Approval: ${selectedTemplate.approvalLimit}.`,
+      templateId: selectedTemplate.id,
+      preparedBy,
+      attestation,
+      approvalLimit: selectedTemplate.approvalLimit,
+      reportFields,
+      templateChecklist: selectedTemplate.checklist
     });
     setFeedback(`${name} has been drafted from the ${selectedTemplate.type} template.`);
     setName("New administrative report");
@@ -7739,7 +7812,12 @@ function Reports({
     setDue(template.due);
     setPeriod(template.period);
     setPath(template.path);
+    setReportFields(defaultReportFields(template));
     setFeedback(`${template.name} loaded with ${template.checklist.length} required sections.`);
+  }
+
+  function updateReportField(section: string, value: string) {
+    setReportFields((fields) => ({ ...fields, [section]: value }));
   }
 
   function exportReports() {
@@ -7816,6 +7894,18 @@ function Reports({
                 <button aria-label={`Archive ${report.name}`} onClick={() => onArchiveReport(report.id)}><LockKeyhole size={14} /> Archive</button>
                 <button aria-label={`Vault evidence for ${report.name}`} onClick={() => onArchiveEvidence(report.id)}><Files size={14} /> Vault</button>
                 <button aria-label={`Build governance packet for ${report.name}`} onClick={() => onBuildGovernancePacket(report.id)}><Workflow size={14} /> Packet</button>
+                <label className="file-action">
+                  <Upload size={14} /> Upload
+                  <input
+                    type="file"
+                    onChange={(event) => {
+                      const file = event.currentTarget.files?.[0];
+                      if (file) void onUploadReportEvidence(report.id, file);
+                      event.currentTarget.value = "";
+                    }}
+                  />
+                </label>
+                {report.evidenceFiles?.[0] && <button onClick={() => void downloadStoredFile(report.evidenceFiles![0])}><Download size={14} /> File</button>}
                 <button
                   aria-label={`Escalate ${report.name}`}
                   onClick={() => onEscalateReport("Report", report.name, `${report.due} report requires supervisory attention`, report.owner, report.due === "Overdue" ? "Critical" : "Medium")}
@@ -7825,8 +7915,8 @@ function Reports({
               </div>
               <div className="report-detail-strip">
                 <FlowMeter label={`Readiness ${report.score}%`} value={report.score} />
-                <span>{report.reviewNote ?? report.correctionReason ?? "No supervisory notes yet"}</span>
-                <span>{report.verified ? `Verified${report.approvedBy ? ` by ${report.approvedBy}` : ""}` : "Awaiting verification"}</span>
+                <span>{report.reviewNote ?? report.correctionReason ?? `${completedReportFields(report.reportFields)}/${Object.keys(report.reportFields ?? {}).length || 0} report sections completed`}</span>
+                <span>{report.verified ? `Verified${report.approvedBy ? ` by ${report.approvedBy}` : ""}` : `Awaiting verification - ${report.evidenceFiles?.length ?? 0} files`}</span>
               </div>
             </div>
           ))}
@@ -7868,9 +7958,47 @@ function Reports({
               <option>Overdue</option>
             </select>
           </label>
+          <label>
+            <span>Prepared by</span>
+            <input value={preparedBy} onChange={(event) => setPreparedBy(event.target.value)} />
+          </label>
+          <label>
+            <span>Attestation / signature line</span>
+            <textarea value={attestation} onChange={(event) => setAttestation(event.target.value)} />
+          </label>
+          <div className="report-builder">
+            <div className="report-builder-head">
+              <strong>Full report builder</strong>
+              <span>{reportCompletion}% complete</span>
+            </div>
+            {selectedSections.map((section) => (
+              <label key={section}>
+                <span>{section}</span>
+                <textarea
+                  value={reportFields[section] ?? ""}
+                  onChange={(event) => updateReportField(section, event.target.value)}
+                  placeholder={`Enter ${section.toLowerCase()} for ${selectedTemplate.name}`}
+                />
+              </label>
+            ))}
+          </div>
           {feedback && <div className="compose-feedback">{feedback}</div>}
           <button type="submit"><Plus size={15} /> Create report</button>
         </form>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={ClipboardCheck} title="Build 1-7 Completion" action="Bundle" />
+        <div className="completion-track-list">
+          {completionTracks.map((track) => (
+            <div className={track.done ? "completion-track done" : "completion-track"} key={track.label}>
+              {track.done ? <CheckCircle2 size={15} /> : <CircleDot size={15} />}
+              <div>
+                <strong>{track.label}</strong>
+                <span>{track.detail}</span>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
       <div className="panel module-side">
         <PanelHeader icon={ScrollText} title="Preloaded Church Reports" action={`${churchReportTemplates.length} templates`} />

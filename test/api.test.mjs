@@ -761,12 +761,24 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       type: "Financial",
       period: "May 2026",
       routingStage: "Drafting",
-      evidenceStatus: "Evidence pending"
+      evidenceStatus: "Evidence pending",
+      templateId: "tpl-weekly-financial-report",
+      preparedBy: "np@rmvi.org",
+      attestation: "Automated preparer attestation",
+      approvalLimit: "Treasurer and pastor sign-off",
+      templateChecklist: ["Opening balance", "Weekly income"],
+      reportFields: {
+        "Executive summary": "Automated report field summary",
+        "Weekly income": "$500"
+      }
     }, nationalToken);
     assert.equal(createdReport.name, "Automated mission finance report");
     assert.equal(createdReport.state, "Ready");
     assert.equal(createdReport.type, "Financial");
     assert.equal(createdReport.period, "May 2026");
+    assert.equal(createdReport.templateId, "tpl-weekly-financial-report");
+    assert.equal(createdReport.preparedBy, "np@rmvi.org");
+    assert.equal(createdReport.reportFields["Weekly income"], "$500");
 
     const submittedReport = await postJson(`/api/reports/${reports[0].id}/submit`, {}, nationalToken);
     assert.equal(submittedReport.state, "Approved");
@@ -2192,6 +2204,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       fileId: uploadedFile.id
     }, nationalToken);
     assert.equal(linkedEvidenceFile.evidence.files[0].id, uploadedFile.id);
+
+    const linkedReportFile = await postJson(`/api/reports/${createdReport.id}/file`, {
+      fileId: uploadedFile.id
+    }, nationalToken);
+    assert.equal(linkedReportFile.evidenceFiles[0].id, uploadedFile.id);
+    assert.equal(linkedReportFile.routingStage, "Evidence review");
+    assert.equal(linkedReportFile.score >= 72, true);
 
     const downloadedFile = await fetch(`${BASE_URL}/api/files/${uploadedFile.id}/download`, {
       headers: { authorization: `Bearer ${nationalToken}` }

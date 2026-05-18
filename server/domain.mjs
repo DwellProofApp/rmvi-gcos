@@ -123,7 +123,14 @@ export function report(name, owner, path, due, state, score, metadata = {}) {
     evidenceStatus: metadata.evidenceStatus ?? "Evidence pending",
     correctionReason: metadata.correctionReason,
     verified: metadata.verified,
-    approvedBy: metadata.approvedBy
+    approvedBy: metadata.approvedBy,
+    templateId: metadata.templateId,
+    preparedBy: metadata.preparedBy,
+    attestation: metadata.attestation,
+    approvalLimit: metadata.approvalLimit,
+    reportFields: metadata.reportFields,
+    templateChecklist: metadata.templateChecklist,
+    evidenceFiles: metadata.evidenceFiles ?? []
   };
 }
 

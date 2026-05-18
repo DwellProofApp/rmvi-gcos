@@ -338,7 +338,13 @@ export function createServices({ state, record, requirePermission, findById }) {
         type: body.type,
         period: body.period,
         routingStage: body.routingStage ?? "Drafting",
-        evidenceStatus: body.evidenceStatus
+        evidenceStatus: body.evidenceStatus,
+        templateId: body.templateId,
+        preparedBy: body.preparedBy,
+        attestation: body.attestation,
+        approvalLimit: body.approvalLimit,
+        reportFields: body.reportFields,
+        templateChecklist: body.templateChecklist
       });
       state.reports.unshift(created);
       record("ReportDrafted", body.actor, created.name, "Created in reporting center");

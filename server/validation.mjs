@@ -169,6 +169,10 @@ const validators = {
     requireString(body.fileId, "fileId");
   },
 
+  "POST /api/reports/:id/file": (body) => {
+    requireString(body.fileId, "fileId");
+  },
+
   "POST /api/evidence-vault/:id/file": (body) => {
     requireString(body.fileId, "fileId");
   },
@@ -404,6 +408,12 @@ const validators = {
     if (body.due !== undefined) requireString(body.due, "due");
     if (body.state !== undefined) requireEnum(body.state, statuses, "state");
     if (body.score !== undefined) requireNumber(body.score, "score");
+    if (body.templateId !== undefined) requireString(body.templateId, "templateId");
+    if (body.preparedBy !== undefined) requireString(body.preparedBy, "preparedBy");
+    if (body.attestation !== undefined) requireString(body.attestation, "attestation");
+    if (body.approvalLimit !== undefined) requireString(body.approvalLimit, "approvalLimit");
+    if (body.templateChecklist !== undefined) requireStringArray(body.templateChecklist, "templateChecklist");
+    if (body.reportFields !== undefined && (body.reportFields === null || typeof body.reportFields !== "object" || Array.isArray(body.reportFields))) throw validationError("reportFields must be an object");
   },
 
   "POST /api/reports/:id/score": (body) => {

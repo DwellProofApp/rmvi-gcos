@@ -717,6 +717,7 @@ h1 {
 .login-form select,
 .office-form input,
 .office-form select,
+.office-form textarea,
 .churchmail-form input,
 .churchmail-form select,
 .ai-desk-form select,
@@ -728,6 +729,12 @@ h1 {
   background: #ffffff;
   color: #10213f;
   padding: 0 11px;
+}
+
+.office-form textarea {
+  min-height: 92px;
+  padding: 10px 11px;
+  resize: vertical;
 }
 
 .ai-desk-form textarea {
@@ -1908,6 +1915,74 @@ h1 {
   margin: 12px 0 0;
   padding: 0 0 0 18px;
   color: #33405c;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.report-builder {
+  display: grid;
+  gap: 10px;
+  border: 1px solid #d8e2f2;
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 12px;
+}
+
+.report-builder-head,
+.completion-track {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.report-builder-head strong {
+  color: #0b2f6b;
+  font-size: 13px;
+}
+
+.report-builder-head span {
+  color: #8a6818;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.completion-track-list {
+  display: grid;
+  gap: 8px;
+}
+
+.completion-track {
+  justify-content: flex-start;
+  border: 1px solid #d8e2f2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #5b6680;
+  padding: 10px;
+}
+
+.completion-track.done {
+  border-color: rgba(214, 166, 49, 0.45);
+  background: rgba(214, 166, 49, 0.1);
+  color: #0b2f6b;
+}
+
+.completion-track div {
+  display: grid;
+  gap: 3px;
+}
+
+.completion-track strong,
+.completion-track span {
+  display: block;
+}
+
+.completion-track strong {
+  color: #10213f;
+  font-size: 13px;
+}
+
+.completion-track span {
   font-size: 12px;
   font-weight: 700;
 }

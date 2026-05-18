@@ -73,6 +73,7 @@ const routes = {
   "POST /api/files/upload": async ({ body, session }) => createdResponse(await uploadFile(body, session.email)),
   "GET /api/files/:id/download": async ({ params, session }) => readStoredFile(params.id, session.email),
   "POST /api/documents/:id/file": ({ params, body, session }) => ok(linkDocumentFile(params.id, body, session.email)),
+  "POST /api/reports/:id/file": ({ params, body, session }) => ok(linkReportFile(params.id, body, session.email)),
   "POST /api/evidence-vault/:id/file": ({ params, body, session }) => ok(linkEvidenceFile(params.id, body, session.email)),
   "GET /api/persistence/status": async () => ok(await persistenceStatus()),
   "POST /api/persistence/backup": async ({ body, session }) => createdResponse(await createPersistenceBackup(body, session.email)),
@@ -1056,6 +1057,21 @@ function linkDocumentFile(id, body, actor) {
   linkFileTo(file, "document", document.id);
   record("FileLinked", actor, document.name, `Linked ${file.name}`);
   return document;
+}
+
+function linkReportFile(id, body, actor) {
+  const reportRecord = findById(state.reports, id);
+  const file = getFile(body.fileId);
+  reportRecord.evidenceFiles ??= [];
+  if (!reportRecord.evidenceFiles.some((item) => item.id === file.id)) {
+    reportRecord.evidenceFiles.push(fileReference(file));
+  }
+  reportRecord.evidenceStatus = `${reportRecord.evidenceFiles.length} evidence file${reportRecord.evidenceFiles.length === 1 ? "" : "s"} attached`;
+  reportRecord.routingStage = "Evidence review";
+  reportRecord.score = Math.max(reportRecord.score ?? 0, 72);
+  linkFileTo(file, "report", reportRecord.id);
+  record("ReportEvidenceFileLinked", actor, reportRecord.name, `Linked ${file.name}`);
+  return reportRecord;
 }
 
 function linkEvidenceFile(id, body, actor) {
