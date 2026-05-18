@@ -18,6 +18,8 @@ const DATABASE_URL = process.env.GCOS_DATABASE_URL ?? "";
 const OBJECT_VAULT_PATH = process.env.GCOS_OBJECT_VAULT_PATH ?? join(dirname(DATA_PATH), "object-vault");
 const SERVE_WEB = process.env.GCOS_SERVE_WEB === "1";
 const WEB_DIST_PATH = process.env.GCOS_WEB_DIST_PATH ?? join(SERVER_DIR, "..", "dist");
+const DOMAIN = process.env.GCOS_DOMAIN ?? "rmvi.org";
+const DEPLOYMENT_TARGET = process.env.GCOS_DEPLOYMENT_TARGET ?? "";
 const STARTED_AT = new Date();
 const ALLOWED_ORIGIN = process.env.GCOS_ALLOWED_ORIGIN ?? "*";
 const parsedMaxBodyBytes = Number(process.env.GCOS_MAX_BODY_BYTES ?? 1024 * 1024);
@@ -508,12 +510,18 @@ async function launchReadiness() {
     { name: "object-vault", category: "mvp", ok: Boolean(OBJECT_VAULT_PATH), detail: OBJECT_VAULT_PATH },
     { name: "persistence", category: "mvp", ok: Boolean(persistence.hash), detail: `${persistence.provider}/${persistence.mode}` },
     { name: "migration-cockpit", category: "mvp", ok: persistenceCutoverChecklist().checks.length >= 3, detail: cutover.nextAction },
-    { name: "public-domain", category: "production", ok: ALLOWED_ORIGIN.includes("rmvi.org"), detail: ALLOWED_ORIGIN },
+    { name: "production-profile", category: "production", ok: process.env.NODE_ENV === "production", detail: process.env.NODE_ENV ?? "not set" },
+    { name: "public-domain", category: "production", ok: DOMAIN === "rmvi.org", detail: DOMAIN },
+    { name: "deployment-target", category: "production", ok: Boolean(DEPLOYMENT_TARGET), detail: DEPLOYMENT_TARGET || "not configured" },
+    { name: "serve-web", category: "production", ok: SERVE_WEB, detail: SERVE_WEB ? "Web served by API" : "Set GCOS_SERVE_WEB=1" },
     { name: "production-reset-lock", category: "production", ok: !DEV_RESET_ENABLED, detail: DEV_RESET_ENABLED ? "Development reset enabled" : "Development reset disabled" },
     { name: "managed-database", category: "production", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? "Database provider selected" : "JSON provider active" },
     { name: "database-ssl", category: "production", ok: process.env.GCOS_DATABASE_SSL === "1" || STORAGE_PROVIDER !== "database", detail: process.env.GCOS_DATABASE_SSL === "1" ? "Database SSL enabled" : "Database SSL not required for current provider" },
     { name: "cors-origin", category: "production", ok: ALLOWED_ORIGIN !== "*", detail: ALLOWED_ORIGIN },
-    { name: "healthcheck-domain", category: "production", ok: (process.env.GCOS_HEALTHCHECK_URL ?? "").includes("rmvi.org"), detail: process.env.GCOS_HEALTHCHECK_URL ?? "not configured" }
+    { name: "healthcheck-domain", category: "production", ok: (process.env.GCOS_HEALTHCHECK_URL ?? "").includes(DOMAIN), detail: process.env.GCOS_HEALTHCHECK_URL ?? "not configured" },
+    { name: "object-vault-path", category: "production", ok: !OBJECT_VAULT_PATH.includes("/data/object-vault") || process.env.GCOS_OBJECT_VAULT_PATH !== undefined, detail: OBJECT_VAULT_PATH },
+    { name: "body-limit", category: "production", ok: MAX_BODY_BYTES >= 1048576, detail: `${MAX_BODY_BYTES} bytes` },
+    { name: "database-pool", category: "production", ok: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, detail: process.env.GCOS_DATABASE_POOL_SIZE ?? "default" }
   ];
   const mvpChecks = checks.filter((check) => check.category === "mvp");
   const productionChecks = checks.filter((check) => check.category === "production");

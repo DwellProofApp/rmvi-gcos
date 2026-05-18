@@ -46,6 +46,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(launchReadiness.mvpScore >= 95, true);
     assert.equal(launchReadiness.productionScore < launchReadiness.mvpScore, true);
     assert.equal(launchReadiness.checks.some((check) => check.name === "managed-database"), true);
+    assert.equal(launchReadiness.checks.some((check) => check.name === "deployment-target"), true);
+    assert.equal(launchReadiness.checks.some((check) => check.name === "database-pool"), true);
 
     const webShell = await fetch(`${BASE_URL}/`);
     assert.equal(webShell.status, 200);

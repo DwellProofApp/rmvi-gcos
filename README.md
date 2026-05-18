@@ -41,6 +41,7 @@ Production domain target: `rmvi.org`
 - Database cutover checklist with go/no-go provider switch gates
 - Live Postgres JSONB storage adapter for database-backed persistence
 - Launch readiness scoring for MVP and production rollout gates
+- Production readiness profile checker for the `rmvi.org` Replit launch
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
@@ -77,6 +78,7 @@ Deployment smoke check:
 ```bash
 npm run healthcheck
 npm run domain:check
+npm run production:check
 ```
 
 Frontend:
