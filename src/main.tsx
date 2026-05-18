@@ -92,6 +92,7 @@ type ApiStatus = {
   uptimeSeconds: number;
   serveWeb: boolean;
   persistence: string;
+  storageProvider?: string;
   persistenceStatus?: PersistenceStatus;
   limits: {
     maxBodyBytes: number;
@@ -133,6 +134,7 @@ type ApiStatus = {
   };
 };
 type PersistenceStatus = {
+  provider: string;
   mode: string;
   path: string;
   hash: string;
@@ -142,7 +144,10 @@ type PersistenceStatus = {
   lastVerifiedBy?: string | null;
   file?: { exists: boolean; bytes: number; updatedAt: string | null };
   backupsPath?: string;
+  backupSupport?: boolean;
+  migrationReady?: boolean;
   readyForExternalDatabase?: boolean;
+  note?: string;
 };
 type ExportSnapshot = {
   exportedAt: string;
@@ -9816,7 +9821,7 @@ function Audit({
         </div>
       </div>
       <div className="panel module-side">
-        <PanelHeader icon={Server} title="Persistence Store" action={persistenceStatus?.mode ?? "checking"} />
+        <PanelHeader icon={Server} title="Persistence Store" action={persistenceStatus ? `${persistenceStatus.provider} / ${persistenceStatus.mode}` : "checking"} />
         <div className="action-row">
           <button onClick={refreshPersistenceStatus}><RefreshCw size={15} /> Status</button>
           <button onClick={createPersistenceBackup}><Download size={15} /> Backup</button>
@@ -9824,20 +9829,24 @@ function Audit({
           <button onClick={exportPersistenceStore}><Files size={15} /> Export</button>
         </div>
         <div className="office-summary-grid">
+          <Insight label="Provider" value={persistenceStatus?.provider ?? apiStatus?.storageProvider ?? "Unknown"} />
           <Insight label="File" value={persistenceStatus?.file?.exists ? "Present" : "Pending"} />
           <Insight label="Bytes" value={String(persistenceStatus?.file?.bytes ?? 0)} />
           <Insight label="Audit rows" value={String(persistenceStatus?.records?.audit ?? auditRows.length)} />
           <Insight label="Documents" value={String(persistenceStatus?.records?.documents ?? 0)} />
           <Insight label="Hash" value={persistenceStatus?.hash ? persistenceStatus.hash.slice(0, 18) : "None"} />
+          <Insight label="Backups" value={persistenceStatus?.backupSupport === false ? "Unavailable" : "Available"} />
+          <Insight label="Migration" value={persistenceStatus?.migrationReady ? "Ready" : "Planned"} />
           <Insight label="External DB" value={persistenceStatus?.readyForExternalDatabase ? "Ready" : "Planned"} />
         </div>
         <div className="source-map-list">
           <article className="source-map-item">
-            <span>{persistenceStatus?.file?.updatedAt ? formatDateTime(persistenceStatus.file.updatedAt) : "No file"}</span>
+            <span>{persistenceStatus?.file?.updatedAt ? formatDateTime(persistenceStatus.file.updatedAt) : persistenceStatus?.provider === "database" ? "Database adapter" : "No file"}</span>
             <strong>{persistenceStatus?.path ?? apiStatus?.persistence ?? "Persistence path unavailable"}</strong>
             <small>Backups: {persistenceStatus?.backupsPath ?? "not checked"}</small>
             <small>Last backup: {persistenceStatus?.lastBackup ? `${persistenceStatus.lastBackup.label} by ${persistenceStatus.lastBackup.createdBy}` : "none recorded"}</small>
             <small>Last verify: {persistenceStatus?.lastVerifiedAt ? `${formatDateTime(persistenceStatus.lastVerifiedAt)} by ${persistenceStatus.lastVerifiedBy}` : "not verified yet"}</small>
+            {persistenceStatus?.note && <small>{persistenceStatus.note}</small>}
           </article>
         </div>
       </div>

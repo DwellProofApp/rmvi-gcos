@@ -1,10 +1,11 @@
 import { createServer } from "node:http";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, stat, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { audit, createSeedState, getPermissions, normalizeStationEmail } from "./domain.mjs";
 import { createServices } from "./services.mjs";
+import { createStorageAdapter } from "./storage/index.mjs";
 import { validateRequest } from "./validation.mjs";
 
 const PORT = Number(process.env.GCOS_API_PORT ?? process.env.PORT ?? 8787);
@@ -12,6 +13,8 @@ const HOST = process.env.GCOS_HOST ?? "127.0.0.1";
 const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DATA_PATH = join(SERVER_DIR, "..", "data", "gcos-state.json");
 const DATA_PATH = process.env.GCOS_DATA_PATH ?? DEFAULT_DATA_PATH;
+const STORAGE_PROVIDER = process.env.GCOS_STORAGE_PROVIDER ?? "json";
+const DATABASE_URL = process.env.GCOS_DATABASE_URL ?? "";
 const OBJECT_VAULT_PATH = process.env.GCOS_OBJECT_VAULT_PATH ?? join(dirname(DATA_PATH), "object-vault");
 const SERVE_WEB = process.env.GCOS_SERVE_WEB === "1";
 const WEB_DIST_PATH = process.env.GCOS_WEB_DIST_PATH ?? join(SERVER_DIR, "..", "dist");
@@ -22,6 +25,7 @@ const MAX_BODY_BYTES = Number.isFinite(parsedMaxBodyBytes) && parsedMaxBodyBytes
   ? parsedMaxBodyBytes
   : 1024 * 1024;
 const DEV_RESET_ENABLED = process.env.GCOS_ENABLE_DEV_RESET === "1" || process.env.NODE_ENV !== "production";
+const storage = createStorageAdapter({ provider: STORAGE_PROVIDER, dataPath: DATA_PATH, databaseUrl: DATABASE_URL });
 
 const state = await loadState();
 const services = createServices({ state, record, requirePermission, findById });
@@ -453,7 +457,8 @@ function operationalStatus() {
     startedAt: STARTED_AT.toISOString(),
     uptimeSeconds: Math.round(process.uptime()),
     serveWeb: SERVE_WEB,
-    persistence: DATA_PATH,
+    persistence: storage.dataPath ?? storage.databaseUrl ?? DATA_PATH,
+    storageProvider: storage.provider,
     persistenceStatus: persistenceStatusSync(),
     limits: {
       maxBodyBytes: MAX_BODY_BYTES,
@@ -481,65 +486,20 @@ function operationalStatus() {
 }
 
 function persistenceStatusSync() {
-  const serialized = JSON.stringify(state);
-  return {
-    mode: "json-file",
-    path: DATA_PATH,
-    hash: hashText(serialized),
-    records: persistenceRecordCounts(),
-    lastBackup: state.persistenceMeta?.lastBackup ?? null,
-    lastVerifiedAt: state.persistenceMeta?.lastVerifiedAt ?? null,
-    lastVerifiedBy: state.persistenceMeta?.lastVerifiedBy ?? null
-  };
+  return storage.statusSync(state);
 }
 
 async function persistenceStatus() {
-  let file = null;
-  try {
-    const details = await stat(DATA_PATH);
-    file = {
-      exists: true,
-      bytes: details.size,
-      updatedAt: details.mtime.toISOString()
-    };
-  } catch (error) {
-    if (error.code !== "ENOENT") throw error;
-    file = { exists: false, bytes: 0, updatedAt: null };
-  }
-  return {
-    ...persistenceStatusSync(),
-    file,
-    backupsPath: join(dirname(DATA_PATH), "backups"),
-    readyForExternalDatabase: true
-  };
+  return storage.status(state);
 }
 
 async function createPersistenceBackup(body, actor) {
   requirePermission(actor, "canApprove");
-  const backupDir = join(dirname(DATA_PATH), "backups");
-  await mkdir(backupDir, { recursive: true });
-  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-  const label = String(body.label ?? "manual").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/(^-|-$)/g, "") || "manual";
-  const backupPath = join(backupDir, `gcos-${timestamp}-${label}.json`);
-  const snapshot = {
-    exportedAt: new Date().toISOString(),
-    exportedBy: actor,
-    label,
-    sourcePath: DATA_PATH,
-    hash: persistenceStatusSync().hash,
-    state
-  };
-  await writeFile(backupPath, `${JSON.stringify(snapshot, null, 2)}\n`);
+  const backup = await storage.backupState(state, { actor, label: body.label });
   state.persistenceMeta ??= {};
-  state.persistenceMeta.lastBackup = {
-    path: backupPath,
-    label,
-    hash: snapshot.hash,
-    createdAt: snapshot.exportedAt,
-    createdBy: actor
-  };
-  record("PersistenceBackupCreated", actor, "Persistence store", backupPath);
-  return { backup: state.persistenceMeta.lastBackup, status: await persistenceStatus() };
+  state.persistenceMeta.lastBackup = backup;
+  record("PersistenceBackupCreated", actor, "Persistence store", backup.path ?? backup.label);
+  return { backup, status: await persistenceStatus() };
 }
 
 async function verifyPersistence(actor) {
@@ -554,33 +514,7 @@ async function verifyPersistence(actor) {
 }
 
 function persistenceExport(actor) {
-  return {
-    exportedAt: new Date().toISOString(),
-    exportedBy: actor,
-    status: persistenceStatusSync(),
-    state
-  };
-}
-
-function persistenceRecordCounts() {
-  return {
-    stations: state.stations.length,
-    messages: state.messages.length,
-    reports: state.reports.length,
-    approvals: state.approvals.length,
-    tasks: state.tasks.length,
-    policies: state.policies.length,
-    calendarEvents: state.calendarEvents.length,
-    personnel: state.personnel.length,
-    escalations: state.escalations.length,
-    transfers: state.transfers.length,
-    offices: state.offices.length,
-    documents: state.documents.length,
-    files: (state.files ?? []).length,
-    aiDrafts: state.aiDrafts.length,
-    audit: state.audit.length,
-    events: state.events.length
-  };
+  return storage.exportState(state, actor);
 }
 
 async function uploadFile(body, actor) {
@@ -706,16 +640,13 @@ function hashBuffer(buffer) {
   return `sha256:${createHash("sha256").update(buffer).digest("hex")}`;
 }
 
-function hashText(text) {
-  return `sha256:${createHash("sha256").update(text).digest("hex")}`;
-}
-
 function readinessReport() {
   const status = operationalStatus();
+  const persistence = status.persistenceStatus;
   const actions = ensureReadinessActions();
   const checks = [
     { name: "web", ok: SERVE_WEB, detail: SERVE_WEB ? "Web shell served by API" : "API-only mode" },
-    { name: "persistence", ok: Boolean(DATA_PATH), detail: DATA_PATH },
+    { name: "persistence", ok: Boolean(persistence?.mode), detail: `${persistence?.provider ?? "unknown"}:${persistence?.mode ?? "unavailable"}` },
     { name: "stations", ok: state.stations.length >= 4, detail: `${state.stations.length} station identities` },
     { name: "audit", ok: state.audit.length > 0, detail: `${state.audit.length} audit rows` },
     { name: "security", ok: DEV_RESET_ENABLED === false || process.env.NODE_ENV !== "production", detail: DEV_RESET_ENABLED ? "Development reset enabled" : "Development reset disabled" },
@@ -1521,40 +1452,7 @@ function requirePermission(actor, permission) {
 }
 
 async function loadState() {
-  const seed = createSeedState();
-  try {
-    const persisted = JSON.parse(await readFile(DATA_PATH, "utf8"));
-    return migratePersistedState({
-      ...seed,
-      ...persisted,
-      stations: persisted.stations ?? seed.stations,
-      messages: persisted.messages ?? seed.messages,
-      reports: persisted.reports ?? seed.reports,
-      approvals: persisted.approvals ?? seed.approvals,
-      tasks: persisted.tasks ?? seed.tasks,
-      policies: persisted.policies ?? seed.policies,
-      calendarEvents: persisted.calendarEvents ?? seed.calendarEvents,
-      personnel: persisted.personnel ?? seed.personnel,
-      escalations: persisted.escalations ?? seed.escalations,
-      transfers: persisted.transfers ?? seed.transfers,
-      offices: persisted.offices ?? seed.offices,
-      documents: persisted.documents ?? seed.documents,
-      files: persisted.files ?? seed.files ?? [],
-      aiDrafts: persisted.aiDrafts?.length ? persisted.aiDrafts : seed.aiDrafts,
-      audit: persisted.audit ?? seed.audit,
-      events: persisted.events ?? seed.events,
-      offlineQueue: persisted.offlineQueue ?? seed.offlineQueue,
-      authCredentials: persisted.authCredentials ?? seed.authCredentials ?? {},
-      readinessActions: persisted.readinessActions ?? seed.readinessActions ?? {},
-      securityControls: persisted.securityControls ?? seed.securityControls ?? {},
-      complianceReviews: persisted.complianceReviews ?? seed.complianceReviews ?? {},
-      evidenceVault: persisted.evidenceVault ?? seed.evidenceVault ?? {},
-      persistenceMeta: persisted.persistenceMeta ?? seed.persistenceMeta ?? {}
-    });
-  } catch (error) {
-    if (error.code !== "ENOENT") console.warn(`Unable to load persisted state: ${error.message}`);
-    return seed;
-  }
+  return storage.loadState({ seed: createSeedState(), migrate: migratePersistedState });
 }
 
 function migratePersistedState(loadedState) {
@@ -1571,8 +1469,7 @@ function migratePersistedState(loadedState) {
 }
 
 async function saveState() {
-  await mkdir(dirname(DATA_PATH), { recursive: true });
-  await writeFile(DATA_PATH, `${JSON.stringify(state, null, 2)}\n`);
+  await storage.saveState(state);
 }
 
 function findById(collection, id) {

@@ -66,11 +66,16 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(statusAfterLogin.sessions.active, 1);
     assert.equal(statusAfterLogin.sessions.stations[0].email, "np@rmvi.org");
     assert.equal(statusAfterLogin.sessions.stations[0].minutesRemaining > 0, true);
+    assert.equal(statusAfterLogin.storageProvider, "json");
+    assert.equal(statusAfterLogin.persistenceStatus.provider, "json");
     assert.equal(statusAfterLogin.persistenceStatus.mode, "json-file");
     assert.match(statusAfterLogin.persistenceStatus.hash, /^sha256:/);
 
     const persistenceStatus = await getJson("/api/persistence/status");
+    assert.equal(persistenceStatus.provider, "json");
     assert.equal(persistenceStatus.mode, "json-file");
+    assert.equal(persistenceStatus.backupSupport, true);
+    assert.equal(persistenceStatus.migrationReady, true);
     assert.equal(persistenceStatus.records.stations > 0, true);
     assert.match(persistenceStatus.hash, /^sha256:/);
 
@@ -2709,6 +2714,7 @@ function startApi(dataPath, webDistPath, extraEnv = {}) {
     env: {
       ...process.env,
       GCOS_API_PORT: String(PORT),
+      GCOS_STORAGE_PROVIDER: "json",
       GCOS_DATA_PATH: dataPath,
       GCOS_SERVE_WEB: "1",
       GCOS_WEB_DIST_PATH: webDistPath,

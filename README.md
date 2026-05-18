@@ -114,6 +114,8 @@ docs/REPLIT_RMVI_DOMAIN.md
 VITE_GCOS_API_BASE  Frontend API origin; leave empty for same-origin production serving
 GCOS_API_PORT       API/web server port, defaults to 8787
 GCOS_HOST           Bind host, use 127.0.0.1 locally and 0.0.0.0 on Replit/hosting
+GCOS_STORAGE_PROVIDER Storage adapter, use json now or database for the migration shell
+GCOS_DATABASE_URL   Future database connection string used by the database adapter
 GCOS_DATA_PATH      JSON persistence path, defaults to data/gcos-state.json
 GCOS_OBJECT_VAULT_PATH Local file vault directory, defaults beside GCOS_DATA_PATH
 GCOS_SERVE_WEB      Set to 1 to serve the built web app from the API server
