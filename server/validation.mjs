@@ -300,6 +300,28 @@ const validators = {
     if (body.email !== undefined) requireEmail(body.email, "email");
     if (body.title !== undefined) requireString(body.title, "title");
     if (body.authority !== undefined) requireString(body.authority, "authority");
+    if (body.password !== undefined) requireString(body.password, "password");
+  },
+
+  "POST /api/stations/:id/credential/rotate": (body) => {
+    if (body.password !== undefined) requireString(body.password, "password");
+  },
+
+  "POST /api/stations/:id/credential/reset": (body) => {
+    if (body.password !== undefined) requireString(body.password, "password");
+  },
+
+  "POST /api/stations/:id/credential/mfa": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/stations/:id/credential/lock": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.lockedUntil !== undefined) requireString(body.lockedUntil, "lockedUntil");
+  },
+
+  "POST /api/stations/:id/credential/unlock": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
   "POST /api/stations/bulk/verify": (body) => {

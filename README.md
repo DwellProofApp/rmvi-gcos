@@ -7,6 +7,7 @@ Production domain target: `rmvi.org`
 - React/Vite workstation UI
 - Native Node.js GCOS API scaffold
 - Session-token authentication for protected API mutations
+- Hashed station credentials, credential rotation, reset flags, MFA requirements, and lockout controls
 - Request validation for API mutation payloads
 - Document archive/object-vault metadata workflow
 - Local object-vault file uploads with hashes, secure download, and document/evidence linking
@@ -174,6 +175,13 @@ POST /api/evidence-vault/:id/file
 GET  /api/bootstrap
 POST /api/dev/reset
 POST /api/auth/login
+GET  /api/station-auth
+GET  /api/station-auth/digest
+POST /api/stations/:id/credential/rotate
+POST /api/stations/:id/credential/reset
+POST /api/stations/:id/credential/mfa
+POST /api/stations/:id/credential/lock
+POST /api/stations/:id/credential/unlock
 
 GET  /api/stations
 GET  /api/messages

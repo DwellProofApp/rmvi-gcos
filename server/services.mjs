@@ -15,8 +15,14 @@ import {
   task,
   transfer
 } from "./domain.mjs";
+import { pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
+
+const LOCKOUT_ATTEMPTS = 3;
+const LOCKOUT_MINUTES = 15;
 
 export function createServices({ state, record, requirePermission, findById }) {
+  ensureAuthCredentials();
+
   function findStationIdentity(id) {
     const decoded = decodeURIComponent(String(id ?? ""));
     const item = state.stations.find((entry) => entry.id === decoded || entry.email === decoded);
@@ -52,6 +58,81 @@ export function createServices({ state, record, requirePermission, findById }) {
       audit: state.audit,
       events: state.events
     };
+  }
+
+  function ensureAuthCredentials() {
+    state.authCredentials ??= {};
+    for (const stationRecord of state.stations ?? []) {
+      ensureStationCredential(stationRecord.email, stationPasswords[stationRecord.email] ?? `gcos-${stationRecord.email.split("@")[0].replace(/[^a-z0-9]+/gi, "-")}`);
+    }
+    for (const officeRecord of state.offices ?? []) {
+      ensureStationCredential(officeRecord.email, officeRecord.password);
+    }
+  }
+
+  function ensureStationCredential(email, password) {
+    const normalizedEmail = normalizeStationEmail(email);
+    state.authCredentials ??= {};
+    if (!state.authCredentials[normalizedEmail]) {
+      state.authCredentials[normalizedEmail] = credentialRecord(normalizedEmail, password ?? `gcos-${normalizedEmail.split("@")[0]}`);
+    }
+    return state.authCredentials[normalizedEmail];
+  }
+
+  function credentialRecord(email, password) {
+    const salt = randomBytes(16).toString("hex");
+    return {
+      email: normalizeStationEmail(email),
+      passwordHash: hashPassword(password, salt),
+      salt,
+      algorithm: "pbkdf2-sha256",
+      status: "Active",
+      failedAttempts: 0,
+      mfaRequired: false,
+      forceReset: false,
+      updatedAt: new Date().toISOString()
+    };
+  }
+
+  function hashPassword(password, salt) {
+    return pbkdf2Sync(String(password ?? ""), salt, 120000, 32, "sha256").toString("hex");
+  }
+
+  function passwordMatches(password, credential) {
+    const expected = Buffer.from(credential.passwordHash, "hex");
+    const actual = Buffer.from(hashPassword(password, credential.salt), "hex");
+    return expected.length === actual.length && timingSafeEqual(expected, actual);
+  }
+
+  function publicCredential(credential) {
+    return {
+      email: credential.email,
+      status: credential.status ?? "Active",
+      failedAttempts: credential.failedAttempts ?? 0,
+      lockedUntil: credential.lockedUntil,
+      mfaRequired: Boolean(credential.mfaRequired),
+      forceReset: Boolean(credential.forceReset),
+      updatedAt: credential.updatedAt,
+      updatedBy: credential.updatedBy,
+      lastLoginAt: credential.lastLoginAt,
+      lastFailedAt: credential.lastFailedAt
+    };
+  }
+
+  function credentialForStation(id) {
+    const stationRecord = findStationIdentity(id);
+    return { station: stationRecord, credential: ensureStationCredential(stationRecord.email, stationPasswords[stationRecord.email]) };
+  }
+
+  function setStationPassword(stationRecord, password, actor, event = "StationCredentialRotated") {
+    const credential = credentialRecord(stationRecord.email, password);
+    credential.updatedBy = actor;
+    credential.forceReset = event === "StationCredentialResetForced";
+    state.authCredentials[stationRecord.email] = credential;
+    stationRecord.credentialStatus = credential.forceReset ? "Reset required" : "Active";
+    stationRecord.mfaRequired = credential.mfaRequired;
+    record(event, actor, stationRecord.email, "Credential hash updated");
+    return { station: stationRecord, credential: publicCredential(credential), temporaryPassword: password };
   }
 
   function generateDraft(kind, focus, actor) {
@@ -1671,7 +1752,9 @@ export function createServices({ state, record, requirePermission, findById }) {
       }
       const created = office(body.name, body.email, body.level, body.department, body.supervisor);
       state.offices.unshift(created);
-      state.stations.push(station(created.email, `${created.name} Workstation`, created.level, `${created.department}, supervised by ${created.supervisor}`));
+      const createdStation = station(created.email, `${created.name} Workstation`, created.level, `${created.department}, supervised by ${created.supervisor}`);
+      state.stations.push(createdStation);
+      ensureStationCredential(created.email, created.password);
       record("OfficeCreated", body.actor, created.name, `${created.level} workstation provisioned`);
       return created;
     },
@@ -1714,6 +1797,8 @@ export function createServices({ state, record, requirePermission, findById }) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);
       item.password = body.password ?? `gcos-${item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString(36)}`;
+      const stationRecord = state.stations.find((entry) => entry.email === item.email);
+      if (stationRecord) setStationPassword(stationRecord, item.password, body.actor);
       record("OfficePasswordRotated", body.actor, item.name, "Station credential rotated");
       return item;
     },
@@ -1724,6 +1809,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       if (!state.stations.some((entry) => entry.email === item.email)) {
         state.stations.push(station(item.email, `${item.name} Workstation`, item.level, `${item.department}, supervised by ${item.supervisor}`));
       }
+      ensureStationCredential(item.email, item.password);
       item.status = "Active";
       record("OfficeStationActivated", body.actor, item.name, `${item.email} ready`);
       return item;
@@ -1891,8 +1977,78 @@ export function createServices({ state, record, requirePermission, findById }) {
       created.status = "Provisioned";
       created.mirrorOf = item.id;
       state.stations.push(created);
+      ensureStationCredential(created.email, body.password ?? `gcos-${emailPrefix}-mirror`);
       record("StationMirrorCreated", body.actor, created.email, `Mirror of ${item.email}`);
       return created;
+    },
+
+    rotateStationCredential(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findStationIdentity(id);
+      const temporaryPassword = body.password ?? `gcos-${item.email.split("@")[0].replace(/[^a-z0-9]+/gi, "-")}-${Date.now().toString(36)}`;
+      return setStationPassword(item, temporaryPassword, body.actor);
+    },
+
+    forceStationPasswordReset(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findStationIdentity(id);
+      const temporaryPassword = body.password ?? `reset-${Date.now().toString(36)}`;
+      return setStationPassword(item, temporaryPassword, body.actor, "StationCredentialResetForced");
+    },
+
+    requireStationMfa(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const { station: item, credential } = credentialForStation(id);
+      credential.mfaRequired = true;
+      credential.updatedAt = new Date().toISOString();
+      credential.updatedBy = body.actor;
+      item.mfaRequired = true;
+      record("StationMfaRequired", body.actor, item.email, body.reason ?? "Station MFA required");
+      return { station: item, credential: publicCredential(credential) };
+    },
+
+    lockStationCredential(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const { station: item, credential } = credentialForStation(id);
+      credential.status = "Locked";
+      credential.lockedUntil = body.lockedUntil ?? new Date(Date.now() + LOCKOUT_MINUTES * 60000).toISOString();
+      credential.lockReason = body.reason ?? "Station locked by administrator";
+      credential.updatedAt = new Date().toISOString();
+      credential.updatedBy = body.actor;
+      item.credentialStatus = "Locked";
+      record("StationCredentialLocked", body.actor, item.email, credential.lockReason);
+      return { station: item, credential: publicCredential(credential) };
+    },
+
+    unlockStationCredential(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const { station: item, credential } = credentialForStation(id);
+      credential.status = "Active";
+      credential.lockedUntil = undefined;
+      credential.failedAttempts = 0;
+      credential.updatedAt = new Date().toISOString();
+      credential.updatedBy = body.actor;
+      item.credentialStatus = credential.forceReset ? "Reset required" : "Active";
+      record("StationCredentialUnlocked", body.actor, item.email, body.reason ?? "Station credential unlocked");
+      return { station: item, credential: publicCredential(credential) };
+    },
+
+    stationAuthRegistry() {
+      ensureAuthCredentials();
+      return Object.values(state.authCredentials).map(publicCredential).sort((a, b) => a.email.localeCompare(b.email));
+    },
+
+    stationAuthDigest() {
+      const registry = this.stationAuthRegistry();
+      return {
+        generatedAt: new Date().toISOString(),
+        total: registry.length,
+        locked: registry.filter((item) => item.status === "Locked" || (item.lockedUntil && Date.parse(item.lockedUntil) > Date.now())).length,
+        mfaRequired: registry.filter((item) => item.mfaRequired).length,
+        resetRequired: registry.filter((item) => item.forceReset).length,
+        failedAttempts: registry.reduce((sum, item) => sum + (item.failedAttempts ?? 0), 0),
+        nextCredential: registry.find((item) => item.status === "Locked")?.email ?? registry.find((item) => item.forceReset)?.email ?? registry[0]?.email ?? "No credentials"
+      };
     },
 
     bulkVerifyStations(body) {
@@ -2671,10 +2827,25 @@ export function createServices({ state, record, requirePermission, findById }) {
     },
 
     login(body) {
+      ensureAuthCredentials();
       const normalizedEmail = normalizeStationEmail(body.email);
       const foundOffice = state.offices.find((item) => item.email === normalizedEmail);
-      const configuredPassword = stationPasswords[normalizedEmail] ?? foundOffice?.password;
-      if (configuredPassword !== body.password) return { unauthorized: true, error: "Invalid station credentials" };
+      const credential = ensureStationCredential(normalizedEmail, stationPasswords[normalizedEmail] ?? foundOffice?.password);
+      if (credential.status === "Locked" && (!credential.lockedUntil || Date.parse(credential.lockedUntil) > Date.now())) {
+        record("LoginBlocked", normalizedEmail, normalizedEmail, "Station credential locked");
+        return { unauthorized: true, error: "Station credential locked" };
+      }
+      if (!passwordMatches(body.password, credential)) {
+        credential.failedAttempts = (credential.failedAttempts ?? 0) + 1;
+        credential.lastFailedAt = new Date().toISOString();
+        if (credential.failedAttempts >= LOCKOUT_ATTEMPTS) {
+          credential.status = "Locked";
+          credential.lockedUntil = new Date(Date.now() + LOCKOUT_MINUTES * 60000).toISOString();
+          record("StationCredentialLocked", normalizedEmail, normalizedEmail, "Login lockout threshold reached");
+        }
+        record("LoginDenied", normalizedEmail, normalizedEmail, "Invalid station credentials");
+        return { unauthorized: true, error: "Invalid station credentials" };
+      }
 
       let foundStation = state.stations.find((item) => item.email === normalizedEmail);
       if (!foundStation && foundOffice) {
@@ -2682,8 +2853,15 @@ export function createServices({ state, record, requirePermission, findById }) {
         state.stations.push(foundStation);
       }
       if (!foundStation) return { unauthorized: true, error: "Invalid station credentials" };
+      if (foundStation.status === "Suspended") return { unauthorized: true, error: "Station suspended" };
+      credential.status = "Active";
+      credential.failedAttempts = 0;
+      credential.lockedUntil = undefined;
+      credential.lastLoginAt = new Date().toISOString();
+      foundStation.credentialStatus = credential.forceReset ? "Reset required" : "Active";
+      foundStation.mfaRequired = credential.mfaRequired;
       record("Login", body.email, foundStation.title, "Allowed");
-      return { station: foundStation, token: `demo.${Buffer.from(body.email).toString("base64url")}` };
+      return { station: foundStation, credential: publicCredential(credential), token: `demo.${Buffer.from(body.email).toString("base64url")}` };
     }
   };
 }

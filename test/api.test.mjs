@@ -1699,6 +1699,52 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(stations.some((station) => station.email === "automated_district@gcos.org"), true);
     const stationId = stations[0].id;
 
+    const authRegistry = await getJson("/api/station-auth", nationalToken);
+    assert.equal(authRegistry.some((credential) => credential.email === stations[0].email), true);
+    assert.equal(Object.hasOwn(authRegistry[0], "passwordHash"), false);
+
+    const rotatedStationCredential = await postJson(`/api/stations/${stationId}/credential/rotate`, {
+      password: "gcos-station-rotated"
+    }, nationalToken);
+    assert.equal(rotatedStationCredential.credential.status, "Active");
+    assert.equal(rotatedStationCredential.temporaryPassword, "gcos-station-rotated");
+
+    const rotatedStationLogin = await postJson("/api/auth/login", {
+      email: stations[0].email,
+      password: "gcos-station-rotated"
+    });
+    assert.equal(rotatedStationLogin.station.email, stations[0].email);
+
+    const resetStationCredential = await postJson(`/api/stations/${stationId}/credential/reset`, {
+      password: "gcos-station-reset"
+    }, nationalToken);
+    assert.equal(resetStationCredential.credential.forceReset, true);
+
+    const mfaStationCredential = await postJson(`/api/stations/${stationId}/credential/mfa`, {
+      reason: "Automated MFA requirement"
+    }, nationalToken);
+    assert.equal(mfaStationCredential.credential.mfaRequired, true);
+
+    const lockedStationCredential = await postJson(`/api/stations/${stationId}/credential/lock`, {
+      reason: "Automated credential lock"
+    }, nationalToken);
+    assert.equal(lockedStationCredential.credential.status, "Locked");
+
+    const lockedStationLogin = await rawPost("/api/auth/login", {
+      email: stations[0].email,
+      password: "gcos-station-reset"
+    });
+    assert.equal(lockedStationLogin.status, 401);
+
+    const unlockedStationCredential = await postJson(`/api/stations/${stationId}/credential/unlock`, {
+      reason: "Automated credential unlock"
+    }, nationalToken);
+    assert.equal(unlockedStationCredential.credential.status, "Active");
+
+    const authDigest = await getJson("/api/station-auth/digest", nationalToken);
+    assert.equal(authDigest.total >= 4, true);
+    assert.equal(authDigest.mfaRequired >= 1, true);
+
     const invalidStationLevel = await rawPost(`/api/stations/${stationId}/level`, {
       level: "Planetary HQ"
     }, nationalToken);
@@ -2500,6 +2546,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "StationSuspended"), true);
     assert.equal(persisted.audit.some((row) => row.event === "StationActivated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "StationMirrorCreated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationCredentialRotated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationCredentialResetForced"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationMfaRequired"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationCredentialLocked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "StationCredentialUnlocked"), true);
     assert.equal(persisted.audit.some((row) => row.event === "StationsBulkVerified"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationOwnerUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "EscalationTriaged"), true);

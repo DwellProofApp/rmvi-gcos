@@ -63,6 +63,8 @@ type Section = "Control Center" | "ChurchMail" | "Reports" | "Approvals" | "Task
 type MessageKind = "Directive" | "Report" | "Approval" | "Notification" | "Transfer";
 type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
 type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string };
+type StationAuth = { email: string; status: string; failedAttempts: number; lockedUntil?: string; mfaRequired?: boolean; forceReset?: boolean; updatedAt?: string; updatedBy?: string; lastLoginAt?: string; lastFailedAt?: string };
+type StationAuthDigest = { generatedAt: string; total: number; locked: number; mfaRequired: number; resetRequired: number; failedAttempts: number; nextCredential: string };
 type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[] };
 type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number; evidenceStatus?: string; reviewNote?: string; verified?: boolean; archived?: boolean; watchers?: string[] };
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string; delegate?: string; holdReason?: string; archived?: boolean; watchers?: string[] };
@@ -8389,7 +8391,57 @@ function Hierarchy({
   const suspendedCount = stationDirectory.filter((station) => station.status === "Suspended").length;
   const watchedCount = stationDirectory.filter((station) => station.watchers?.length).length;
   const mirrorCount = stationDirectory.filter((station) => station.mirrorOf).length;
+  const [stationAuth, setStationAuth] = React.useState<StationAuth[]>([]);
+  const [stationAuthDigest, setStationAuthDigest] = React.useState<StationAuthDigest | null>(null);
   const stationRows = stationDirectory.slice(0, 8);
+
+  React.useEffect(() => {
+    refreshStationAuth();
+  }, []);
+
+  function refreshStationAuth() {
+    void apiRequest<StationAuth[]>("/api/station-auth").then(setStationAuth).catch(() => undefined);
+    void apiRequest<StationAuthDigest>("/api/station-auth/digest").then(setStationAuthDigest).catch(() => undefined);
+  }
+
+  function credentialFor(email: string) {
+    return stationAuth.find((item) => item.email === email);
+  }
+
+  function rotateCredential(id: string) {
+    void apiRequest(`/api/stations/${encodeURIComponent(id)}/credential/rotate`, {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then(refreshStationAuth).catch(() => undefined);
+  }
+
+  function forceCredentialReset(id: string) {
+    void apiRequest(`/api/stations/${encodeURIComponent(id)}/credential/reset`, {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then(refreshStationAuth).catch(() => undefined);
+  }
+
+  function requireMfa(id: string) {
+    void apiRequest(`/api/stations/${encodeURIComponent(id)}/credential/mfa`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "MFA required from hierarchy credential desk" })
+    }).then(refreshStationAuth).catch(() => undefined);
+  }
+
+  function lockCredential(id: string) {
+    void apiRequest(`/api/stations/${encodeURIComponent(id)}/credential/lock`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Credential locked from hierarchy desk" })
+    }).then(refreshStationAuth).catch(() => undefined);
+  }
+
+  function unlockCredential(id: string) {
+    void apiRequest(`/api/stations/${encodeURIComponent(id)}/credential/unlock`, {
+      method: "POST",
+      body: JSON.stringify({ reason: "Credential unlocked from hierarchy desk" })
+    }).then(refreshStationAuth).catch(() => undefined);
+  }
 
   return (
     <section className="module-grid">
@@ -8404,10 +8456,14 @@ function Hierarchy({
           <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
           <Insight label="Mirrors" value={String(digest?.mirrors ?? mirrorCount)} />
           <Insight label="Next station" value={digest?.nextStation ?? stationRows[0]?.email ?? "None"} />
+          <Insight label="Credential locks" value={String(stationAuthDigest?.locked ?? stationAuth.filter((item) => item.status === "Locked").length)} />
+          <Insight label="MFA required" value={String(stationAuthDigest?.mfaRequired ?? stationAuth.filter((item) => item.mfaRequired).length)} />
+          <Insight label="Reset needed" value={String(stationAuthDigest?.resetRequired ?? stationAuth.filter((item) => item.forceReset).length)} />
         </div>
         <div className="registry-toolbar">
           <button type="button" onClick={onBulkVerifyStations}><ShieldCheck size={14} /> Bulk verify</button>
           <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
+          <button type="button" onClick={refreshStationAuth}><KeyRound size={14} /> Credentials</button>
         </div>
         <div className="hierarchy-list">
           {hierarchy.map((node, index) => (
@@ -8427,12 +8483,14 @@ function Hierarchy({
           {stationRows.map((station) => {
             const key = station.id ?? station.email;
             const StationRowIcon = station.icon ?? iconForLevel(station.level);
+            const credential = credentialFor(station.email);
             return (
               <article className="hierarchy-row" key={key}>
                 <div className="node-badge"><StationRowIcon size={16} /></div>
                 <div className="node-main">
                   <strong>{station.title}</strong>
                   <span>{station.email} - {station.level} - {station.status ?? "Active"}</span>
+                  <span>{credential ? `Credential ${credential.status}${credential.mfaRequired ? " - MFA" : ""}${credential.forceReset ? " - reset required" : ""}${credential.failedAttempts ? ` - ${credential.failedAttempts} failed` : ""}` : "Credential registry pending"}</span>
                 </div>
                 <div className="node-metric">{station.watchers?.length ?? 0} watchers</div>
                 <div className="action-row compact-actions">
@@ -8443,6 +8501,11 @@ function Hierarchy({
                   <button type="button" onClick={() => onSuspendStation(key)}>Suspend</button>
                   <button type="button" onClick={() => onActivateStation(key)}>Activate</button>
                   <button type="button" onClick={() => onMirrorStation(key)}>Mirror</button>
+                  <button type="button" onClick={() => rotateCredential(key)}>Rotate</button>
+                  <button type="button" onClick={() => forceCredentialReset(key)}>Reset</button>
+                  <button type="button" onClick={() => requireMfa(key)}>MFA</button>
+                  <button type="button" onClick={() => lockCredential(key)}>Lock</button>
+                  <button type="button" onClick={() => unlockCredential(key)}>Unlock</button>
                 </div>
               </article>
             );
