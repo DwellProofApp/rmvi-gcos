@@ -757,20 +757,30 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       name: "Automated mission finance report",
       owner: "National Programs",
       path: "National -> Regional",
-      due: "Draft"
+      due: "Draft",
+      type: "Financial",
+      period: "May 2026",
+      routingStage: "Drafting",
+      evidenceStatus: "Evidence pending"
     }, nationalToken);
     assert.equal(createdReport.name, "Automated mission finance report");
     assert.equal(createdReport.state, "Ready");
+    assert.equal(createdReport.type, "Financial");
+    assert.equal(createdReport.period, "May 2026");
 
     const submittedReport = await postJson(`/api/reports/${reports[0].id}/submit`, {}, nationalToken);
     assert.equal(submittedReport.state, "Approved");
     assert.equal(submittedReport.score, 100);
+    assert.equal(submittedReport.routingStage, "Archived upward");
+    assert.equal(submittedReport.approvedBy, "np@rmvi.org");
 
     const correctionReport = await postJson(`/api/reports/${reports[1].id}/correction`, {
       reason: "Supporting documents need revision"
     }, nationalToken);
     assert.equal(correctionReport.state, "Correction Requested");
     assert.equal(correctionReport.score <= 45, true);
+    assert.equal(correctionReport.routingStage, "Correction cycle");
+    assert.equal(correctionReport.correctionReason, "Supporting documents need revision");
 
     const scoredReport = await postJson(`/api/reports/${reports[1].id}/score`, {
       score: 78,
@@ -793,23 +803,27 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       path: "Local -> District -> National -> Archive"
     }, nationalToken);
     assert.equal(pathReport.path, "Local -> District -> National -> Archive");
+    assert.equal(pathReport.routingStage, "Route recalculated");
 
     const evidenceReport = await postJson(`/api/reports/${reports[1].id}/evidence`, {
       evidenceStatus: "Evidence attached"
     }, nationalToken);
     assert.equal(evidenceReport.evidenceStatus, "Evidence attached");
     assert.equal(evidenceReport.score >= 70, true);
+    assert.equal(evidenceReport.routingStage, "Evidence review");
 
     const reviewReport = await postJson(`/api/reports/${reports[1].id}/review`, {
       note: "Automated supervisory review"
     }, nationalToken);
     assert.equal(reviewReport.state, "In Review");
+    assert.equal(reviewReport.routingStage, "Supervisory review");
 
     const verifiedReport = await postJson(`/api/reports/${reports[1].id}/verify`, {
       state: "Approved"
     }, nationalToken);
     assert.equal(verifiedReport.verified, true);
     assert.equal(verifiedReport.state, "Approved");
+    assert.equal(verifiedReport.evidenceStatus, "Evidence verified");
 
     const watchedReport = await postJson(`/api/reports/${reports[1].id}/watch`, {
       watcher: "np@rmvi.org"
@@ -831,6 +845,9 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(reportDigest.total > 0, true);
     assert.equal(reportDigest.verified >= 1, true);
     assert.equal(reportDigest.watched >= 1, true);
+    assert.equal(reportDigest.evidenceReady >= 1, true);
+    assert.equal(reportDigest.submitted >= 1, true);
+    assert.equal(reportDigest.types.Financial >= 1, true);
 
     const bulkReport = await postJson("/api/reports", {
       name: "Automated bulk workflow report",

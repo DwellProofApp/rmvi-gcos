@@ -66,7 +66,26 @@ type StationCard = { id?: string; email: string; title: string; level: StationLe
 type StationAuth = { email: string; status: string; failedAttempts: number; lockedUntil?: string; mfaRequired?: boolean; forceReset?: boolean; updatedAt?: string; updatedBy?: string; lastLoginAt?: string; lastFailedAt?: string };
 type StationAuthDigest = { generatedAt: string; total: number; locked: number; mfaRequired: number; resetRequired: number; failedAttempts: number; nextCredential: string };
 type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[] };
-type Report = { id: string; name: string; owner: string; path: string; due: string; state: string; score: number; evidenceStatus?: string; reviewNote?: string; verified?: boolean; archived?: boolean; watchers?: string[] };
+type Report = {
+  id: string;
+  name: string;
+  owner: string;
+  path: string;
+  due: string;
+  state: string;
+  score: number;
+  type?: string;
+  period?: string;
+  routingStage?: string;
+  evidenceStatus?: string;
+  reviewNote?: string;
+  submittedAt?: string;
+  approvedBy?: string;
+  correctionReason?: string;
+  verified?: boolean;
+  archived?: boolean;
+  watchers?: string[];
+};
 type Approval = { id: string; request: string; route: string; limit: string; state: string; signatures: string; delegate?: string; holdReason?: string; archived?: boolean; watchers?: string[] };
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
@@ -653,6 +672,10 @@ type ReportDigest = {
   verified: number;
   watched: number;
   archived: number;
+  evidenceReady?: number;
+  submitted?: number;
+  approvalReady?: number;
+  types?: Record<string, number>;
   averageScore: number;
   nextReport: string;
 };
@@ -786,10 +809,10 @@ const initialMessages: Message[] = [
 ];
 
 const initialReports: Report[] = [
-  { id: "rep-001", name: "National mission activity report", owner: "National Programs", path: "Local -> Area -> District -> County -> National", due: "Today", state: "In Review", score: 86 },
-  { id: "rep-002", name: "County finance summary", owner: "County Finance", path: "County -> National", due: "Tomorrow", state: "Ready", score: 94 },
-  { id: "rep-003", name: "Construction milestone report", owner: "District Works", path: "District -> County", due: "Overdue", state: "Escalated", score: 58 },
-  { id: "rep-004", name: "Education directorate update", owner: "Directorate Office", path: "National -> Regional", due: "May 20", state: "Approved", score: 100 }
+  { id: "rep-001", name: "National mission activity report", owner: "National Programs", path: "Local -> Area -> District -> County -> National", due: "Today", state: "In Review", score: 86, type: "Mission", period: "May 2026", routingStage: "National review", evidenceStatus: "Evidence attached" },
+  { id: "rep-002", name: "County finance summary", owner: "County Finance", path: "County -> National", due: "Tomorrow", state: "Ready", score: 94, type: "Financial", period: "Q2 2026", routingStage: "County validation", evidenceStatus: "Ledger pending" },
+  { id: "rep-003", name: "Construction milestone report", owner: "District Works", path: "District -> County", due: "Overdue", state: "Escalated", score: 58, type: "Construction", period: "May 2026", routingStage: "District correction", evidenceStatus: "Photo packet incomplete", correctionReason: "Missing site photos" },
+  { id: "rep-004", name: "Education directorate update", owner: "Directorate Office", path: "National -> Regional", due: "May 20", state: "Approved", score: 100, type: "Education", period: "May 2026", routingStage: "Regional archive", evidenceStatus: "Evidence verified", verified: true, approvedBy: "Regional HQ" }
 ];
 
 const workflows = [
@@ -1050,6 +1073,15 @@ async function downloadStoredFile(file: FileReference) {
   const link = document.createElement("a");
   link.href = url;
   link.download = file.name;
+  link.click();
+  URL.revokeObjectURL(url);
+}
+
+function downloadTextFile(filename: string, content: string, contentType: string) {
+  const url = URL.createObjectURL(new Blob([content], { type: contentType }));
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = filename;
   link.click();
   URL.revokeObjectURL(url);
 }
@@ -1714,7 +1746,11 @@ function App() {
       path: `${activeStation.level} -> Supervising Office`,
       due: "Draft",
       state: "Ready",
-      score: 32
+      score: 32,
+      type: message.kind === "Report" ? "Administrative" : message.kind,
+      period: "Current",
+      routingStage: "Drafting",
+      evidenceStatus: message.files === "No attachments" ? "Evidence pending" : "Attachment available"
     };
     setReports((items) => [report, ...items]);
     setActiveSection("Reports");
@@ -1726,7 +1762,11 @@ function App() {
       ...reportDraft,
       id: `rep-${Date.now()}`,
       state: offlineMode ? "Queued" : "Ready",
-      score: 18
+      score: 18,
+      type: reportDraft.type ?? "Administrative",
+      period: reportDraft.period ?? "Current",
+      routingStage: reportDraft.routingStage ?? "Drafting",
+      evidenceStatus: reportDraft.evidenceStatus ?? "Evidence pending"
     };
     setReports((items) => [report, ...items]);
     recordAudit("ReportDrafted", report.name, "Created in reporting center");
@@ -3093,7 +3133,7 @@ function App() {
   function submitReport(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
-    setReports((items) => items.map((item) => item.id === id ? { ...item, state: "Approved", score: 100 } : item));
+    setReports((items) => items.map((item) => item.id === id ? { ...item, state: "Approved", score: 100, routingStage: "Archived upward", submittedAt: new Date().toISOString(), approvedBy: activeStation.email } : item));
     recordAudit("ReportSubmitted", report.name, "Forwarded upward");
     if (!offlineMode) {
       void apiRequest<Report>(`/api/reports/${id}/submit`, {
@@ -3106,7 +3146,7 @@ function App() {
   function requestReportCorrection(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
-    setReports((items) => items.map((item) => item.id === id ? { ...item, state: "Correction Requested", score: Math.min(item.score, 45) } : item));
+    setReports((items) => items.map((item) => item.id === id ? { ...item, state: "Correction Requested", score: Math.min(item.score, 45), routingStage: "Correction cycle", correctionReason: "Correction requested from reporting center" } : item));
     recordAudit("ReportCorrectionRequested", report.name, "Correction requested");
     if (!offlineMode) {
       void apiRequest<Report>(`/api/reports/${id}/correction`, {
@@ -3121,7 +3161,7 @@ function App() {
     if (!report) return;
     const nextScore = Math.max(0, Math.min(100, score));
     const state = nextScore >= 80 && report.state !== "Approved" ? "In Review" : report.state;
-    setReports((items) => items.map((item) => item.id === id ? { ...item, score: nextScore, state } : item));
+    setReports((items) => items.map((item) => item.id === id ? { ...item, score: nextScore, state, routingStage: nextScore >= 80 ? "Ready for supervisory review" : item.routingStage } : item));
     recordAudit("ReportScoreUpdated", report.name, `${nextScore}% complete`);
     if (!offlineMode) {
       void apiRequest<Report>(`/api/reports/${id}/score`, {
@@ -3162,7 +3202,7 @@ function App() {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
     const path = `${activeStation.level} -> Supervising Office -> Archive`;
-    setReports((items) => items.map((item) => item.id === id ? { ...item, path } : item));
+    setReports((items) => items.map((item) => item.id === id ? { ...item, path, routingStage: "Route recalculated" } : item));
     recordAudit("ReportPathUpdated", report.name, path);
     if (!offlineMode) {
       void apiRequest<Report>(`/api/reports/${id}/path`, {
@@ -3175,7 +3215,7 @@ function App() {
   function markReportEvidence(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
-    setReports((items) => items.map((item) => item.id === id ? { ...item, evidenceStatus: "Evidence attached", score: Math.max(item.score, 70) } : item));
+    setReports((items) => items.map((item) => item.id === id ? { ...item, evidenceStatus: "Evidence attached", score: Math.max(item.score, 70), routingStage: "Evidence review" } : item));
     recordAudit("ReportEvidenceUpdated", report.name, "Evidence attached");
     if (!offlineMode) {
       void apiRequest<Report>(`/api/reports/${id}/evidence`, {
@@ -3188,7 +3228,7 @@ function App() {
   function reviewReport(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
-    setReports((items) => items.map((item) => item.id === id ? { ...item, state: "In Review", reviewNote: "Supervisory review opened" } : item));
+    setReports((items) => items.map((item) => item.id === id ? { ...item, state: "In Review", reviewNote: "Supervisory review opened", routingStage: "Supervisory review" } : item));
     recordAudit("ReportReviewStarted", report.name, "Supervisory review opened");
     if (!offlineMode) {
       void apiRequest<Report>(`/api/reports/${id}/review`, {
@@ -3201,7 +3241,7 @@ function App() {
   function verifyReport(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
-    setReports((items) => items.map((item) => item.id === id ? { ...item, verified: true, state: "Approved", score: Math.max(item.score, 95) } : item));
+    setReports((items) => items.map((item) => item.id === id ? { ...item, verified: true, state: "Approved", score: Math.max(item.score, 95), routingStage: "Verified archive", evidenceStatus: "Evidence verified", approvedBy: activeStation.email } : item));
     recordAudit("ReportVerified", report.name, "Report verified");
     if (!offlineMode) {
       void apiRequest<Report>(`/api/reports/${id}/verify`, {
@@ -3227,7 +3267,7 @@ function App() {
   function duplicateReport(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
-    const duplicate: Report = { ...report, id: `rep-${Date.now()}`, name: `${report.name} follow-up`, state: "Ready", score: Math.min(report.score, 35) };
+    const duplicate: Report = { ...report, id: `rep-${Date.now()}`, name: `${report.name} follow-up`, state: "Ready", score: Math.min(report.score, 35), routingStage: "Drafting", submittedAt: undefined, approvedBy: undefined, verified: false };
     setReports((items) => [duplicate, ...items]);
     recordAudit("ReportDuplicated", report.name, duplicate.name);
     if (!offlineMode) {
@@ -3253,7 +3293,7 @@ function App() {
 
   function bulkSubmitReports(ids: string[]) {
     const targetIds = ids.length ? ids : reports.filter((item) => item.state !== "Approved").map((item) => item.id);
-    setReports((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Approved", score: 100 } : item));
+    setReports((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Approved", score: 100, routingStage: "Archived upward", submittedAt: new Date().toISOString(), approvedBy: activeStation.email } : item));
     recordAudit("ReportsBulkSubmitted", "Reporting center", `${targetIds.length} reports submitted`);
     if (!offlineMode) {
       void apiRequest<{ updated: Report[]; count: number }>("/api/reports/bulk/submit", {
@@ -3265,7 +3305,7 @@ function App() {
 
   function bulkRequestReportCorrections(ids: string[]) {
     const targetIds = ids.length ? ids : reports.filter((item) => item.state !== "Approved").map((item) => item.id);
-    setReports((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Correction Requested", score: Math.min(item.score, 45) } : item));
+    setReports((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, state: "Correction Requested", score: Math.min(item.score, 45), routingStage: "Correction cycle", correctionReason: "Bulk correction from reporting center" } : item));
     recordAudit("ReportsBulkCorrectionRequested", "Reporting center", `${targetIds.length} corrections requested`);
     if (!offlineMode) {
       void apiRequest<{ updated: Report[]; count: number }>("/api/reports/bulk/correction", {
@@ -6852,6 +6892,8 @@ function Reports({
   const [owner, setOwner] = React.useState(String(station.level));
   const [path, setPath] = React.useState(`${station.level} -> Supervising Office`);
   const [due, setDue] = React.useState("Draft");
+  const [type, setType] = React.useState("Administrative");
+  const [period, setPeriod] = React.useState("May 2026");
   const [stateFilter, setStateFilter] = React.useState("All states");
   const [feedback, setFeedback] = React.useState("");
   const visibleReports = React.useMemo(() => (
@@ -6862,6 +6904,15 @@ function Reports({
   const overdueCount = reports.filter((report) => report.due === "Overdue").length;
   const correctionCount = reports.filter((report) => report.state === "Correction Requested").length;
   const watchedCount = reports.filter((report) => report.watchers?.length).length;
+  const evidenceReadyCount = reports.filter((report) => report.evidenceStatus?.toLowerCase().includes("attached") || report.evidenceStatus?.toLowerCase().includes("verified")).length;
+  const approvalReadyCount = reports.filter((report) => report.score >= 80 && report.state !== "Approved").length;
+  const reportTemplates = [
+    { type: "Financial", name: "Monthly finance stewardship report", owner: "Finance Desk", due: "This week" },
+    { type: "Mission", name: "Mission outreach activity report", owner: "Mission Desk", due: "Today" },
+    { type: "Education", name: "Education directorate update", owner: "Education Desk", due: "Tomorrow" },
+    { type: "Construction", name: "Construction milestone report", owner: "Works Desk", due: "This week" },
+    { type: "Audit", name: "Audit compliance packet", owner: "Audit Desk", due: "Today" }
+  ];
 
   React.useEffect(() => {
     setOwner(String(station.level));
@@ -6870,9 +6921,38 @@ function Reports({
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onCreateReport({ name, owner, path, due });
+    onCreateReport({ name, owner, path, due, type, period, routingStage: "Drafting", evidenceStatus: "Evidence pending" });
     setFeedback(`${name} has been drafted.`);
     setName("New administrative report");
+  }
+
+  function applyTemplate(template: typeof reportTemplates[number]) {
+    setType(template.type);
+    setName(template.name);
+    setOwner(template.owner);
+    setDue(template.due);
+    setFeedback(`${template.type} template loaded.`);
+  }
+
+  function exportReports() {
+    const headers = ["Name", "Type", "Period", "Owner", "Route", "Stage", "Due", "State", "Score", "Evidence", "Verified"];
+    const rows = visibleReports.map((report) => [
+      report.name,
+      report.type ?? "Administrative",
+      report.period ?? "Current",
+      report.owner,
+      report.path,
+      report.routingStage ?? report.state,
+      report.due,
+      report.state,
+      `${report.score}%`,
+      report.evidenceStatus ?? "Evidence pending",
+      report.verified ? "Yes" : "No"
+    ]);
+    const csv = [headers, ...rows]
+      .map((row) => row.map((value) => `"${String(value).replace(/"/g, '""')}"`).join(","))
+      .join("\n");
+    downloadTextFile(`gcos-report-register-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
   }
 
   return (
@@ -6885,6 +6965,8 @@ function Reports({
           <Insight label="Corrections" value={String(digest?.correction ?? correctionCount)} />
           <Insight label="Verified" value={String(digest?.verified ?? reports.filter((report) => report.verified).length)} />
           <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
+          <Insight label="Evidence ready" value={String(digest?.evidenceReady ?? evidenceReadyCount)} />
+          <Insight label="Approval ready" value={String(digest?.approvalReady ?? approvalReadyCount)} />
           <Insight label="Average score" value={`${digest?.averageScore ?? 0}%`} />
           <Insight label="Next report" value={digest?.nextReport ?? visibleReports[0]?.name ?? "None"} />
         </div>
@@ -6898,6 +6980,7 @@ function Reports({
           <button type="button" onClick={() => onBulkSubmit(visibleReports.map((report) => report.id))}><Send size={14} /> Submit visible</button>
           <button type="button" onClick={() => onBulkCorrection(visibleReports.map((report) => report.id))}><FileClock size={14} /> Correct visible</button>
           <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
+          <button type="button" onClick={exportReports}><Download size={14} /> Export CSV</button>
         </div>
         <div className="data-table">
           <div className="table-row table-head">
@@ -6905,10 +6988,10 @@ function Reports({
           </div>
           {visibleReports.map((report) => (
             <div className="table-row" key={report.name}>
-              <strong>{report.name}</strong>
-              <span>{report.owner}</span>
+              <strong>{report.name}<small>{report.type ?? "Administrative"} - {report.period ?? "Current period"}</small></strong>
+              <span>{report.owner}<small>{report.routingStage ?? report.state}</small></span>
               <span>{report.path}</span>
-              <span>{report.due}</span>
+              <span>{report.due}<small>{report.evidenceStatus ?? "Evidence pending"}</small></span>
               <div className="table-actions">
                 <StatusPill status={report.state} />
                 <button aria-label={`Submit ${report.name}`} onClick={() => onSubmitReport(report.id)}><Send size={14} /> Submit</button>
@@ -6931,6 +7014,11 @@ function Reports({
                   <AlertTriangle size={14} /> Escalate
                 </button>
               </div>
+              <div className="report-detail-strip">
+                <FlowMeter label={`Readiness ${report.score}%`} value={report.score} />
+                <span>{report.reviewNote ?? report.correctionReason ?? "No supervisory notes yet"}</span>
+                <span>{report.verified ? `Verified${report.approvedBy ? ` by ${report.approvedBy}` : ""}` : "Awaiting verification"}</span>
+              </div>
             </div>
           ))}
           {visibleReports.length === 0 && <div className="empty-state">No reports match the current state filter.</div>}
@@ -6942,6 +7030,23 @@ function Reports({
           <label>
             <span>Report name</span>
             <input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+          <label>
+            <span>Report type</span>
+            <select value={type} onChange={(event) => setType(event.target.value)}>
+              <option>Administrative</option>
+              <option>Financial</option>
+              <option>Mission</option>
+              <option>Education</option>
+              <option>Construction</option>
+              <option>Audit</option>
+              <option>Media</option>
+              <option>Social Development</option>
+            </select>
+          </label>
+          <label>
+            <span>Reporting period</span>
+            <input value={period} onChange={(event) => setPeriod(event.target.value)} />
           </label>
           <label>
             <span>Owner</span>
@@ -6966,11 +7071,23 @@ function Reports({
         </form>
       </div>
       <div className="panel module-side">
+        <PanelHeader icon={ScrollText} title="Report Templates" action="Load" />
+        <div className="template-list">
+          {reportTemplates.map((template) => (
+            <button type="button" key={template.type} onClick={() => applyTemplate(template)}>
+              <strong>{template.type}</strong>
+              <span>{template.name}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
         <PanelHeader icon={Sparkles} title="Report Intelligence" action="Status" />
         {reports.map((report) => (
           <div className="score-row" key={report.name}>
             <span>{report.name}</span>
             <FlowMeter label={`${report.score}% complete`} value={report.score} />
+            <small>{report.evidenceStatus ?? "Evidence pending"} - {report.routingStage ?? report.state}</small>
           </div>
         ))}
       </div>

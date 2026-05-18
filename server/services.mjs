@@ -334,7 +334,12 @@ export function createServices({ state, record, requirePermission, findById }) {
     },
 
     createReport(body) {
-      const created = report(body.name, body.owner ?? body.actor, body.path, body.due ?? "Draft", body.state ?? "Ready", body.score ?? 15);
+      const created = report(body.name, body.owner ?? body.actor, body.path, body.due ?? "Draft", body.state ?? "Ready", body.score ?? 15, {
+        type: body.type,
+        period: body.period,
+        routingStage: body.routingStage ?? "Drafting",
+        evidenceStatus: body.evidenceStatus
+      });
       state.reports.unshift(created);
       record("ReportDrafted", body.actor, created.name, "Created in reporting center");
       return created;
@@ -1240,6 +1245,9 @@ export function createServices({ state, record, requirePermission, findById }) {
       const item = findById(state.reports, id);
       item.state = "Approved";
       item.score = 100;
+      item.routingStage = "Archived upward";
+      item.submittedAt = new Date().toISOString();
+      item.approvedBy = body.actor;
       record("ReportSubmitted", body.actor, item.name, "Forwarded upward");
       return item;
     },
@@ -1248,6 +1256,8 @@ export function createServices({ state, record, requirePermission, findById }) {
       const item = findById(state.reports, id);
       item.state = "Correction Requested";
       item.score = Math.min(item.score, 45);
+      item.routingStage = "Correction cycle";
+      item.correctionReason = body.reason ?? "Correction requested";
       record("ReportCorrectionRequested", body.actor, item.name, body.reason ?? "Correction requested");
       return item;
     },
@@ -1263,6 +1273,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       const item = findById(state.reports, id);
       item.score = Math.max(0, Math.min(100, body.score ?? item.score));
       if (body.state) item.state = body.state;
+      if (item.score >= 80 && item.state !== "Approved") item.routingStage = "Ready for supervisory review";
       record("ReportScoreUpdated", body.actor, item.name, `${item.score}% complete`);
       return item;
     },
@@ -1277,6 +1288,7 @@ export function createServices({ state, record, requirePermission, findById }) {
     updateReportPath(id, body) {
       const item = findById(state.reports, id);
       item.path = body.path ?? item.path;
+      item.routingStage = "Route recalculated";
       record("ReportPathUpdated", body.actor, item.name, item.path);
       return item;
     },
@@ -1285,6 +1297,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       const item = findById(state.reports, id);
       item.evidenceStatus = body.evidenceStatus ?? "Evidence attached";
       item.score = Math.max(item.score, 70);
+      item.routingStage = "Evidence review";
       record("ReportEvidenceUpdated", body.actor, item.name, item.evidenceStatus);
       return item;
     },
@@ -1293,6 +1306,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       const item = findById(state.reports, id);
       item.state = "In Review";
       item.reviewNote = body.note ?? "Supervisory review opened";
+      item.routingStage = "Supervisory review";
       record("ReportReviewStarted", body.actor, item.name, item.reviewNote);
       return item;
     },
@@ -1302,6 +1316,9 @@ export function createServices({ state, record, requirePermission, findById }) {
       item.verified = true;
       item.state = body.state ?? "Approved";
       item.score = Math.max(item.score, 95);
+      item.routingStage = "Verified archive";
+      item.evidenceStatus = "Evidence verified";
+      item.approvedBy = body.actor;
       record("ReportVerified", body.actor, item.name, "Report verified");
       return item;
     },
@@ -1316,7 +1333,12 @@ export function createServices({ state, record, requirePermission, findById }) {
 
     duplicateReport(id, body) {
       const item = findById(state.reports, id);
-      const created = report(body.name ?? `${item.name} follow-up`, item.owner, body.path ?? item.path, body.due ?? item.due, "Ready", Math.min(item.score, 35));
+      const created = report(body.name ?? `${item.name} follow-up`, item.owner, body.path ?? item.path, body.due ?? item.due, "Ready", Math.min(item.score, 35), {
+        type: item.type,
+        period: item.period,
+        routingStage: "Drafting",
+        evidenceStatus: item.evidenceStatus
+      });
       state.reports.unshift(created);
       record("ReportDuplicated", body.actor, item.name, created.name);
       return created;
@@ -1336,6 +1358,14 @@ export function createServices({ state, record, requirePermission, findById }) {
       const verified = state.reports.filter((item) => item.verified);
       const watched = state.reports.filter((item) => item.watchers?.length);
       const archived = state.reports.filter((item) => item.archived);
+      const evidenceReady = state.reports.filter((item) => /attached|verified/i.test(item.evidenceStatus ?? ""));
+      const submitted = state.reports.filter((item) => item.submittedAt || item.state === "Approved");
+      const approvalReady = state.reports.filter((item) => item.score >= 80 && item.state !== "Approved");
+      const types = state.reports.reduce((acc, item) => {
+        const key = item.type ?? "Administrative";
+        acc[key] = (acc[key] ?? 0) + 1;
+        return acc;
+      }, {});
       return {
         generatedAt: new Date().toISOString(),
         total: state.reports.length,
@@ -1345,6 +1375,10 @@ export function createServices({ state, record, requirePermission, findById }) {
         verified: verified.length,
         watched: watched.length,
         archived: archived.length,
+        evidenceReady: evidenceReady.length,
+        submitted: submitted.length,
+        approvalReady: approvalReady.length,
+        types,
         averageScore: state.reports.length ? Math.round(state.reports.reduce((sum, item) => sum + item.score, 0) / state.reports.length) : 100,
         nextReport: overdue[0]?.name ?? correction[0]?.name ?? open[0]?.name ?? state.reports[0]?.name ?? "No reports"
       };
@@ -1356,6 +1390,9 @@ export function createServices({ state, record, requirePermission, findById }) {
         const item = findById(state.reports, id);
         item.state = "Approved";
         item.score = 100;
+        item.routingStage = "Archived upward";
+        item.submittedAt = new Date().toISOString();
+        item.approvedBy = body.actor;
         return item;
       });
       record("ReportsBulkSubmitted", body.actor, "Reporting center", `${updated.length} reports submitted`);
@@ -1368,6 +1405,8 @@ export function createServices({ state, record, requirePermission, findById }) {
         const item = findById(state.reports, id);
         item.state = "Correction Requested";
         item.score = Math.min(item.score, 45);
+        item.routingStage = "Correction cycle";
+        item.correctionReason = body.reason ?? "Bulk correction from reporting center";
         return item;
       });
       record("ReportsBulkCorrectionRequested", body.actor, "Reporting center", body.reason ?? `${updated.length} corrections requested`);

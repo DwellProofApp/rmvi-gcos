@@ -34,9 +34,9 @@ export function createSeedState() {
       message("Transfer", "Official reassignment letter", "Mission Office", "Queued", "Signed letter")
     ],
     reports: [
-      report("National mission activity report", "National Programs", "Local -> Area -> District -> County -> National", "Today", "In Review", 86),
-      report("County finance summary", "County Finance", "County -> National", "Tomorrow", "Ready", 94),
-      report("Construction milestone report", "District Works", "District -> County", "Overdue", "Escalated", 58)
+      report("National mission activity report", "National Programs", "Local -> Area -> District -> County -> National", "Today", "In Review", 86, { type: "Mission", period: "May 2026", routingStage: "National review", evidenceStatus: "Evidence attached" }),
+      report("County finance summary", "County Finance", "County -> National", "Tomorrow", "Ready", 94, { type: "Financial", period: "Q2 2026", routingStage: "County validation", evidenceStatus: "Ledger pending" }),
+      report("Construction milestone report", "District Works", "District -> County", "Overdue", "Escalated", 58, { type: "Construction", period: "May 2026", routingStage: "District correction", evidenceStatus: "Photo packet incomplete", correctionReason: "Missing site photos" })
     ],
     approvals: [
       approval("County youth program budget", "District -> County -> National", "$24,800", "Validation", "0/3"),
@@ -108,8 +108,23 @@ export function message(kind, subject, from, status, files) {
   return { id: randomUUID(), kind, subject, from, age: "now", status, files };
 }
 
-export function report(name, owner, path, due, state, score) {
-  return { id: randomUUID(), name, owner, path, due, state, score };
+export function report(name, owner, path, due, state, score, metadata = {}) {
+  return {
+    id: randomUUID(),
+    name,
+    owner,
+    path,
+    due,
+    state,
+    score,
+    type: metadata.type ?? "Administrative",
+    period: metadata.period ?? "Current",
+    routingStage: metadata.routingStage ?? state,
+    evidenceStatus: metadata.evidenceStatus ?? "Evidence pending",
+    correctionReason: metadata.correctionReason,
+    verified: metadata.verified,
+    approvedBy: metadata.approvedBy
+  };
 }
 
 export function approval(request, route, limit, state, signatures) {

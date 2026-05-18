@@ -1748,6 +1748,15 @@ h1 {
   color: #5b6680;
 }
 
+.table-row strong small,
+.table-row span small {
+  display: block;
+  margin-top: 4px;
+  color: #70809d;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
 .table-head {
   min-height: 36px;
   background: #0b2f6b;
@@ -1777,6 +1786,56 @@ h1 {
   gap: 6px;
   padding: 0 8px;
   font-size: 12px;
+}
+
+.report-detail-strip {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: minmax(180px, 0.75fr) minmax(180px, 1fr) minmax(160px, 0.75fr);
+  gap: 10px;
+  align-items: center;
+  padding-top: 10px;
+  border-top: 1px dashed #d8e2f2;
+}
+
+.report-detail-strip span {
+  color: #5b6680;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.template-list {
+  display: grid;
+  gap: 8px;
+}
+
+.template-list button {
+  width: 100%;
+  border: 1px solid #d8e2f2;
+  border-radius: 7px;
+  background: #ffffff;
+  color: #10213f;
+  text-align: left;
+  padding: 11px;
+  cursor: pointer;
+}
+
+.template-list strong,
+.template-list span,
+.score-row small {
+  display: block;
+}
+
+.template-list strong {
+  color: #0b2f6b;
+  font-size: 13px;
+}
+
+.template-list span,
+.score-row small {
+  color: #5b6680;
+  font-size: 12px;
+  margin-top: 3px;
 }
 
 .table-actions .file-action,
@@ -2136,6 +2195,10 @@ h1 {
   .office-table .table-row {
     grid-template-columns: 1fr;
     gap: 4px;
+  }
+
+  .report-detail-strip {
+    grid-template-columns: 1fr;
   }
 
   .table-head {
