@@ -1733,9 +1733,10 @@ function exportSnapshot(session) {
 
 function createSession(email) {
   const token = `gcos.${randomUUID()}`;
+  const id = `sid_${randomUUID()}`;
   const startedAt = new Date().toISOString();
   const expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString();
-  sessions.set(token, { token, email, startedAt, expiresAt, status: "Active", flags: [] });
+  sessions.set(token, { id, token, email, startedAt, expiresAt, status: "Active", flags: [] });
   return { token, startedAt, expiresAt };
 }
 
@@ -1745,15 +1746,16 @@ function renewSession(token, actor) {
   session.expiresAt = new Date(Date.now() + 1000 * 60 * 60 * 12).toISOString();
   session.status = "Renewed";
   record("SessionRenewed", actor, session.email, session.expiresAt);
-  return { session: summarizeSession(token, session), sessions: privateSessionSummary() };
+  return { session: summarizeSession(session), sessions: privateSessionSummary() };
 }
 
-function revokeSession(token, actor) {
-  const session = sessions.get(token);
+function revokeSession(id, actor) {
+  const found = findSessionById(id);
+  const [token, session] = found ?? [];
   if (!session) throw new HttpError(404, "Session not found");
   sessions.delete(token);
   record("SessionRevoked", actor, session.email, "Session revoked");
-  return { revoked: token, sessions: privateSessionSummary() };
+  return { revoked: id, sessions: privateSessionSummary() };
 }
 
 function revokeStationSessions(email, currentToken, actor) {
@@ -1768,82 +1770,85 @@ function revokeStationSessions(email, currentToken, actor) {
   return { revoked, sessions: privateSessionSummary() };
 }
 
-function flagSession(token, actor, reason) {
-  const session = sessions.get(token);
+function flagSession(id, actor, reason) {
+  const session = findSessionById(id)?.[1];
   if (!session) throw new HttpError(404, "Session not found");
   session.status = "Flagged";
   session.flags = [...(session.flags ?? []), reason ?? "Suspicious session flagged"];
   record("SessionFlagged", actor, session.email, reason ?? "Suspicious session flagged");
-  return { session: summarizeSession(token, session), sessions: privateSessionSummary() };
+  return { session: summarizeSession(session), sessions: privateSessionSummary() };
 }
 
-function extendSession(token, actor, minutes) {
-  const session = sessions.get(token);
+function extendSession(id, actor, minutes) {
+  const session = findSessionById(id)?.[1];
   if (!session) throw new HttpError(404, "Session not found");
   const extensionMinutes = Number.isFinite(minutes) && minutes > 0 ? minutes : 120;
   session.expiresAt = new Date(Date.parse(session.expiresAt) + extensionMinutes * 60000).toISOString();
   session.status = "Extended";
   record("SessionExtended", actor, session.email, `${extensionMinutes} minutes added`);
-  return { session: summarizeSession(token, session), sessions: privateSessionSummary() };
+  return { session: summarizeSession(session), sessions: privateSessionSummary() };
 }
 
-function lockSession(token, actor, reason) {
-  const session = sessions.get(token);
+function lockSession(id, actor, reason) {
+  const session = findSessionById(id)?.[1];
   if (!session) throw new HttpError(404, "Session not found");
   session.status = "Locked";
   session.lockReason = reason ?? "Session locked from audit console";
   record("SessionLocked", actor, session.email, session.lockReason);
-  return { session: summarizeSession(token, session), sessions: privateSessionSummary() };
+  return { session: summarizeSession(session), sessions: privateSessionSummary() };
 }
 
-function unlockSession(token, actor, reason) {
-  const session = sessions.get(token);
+function unlockSession(id, actor, reason) {
+  const session = findSessionById(id)?.[1];
   if (!session) throw new HttpError(404, "Session not found");
   session.status = "Active";
   session.lockReason = undefined;
   record("SessionUnlocked", actor, session.email, reason ?? "Session unlocked");
-  return { session: summarizeSession(token, session), sessions: privateSessionSummary() };
+  return { session: summarizeSession(session), sessions: privateSessionSummary() };
 }
 
-function trustSession(token, actor, reason) {
-  const session = sessions.get(token);
+function trustSession(id, actor, reason) {
+  const session = findSessionById(id)?.[1];
   if (!session) throw new HttpError(404, "Session not found");
   session.trusted = true;
   record("SessionTrusted", actor, session.email, reason ?? "Session marked trusted");
-  return { session: summarizeSession(token, session), sessions: privateSessionSummary() };
+  return { session: summarizeSession(session), sessions: privateSessionSummary() };
 }
 
-function requireSessionMfa(token, actor, reason) {
-  const session = sessions.get(token);
+function requireSessionMfa(id, actor, reason) {
+  const session = findSessionById(id)?.[1];
   if (!session) throw new HttpError(404, "Session not found");
   session.mfaRequired = true;
   session.status = "MFA Required";
   record("SessionMfaRequired", actor, session.email, reason ?? "Step-up MFA required");
-  return { session: summarizeSession(token, session), sessions: privateSessionSummary() };
+  return { session: summarizeSession(session), sessions: privateSessionSummary() };
 }
 
-function labelSessionDevice(token, actor, label) {
-  const session = sessions.get(token);
+function labelSessionDevice(id, actor, label) {
+  const session = findSessionById(id)?.[1];
   if (!session) throw new HttpError(404, "Session not found");
   session.deviceLabel = label ?? "Managed workstation";
   record("SessionDeviceLabeled", actor, session.email, session.deviceLabel);
-  return { session: summarizeSession(token, session), sessions: privateSessionSummary() };
+  return { session: summarizeSession(session), sessions: privateSessionSummary() };
 }
 
-function noteSession(token, actor, note) {
-  const session = sessions.get(token);
+function noteSession(id, actor, note) {
+  const session = findSessionById(id)?.[1];
   if (!session) throw new HttpError(404, "Session not found");
   session.notes = [...(session.notes ?? []), `${actor}: ${note ?? "Session note added"}`];
   record("SessionNoteAdded", actor, session.email, note ?? "Session note added");
-  return { session: summarizeSession(token, session), sessions: privateSessionSummary() };
+  return { session: summarizeSession(session), sessions: privateSessionSummary() };
 }
 
 function bulkRevokeSessions(body, currentToken, actor) {
-  const requested = body.ids?.length ? body.ids : Array.from(sessions.keys()).filter((token) => token !== currentToken).slice(0, 3);
+  const requested = body.ids?.length
+    ? body.ids
+    : Array.from(sessions.entries()).filter(([token]) => token !== currentToken).slice(0, 3).map(([, session]) => session.id);
   let revoked = 0;
-  for (const token of requested) {
+  for (const id of requested) {
+    const token = findSessionById(id)?.[0];
     if (token === currentToken) continue;
-    if (sessions.delete(token)) revoked += 1;
+    if (token && sessions.delete(token)) revoked += 1;
   }
   record("SessionsBulkRevoked", actor, "Session monitor", `${revoked} sessions revoked`);
   return { revoked, sessions: privateSessionSummary() };
@@ -1873,7 +1878,7 @@ function sessionSummary({ includeIds = false } = {}) {
       continue;
     }
     active.push({
-      ...(includeIds ? { id: token } : {}),
+      ...(includeIds ? { id: session.id } : {}),
       email: session.email,
       startedAt: session.startedAt,
       expiresAt: session.expiresAt,
@@ -1898,9 +1903,9 @@ function privateSessionSummary() {
   return sessionSummary({ includeIds: true });
 }
 
-function summarizeSession(token, session) {
+function summarizeSession(session) {
   return {
-    id: token,
+    id: session.id,
     email: session.email,
     startedAt: session.startedAt,
     expiresAt: session.expiresAt,
@@ -1913,6 +1918,13 @@ function summarizeSession(token, session) {
     notes: session.notes ?? [],
     lockReason: session.lockReason
   };
+}
+
+function findSessionById(id) {
+  for (const entry of sessions.entries()) {
+    if (entry[1].id === id) return entry;
+  }
+  return null;
 }
 
 function authenticateRequest(request, pathname) {

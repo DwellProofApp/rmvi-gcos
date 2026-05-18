@@ -501,10 +501,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const privateSessions = await getJson("/api/sessions", nationalToken);
     assert.equal(privateSessions.active, 3);
     assert.equal(Boolean(privateSessions.stations[0].id), true);
+    assert.equal(privateSessions.stations[0].id.startsWith("sid_"), true);
+    assert.notEqual(privateSessions.stations[0].id, nationalToken);
 
     const renewedSession = await postJson("/api/sessions/renew", {}, nationalToken);
     assert.equal(renewedSession.session.email, "np@rmvi.org");
     assert.equal(renewedSession.session.status, "Renewed");
+    assert.equal(renewedSession.session.id.startsWith("sid_"), true);
+    assert.notEqual(renewedSession.session.id, nationalToken);
 
     const flaggedSession = await postJson(`/api/sessions/${renewedSession.session.id}/flag`, {
       reason: "Automated suspicious session test"
@@ -553,21 +557,32 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(sessionDigest.mfaRequired >= 1, true);
     assert.equal(sessionDigest.labeled >= 1, true);
 
+    const localSessionIdsBeforeSpare = new Set(
+      privateSessions.stations.filter((session) => session.email === "local_branch_017@gcos.org").map((session) => session.id)
+    );
     const spareLocalLogin = await postJson("/api/auth/login", {
       email: "local_branch_017@gcos.org",
       password: demoPassword("local")
     });
+    const sessionsWithSpareLocal = await getJson("/api/sessions", nationalToken);
+    const spareLocalSession = sessionsWithSpareLocal.stations.find((session) => (
+      session.email === spareLocalLogin.station.email && !localSessionIdsBeforeSpare.has(session.id)
+    ));
+    assert.equal(Boolean(spareLocalSession?.id), true);
 
-    const revokedLocalSession = await postJson(`/api/sessions/${spareLocalLogin.token}/revoke`, {}, nationalToken);
-    assert.equal(revokedLocalSession.revoked, spareLocalLogin.token);
+    const revokedLocalSession = await postJson(`/api/sessions/${spareLocalSession.id}/revoke`, {}, nationalToken);
+    assert.equal(revokedLocalSession.revoked, spareLocalSession.id);
     assert.equal(revokedLocalSession.sessions.active, 3);
 
     const bulkSessionLogin = await postJson("/api/auth/login", {
       email: "district_admin@rmvi.org",
       password: demoPassword("district")
     });
+    const sessionsWithBulkLogin = await getJson("/api/sessions", nationalToken);
+    const bulkSession = sessionsWithBulkLogin.stations.find((session) => session.email === bulkSessionLogin.station.email);
+    assert.equal(Boolean(bulkSession?.id), true);
     const bulkRevokedSessions = await postJson("/api/sessions/bulk/revoke", {
-      ids: [bulkSessionLogin.token]
+      ids: [bulkSession.id]
     }, nationalToken);
     assert.equal(bulkRevokedSessions.revoked, 1);
 
