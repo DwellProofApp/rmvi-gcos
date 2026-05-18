@@ -85,6 +85,7 @@ button {
 .brand strong {
   display: block;
   font-size: 18px;
+  line-height: 1.15;
 }
 
 .brand span,
@@ -205,6 +206,15 @@ h1 {
   color: #64736b;
   margin-top: 4px;
   font-size: 13px;
+}
+
+.organization-kicker {
+  display: block;
+  color: #1d5a46;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+  margin-bottom: 3px;
 }
 
 .topbar-actions {

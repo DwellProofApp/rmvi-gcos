@@ -772,6 +772,9 @@ const stationPasswords: Record<string, string> = {
 
 const API_BASE = (import.meta.env.VITE_GCOS_API_BASE ?? (import.meta.env.DEV ? "http://127.0.0.1:8787" : "")).replace(/\/$/, "");
 const CHURCH_LOGO_SRC = "/brand/lion-of-judah-logo.jpg";
+const CHURCH_NAME = "Remedy Movement International";
+const PLATFORM_NAME = "GCOS";
+const PLATFORM_FULL_NAME = "Global Church Operating System";
 const isLocalPreview = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
 
 const initialMessages: Message[] = [
@@ -5546,8 +5549,8 @@ function App() {
             <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
           </div>
           <div>
-            <strong>GCOS</strong>
-            <span>Church Governance OS</span>
+            <strong>{CHURCH_NAME}</strong>
+            <span>{PLATFORM_NAME} Administrative OS</span>
           </div>
         </div>
 
@@ -5594,6 +5597,7 @@ function App() {
               <StationIcon size={22} />
             </div>
             <div>
+              <span className="organization-kicker">{CHURCH_NAME}</span>
               <h1>{activeSection === "Control Center" ? activeStation.title : activeSection}</h1>
               <p>{activeStation.level} - {activeStation.authority}</p>
             </div>
@@ -6116,14 +6120,14 @@ function LoginScreen({
 
   return (
     <main className="login-shell">
-      <header className="public-gateway-header" aria-label="RMVI public gateway header">
+      <header className="public-gateway-header" aria-label="Remedy Movement International public gateway header">
         <div className="brand login-brand">
           <div className="brand-mark">
             <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
           </div>
           <div>
-            <strong>RMVI GCOS</strong>
-            <span>Global Church Operating System</span>
+            <strong>{CHURCH_NAME}</strong>
+            <span>{PLATFORM_NAME} - {PLATFORM_FULL_NAME}</span>
           </div>
         </div>
         <div className="gateway-status-pill">
@@ -6138,9 +6142,9 @@ function LoginScreen({
             <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
           </div>
           <div>
-            <span>Official RMVI administrative portal</span>
+            <span>Official {CHURCH_NAME} administrative portal</span>
             <h1>One secure sign-in point for every church office.</h1>
-            <p>Authorized users enter GCOS here with their assigned organizational email and station password. The correct workstation, permissions, reporting path, and workflow tools load after sign-in.</p>
+            <p>Authorized {CHURCH_NAME} users enter {PLATFORM_NAME} here with their assigned organizational email and station password. The correct workstation, permissions, reporting path, and workflow tools load after sign-in.</p>
           </div>
           <div className="login-stat-grid" aria-label="Gateway status">
             {gatewayStats.map((stat) => (
@@ -6199,7 +6203,7 @@ function LoginScreen({
           </form>
 
           <div className="login-card-footer">
-            <span><Server size={14} /> RMVI GCOS</span>
+            <span><Server size={14} /> {CHURCH_NAME} {PLATFORM_NAME}</span>
             <span><BadgeCheck size={14} /> Authorized offices only</span>
           </div>
         </div>
