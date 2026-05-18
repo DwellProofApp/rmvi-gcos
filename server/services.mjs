@@ -2167,9 +2167,87 @@ export function createServices({ state, record, requirePermission, findById }) {
     duplicateDocument(id, body) {
       const item = findById(state.documents, id);
       const created = documentRecord(body.name ?? `Copy of ${item.name}`, item.classification, item.source, body.owner ?? item.owner, item.fileType, "Archived");
+      created.custodian = item.custodian;
+      created.chainHash = item.chainHash;
+      created.linkedReport = item.linkedReport;
+      created.linkedApproval = item.linkedApproval;
       state.documents.unshift(created);
       record("DocumentDuplicated", body.actor, created.name, item.name);
       return created;
+    },
+
+    verifyDocument(id, body) {
+      const item = findById(state.documents, id);
+      item.verified = true;
+      item.verificationNote = body.note ?? "Document integrity verified";
+      record("DocumentVerified", body.actor, item.name, item.verificationNote);
+      return item;
+    },
+
+    assignDocumentCustody(id, body) {
+      const item = findById(state.documents, id);
+      item.custodian = body.custodian ?? body.actor ?? item.owner;
+      item.custodyAt = new Date().toISOString();
+      record("DocumentCustodyAssigned", body.actor, item.name, item.custodian);
+      return item;
+    },
+
+    updateDocumentChain(id, body) {
+      const item = findById(state.documents, id);
+      item.chainHash = body.chainHash ?? `sha256:${Buffer.from(`${item.id}:${item.storageKey}:${item.status}:${Date.now()}`).toString("base64url").slice(0, 32)}`;
+      record("DocumentChainUpdated", body.actor, item.name, item.chainHash);
+      return item;
+    },
+
+    extractDocumentText(id, body) {
+      const item = findById(state.documents, id);
+      item.extractedText = body.text ?? `${item.name} indexed from ${item.source} as ${item.classification}.`;
+      item.extractedAt = new Date().toISOString();
+      record("DocumentTextExtracted", body.actor, item.name, `${item.extractedText.length} characters indexed`);
+      return item;
+    },
+
+    linkDocumentReport(id, body) {
+      const item = findById(state.documents, id);
+      item.linkedReport = body.reportId ?? state.reports[0]?.id ?? "report-unassigned";
+      record("DocumentReportLinked", body.actor, item.name, item.linkedReport);
+      return item;
+    },
+
+    linkDocumentApproval(id, body) {
+      const item = findById(state.documents, id);
+      item.linkedApproval = body.approvalId ?? state.approvals[0]?.id ?? "approval-unassigned";
+      record("DocumentApprovalLinked", body.actor, item.name, item.linkedApproval);
+      return item;
+    },
+
+    watchDocument(id, body) {
+      const item = findById(state.documents, id);
+      item.watchers ??= [];
+      const watcher = body.watcher ?? body.actor;
+      if (watcher && !item.watchers.includes(watcher)) item.watchers.push(watcher);
+      record("DocumentWatcherAdded", body.actor, item.name, watcher ?? "Watcher");
+      return item;
+    },
+
+    exportDocument(id, body) {
+      const item = findById(state.documents, id);
+      item.exportedAt = new Date().toISOString();
+      item.exportReason = body.reason ?? "Governance evidence export";
+      record("DocumentExported", body.actor, item.name, item.exportReason);
+      return item;
+    },
+
+    bulkSealDocuments(body) {
+      requirePermission(body.actor, "canApprove");
+      const ids = Array.isArray(body.ids) && body.ids.length ? body.ids : state.documents.slice(0, 3).map((item) => item.id);
+      const updated = state.documents.filter((item) => ids.includes(item.id)).map((item) => {
+        item.status = "Sealed";
+        item.chainHash ??= `sha256:${Buffer.from(`${item.id}:${item.storageKey}:${item.status}`).toString("base64url").slice(0, 32)}`;
+        return item;
+      });
+      record("DocumentsBulkSealed", body.actor, "Archive vault", `${updated.length} documents sealed`);
+      return { count: updated.length, updated };
     },
 
     archiveManifest() {
@@ -2186,7 +2264,14 @@ export function createServices({ state, record, requirePermission, findById }) {
         total: state.documents.length,
         byStatus,
         bySource,
-        permanent: state.documents.filter((item) => item.retainedUntil === "Permanent").length
+        permanent: state.documents.filter((item) => item.retainedUntil === "Permanent").length,
+        verified: state.documents.filter((item) => item.verified).length,
+        custodyAssigned: state.documents.filter((item) => item.custodian).length,
+        chainUpdated: state.documents.filter((item) => item.chainHash).length,
+        extracted: state.documents.filter((item) => item.extractedText).length,
+        linked: state.documents.filter((item) => item.linkedReport || item.linkedApproval).length,
+        watched: state.documents.filter((item) => item.watchers?.length).length,
+        exported: state.documents.filter((item) => item.exportedAt).length
       };
     },
 

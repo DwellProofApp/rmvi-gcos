@@ -1530,6 +1530,19 @@ h1 {
   grid-template-columns: 0.8fr 1fr 1.25fr 0.55fr 1.2fr 0.5fr;
 }
 
+.document-table .table-row {
+  grid-template-columns: minmax(220px, 1.2fr) 0.75fr 0.75fr 0.85fr minmax(360px, 1.6fr);
+}
+
+.table-row strong small {
+  display: block;
+  margin-top: 4px;
+  color: #6a7c70;
+  font-size: 11px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
 .audit-integrity-grid {
   margin-bottom: 10px;
 }

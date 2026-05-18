@@ -5,6 +5,7 @@ import {
   Archive as ArchiveIcon,
   ArrowDownToLine,
   ArrowUpFromLine,
+  BadgeCheck,
   Bell,
   Building2,
   CalendarDays,
@@ -14,8 +15,10 @@ import {
   CircleDot,
   CloudOff,
   Download,
+  FileBarChart2,
   FileCheck2,
   FileClock,
+  FileText,
   Files,
   GitBranch,
   Globe2,
@@ -73,7 +76,7 @@ type Session = { email: string; startedAt: string; token?: string; expiresAt?: s
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
 type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[]; evidence?: string; comments?: string[]; resolutionNote?: string; due?: string; linkedTask?: string; linkedReport?: string; linkedApproval?: string; impactScore?: number; impactSummary?: string; archived?: boolean; archiveReason?: string };
 type AiDraft = { id: string; kind: "Executive Summary" | "Memo" | "Report Brief"; title: string; body: string; sourceCount: number; createdAt: string; status?: string; confidence?: number; sourceNote?: string; sealed?: boolean; chainHash?: string; publishedBy?: string; watchers?: string[] };
-type DocumentRecord = { id: string; name: string; classification: string; source: string; owner: string; fileType: string; status: string; storageKey: string; retainedUntil: string; createdAt: string };
+type DocumentRecord = { id: string; name: string; classification: string; source: string; owner: string; fileType: string; status: string; storageKey: string; retainedUntil: string; createdAt: string; verified?: boolean; verificationNote?: string; custodian?: string; custodyAt?: string; chainHash?: string; extractedText?: string; extractedAt?: string; linkedReport?: string; linkedApproval?: string; watchers?: string[]; exportedAt?: string; exportReason?: string };
 type SearchResult = { id: string; section: Section; title: string; meta: string; status: string };
 type NotificationItem = { id: string; section: Section; title: string; detail: string; severity: "Critical" | "High" | "Medium" | "Info" };
 type ApiStatus = {
@@ -267,6 +270,13 @@ type ArchiveManifest = {
   byStatus: Record<string, number>;
   bySource: Record<string, number>;
   permanent: number;
+  verified?: number;
+  custodyAssigned?: number;
+  chainUpdated?: number;
+  extracted?: number;
+  linked?: number;
+  watched?: number;
+  exported?: number;
 };
 type WorkflowDigest = {
   generatedAt: string;
@@ -5146,6 +5156,129 @@ function App() {
     }
   }
 
+  function verifyDocument(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const verificationNote = "Document integrity verified";
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, verified: true, verificationNote } : item));
+    recordAudit("DocumentVerified", document.name, verificationNote);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/verify`, {
+        method: "POST",
+        body: JSON.stringify({ note: verificationNote })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function assignDocumentCustody(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, custodian: activeStation.email, custodyAt: new Date().toISOString() } : item));
+    recordAudit("DocumentCustodyAssigned", document.name, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/custody`, {
+        method: "POST",
+        body: JSON.stringify({ custodian: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateDocumentChain(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const chainHash = `sha256:${btoa(`${document.id}:${document.storageKey}:${document.status}`).replaceAll("=", "").slice(0, 24)}`;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, chainHash } : item));
+    recordAudit("DocumentChainUpdated", document.name, chainHash);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/chain`, {
+        method: "POST",
+        body: JSON.stringify({ chainHash })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function extractDocumentText(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const extractedText = `${document.name} indexed from ${document.source} as ${document.classification}.`;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, extractedText, extractedAt: new Date().toISOString() } : item));
+    recordAudit("DocumentTextExtracted", document.name, `${extractedText.length} characters indexed`);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/extract`, {
+        method: "POST",
+        body: JSON.stringify({ text: extractedText })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkDocumentReport(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const reportId = reports[0]?.id ?? "report-unassigned";
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, linkedReport: reportId } : item));
+    recordAudit("DocumentReportLinked", document.name, reportId);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/link-report`, {
+        method: "POST",
+        body: JSON.stringify({ reportId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkDocumentApproval(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const approvalId = approvals[0]?.id ?? "approval-unassigned";
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, linkedApproval: approvalId } : item));
+    recordAudit("DocumentApprovalLinked", document.name, approvalId);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/link-approval`, {
+        method: "POST",
+        body: JSON.stringify({ approvalId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchDocument(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const watcher = activeStation.email;
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), watcher])) } : item));
+    recordAudit("DocumentWatcherAdded", document.name, watcher);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function exportDocumentRecord(id: string) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const exportReason = "Governance evidence export";
+    setDocuments((items) => items.map((item) => item.id === id ? { ...item, exportedAt: new Date().toISOString(), exportReason } : item));
+    recordAudit("DocumentExported", document.name, exportReason);
+    if (!offlineMode) {
+      void apiRequest<DocumentRecord>(`/api/documents/${id}/export`, {
+        method: "POST",
+        body: JSON.stringify({ reason: exportReason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkSealDocuments(ids: string[]) {
+    const targetIds = ids.length ? ids : documents.slice(0, 3).map((item) => item.id);
+    setDocuments((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, status: "Sealed", chainHash: item.chainHash ?? `sha256:${btoa(`${item.id}:${item.storageKey}:Sealed`).replaceAll("=", "").slice(0, 24)}` } : item));
+    recordAudit("DocumentsBulkSealed", "Archive vault", `${targetIds.length} documents sealed`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: DocumentRecord[] }>("/api/documents/bulk/seal", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function refreshArchiveManifest() {
     if (offlineMode) {
       recordAudit("ArchiveManifestRefreshed", "Archive", "Local manifest refreshed");
@@ -5636,7 +5769,7 @@ function App() {
             digest={transferDigest}
           />
         )}
-        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onRefreshManifest={refreshArchiveManifest} />}
+        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onVerifyDocument={verifyDocument} onAssignCustody={assignDocumentCustody} onUpdateChain={updateDocumentChain} onExtractText={extractDocumentText} onLinkReport={linkDocumentReport} onLinkApproval={linkDocumentApproval} onWatchDocument={watchDocument} onExportDocument={exportDocumentRecord} onBulkSeal={bulkSealDocuments} onRefreshManifest={refreshArchiveManifest} />}
         {activeSection === "Audit" && (
           <Audit
             auditRows={auditRows}
@@ -8749,6 +8882,15 @@ function Archive({
   onPlaceHold,
   onUpdateRetention,
   onDuplicateDocument,
+  onVerifyDocument,
+  onAssignCustody,
+  onUpdateChain,
+  onExtractText,
+  onLinkReport,
+  onLinkApproval,
+  onWatchDocument,
+  onExportDocument,
+  onBulkSeal,
   onRefreshManifest
 }: {
   documents: DocumentRecord[];
@@ -8764,6 +8906,15 @@ function Archive({
   onPlaceHold: (id: string) => void;
   onUpdateRetention: (id: string) => void;
   onDuplicateDocument: (id: string) => void;
+  onVerifyDocument: (id: string) => void;
+  onAssignCustody: (id: string) => void;
+  onUpdateChain: (id: string) => void;
+  onExtractText: (id: string) => void;
+  onLinkReport: (id: string) => void;
+  onLinkApproval: (id: string) => void;
+  onWatchDocument: (id: string) => void;
+  onExportDocument: (id: string) => void;
+  onBulkSeal: (ids: string[]) => void;
   onRefreshManifest: () => void;
 }) {
   const [name, setName] = React.useState("Signed mission authorization.pdf");
@@ -8789,6 +8940,9 @@ function Archive({
   const sealedCount = documents.filter((document) => document.status === "Sealed").length;
   const holdCount = documents.filter((document) => document.status === "Legal Hold").length;
   const permanentCount = manifest?.permanent ?? documents.filter((document) => document.retainedUntil === "Permanent").length;
+  const verifiedCount = manifest?.verified ?? documents.filter((document) => document.verified).length;
+  const linkedCount = manifest?.linked ?? documents.filter((document) => document.linkedReport || document.linkedApproval).length;
+  const exportedCount = manifest?.exported ?? documents.filter((document) => document.exportedAt).length;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -8818,6 +8972,11 @@ function Archive({
           <Insight label="Legal holds" value={String(holdCount)} />
           <Insight label="Permanent" value={String(permanentCount)} />
         </div>
+        <div className="office-summary-grid">
+          <Insight label="Verified" value={String(verifiedCount)} />
+          <Insight label="Linked" value={String(linkedCount)} />
+          <Insight label="Exported" value={String(exportedCount)} />
+        </div>
         <div className="archive-toolbar">
           <label>
             <span>Source</span>
@@ -8838,6 +8997,7 @@ function Archive({
             </select>
           </label>
           <button type="button" onClick={onRefreshManifest}><RefreshCw size={14} /> Manifest</button>
+          <button type="button" onClick={() => onBulkSeal(visibleDocuments.slice(0, 3).map((document) => document.id))}><LockKeyhole size={14} /> Bulk seal</button>
         </div>
         <div className="data-table document-table">
           <div className="table-row table-head">
@@ -8845,7 +9005,16 @@ function Archive({
           </div>
           {visibleDocuments.map((document) => (
             <div className="table-row" key={document.id}>
-              <strong>{document.name}</strong>
+              <strong>
+                {document.name}
+                <small>{[
+                  document.verified ? "Verified" : "",
+                  document.custodian ? `Custody: ${document.custodian}` : "",
+                  document.chainHash ? "Chain hash" : "",
+                  document.extractedText ? "Text indexed" : "",
+                  document.watchers?.length ? `${document.watchers.length} watchers` : ""
+                ].filter(Boolean).join(" / ")}</small>
+              </strong>
               <span>{document.classification}</span>
               <span>{document.source}</span>
               <span>{document.owner}</span>
@@ -8859,6 +9028,14 @@ function Archive({
                 <button onClick={() => onPlaceHold(document.id)}><ShieldCheck size={14} /> Hold</button>
                 <button onClick={() => onUpdateRetention(document.id)}><TimerReset size={14} /> Retain</button>
                 <button onClick={() => onDuplicateDocument(document.id)}><Files size={14} /> Copy</button>
+                <button onClick={() => onVerifyDocument(document.id)}><ShieldCheck size={14} /> Verify</button>
+                <button onClick={() => onAssignCustody(document.id)}><Users size={14} /> Custody</button>
+                <button onClick={() => onUpdateChain(document.id)}><LockKeyhole size={14} /> Chain</button>
+                <button onClick={() => onExtractText(document.id)}><FileText size={14} /> Extract</button>
+                <button onClick={() => onLinkReport(document.id)}><FileBarChart2 size={14} /> Report</button>
+                <button onClick={() => onLinkApproval(document.id)}><BadgeCheck size={14} /> Approval</button>
+                <button onClick={() => onWatchDocument(document.id)}><Bell size={14} /> Watch</button>
+                <button onClick={() => onExportDocument(document.id)}><Download size={14} /> Export</button>
               </div>
             </div>
           ))}

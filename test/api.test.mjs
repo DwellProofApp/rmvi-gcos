@@ -1919,9 +1919,63 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(duplicatedDocument.name, "Automated duplicate packet.pdf");
     assert.equal(duplicatedDocument.classification, classifiedDocument.classification);
 
+    const verifiedDocument = await postJson(`/api/documents/${document.id}/verify`, {
+      note: "Automated integrity test"
+    }, nationalToken);
+    assert.equal(verifiedDocument.verified, true);
+    assert.equal(verifiedDocument.verificationNote, "Automated integrity test");
+
+    const custodyDocument = await postJson(`/api/documents/${document.id}/custody`, {
+      custodian: "National Evidence Desk"
+    }, nationalToken);
+    assert.equal(custodyDocument.custodian, "National Evidence Desk");
+
+    const chainedDocument = await postJson(`/api/documents/${document.id}/chain`, {
+      chainHash: "sha256:test-document-chain"
+    }, nationalToken);
+    assert.equal(chainedDocument.chainHash, "sha256:test-document-chain");
+
+    const extractedDocument = await postJson(`/api/documents/${document.id}/extract`, {
+      text: "Signed packet text extraction"
+    }, nationalToken);
+    assert.equal(extractedDocument.extractedText, "Signed packet text extraction");
+
+    const reportLinkedDocument = await postJson(`/api/documents/${document.id}/link-report`, {
+      reportId: reports[0].id
+    }, nationalToken);
+    assert.equal(reportLinkedDocument.linkedReport, reports[0].id);
+
+    const approvalLinkedDocument = await postJson(`/api/documents/${document.id}/link-approval`, {
+      approvalId: approvals[0].id
+    }, nationalToken);
+    assert.equal(approvalLinkedDocument.linkedApproval, approvals[0].id);
+
+    const watchedDocument = await postJson(`/api/documents/${document.id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedDocument.watchers.includes("np@rmvi.org"), true);
+
+    const exportedDocument = await postJson(`/api/documents/${document.id}/export`, {
+      reason: "Automated evidence export"
+    }, nationalToken);
+    assert.equal(exportedDocument.exportReason, "Automated evidence export");
+
+    const bulkSealedDocuments = await postJson("/api/documents/bulk/seal", {
+      ids: [duplicatedDocument.id]
+    }, nationalToken);
+    assert.equal(bulkSealedDocuments.count, 1);
+    assert.equal(bulkSealedDocuments.updated[0].status, "Sealed");
+
     const archiveManifest = await getJson("/api/archive/manifest", nationalToken);
     assert.equal(archiveManifest.total >= 1, true);
     assert.equal(archiveManifest.byStatus["Legal Hold"] >= 1, true);
+    assert.equal(archiveManifest.verified >= 1, true);
+    assert.equal(archiveManifest.custodyAssigned >= 1, true);
+    assert.equal(archiveManifest.chainUpdated >= 1, true);
+    assert.equal(archiveManifest.extracted >= 1, true);
+    assert.equal(archiveManifest.linked >= 1, true);
+    assert.equal(archiveManifest.watched >= 1, true);
+    assert.equal(archiveManifest.exported >= 1, true);
 
     const auditNote = await postJson("/api/audit/note", {
       object: "Automated audit test",
@@ -2427,6 +2481,15 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "DocumentHoldPlaced"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentRetentionUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentDuplicated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentCustodyAssigned"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentChainUpdated"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentTextExtracted"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentReportLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentApprovalLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentExported"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "DocumentsBulkSealed"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditNote"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditRowFlagged"), true);
     assert.equal(persisted.audit.some((row) => row.event === "AuditRowSealed"), true);

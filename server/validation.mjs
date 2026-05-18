@@ -1016,6 +1016,42 @@ const validators = {
     if (body.owner !== undefined) requireString(body.owner, "owner");
   },
 
+  "POST /api/documents/:id/verify": (body) => {
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/documents/:id/custody": (body) => {
+    if (body.custodian !== undefined) requireString(body.custodian, "custodian");
+  },
+
+  "POST /api/documents/:id/chain": (body) => {
+    if (body.chainHash !== undefined) requireString(body.chainHash, "chainHash");
+  },
+
+  "POST /api/documents/:id/extract": (body) => {
+    if (body.text !== undefined) requireString(body.text, "text");
+  },
+
+  "POST /api/documents/:id/link-report": (body) => {
+    if (body.reportId !== undefined) requireString(body.reportId, "reportId");
+  },
+
+  "POST /api/documents/:id/link-approval": (body) => {
+    if (body.approvalId !== undefined) requireString(body.approvalId, "approvalId");
+  },
+
+  "POST /api/documents/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/documents/:id/export": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/documents/bulk/seal": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+  },
+
   "POST /api/audit/note": (body) => {
     if (body.object !== undefined) requireString(body.object, "object");
     if (body.note !== undefined) requireString(body.note, "note");
