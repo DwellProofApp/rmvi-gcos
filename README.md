@@ -184,6 +184,8 @@ GET  /api/persistence/status
 POST /api/persistence/backup
 GET  /api/persistence/backup-manifest
 POST /api/persistence/backup-manifest
+GET  /api/persistence/restore-drill
+POST /api/persistence/restore-drill
 POST /api/persistence/verify
 GET  /api/persistence/export
 GET  /api/persistence/migration-plan

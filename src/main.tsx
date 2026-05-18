@@ -162,6 +162,22 @@ type PersistenceBackupManifest = {
   status: string;
   nextAction: string;
 };
+type PersistenceRestoreDrill = {
+  generatedAt: string;
+  provider: string;
+  mode: string;
+  backup?: PersistenceBackupManifest["latest"];
+  valid: boolean;
+  status: string;
+  liveHash: string;
+  backupHash: string | null;
+  computedBackupHash: string | null;
+  recordDelta: number;
+  liveRecords: Record<string, number>;
+  backupRecords: Record<string, number>;
+  checks: { name: string; ok: boolean; detail: string }[];
+  nextAction: string;
+};
 type PersistenceMigrationPlan = {
   generatedAt: string;
   source: { provider: string; mode: string; source: string };
@@ -9464,6 +9480,7 @@ function Audit({
   const [evidenceDigest, setEvidenceDigest] = React.useState<EvidenceDigest | null>(null);
   const [persistenceStatus, setPersistenceStatus] = React.useState<PersistenceStatus | null>(apiStatus?.persistenceStatus ?? null);
   const [backupManifest, setBackupManifest] = React.useState<PersistenceBackupManifest | null>(null);
+  const [restoreDrill, setRestoreDrill] = React.useState<PersistenceRestoreDrill | null>(null);
   const [migrationPlan, setMigrationPlan] = React.useState<PersistenceMigrationPlan | null>(null);
   const [schemaPlan, setSchemaPlan] = React.useState<PersistenceSchemaPlan | null>(null);
   const [importDryRun, setImportDryRun] = React.useState<PersistenceImportDryRun | null>(null);
@@ -9510,6 +9527,7 @@ function Audit({
     void apiRequest<EvidenceDigest>("/api/evidence-vault/digest").then(setEvidenceDigest).catch(() => undefined);
     void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
     void apiRequest<PersistenceBackupManifest>("/api/persistence/backup-manifest").then(setBackupManifest).catch(() => undefined);
+    void apiRequest<PersistenceRestoreDrill>("/api/persistence/restore-drill").then(setRestoreDrill).catch(() => undefined);
     void apiRequest<PersistenceMigrationPlan>("/api/persistence/migration-plan").then(setMigrationPlan).catch(() => undefined);
     void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
     void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
@@ -9543,6 +9561,22 @@ function Audit({
     }).then((result) => {
       setBackupManifest(result.manifest);
       setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function refreshRestoreDrill() {
+    void apiRequest<PersistenceRestoreDrill>("/api/persistence/restore-drill").then(setRestoreDrill).catch(() => undefined);
+  }
+
+  function recordRestoreDrill() {
+    void apiRequest<{ drill: PersistenceRestoreDrill; status: PersistenceStatus }>("/api/persistence/restore-drill", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setRestoreDrill(result.drill);
+      setPersistenceStatus(result.status);
+      void apiRequest<PersistenceCutoverChecklist>("/api/persistence/cutover-checklist").then(setCutoverChecklist).catch(() => undefined);
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -10058,6 +10092,8 @@ function Audit({
           <button onClick={createPersistenceBackup}><Download size={15} /> Backup</button>
           <button onClick={refreshBackupManifest}><Files size={15} /> Manifest</button>
           <button onClick={recordBackupManifest}><ShieldCheck size={15} /> Record</button>
+          <button onClick={refreshRestoreDrill}><RefreshCw size={15} /> Drill</button>
+          <button onClick={recordRestoreDrill}><CheckCircle2 size={15} /> Restore</button>
           <button onClick={verifyPersistenceStore}><ShieldCheck size={15} /> Verify</button>
           <button onClick={exportPersistenceStore}><Files size={15} /> Export</button>
           <button onClick={exportMigrationBundle}><ArrowUpFromLine size={15} /> Migration</button>
@@ -10072,6 +10108,8 @@ function Audit({
           <Insight label="Backups" value={persistenceStatus?.backupSupport === false ? "Unavailable" : "Available"} />
           <Insight label="Manifest" value={backupManifest?.status ?? "Pending"} />
           <Insight label="Backup files" value={String(backupManifest?.total ?? 0)} />
+          <Insight label="Restore" value={restoreDrill?.status ?? "Pending"} />
+          <Insight label="Delta" value={String(restoreDrill?.recordDelta ?? 0)} />
           <Insight label="Migration" value={persistenceStatus?.migrationReady ? "Ready" : "Planned"} />
           <Insight label="External DB" value={persistenceStatus?.readyForExternalDatabase ? "Ready" : "Planned"} />
         </div>
@@ -10083,8 +10121,16 @@ function Audit({
             <small>Last backup: {persistenceStatus?.lastBackup ? `${persistenceStatus.lastBackup.label} by ${persistenceStatus.lastBackup.createdBy}` : "none recorded"}</small>
             <small>Last verify: {persistenceStatus?.lastVerifiedAt ? `${formatDateTime(persistenceStatus.lastVerifiedAt)} by ${persistenceStatus.lastVerifiedBy}` : "not verified yet"}</small>
             <small>Manifest: {backupManifest ? `${backupManifest.total} backups, ${backupManifest.totalBytes} bytes` : "not loaded"}</small>
+            <small>Restore drill: {restoreDrill ? `${restoreDrill.status}, delta ${restoreDrill.recordDelta}` : "not run"}</small>
             {persistenceStatus?.note && <small>{persistenceStatus.note}</small>}
           </article>
+          {restoreDrill && (
+            <article className="source-map-item">
+              <span>{restoreDrill.valid ? "Pass" : "Hold"}</span>
+              <strong>{restoreDrill.nextAction}</strong>
+              <small>{restoreDrill.backupHash ? restoreDrill.backupHash.slice(0, 32) : "No backup hash"} - {Object.values(restoreDrill.backupRecords).reduce((sum, count) => sum + count, 0)} records</small>
+            </article>
+          )}
           {(backupManifest?.backups.slice(0, 3) ?? []).map((backup) => (
             <article className="source-map-item" key={`${backup.hash}-${backup.createdAt}`}>
               <span>{backup.label}</span>

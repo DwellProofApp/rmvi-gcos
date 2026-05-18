@@ -213,6 +213,32 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
       };
     },
 
+    async restoreDrill(state) {
+      const manifest = await this.backupManifest(state);
+      const latest = manifest.latest;
+      const checks = [
+        { name: "backup-readable", ok: Boolean(latest?.hash), detail: latest ? `${latest.label} snapshot metadata recorded` : "No database snapshot metadata" },
+        { name: "provider", ok: configured, detail: configured ? "database provider configured" : "GCOS_DATABASE_URL not configured" },
+        { name: "managed-restore", ok: false, detail: "Run managed database restore in the hosting provider before production cutover" }
+      ];
+      return {
+        generatedAt: new Date().toISOString(),
+        provider: "database",
+        mode: this.mode,
+        backup: latest,
+        valid: checks.every((check) => check.ok),
+        status: checks.every((check) => check.ok) ? "restorable" : "blocked",
+        liveHash: hashState(state),
+        backupHash: latest?.hash ?? null,
+        computedBackupHash: latest?.hash ?? null,
+        recordDelta: 0,
+        liveRecords: recordCounts(state),
+        backupRecords: recordCounts(state),
+        checks,
+        nextAction: latest ? "Run a managed database restore drill" : "Create a database snapshot before restore drill"
+      };
+    },
+
     exportState(state, actor) {
       return {
         exportedAt: new Date().toISOString(),
@@ -331,7 +357,8 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
       const checks = [
         { name: "database-provider", ok: configured, detail: configured ? "Database provider selected" : "Missing GCOS_DATABASE_URL" },
         { name: "adapter-read-write", ok: configured, detail: configured ? "Postgres JSONB read/write path implemented" : "Database URL required" },
-        { name: "import-dry-run", ok: dryRun.valid, detail: dryRun.nextAction }
+        { name: "import-dry-run", ok: dryRun.valid, detail: dryRun.nextAction },
+        { name: "restore-drill", ok: Boolean(state.persistenceMeta?.lastRestoreDrill?.valid), detail: state.persistenceMeta?.lastRestoreDrill ? `${state.persistenceMeta.lastRestoreDrill.status} recorded` : "Run restore drill" }
       ];
       const blockers = checks.filter((check) => !check.ok).map((check) => check.name);
       return {

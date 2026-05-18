@@ -156,6 +156,18 @@ export function createJsonStorageAdapter({ dataPath }) {
       });
     },
 
+    async restoreDrill(state) {
+      const manifest = await this.backupManifest(state);
+      const latest = manifest.backups[0];
+      if (!latest?.path) return buildRestoreDrill(state, manifest, null, "No backup available for restore drill");
+      try {
+        const parsed = JSON.parse(await readFile(latest.path, "utf8"));
+        return buildRestoreDrill(state, manifest, parsed, null);
+      } catch (error) {
+        return buildRestoreDrill(state, manifest, null, error.message);
+      }
+    },
+
     exportState(state, actor) {
       return {
         exportedAt: new Date().toISOString(),
@@ -276,6 +288,37 @@ function buildBackupManifest(state, { provider, mode, backupsPath, backups }) {
     checks,
     status,
     nextAction: status === "protected" ? "Record backup manifest before database cutover" : "Create a persistence backup"
+  };
+}
+
+function buildRestoreDrill(liveState, manifest, snapshot, error) {
+  const snapshotState = snapshot?.state ?? null;
+  const snapshotHash = snapshotState ? hashState(snapshotState) : null;
+  const snapshotCounts = snapshotState ? recordCounts(snapshotState) : {};
+  const liveCounts = recordCounts(liveState);
+  const rowDelta = Object.keys(liveCounts).reduce((sum, key) => sum + Math.abs((liveCounts[key] ?? 0) - (snapshotCounts[key] ?? 0)), 0);
+  const checks = [
+    { name: "backup-readable", ok: Boolean(snapshotState) && !error, detail: error ?? "Latest backup JSON parsed" },
+    { name: "hash-match", ok: Boolean(snapshot?.hash && snapshotHash === snapshot.hash), detail: snapshotHash ? `${snapshotHash}${snapshotHash === snapshot?.hash ? "" : " does not match manifest hash"}` : "No snapshot hash" },
+    { name: "state-shape", ok: Boolean(snapshotState?.stations && snapshotState?.audit && snapshotState?.messages), detail: snapshotState ? "Core GCOS collections present" : "No state payload" },
+    { name: "record-counts", ok: Object.keys(snapshotCounts).length > 0, detail: `${Object.values(snapshotCounts).reduce((sum, count) => sum + count, 0)} restorable records` }
+  ];
+  const restorable = checks.every((check) => check.ok);
+  return {
+    generatedAt: new Date().toISOString(),
+    provider: manifest.provider,
+    mode: manifest.mode,
+    backup: manifest.latest,
+    valid: restorable,
+    status: restorable ? "restorable" : "blocked",
+    liveHash: hashState(liveState),
+    backupHash: snapshot?.hash ?? null,
+    computedBackupHash: snapshotHash,
+    recordDelta: rowDelta,
+    liveRecords: liveCounts,
+    backupRecords: snapshotCounts,
+    checks,
+    nextAction: restorable ? "Record restore drill before production cutover" : "Create a readable backup and rerun restore drill"
   };
 }
 
@@ -456,6 +499,11 @@ function buildCutoverChecklist(state, dryRun) {
       name: "import-dry-run",
       ok: Boolean(meta.lastImportDryRun?.valid),
       detail: meta.lastImportDryRun ? `${meta.lastImportDryRun.estimatedBatches} batches, ${meta.lastImportDryRun.blockers} blockers` : "Record an import dry-run"
+    },
+    {
+      name: "restore-drill",
+      ok: Boolean(meta.lastRestoreDrill?.valid),
+      detail: meta.lastRestoreDrill ? `${meta.lastRestoreDrill.status} with ${meta.lastRestoreDrill.recordDelta} record delta` : "Record a restore drill"
     },
     {
       name: "object-storage",

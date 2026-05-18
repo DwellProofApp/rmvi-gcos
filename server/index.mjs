@@ -74,6 +74,8 @@ const routes = {
   "POST /api/persistence/backup": async ({ body, session }) => createdResponse(await createPersistenceBackup(body, session.email)),
   "GET /api/persistence/backup-manifest": async () => ok(await persistenceBackupManifest()),
   "POST /api/persistence/backup-manifest": async ({ session }) => ok(await recordPersistenceBackupManifest(session.email)),
+  "GET /api/persistence/restore-drill": async () => ok(await persistenceRestoreDrill()),
+  "POST /api/persistence/restore-drill": async ({ session }) => ok(await recordPersistenceRestoreDrill(session.email)),
   "POST /api/persistence/verify": async ({ session }) => ok(await verifyPersistence(session.email)),
   "GET /api/persistence/export": ({ session }) => ok(persistenceExport(session.email)),
   "GET /api/persistence/migration-plan": () => ok(persistenceMigrationPlan()),
@@ -513,6 +515,7 @@ async function launchReadiness() {
   const status = operationalStatus();
   const persistence = await persistenceStatus();
   const backupManifest = await persistenceBackupManifest();
+  const restoreDrill = await persistenceRestoreDrill();
   const cutover = persistenceCutoverChecklist();
   const counts = status.counts;
   const checks = [
@@ -536,6 +539,7 @@ async function launchReadiness() {
     { name: "body-limit", category: "production", ok: MAX_BODY_BYTES >= 1048576, detail: `${MAX_BODY_BYTES} bytes` },
     { name: "rate-limit-protection", category: "production", ok: LOGIN_RATE_LIMIT > 0 && MUTATION_RATE_LIMIT > 0, detail: `${LOGIN_RATE_LIMIT} login attempts / ${Math.round(LOGIN_RATE_WINDOW_MS / 1000)}s` },
     { name: "backup-manifest", category: "production", ok: backupManifest.status === "protected", detail: `${backupManifest.total} backups, ${backupManifest.totalBytes} bytes` },
+    { name: "restore-drill", category: "production", ok: restoreDrill.status === "restorable", detail: restoreDrill.nextAction },
     { name: "database-pool", category: "production", ok: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, detail: process.env.GCOS_DATABASE_POOL_SIZE ?? "default" }
   ];
   const mvpChecks = checks.filter((check) => check.category === "mvp");
@@ -743,6 +747,26 @@ async function recordPersistenceBackupManifest(actor) {
   };
   record("PersistenceBackupManifestRecorded", actor, "Persistence backups", `${manifest.total} backups / ${manifest.status}`);
   return { manifest, status: await persistenceStatus() };
+}
+
+async function persistenceRestoreDrill() {
+  return storage.restoreDrill(state);
+}
+
+async function recordPersistenceRestoreDrill(actor) {
+  requirePermission(actor, "canApprove");
+  const drill = await persistenceRestoreDrill();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastRestoreDrill = {
+    generatedAt: drill.generatedAt,
+    actor,
+    valid: drill.valid,
+    status: drill.status,
+    backupHash: drill.backupHash,
+    recordDelta: drill.recordDelta
+  };
+  record("PersistenceRestoreDrillRecorded", actor, "Persistence backups", `${drill.status} / delta ${drill.recordDelta}`);
+  return { drill, status: await persistenceStatus() };
 }
 
 async function verifyPersistence(actor) {

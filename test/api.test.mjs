@@ -53,6 +53,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(launchReadiness.checks.some((check) => check.name === "database-pool"), true);
     assert.equal(launchReadiness.checks.some((check) => check.name === "rate-limit-protection"), true);
     assert.equal(launchReadiness.checks.some((check) => check.name === "backup-manifest"), true);
+    assert.equal(launchReadiness.checks.some((check) => check.name === "restore-drill"), true);
 
     const deploymentPlan = await getJson("/api/launch/deployment-plan");
     assert.equal(deploymentPlan.targetDomain, "rmvi.org");
@@ -149,6 +150,17 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(recordedBackupManifest.manifest.status, "protected");
     assert.equal(recordedBackupManifest.status.records.stations > 0, true);
 
+    const restoreDrill = await getJson("/api/persistence/restore-drill");
+    assert.equal(restoreDrill.status, "restorable");
+    assert.equal(restoreDrill.valid, true);
+    assert.equal(restoreDrill.backupRecords.stations, restoreDrill.liveRecords.stations);
+    assert.equal(restoreDrill.recordDelta >= 0, true);
+    assert.equal(restoreDrill.checks.some((check) => check.name === "hash-match" && check.ok), true);
+
+    const recordedRestoreDrill = await postJson("/api/persistence/restore-drill", {}, nationalToken);
+    assert.equal(recordedRestoreDrill.drill.status, "restorable");
+    assert.equal(recordedRestoreDrill.status.records.stations > 0, true);
+
     const verifiedPersistence = await postJson("/api/persistence/verify", {}, nationalToken);
     assert.equal(verifiedPersistence.verified, true);
     assert.match(verifiedPersistence.status.hash, /^sha256:/);
@@ -186,6 +198,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const recordedCutoverChecklist = await postJson("/api/persistence/cutover-checklist", {}, nationalToken);
     assert.equal(recordedCutoverChecklist.checklist.ready, true);
+    assert.equal(recordedCutoverChecklist.checklist.checks.some((check) => check.name === "restore-drill" && check.ok), true);
     assert.equal(recordedCutoverChecklist.checklist.requiredSwitches.some((item) => item.name === "GCOS_DATABASE_URL"), true);
     assert.equal(recordedCutoverChecklist.status.records.stations > 0, true);
 

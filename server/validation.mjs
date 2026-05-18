@@ -134,6 +134,8 @@ const validators = {
 
   "POST /api/persistence/backup-manifest": () => {},
 
+  "POST /api/persistence/restore-drill": () => {},
+
   "POST /api/persistence/verify": () => {},
 
   "POST /api/persistence/migration-export": (body) => {
