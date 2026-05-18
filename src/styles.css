@@ -499,8 +499,8 @@ h1 {
   gap: 22px;
   padding: 24px;
   background:
-    linear-gradient(135deg, rgba(248, 250, 248, 0.98), rgba(228, 239, 233, 0.95)),
-    repeating-linear-gradient(90deg, rgba(23, 61, 50, 0.05) 0 1px, transparent 1px 92px);
+    linear-gradient(135deg, rgba(13, 44, 35, 0.96), rgba(31, 89, 72, 0.96)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 92px);
 }
 
 .public-gateway-header {
@@ -518,8 +518,8 @@ h1 {
   align-self: center;
   margin: 0 auto;
   background:
-    linear-gradient(135deg, #173d32 0%, #1f5948 48%, #f8faf8 48%, #ffffff 100%);
-  border: 1px solid rgba(23, 61, 50, 0.14);
+    linear-gradient(135deg, rgba(18, 64, 51, 0.98), rgba(31, 89, 72, 0.96));
+  border: 1px solid rgba(255, 255, 255, 0.22);
   border-radius: 8px;
   display: grid;
   grid-template-columns: minmax(0, 1.15fr) minmax(360px, 0.85fr);
@@ -535,11 +535,11 @@ h1 {
 }
 
 .login-brand strong {
-  color: #13201a;
+  color: #ffffff;
 }
 
 .login-brand span {
-  color: #64736b;
+  color: #e4f2eb;
 }
 
 .gateway-status-pill {
