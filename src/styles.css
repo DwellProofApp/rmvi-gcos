@@ -1582,6 +1582,29 @@ h1 {
   font-size: 12px;
 }
 
+.table-actions .file-action,
+.table-actions .file-link,
+.compact-actions .file-action,
+.compact-actions .file-link {
+  border: 1px solid #d8e0d9;
+  background: #ffffff;
+  color: #25352c;
+  min-height: 30px;
+  border-radius: 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 8px;
+  font-size: 12px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.file-action input {
+  display: none;
+}
+
 .audit-toolbar {
   display: grid;
   grid-template-columns: minmax(220px, 1fr) minmax(180px, 0.45fr) auto auto;

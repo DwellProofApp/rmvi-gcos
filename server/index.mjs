@@ -12,6 +12,7 @@ const HOST = process.env.GCOS_HOST ?? "127.0.0.1";
 const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DATA_PATH = join(SERVER_DIR, "..", "data", "gcos-state.json");
 const DATA_PATH = process.env.GCOS_DATA_PATH ?? DEFAULT_DATA_PATH;
+const OBJECT_VAULT_PATH = process.env.GCOS_OBJECT_VAULT_PATH ?? join(dirname(DATA_PATH), "object-vault");
 const SERVE_WEB = process.env.GCOS_SERVE_WEB === "1";
 const WEB_DIST_PATH = process.env.GCOS_WEB_DIST_PATH ?? join(SERVER_DIR, "..", "dist");
 const STARTED_AT = new Date();
@@ -49,6 +50,11 @@ const routes = {
   "POST /api/security-controls/:name/remediation": ({ params, body, session }) => createdResponse(createSecurityControlRemediation(params.name, body, session.email)),
   "POST /api/security-controls/:name/verify": ({ params, body, session }) => ok(verifySecurityControl(params.name, body, session.email)),
   "GET /api/status": () => ok(operationalStatus()),
+  "GET /api/files": () => ok(state.files ?? []),
+  "POST /api/files/upload": async ({ body, session }) => createdResponse(await uploadFile(body, session.email)),
+  "GET /api/files/:id/download": async ({ params, session }) => readStoredFile(params.id, session.email),
+  "POST /api/documents/:id/file": ({ params, body, session }) => ok(linkDocumentFile(params.id, body, session.email)),
+  "POST /api/evidence-vault/:id/file": ({ params, body, session }) => ok(linkEvidenceFile(params.id, body, session.email)),
   "GET /api/persistence/status": async () => ok(await persistenceStatus()),
   "POST /api/persistence/backup": async ({ body, session }) => createdResponse(await createPersistenceBackup(body, session.email)),
   "POST /api/persistence/verify": async ({ session }) => ok(await verifyPersistence(session.email)),
@@ -411,6 +417,7 @@ const server = createServer(async (request, response) => {
     const session = authenticateRequest(request, pathname);
     const body = session ? { ...requestBody, actor: session.email } : requestBody;
     const payload = await match.handler({ body, params: match.params, session });
+    if (payload?.raw) return sendRaw(response, payload);
     if (request.method !== "GET") await saveState();
     return send(response, payload);
   } catch (error) {
@@ -459,6 +466,7 @@ function operationalStatus() {
       transfers: state.transfers.length,
       offices: state.offices.length,
       documents: state.documents.length,
+      files: (state.files ?? []).length,
       audit: state.audit.length,
       events: state.events.length
     }
@@ -561,10 +569,134 @@ function persistenceRecordCounts() {
     transfers: state.transfers.length,
     offices: state.offices.length,
     documents: state.documents.length,
+    files: (state.files ?? []).length,
     aiDrafts: state.aiDrafts.length,
     audit: state.audit.length,
     events: state.events.length
   };
+}
+
+async function uploadFile(body, actor) {
+  const bytes = decodeBase64Payload(body.contentBase64);
+  const now = new Date().toISOString();
+  const hash = hashBuffer(bytes);
+  const extension = extensionForFile(body.name, body.contentType);
+  const safeName = String(body.name).toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/(^-|-$)/g, "") || `upload${extension}`;
+  const id = randomUUID();
+  const objectKey = `${id}/${safeName}`;
+  const diskPath = resolve(OBJECT_VAULT_PATH, objectKey);
+  if (!diskPath.startsWith(resolve(OBJECT_VAULT_PATH))) throw new HttpError(400, "Invalid object key");
+  await mkdir(dirname(diskPath), { recursive: true });
+  await writeFile(diskPath, bytes);
+  state.files ??= [];
+  const file = {
+    id,
+    name: body.name,
+    contentType: body.contentType,
+    size: bytes.length,
+    hash,
+    objectKey,
+    storagePath: diskPath,
+    uploadedAt: now,
+    uploadedBy: actor,
+    source: body.source ?? "Object Vault",
+    linkedTo: []
+  };
+  state.files.unshift(file);
+  record("FileUploaded", actor, file.name, `${file.size} bytes ${file.hash}`);
+  return file;
+}
+
+function linkDocumentFile(id, body, actor) {
+  const document = findById(state.documents, id);
+  const file = getFile(body.fileId);
+  document.files ??= [];
+  if (!document.files.some((item) => item.id === file.id)) {
+    document.files.push(fileReference(file));
+  }
+  document.storageKey = file.objectKey;
+  document.fileHash = file.hash;
+  document.fileSize = file.size;
+  document.contentType = file.contentType;
+  linkFileTo(file, "document", document.id);
+  record("FileLinked", actor, document.name, `Linked ${file.name}`);
+  return document;
+}
+
+function linkEvidenceFile(id, body, actor) {
+  const file = getFile(body.fileId);
+  const evidence = getEvidence(id);
+  const files = [...(evidence.files ?? [])];
+  if (!files.some((item) => item.id === file.id)) files.push(fileReference(file));
+  linkFileTo(file, "evidence", evidence.id);
+  return patchEvidence(id, {
+    files,
+    fileCount: Math.max(evidence.fileCount ?? 0, files.length),
+    latestFileHash: file.hash,
+    latestFileAt: new Date().toISOString()
+  }, actor, "FileLinked", `Linked ${file.name}`);
+}
+
+async function readStoredFile(id, actor) {
+  const file = getFile(id);
+  const body = await readFile(file.storagePath);
+  file.downloadedAt = new Date().toISOString();
+  file.downloadedBy = actor;
+  record("FileDownloaded", actor, file.name, file.hash);
+  await saveState();
+  return {
+    raw: true,
+    status: 200,
+    body,
+    contentType: file.contentType,
+    filename: file.name
+  };
+}
+
+function getFile(id) {
+  const decoded = decodeURIComponent(String(id ?? ""));
+  const file = (state.files ?? []).find((item) => item.id === decoded);
+  if (!file) throw new HttpError(404, "File not found");
+  return file;
+}
+
+function fileReference(file) {
+  return {
+    id: file.id,
+    name: file.name,
+    contentType: file.contentType,
+    size: file.size,
+    hash: file.hash,
+    objectKey: file.objectKey
+  };
+}
+
+function linkFileTo(file, kind, id) {
+  file.linkedTo ??= [];
+  if (!file.linkedTo.some((item) => item.kind === kind && item.id === id)) {
+    file.linkedTo.push({ kind, id, linkedAt: new Date().toISOString() });
+  }
+}
+
+function decodeBase64Payload(value) {
+  const raw = String(value ?? "").replace(/^data:[^;]+;base64,/, "");
+  const bytes = Buffer.from(raw, "base64");
+  if (!bytes.length) throw new HttpError(400, "File content is required");
+  return bytes;
+}
+
+function extensionForFile(name, contentType) {
+  const current = extname(name ?? "");
+  if (current) return current;
+  if (contentType === "application/pdf") return ".pdf";
+  if (contentType === "image/png") return ".png";
+  if (contentType === "image/jpeg") return ".jpg";
+  if (contentType === "text/plain") return ".txt";
+  return ".bin";
+}
+
+function hashBuffer(buffer) {
+  return `sha256:${createHash("sha256").update(buffer).digest("hex")}`;
 }
 
 function hashText(text) {
@@ -1353,7 +1485,7 @@ function authenticateRequest(request, pathname) {
   const requiresSession = pathname.startsWith("/api/")
     && pathname !== "/api/auth/login"
     && pathname !== "/api/dev/reset"
-    && (request.method !== "GET" || pathname === "/api/export" || pathname === "/api/persistence/export");
+    && (request.method !== "GET" || pathname === "/api/export" || pathname === "/api/persistence/export" || (pathname.startsWith("/api/files/") && pathname.endsWith("/download")));
   if (!requiresSession) return null;
 
   const token = readBearerToken(request.headers.authorization);
@@ -1400,6 +1532,7 @@ async function loadState() {
       transfers: persisted.transfers ?? seed.transfers,
       offices: persisted.offices ?? seed.offices,
       documents: persisted.documents ?? seed.documents,
+      files: persisted.files ?? seed.files ?? [],
       aiDrafts: persisted.aiDrafts?.length ? persisted.aiDrafts : seed.aiDrafts,
       audit: persisted.audit ?? seed.audit,
       events: persisted.events ?? seed.events,
@@ -1533,11 +1666,13 @@ async function readWebAsset(pathname) {
 }
 
 function sendRaw(response, payload) {
-  response.writeHead(payload.status, {
+  const headers = {
     ...baseHeaders(),
     "content-type": payload.contentType,
     "cache-control": payload.contentType.startsWith("text/html") ? "no-cache" : "public, max-age=31536000, immutable"
-  });
+  };
+  if (payload.filename) headers["content-disposition"] = `inline; filename="${String(payload.filename).replaceAll("\"", "")}"`;
+  response.writeHead(payload.status, headers);
   response.end(payload.body);
 }
 

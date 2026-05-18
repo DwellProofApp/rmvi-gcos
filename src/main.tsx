@@ -44,6 +44,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   TimerReset,
+  Upload,
   Users,
   Workflow
 } from "lucide-react";
@@ -76,7 +77,9 @@ type Session = { email: string; startedAt: string; token?: string; expiresAt?: s
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
 type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[]; evidence?: string; comments?: string[]; resolutionNote?: string; due?: string; linkedTask?: string; linkedReport?: string; linkedApproval?: string; impactScore?: number; impactSummary?: string; archived?: boolean; archiveReason?: string };
 type AiDraft = { id: string; kind: "Executive Summary" | "Memo" | "Report Brief"; title: string; body: string; sourceCount: number; createdAt: string; status?: string; confidence?: number; sourceNote?: string; sealed?: boolean; chainHash?: string; publishedBy?: string; watchers?: string[] };
-type DocumentRecord = { id: string; name: string; classification: string; source: string; owner: string; fileType: string; status: string; storageKey: string; retainedUntil: string; createdAt: string; verified?: boolean; verificationNote?: string; custodian?: string; custodyAt?: string; chainHash?: string; extractedText?: string; extractedAt?: string; linkedReport?: string; linkedApproval?: string; watchers?: string[]; exportedAt?: string; exportReason?: string };
+type FileRecord = { id: string; name: string; contentType: string; size: number; hash: string; objectKey: string; uploadedAt?: string; uploadedBy?: string; source?: string; linkedTo?: { kind: string; id: string; linkedAt: string }[] };
+type FileReference = Pick<FileRecord, "id" | "name" | "contentType" | "size" | "hash" | "objectKey">;
+type DocumentRecord = { id: string; name: string; classification: string; source: string; owner: string; fileType: string; status: string; storageKey: string; retainedUntil: string; createdAt: string; files?: FileReference[]; fileHash?: string; fileSize?: number; contentType?: string; verified?: boolean; verificationNote?: string; custodian?: string; custodyAt?: string; chainHash?: string; extractedText?: string; extractedAt?: string; linkedReport?: string; linkedApproval?: string; watchers?: string[]; exportedAt?: string; exportReason?: string };
 type SearchResult = { id: string; section: Section; title: string; meta: string; status: string };
 type NotificationItem = { id: string; section: Section; title: string; detail: string; severity: "Critical" | "High" | "Medium" | "Info" };
 type ApiStatus = {
@@ -258,6 +261,8 @@ type EvidenceRecord = {
   chainHash: string;
   retention: string;
   fileCount: number;
+  files?: FileReference[];
+  latestFileHash?: string;
   sealed?: boolean;
   verified?: boolean;
   hold?: boolean;
@@ -854,6 +859,31 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   });
   if (!response.ok) throw new Error(`API ${response.status}`);
   return response.json() as Promise<T>;
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result ?? ""));
+    reader.onerror = () => reject(reader.error ?? new Error("Unable to read file"));
+    reader.readAsDataURL(file);
+  });
+}
+
+async function downloadStoredFile(file: FileReference) {
+  const response = await fetch(`${API_BASE}/api/files/${file.id}/download`, {
+    headers: {
+      ...(getSessionToken() ? { authorization: `Bearer ${getSessionToken()}` } : {})
+    }
+  });
+  if (!response.ok) throw new Error(`File ${response.status}`);
+  const blob = await response.blob();
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = url;
+  link.download = file.name;
+  link.click();
+  URL.revokeObjectURL(url);
 }
 
 function getSessionToken() {
@@ -5292,6 +5322,28 @@ function App() {
     }
   }
 
+  async function uploadDocumentFile(id: string, file: File) {
+    const document = documents.find((item) => item.id === id);
+    if (!document) return;
+    const contentBase64 = await readFileAsDataUrl(file);
+    const uploaded = await apiRequest<FileRecord>("/api/files/upload", {
+      method: "POST",
+      body: JSON.stringify({
+        name: file.name,
+        contentType: file.type || "application/octet-stream",
+        contentBase64,
+        source: `Archive:${document.name}`
+      })
+    });
+    const updated = await apiRequest<DocumentRecord>(`/api/documents/${id}/file`, {
+      method: "POST",
+      body: JSON.stringify({ fileId: uploaded.id })
+    });
+    setDocuments((items) => items.map((item) => item.id === id ? updated : item));
+    recordAudit("FileLinked", document.name, uploaded.hash);
+    void refreshFromApi();
+  }
+
   function refreshArchiveManifest() {
     if (offlineMode) {
       recordAudit("ArchiveManifestRefreshed", "Archive", "Local manifest refreshed");
@@ -5782,7 +5834,7 @@ function App() {
             digest={transferDigest}
           />
         )}
-        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onVerifyDocument={verifyDocument} onAssignCustody={assignDocumentCustody} onUpdateChain={updateDocumentChain} onExtractText={extractDocumentText} onLinkReport={linkDocumentReport} onLinkApproval={linkDocumentApproval} onWatchDocument={watchDocument} onExportDocument={exportDocumentRecord} onBulkSeal={bulkSealDocuments} onRefreshManifest={refreshArchiveManifest} />}
+        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onVerifyDocument={verifyDocument} onAssignCustody={assignDocumentCustody} onUpdateChain={updateDocumentChain} onExtractText={extractDocumentText} onLinkReport={linkDocumentReport} onLinkApproval={linkDocumentApproval} onWatchDocument={watchDocument} onExportDocument={exportDocumentRecord} onUploadFile={uploadDocumentFile} onBulkSeal={bulkSealDocuments} onRefreshManifest={refreshArchiveManifest} />}
         {activeSection === "Audit" && (
           <Audit
             auditRows={auditRows}
@@ -8903,6 +8955,7 @@ function Archive({
   onLinkApproval,
   onWatchDocument,
   onExportDocument,
+  onUploadFile,
   onBulkSeal,
   onRefreshManifest
 }: {
@@ -8927,6 +8980,7 @@ function Archive({
   onLinkApproval: (id: string) => void;
   onWatchDocument: (id: string) => void;
   onExportDocument: (id: string) => void;
+  onUploadFile: (id: string, file: File) => void;
   onBulkSeal: (ids: string[]) => void;
   onRefreshManifest: () => void;
 }) {
@@ -9024,6 +9078,7 @@ function Archive({
                   document.verified ? "Verified" : "",
                   document.custodian ? `Custody: ${document.custodian}` : "",
                   document.chainHash ? "Chain hash" : "",
+                  document.files?.length ? `${document.files.length} files` : "",
                   document.extractedText ? "Text indexed" : "",
                   document.watchers?.length ? `${document.watchers.length} watchers` : ""
                 ].filter(Boolean).join(" / ")}</small>
@@ -9049,6 +9104,15 @@ function Archive({
                 <button onClick={() => onLinkApproval(document.id)}><BadgeCheck size={14} /> Approval</button>
                 <button onClick={() => onWatchDocument(document.id)}><Bell size={14} /> Watch</button>
                 <button onClick={() => onExportDocument(document.id)}><Download size={14} /> Export</button>
+                <label className="file-action">
+                  <Upload size={14} /> Upload
+                  <input type="file" onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) onUploadFile(document.id, file);
+                    event.currentTarget.value = "";
+                  }} />
+                </label>
+                {document.files?.[0] && <button onClick={() => void downloadStoredFile(document.files![0])}><Download size={14} /> View</button>}
               </div>
             </div>
           ))}
@@ -9580,6 +9644,25 @@ function Audit({
     }).then(updateEvidenceVault).catch(() => undefined);
   }
 
+  async function uploadEvidenceFile(id: string, file: File) {
+    const evidence = evidenceVault.find((item) => item.id === id);
+    if (!evidence) return;
+    const contentBase64 = await readFileAsDataUrl(file);
+    const uploaded = await apiRequest<FileRecord>("/api/files/upload", {
+      method: "POST",
+      body: JSON.stringify({
+        name: file.name,
+        contentType: file.type || "application/octet-stream",
+        contentBase64,
+        source: `Evidence:${evidence.title}`
+      })
+    });
+    void apiRequest<{ vault: EvidenceRecord[] }>(`/api/evidence-vault/${encodeURIComponent(id)}/file`, {
+      method: "POST",
+      body: JSON.stringify({ fileId: uploaded.id })
+    }).then(updateEvidenceVault).catch(() => undefined);
+  }
+
   function exportAuditPacket() {
     const headers = ["Event", "Actor", "Object", "Result", "Time"];
     const rows = visibleRows.map((row) => [row.event, row.actor, row.object, row.result, row.time]);
@@ -9728,6 +9811,15 @@ function Audit({
                 <button onClick={() => holdEvidenceRecord(record.id)}><ShieldCheck size={14} /> Hold</button>
                 <button onClick={() => exportEvidenceRecord(record.id)}><Download size={14} /> Export</button>
                 <button onClick={() => archiveEvidenceRecord(record.id)}><Files size={14} /> Archive</button>
+                <label className="file-action">
+                  <Upload size={14} /> Upload
+                  <input type="file" onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) void uploadEvidenceFile(record.id, file);
+                    event.currentTarget.value = "";
+                  }} />
+                </label>
+                {record.files?.[0] && <button onClick={() => void downloadStoredFile(record.files![0])}><Download size={14} /> View</button>}
               </div>
             </article>
           ))}

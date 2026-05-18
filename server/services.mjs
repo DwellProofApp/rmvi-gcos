@@ -47,6 +47,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       transfers: state.transfers,
       offices: state.offices,
       documents: state.documents,
+      files: state.files ?? [],
       aiDrafts: state.aiDrafts,
       audit: state.audit,
       events: state.events

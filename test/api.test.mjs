@@ -1902,6 +1902,34 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(document.status, "Archived");
     assert.match(document.storageKey, /^gcos-object-vault\//);
 
+    const uploadedFile = await postJson("/api/files/upload", {
+      name: "automated-packet.txt",
+      contentType: "text/plain",
+      contentBase64: Buffer.from("GCOS automated file vault test").toString("base64"),
+      source: "Automated test"
+    }, nationalToken);
+    assert.equal(uploadedFile.name, "automated-packet.txt");
+    assert.equal(uploadedFile.size, 30);
+    assert.match(uploadedFile.hash, /^sha256:/);
+
+    const linkedDocumentFile = await postJson(`/api/documents/${document.id}/file`, {
+      fileId: uploadedFile.id
+    }, nationalToken);
+    assert.equal(linkedDocumentFile.files[0].id, uploadedFile.id);
+    assert.equal(linkedDocumentFile.fileHash, uploadedFile.hash);
+
+    const linkedEvidenceFile = await postJson("/api/evidence-vault/ev-finance-ledger/file", {
+      fileId: uploadedFile.id
+    }, nationalToken);
+    assert.equal(linkedEvidenceFile.evidence.files[0].id, uploadedFile.id);
+
+    const downloadedFile = await fetch(`${BASE_URL}/api/files/${uploadedFile.id}/download`, {
+      headers: { authorization: `Bearer ${nationalToken}` }
+    });
+    assert.equal(downloadedFile.status, 200);
+    assert.equal(downloadedFile.headers.get("content-type"), "text/plain");
+    assert.equal(await downloadedFile.text(), "GCOS automated file vault test");
+
     const classifiedDocument = await postJson(`/api/documents/${document.id}/classification`, {
       classification: "Executive packet"
     }, nationalToken);
@@ -2280,6 +2308,9 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "ReadinessCheckArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersistenceBackupCreated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "PersistenceVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "FileUploaded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "FileLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "FileDownloaded"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SecurityControlStatusUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SecurityControlOwnerAssigned"), true);
     assert.equal(persisted.audit.some((row) => row.event === "SecurityControlEvidenceAttached"), true);
@@ -2582,6 +2613,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const documentsAfterRestart = await getJson("/api/documents");
     assert.equal(documentsAfterRestart.some((item) => item.name === "Automated signed packet.pdf"), true);
+    assert.equal(documentsAfterRestart.some((item) => item.files?.some((file) => file.name === "automated-packet.txt")), true);
     assert.equal(documentsAfterRestart.some((item) => item.classification === "AI draft"), true);
 
     const reset = await postJson("/api/dev/reset", {});

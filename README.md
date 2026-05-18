@@ -9,6 +9,7 @@ Production domain target: `rmvi.org`
 - Session-token authentication for protected API mutations
 - Request validation for API mutation payloads
 - Document archive/object-vault metadata workflow
+- Local object-vault file uploads with hashes, secure download, and document/evidence linking
 - ChurchMail and report attachment vaulting
 - Global workstation search across governance records
 - Governance notification center for alerts and pending actions
@@ -113,6 +114,7 @@ VITE_GCOS_API_BASE  Frontend API origin; leave empty for same-origin production 
 GCOS_API_PORT       API/web server port, defaults to 8787
 GCOS_HOST           Bind host, use 127.0.0.1 locally and 0.0.0.0 on Replit/hosting
 GCOS_DATA_PATH      JSON persistence path, defaults to data/gcos-state.json
+GCOS_OBJECT_VAULT_PATH Local file vault directory, defaults beside GCOS_DATA_PATH
 GCOS_SERVE_WEB      Set to 1 to serve the built web app from the API server
 GCOS_WEB_DIST_PATH  Built web app directory, defaults to dist
 GCOS_HEALTHCHECK_URL Base URL used by npm run healthcheck
@@ -164,6 +166,11 @@ GET  /api/persistence/status
 POST /api/persistence/backup
 POST /api/persistence/verify
 GET  /api/persistence/export
+GET  /api/files
+POST /api/files/upload
+GET  /api/files/:id/download
+POST /api/documents/:id/file
+POST /api/evidence-vault/:id/file
 GET  /api/bootstrap
 POST /api/dev/reset
 POST /api/auth/login

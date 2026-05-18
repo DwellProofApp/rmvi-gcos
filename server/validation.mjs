@@ -134,6 +134,21 @@ const validators = {
 
   "POST /api/persistence/verify": () => {},
 
+  "POST /api/files/upload": (body) => {
+    requireString(body.name, "name");
+    requireString(body.contentType, "contentType");
+    requireString(body.contentBase64, "contentBase64");
+    if (body.source !== undefined) requireString(body.source, "source");
+  },
+
+  "POST /api/documents/:id/file": (body) => {
+    requireString(body.fileId, "fileId");
+  },
+
+  "POST /api/evidence-vault/:id/file": (body) => {
+    requireString(body.fileId, "fileId");
+  },
+
   "POST /api/security-controls/:name/status": (body) => {
     if (body.status !== undefined) requireEnum(body.status, securityControlStatuses, "status");
     if (body.reason !== undefined) requireString(body.reason, "reason");
