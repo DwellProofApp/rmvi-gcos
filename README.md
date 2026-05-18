@@ -176,6 +176,8 @@ admin credential rotation flow or protected environment configuration.
 ```text
 GET  /health
 GET  /api/status
+GET  /api/ops/monitor
+POST /api/ops/monitor
 GET  /api/launch/readiness
 POST /api/launch/readiness
 GET  /api/launch/deployment-plan

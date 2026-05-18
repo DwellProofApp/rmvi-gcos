@@ -61,6 +61,8 @@ const routes = {
   "POST /api/security-controls/:name/remediation": ({ params, body, session }) => createdResponse(createSecurityControlRemediation(params.name, body, session.email)),
   "POST /api/security-controls/:name/verify": ({ params, body, session }) => ok(verifySecurityControl(params.name, body, session.email)),
   "GET /api/status": () => ok(operationalStatus()),
+  "GET /api/ops/monitor": async () => ok(await operationalMonitor()),
+  "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
   "GET /api/launch/readiness": async () => ok(await launchReadiness()),
   "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
   "GET /api/launch/deployment-plan": async () => ok(await launchDeploymentPlan()),
@@ -559,6 +561,73 @@ async function launchReadiness() {
       ? "GCOS is ready for a controlled web MVP launch."
       : "Complete remaining MVP launch checks before public rollout."
   };
+}
+
+async function operationalMonitor() {
+  const status = operationalStatus();
+  const launch = await launchReadiness();
+  const persistence = await persistenceStatus();
+  const backupManifest = await persistenceBackupManifest();
+  const restoreDrill = await persistenceRestoreDrill();
+  const sessionInfo = sessionSummary();
+  const failedChecks = launch.checks.filter((check) => !check.ok);
+  const lockedSessions = sessionInfo.stations.filter((session) => session.status === "Locked").length;
+  const mfaSessions = sessionInfo.stations.filter((session) => session.mfaRequired).length;
+  const criticalSignals = [
+    ...failedChecks.filter((check) => check.category === "production").slice(0, 5).map((check) => ({
+      name: check.name,
+      severity: ["managed-database", "production-reset-lock", "backup-manifest", "restore-drill"].includes(check.name) ? "High" : "Medium",
+      detail: check.detail
+    })),
+    ...(lockedSessions > 0 ? [{ name: "locked-sessions", severity: "Medium", detail: `${lockedSessions} locked sessions` }] : []),
+    ...(mfaSessions > 0 ? [{ name: "mfa-required", severity: "Medium", detail: `${mfaSessions} sessions require MFA` }] : [])
+  ];
+  const score = Math.round((launch.mvpScore * 0.35) + (launch.productionScore * 0.45) + (backupManifest.status === "protected" ? 10 : 0) + (restoreDrill.valid ? 10 : 0));
+  return {
+    generatedAt: new Date().toISOString(),
+    status: criticalSignals.some((signal) => signal.severity === "High") ? "attention" : "healthy",
+    score,
+    uptimeSeconds: status.uptimeSeconds,
+    domain: DOMAIN,
+    service: status.service,
+    storageProvider: status.storageProvider,
+    readiness: {
+      mvpScore: launch.mvpScore,
+      productionScore: launch.productionScore,
+      blockers: launch.blockers.length,
+      nextAction: launch.nextActions[0] ?? "No launch blockers"
+    },
+    persistence: {
+      provider: persistence.provider,
+      mode: persistence.mode,
+      hash: persistence.hash,
+      records: persistence.records,
+      backupStatus: backupManifest.status,
+      backups: backupManifest.total,
+      restoreStatus: restoreDrill.status,
+      restoreValid: restoreDrill.valid
+    },
+    sessions: sessionInfo,
+    criticalSignals,
+    nextActions: criticalSignals.length
+      ? criticalSignals.slice(0, 4).map((signal) => signal.detail)
+      : ["Continue scheduled production smoke checks"]
+  };
+}
+
+async function recordOperationalMonitor(actor) {
+  requirePermission(actor, "canApprove");
+  const monitor = await operationalMonitor();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastOperationalMonitor = {
+    generatedAt: monitor.generatedAt,
+    actor,
+    status: monitor.status,
+    score: monitor.score,
+    signals: monitor.criticalSignals.length
+  };
+  record("OperationalMonitorRecorded", actor, "GCOS operations", `${monitor.status} / ${monitor.score}%`);
+  return { monitor, status: persistenceStatusSync() };
 }
 
 async function recordLaunchReadiness(actor) {

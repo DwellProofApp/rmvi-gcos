@@ -274,6 +274,20 @@ type DeploymentPlan = {
   goLive: boolean;
   nextAction: string;
 };
+type OperationalMonitor = {
+  generatedAt: string;
+  status: string;
+  score: number;
+  uptimeSeconds: number;
+  domain: string;
+  service: string;
+  storageProvider: string;
+  readiness: { mvpScore: number; productionScore: number; blockers: number; nextAction: string };
+  persistence: { provider: string; mode: string; hash: string; records: Record<string, number>; backupStatus: string; backups: number; restoreStatus: string; restoreValid: boolean };
+  sessions: { active: number; expiringSoon: number; stations: { email: string; startedAt: string; expiresAt: string; minutesRemaining: number; status?: string; mfaRequired?: boolean }[] };
+  criticalSignals: { name: string; severity: string; detail: string }[];
+  nextActions: string[];
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -9487,6 +9501,7 @@ function Audit({
   const [cutoverChecklist, setCutoverChecklist] = React.useState<PersistenceCutoverChecklist | null>(null);
   const [launchReadiness, setLaunchReadiness] = React.useState<LaunchReadiness | null>(null);
   const [deploymentPlan, setDeploymentPlan] = React.useState<DeploymentPlan | null>(null);
+  const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -9532,6 +9547,7 @@ function Audit({
     void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
     void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
     void apiRequest<PersistenceCutoverChecklist>("/api/persistence/cutover-checklist").then(setCutoverChecklist).catch(() => undefined);
+    void apiRequest<OperationalMonitor>("/api/ops/monitor").then(setOperationalMonitor).catch(() => undefined);
     void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
     void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
   }, []);
@@ -9659,6 +9675,21 @@ function Audit({
 
   function refreshLaunchReadiness() {
     void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
+  }
+
+  function refreshOperationalMonitor() {
+    void apiRequest<OperationalMonitor>("/api/ops/monitor").then(setOperationalMonitor).catch(() => undefined);
+  }
+
+  function recordOperationalMonitor() {
+    void apiRequest<{ monitor: OperationalMonitor; status: PersistenceStatus }>("/api/ops/monitor", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setOperationalMonitor(result.monitor);
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
   }
 
   function recordLaunchReadiness() {
@@ -10264,6 +10295,35 @@ function Audit({
               <span>{check.ok ? "Pass" : "Hold"}</span>
               <strong>{check.name}</strong>
               <small>{check.detail}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={RadioTower} title="Operations Monitor" action={operationalMonitor?.status ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshOperationalMonitor}><RefreshCw size={15} /> Monitor</button>
+          <button onClick={recordOperationalMonitor}><ShieldCheck size={15} /> Record</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Score" value={`${operationalMonitor?.score ?? 0}%`} />
+          <Insight label="Signals" value={String(operationalMonitor?.criticalSignals.length ?? 0)} />
+          <Insight label="Production" value={`${operationalMonitor?.readiness.productionScore ?? 0}%`} />
+          <Insight label="Backups" value={String(operationalMonitor?.persistence.backups ?? 0)} />
+          <Insight label="Restore" value={operationalMonitor?.persistence.restoreStatus ?? "Pending"} />
+          <Insight label="Sessions" value={String(operationalMonitor?.sessions.active ?? 0)} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{operationalMonitor ? formatDateTime(operationalMonitor.generatedAt) : "No monitor loaded"}</span>
+            <strong>{operationalMonitor?.nextActions[0] ?? "Run the operational monitor before deployment signoff."}</strong>
+            <small>{operationalMonitor ? `${operationalMonitor.storageProvider}/${operationalMonitor.persistence.mode} - uptime ${operationalMonitor.uptimeSeconds}s` : "Operational signal summary will appear here."}</small>
+          </article>
+          {(operationalMonitor?.criticalSignals ?? []).map((signal) => (
+            <article className="source-map-item" key={signal.name}>
+              <span>{signal.severity}</span>
+              <strong>{signal.name}</strong>
+              <small>{signal.detail}</small>
             </article>
           ))}
         </div>

@@ -55,6 +55,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(launchReadiness.checks.some((check) => check.name === "backup-manifest"), true);
     assert.equal(launchReadiness.checks.some((check) => check.name === "restore-drill"), true);
 
+    const operationalMonitor = await getJson("/api/ops/monitor");
+    assert.equal(operationalMonitor.service, "gcos-api");
+    assert.equal(operationalMonitor.status, "attention");
+    assert.equal(operationalMonitor.readiness.mvpScore >= 95, true);
+    assert.equal(operationalMonitor.criticalSignals.some((signal) => signal.name === "managed-database"), true);
+
     const deploymentPlan = await getJson("/api/launch/deployment-plan");
     assert.equal(deploymentPlan.targetDomain, "rmvi.org");
     assert.equal(deploymentPlan.requiredSecrets.some((secret) => secret.name === "GCOS_DATABASE_URL"), true);
@@ -211,6 +217,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(recordedDeploymentPlan.plan.requiredSecrets.some((secret) => secret.name === "GCOS_DATABASE_URL"), true);
     assert.equal(recordedDeploymentPlan.plan.commands.includes("npm run domain:check"), true);
     assert.equal(recordedDeploymentPlan.status.records.stations > 0, true);
+
+    const recordedOperationalMonitor = await postJson("/api/ops/monitor", {}, nationalToken);
+    assert.equal(recordedOperationalMonitor.monitor.service, "gcos-api");
+    assert.equal(recordedOperationalMonitor.monitor.score > 0, true);
+    assert.equal(recordedOperationalMonitor.status.records.stations > 0, true);
 
     const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
       reason: "Automated readiness acknowledgement"

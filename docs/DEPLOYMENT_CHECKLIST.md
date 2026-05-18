@@ -100,6 +100,7 @@ MVP persistence can run from the live Postgres JSONB adapter.
 - Keep JSON backup/export artifacts until the database cutover checklist is clean.
 - Record `/api/persistence/backup-manifest` after creating a backup so launch readiness can verify the backup set.
 - Run and record `/api/persistence/restore-drill` before cutover to prove the latest backup can be read.
+- Record `/api/ops/monitor` during launch signoff so production blockers and operational signals are captured in the audit ledger.
 
 ## 7. Production Hardening
 
