@@ -211,6 +211,18 @@ type PersistenceImportDryRun = {
   blockers: string[];
   nextAction: string;
 };
+type PersistenceCutoverChecklist = {
+  generatedAt: string;
+  provider: string;
+  targetProvider: string;
+  ready: boolean;
+  status: string;
+  checks: { name: string; ok: boolean; detail: string }[];
+  blockers: string[];
+  requiredSwitches: { name: string; value: string; ready: boolean }[];
+  rollbackPlan: string[];
+  nextAction: string;
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -9417,6 +9429,7 @@ function Audit({
   const [migrationPlan, setMigrationPlan] = React.useState<PersistenceMigrationPlan | null>(null);
   const [schemaPlan, setSchemaPlan] = React.useState<PersistenceSchemaPlan | null>(null);
   const [importDryRun, setImportDryRun] = React.useState<PersistenceImportDryRun | null>(null);
+  const [cutoverChecklist, setCutoverChecklist] = React.useState<PersistenceCutoverChecklist | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -9459,6 +9472,7 @@ function Audit({
     void apiRequest<PersistenceMigrationPlan>("/api/persistence/migration-plan").then(setMigrationPlan).catch(() => undefined);
     void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
     void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
+    void apiRequest<PersistenceCutoverChecklist>("/api/persistence/cutover-checklist").then(setCutoverChecklist).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -9530,6 +9544,21 @@ function Audit({
       body: JSON.stringify({})
     }).then((result) => {
       setImportDryRun(result.dryRun);
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function refreshCutoverChecklist() {
+    void apiRequest<PersistenceCutoverChecklist>("/api/persistence/cutover-checklist").then(setCutoverChecklist).catch(() => undefined);
+  }
+
+  function recordCutoverChecklist() {
+    void apiRequest<{ checklist: PersistenceCutoverChecklist; status: PersistenceStatus }>("/api/persistence/cutover-checklist", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setCutoverChecklist(result.checklist);
       setPersistenceStatus(result.status);
       onRefreshAuditDigest();
     }).catch(() => undefined);
@@ -10030,6 +10059,7 @@ function Audit({
         <div className="action-row">
           <button onClick={refreshImportDryRun}><RefreshCw size={15} /> Check</button>
           <button onClick={recordImportDryRun}><ShieldCheck size={15} /> Record</button>
+          <button onClick={recordCutoverChecklist}><CheckCircle2 size={15} /> Cutover</button>
         </div>
         <div className="office-summary-grid">
           <Insight label="Rows" value={String(importDryRun?.estimatedRows ?? 0)} />
@@ -10050,6 +10080,35 @@ function Audit({
               <span>Batch {batch.batch} - {batch.status}</span>
               <strong>{batch.collection} into {batch.table}</strong>
               <small>{batch.records} records by {batch.primaryKey} using {batch.strategy}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={BadgeCheck} title="Cutover Checklist" action={cutoverChecklist?.status ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshCutoverChecklist}><RefreshCw size={15} /> Check</button>
+          <button onClick={recordCutoverChecklist}><ShieldCheck size={15} /> Record</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Ready" value={cutoverChecklist?.ready ? "Yes" : "No"} />
+          <Insight label="Passed" value={String(cutoverChecklist?.checks.filter((check) => check.ok).length ?? 0)} />
+          <Insight label="Blockers" value={String(cutoverChecklist?.blockers.length ?? 0)} />
+          <Insight label="Switches" value={String(cutoverChecklist?.requiredSwitches.length ?? 0)} />
+          <Insight label="Rollback" value={String(cutoverChecklist?.rollbackPlan.length ?? 0)} />
+          <Insight label="Target" value={cutoverChecklist?.targetProvider ?? "database"} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{cutoverChecklist ? formatDateTime(cutoverChecklist.generatedAt) : "No checklist loaded"}</span>
+            <strong>{cutoverChecklist?.nextAction ?? "Complete migration artifacts before switching providers"}</strong>
+            <small>{cutoverChecklist?.requiredSwitches.map((item) => `${item.name}=${item.value}`).join(" - ") ?? "Provider switches appear here."}</small>
+          </article>
+          {(cutoverChecklist?.checks ?? []).map((check) => (
+            <article className="source-map-item" key={check.name}>
+              <span>{check.ok ? "Pass" : "Hold"}</span>
+              <strong>{check.name}</strong>
+              <small>{check.detail}</small>
             </article>
           ))}
         </div>

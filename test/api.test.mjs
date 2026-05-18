@@ -149,6 +149,17 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(recordedImportDryRun.dryRun.estimatedBatches, schemaPlan.tableCount);
     assert.equal(recordedImportDryRun.status.records.stations > 0, true);
 
+    const cutoverChecklist = await getJson("/api/persistence/cutover-checklist");
+    assert.equal(cutoverChecklist.provider, "json");
+    assert.equal(cutoverChecklist.status, "go-with-provider-switch");
+    assert.equal(cutoverChecklist.ready, true);
+    assert.deepEqual(cutoverChecklist.blockers, ["database-provider"]);
+
+    const recordedCutoverChecklist = await postJson("/api/persistence/cutover-checklist", {}, nationalToken);
+    assert.equal(recordedCutoverChecklist.checklist.ready, true);
+    assert.equal(recordedCutoverChecklist.checklist.requiredSwitches.some((item) => item.name === "GCOS_DATABASE_URL"), true);
+    assert.equal(recordedCutoverChecklist.status.records.stations > 0, true);
+
     const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
       reason: "Automated readiness acknowledgement"
     }, nationalToken);

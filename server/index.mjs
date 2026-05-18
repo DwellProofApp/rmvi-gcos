@@ -69,6 +69,8 @@ const routes = {
   "POST /api/persistence/schema-export": async ({ body, session }) => createdResponse(await createPersistenceSchemaExport(body, session.email)),
   "GET /api/persistence/import-dry-run": () => ok(persistenceImportDryRun()),
   "POST /api/persistence/import-dry-run": ({ session }) => ok(recordPersistenceImportDryRun(session.email)),
+  "GET /api/persistence/cutover-checklist": () => ok(persistenceCutoverChecklist()),
+  "POST /api/persistence/cutover-checklist": ({ session }) => ok(recordPersistenceCutoverChecklist(session.email)),
   "GET /api/sessions": () => ok(sessionSummary()),
   "GET /api/sessions/digest": () => ok(sessionDigest()),
   "POST /api/sessions/renew": ({ session }) => ok(renewSession(session.token, session.email)),
@@ -535,6 +537,10 @@ function persistenceImportDryRun() {
   return storage.importDryRun(state);
 }
 
+function persistenceCutoverChecklist() {
+  return storage.cutoverChecklist(state);
+}
+
 function recordPersistenceImportDryRun(actor) {
   requirePermission(actor, "canApprove");
   const dryRun = persistenceImportDryRun();
@@ -550,6 +556,21 @@ function recordPersistenceImportDryRun(actor) {
   };
   record("PersistenceImportDryRun", actor, "Database import", dryRun.nextAction);
   return { dryRun, status: persistenceStatusSync() };
+}
+
+function recordPersistenceCutoverChecklist(actor) {
+  requirePermission(actor, "canApprove");
+  const checklist = persistenceCutoverChecklist();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastCutoverChecklist = {
+    generatedAt: checklist.generatedAt,
+    actor,
+    ready: checklist.ready,
+    status: checklist.status,
+    blockers: checklist.blockers.length
+  };
+  record("PersistenceCutoverChecked", actor, "Database cutover", checklist.nextAction);
+  return { checklist, status: persistenceStatusSync() };
 }
 
 async function createPersistenceMigrationExport(body, actor) {

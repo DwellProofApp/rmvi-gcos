@@ -38,6 +38,7 @@ Production domain target: `rmvi.org`
 - Database migration planning and JSON-to-database bundle export
 - Postgres schema planning and SQL package export
 - Database import dry-run validation with ordered batches
+- Database cutover checklist with go/no-go provider switch gates
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
@@ -178,6 +179,8 @@ GET  /api/persistence/schema-plan
 POST /api/persistence/schema-export
 GET  /api/persistence/import-dry-run
 POST /api/persistence/import-dry-run
+GET  /api/persistence/cutover-checklist
+POST /api/persistence/cutover-checklist
 GET  /api/files
 POST /api/files/upload
 GET  /api/files/:id/download

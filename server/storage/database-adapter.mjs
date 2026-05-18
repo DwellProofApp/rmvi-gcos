@@ -165,6 +165,34 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
       };
     },
 
+    cutoverChecklist(state) {
+      const dryRun = this.importDryRun(state);
+      const checks = [
+        { name: "database-provider", ok: configured, detail: configured ? "Database provider selected" : "Missing GCOS_DATABASE_URL" },
+        { name: "adapter-read-write", ok: false, detail: "Database adapter read/write execution is not implemented yet" },
+        { name: "import-dry-run", ok: dryRun.valid, detail: dryRun.nextAction }
+      ];
+      const blockers = checks.filter((check) => !check.ok).map((check) => check.name);
+      return {
+        generatedAt: new Date().toISOString(),
+        provider: "database",
+        targetProvider: "database",
+        ready: blockers.length === 0,
+        status: blockers.length ? "hold" : "go",
+        checks,
+        blockers,
+        requiredSwitches: [
+          { name: "GCOS_STORAGE_PROVIDER", value: "database", ready: configured },
+          { name: "GCOS_DATABASE_URL", value: configured ? "configured" : "required", ready: configured }
+        ],
+        rollbackPlan: [
+          "Switch GCOS_STORAGE_PROVIDER back to json",
+          "Restart from latest JSON backup if database adapter validation fails"
+        ],
+        nextAction: blockers.length ? `Complete ${blockers.length} database cutover checks` : "Database provider ready"
+      };
+    },
+
     async exportMigrationBundle() {
       throw new Error("Database migration export is only available from the JSON provider");
     },

@@ -132,6 +132,10 @@ export function createJsonStorageAdapter({ dataPath }) {
       return buildImportDryRun(this.migrationPlan(state), this.schemaPlan(state));
     },
 
+    cutoverChecklist(state) {
+      return buildCutoverChecklist(state, this.importDryRun(state));
+    },
+
     async exportMigrationBundle(state, { actor, label }) {
       const migrationDir = join(dirname(dataPath), "migrations");
       await mkdir(migrationDir, { recursive: true });
@@ -352,5 +356,67 @@ function buildImportDryRun(plan, schema) {
     warnings,
     blockers,
     nextAction: blockers.length ? "Resolve blockers before import" : "Ready for staging database import"
+  };
+}
+
+function buildCutoverChecklist(state, dryRun) {
+  const meta = state.persistenceMeta ?? {};
+  const checks = [
+    {
+      name: "backup",
+      ok: Boolean(meta.lastBackup?.hash),
+      detail: meta.lastBackup ? `${meta.lastBackup.label} at ${meta.lastBackup.createdAt}` : "Create a JSON backup before cutover"
+    },
+    {
+      name: "verification",
+      ok: Boolean(meta.lastVerifiedAt && meta.lastVerifiedHash),
+      detail: meta.lastVerifiedAt ? `${meta.lastVerifiedHash} verified by ${meta.lastVerifiedBy}` : "Verify persistence hash before cutover"
+    },
+    {
+      name: "migration-bundle",
+      ok: Boolean(meta.lastMigrationExport?.hash),
+      detail: meta.lastMigrationExport ? `${meta.lastMigrationExport.estimatedRows} rows exported` : "Export a database migration bundle"
+    },
+    {
+      name: "schema-package",
+      ok: Boolean(meta.lastSchemaExport?.hash),
+      detail: meta.lastSchemaExport ? `${meta.lastSchemaExport.tableCount} tables exported` : "Export the Postgres schema package"
+    },
+    {
+      name: "import-dry-run",
+      ok: Boolean(meta.lastImportDryRun?.valid),
+      detail: meta.lastImportDryRun ? `${meta.lastImportDryRun.estimatedBatches} batches, ${meta.lastImportDryRun.blockers} blockers` : "Record an import dry-run"
+    },
+    {
+      name: "object-storage",
+      ok: dryRun.objectStorage.files === 0 || dryRun.warnings.some((warning) => warning.includes("Object-vault")),
+      detail: dryRun.objectStorage.files ? `${dryRun.objectStorage.files} files require object storage copy` : "No binary object records"
+    },
+    {
+      name: "database-provider",
+      ok: false,
+      detail: "Set GCOS_STORAGE_PROVIDER=database only after managed database verification"
+    }
+  ];
+  const blockers = checks.filter((check) => !check.ok).map((check) => check.name);
+  const ready = blockers.length === 1 && blockers[0] === "database-provider";
+  return {
+    generatedAt: new Date().toISOString(),
+    provider: "json",
+    targetProvider: "database",
+    ready,
+    status: ready ? "go-with-provider-switch" : "hold",
+    checks,
+    blockers,
+    requiredSwitches: [
+      { name: "GCOS_STORAGE_PROVIDER", value: "database", ready },
+      { name: "GCOS_DATABASE_URL", value: "required", ready: false }
+    ],
+    rollbackPlan: [
+      "Keep GCOS_STORAGE_PROVIDER=json until database verification completes",
+      "Retain latest JSON backup and migration bundle",
+      "Switch provider back to json if database smoke checks fail"
+    ],
+    nextAction: ready ? "Configure GCOS_DATABASE_URL and run staging smoke tests" : `Complete ${blockers.length} cutover checks`
   };
 }
