@@ -1299,6 +1299,22 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateReportDetails(id, body) {
+      const item = findById(state.reports, id);
+      if (body.preparedBy !== undefined) item.preparedBy = body.preparedBy;
+      if (body.attestation !== undefined) item.attestation = body.attestation;
+      if (body.approvalLimit !== undefined) item.approvalLimit = body.approvalLimit;
+      if (body.reportFields !== undefined) item.reportFields = body.reportFields;
+      if (body.templateChecklist !== undefined) item.templateChecklist = body.templateChecklist;
+      const total = Object.keys(item.reportFields ?? {}).length;
+      const completed = Object.values(item.reportFields ?? {}).filter((value) => String(value ?? "").trim().length > 0).length;
+      item.score = Math.max(item.score ?? 0, total ? Math.min(92, Math.round((completed / total) * 100)) : item.score ?? 0);
+      item.routingStage = body.routingStage ?? "Report details updated";
+      item.reviewNote = body.note ?? `${completed}/${total} report sections completed`;
+      record("ReportDetailsUpdated", body.actor, item.name, item.reviewNote);
+      return item;
+    },
+
     markReportEvidence(id, body) {
       const item = findById(state.reports, id);
       item.evidenceStatus = body.evidenceStatus ?? "Evidence attached";

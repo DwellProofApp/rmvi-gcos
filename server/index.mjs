@@ -155,6 +155,7 @@ const routes = {
   "POST /api/reports/:id/score": ({ params, body }) => ok(services.updateReportScore(params.id, body)),
   "POST /api/reports/:id/owner": ({ params, body }) => ok(services.updateReportOwner(params.id, body)),
   "POST /api/reports/:id/path": ({ params, body }) => ok(services.updateReportPath(params.id, body)),
+  "POST /api/reports/:id/details": ({ params, body, session }) => ok(services.updateReportDetails(params.id, { ...body, actor: session.email })),
   "POST /api/reports/:id/evidence": ({ params, body }) => ok(services.markReportEvidence(params.id, body)),
   "POST /api/reports/:id/review": ({ params, body }) => ok(services.reviewReport(params.id, body)),
   "POST /api/reports/:id/verify": ({ params, body }) => ok(services.verifyReport(params.id, body)),

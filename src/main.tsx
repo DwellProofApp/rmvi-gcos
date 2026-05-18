@@ -2544,6 +2544,26 @@ function App() {
     }
   }
 
+  function updateReportDetails(id: string, details: Pick<Report, "preparedBy" | "attestation" | "approvalLimit" | "reportFields" | "templateChecklist">) {
+    const fieldCount = Object.keys(details.reportFields ?? {}).length;
+    const completed = completedReportFields(details.reportFields);
+    const reviewNote = `${completed}/${fieldCount} report sections completed`;
+    setReports((items) => items.map((item) => item.id === id ? {
+      ...item,
+      ...details,
+      reviewNote,
+      routingStage: "Report details updated",
+      score: Math.max(item.score, fieldCount ? Math.min(92, Math.round((completed / fieldCount) * 100)) : item.score)
+    } : item));
+    recordAudit("ReportDetailsUpdated", reports.find((item) => item.id === id)?.name ?? "Report", reviewNote);
+    if (!offlineMode) {
+      void apiRequest<Report>(`/api/reports/${id}/details`, {
+        method: "POST",
+        body: JSON.stringify({ ...details, note: reviewNote })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   async function uploadReportEvidenceFile(id: string, file: File) {
     const targetReport = reports.find((item) => item.id === id);
     if (!targetReport) return;
@@ -6669,6 +6689,7 @@ function App() {
             onArchiveReport={archiveReportRecord}
             onBuildGovernancePacket={buildReportGovernancePacket}
             onUploadReportEvidence={uploadReportEvidenceFile}
+            onUpdateReportDetails={updateReportDetails}
             onBulkSubmit={bulkSubmitReports}
             onBulkCorrection={bulkRequestReportCorrections}
             onRefreshDigest={refreshReportDigest}
@@ -7735,6 +7756,7 @@ function Reports({
   onArchiveReport,
   onBuildGovernancePacket,
   onUploadReportEvidence,
+  onUpdateReportDetails,
   onBulkSubmit,
   onBulkCorrection,
   onRefreshDigest,
@@ -7759,6 +7781,7 @@ function Reports({
   onArchiveReport: (id: string) => void;
   onBuildGovernancePacket: (id: string) => void;
   onUploadReportEvidence: (id: string, file: File) => void;
+  onUpdateReportDetails: (id: string, details: Pick<Report, "preparedBy" | "attestation" | "approvalLimit" | "reportFields" | "templateChecklist">) => void;
   onBulkSubmit: (ids: string[]) => void;
   onBulkCorrection: (ids: string[]) => void;
   onRefreshDigest: () => void;
@@ -7779,6 +7802,10 @@ function Reports({
   const [templateSearch, setTemplateSearch] = React.useState("");
   const [templateTypeFilter, setTemplateTypeFilter] = React.useState("All templates");
   const [selectedReportId, setSelectedReportId] = React.useState(reports[0]?.id ?? "");
+  const [detailPreparedBy, setDetailPreparedBy] = React.useState("");
+  const [detailAttestation, setDetailAttestation] = React.useState("");
+  const [detailFields, setDetailFields] = React.useState<Record<string, string>>({});
+  const [detailFeedback, setDetailFeedback] = React.useState("");
   const visibleReports = React.useMemo(() => (
     stateFilter === "All states" ? reports : reports.filter((report) => report.state === stateFilter)
   ), [reports, stateFilter]);
@@ -7790,9 +7817,9 @@ function Reports({
       && haystack.includes(templateSearch.trim().toLowerCase());
   }), [templateSearch, templateTypeFilter]);
   const selectedReport = reports.find((report) => report.id === selectedReportId) ?? visibleReports[0] ?? reports[0];
-  const selectedReportFieldEntries = Object.entries(selectedReport?.reportFields ?? {});
+  const selectedReportFieldEntries = Object.entries(Object.keys(detailFields).length ? detailFields : selectedReport?.reportFields ?? {});
   const selectedReportComplete = selectedReportFieldEntries.length
-    ? Math.round((completedReportFields(selectedReport?.reportFields) / selectedReportFieldEntries.length) * 100)
+    ? Math.round((completedReportFields(Object.keys(detailFields).length ? detailFields : selectedReport?.reportFields) / selectedReportFieldEntries.length) * 100)
     : selectedReport?.score ?? 0;
   const openCount = reports.filter((report) => report.state !== "Approved").length;
   const overdueCount = reports.filter((report) => report.due === "Overdue").length;
@@ -7817,6 +7844,15 @@ function Reports({
     setPath(`${station.level} -> Supervising Office`);
     setPreparedBy(station.email);
   }, [station.email, station.level]);
+
+  React.useEffect(() => {
+    if (!selectedReport) return;
+    const fallbackTemplate = churchReportTemplates.find((template) => template.id === selectedReport.templateId) ?? selectedTemplate;
+    setDetailPreparedBy(selectedReport.preparedBy ?? selectedReport.owner);
+    setDetailAttestation(selectedReport.attestation ?? "I certify this report is accurate and ready for supervisory review.");
+    setDetailFields(Object.keys(selectedReport.reportFields ?? {}).length ? selectedReport.reportFields! : defaultReportFields(fallbackTemplate));
+    setDetailFeedback("");
+  }, [selectedReport?.id]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -7855,6 +7891,22 @@ function Reports({
 
   function updateReportField(section: string, value: string) {
     setReportFields((fields) => ({ ...fields, [section]: value }));
+  }
+
+  function updateDetailField(section: string, value: string) {
+    setDetailFields((fields) => ({ ...fields, [section]: value }));
+  }
+
+  function saveSelectedReportDetails() {
+    if (!selectedReport) return;
+    onUpdateReportDetails(selectedReport.id, {
+      preparedBy: detailPreparedBy,
+      attestation: detailAttestation,
+      approvalLimit: selectedReport.approvalLimit ?? "Delegated review",
+      reportFields: detailFields,
+      templateChecklist: selectedReport.templateChecklist ?? []
+    });
+    setDetailFeedback("Report detail workspace saved and routed for audit logging.");
   }
 
   function exportReports() {
@@ -7984,17 +8036,30 @@ function Reports({
               {selectedReportFieldEntries.length ? selectedReportFieldEntries.map(([section, value]) => (
                 <article key={section}>
                   <span>{section}</span>
-                  <p>{value || "Not completed yet"}</p>
+                  <textarea
+                    value={value}
+                    onChange={(event) => updateDetailField(section, event.target.value)}
+                    placeholder={`Complete ${section.toLowerCase()}`}
+                  />
                 </article>
               )) : <p>No section fields were saved for this report yet.</p>}
             </div>
             <div className="report-detail-card">
               <strong>Checklist and Signoff</strong>
+              <label>
+                <span>Prepared by</span>
+                <input value={detailPreparedBy} onChange={(event) => setDetailPreparedBy(event.target.value)} />
+              </label>
               <ul>
                 {(selectedReport.templateChecklist ?? []).map((item) => <li key={item}>{item}</li>)}
               </ul>
-              <p>{selectedReport.attestation ?? "No attestation recorded yet."}</p>
+              <label>
+                <span>Attestation</span>
+                <textarea value={detailAttestation} onChange={(event) => setDetailAttestation(event.target.value)} />
+              </label>
+              {detailFeedback && <div className="compose-feedback">{detailFeedback}</div>}
               <div className="compact-actions">
+                <button onClick={saveSelectedReportDetails}><CheckCircle2 size={14} /> Save</button>
                 <button onClick={() => onReviewReport(selectedReport.id)}><FileCheck2 size={14} /> Review</button>
                 <button onClick={() => onBuildGovernancePacket(selectedReport.id)}><Workflow size={14} /> Packet</button>
                 <button onClick={() => onVerifyReport(selectedReport.id)}><CheckCircle2 size={14} /> Verify</button>

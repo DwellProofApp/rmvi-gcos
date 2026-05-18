@@ -798,6 +798,22 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(createdReport.preparedBy, "np@rmvi.org");
     assert.equal(createdReport.reportFields["Weekly income"], "$500");
 
+    const detailedReport = await postJson(`/api/reports/${createdReport.id}/details`, {
+      preparedBy: "finance@rmvi.org",
+      attestation: "Finance desk reviewed and saved this report",
+      approvalLimit: "District finance approval",
+      templateChecklist: ["Opening balance", "Weekly income", "Closing balance"],
+      reportFields: {
+        "Executive summary": "Updated saved detail workspace",
+        "Weekly income": "$750",
+        "Closing balance": "$1,250"
+      }
+    }, nationalToken);
+    assert.equal(detailedReport.preparedBy, "finance@rmvi.org");
+    assert.equal(detailedReport.attestation, "Finance desk reviewed and saved this report");
+    assert.equal(detailedReport.reportFields["Weekly income"], "$750");
+    assert.equal(detailedReport.routingStage, "Report details updated");
+
     const submittedReport = await postJson(`/api/reports/${reports[0].id}/submit`, {}, nationalToken);
     assert.equal(submittedReport.state, "Approved");
     assert.equal(submittedReport.score, 100);

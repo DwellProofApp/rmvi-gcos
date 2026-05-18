@@ -433,6 +433,16 @@ const validators = {
     if (body.path !== undefined) requireString(body.path, "path");
   },
 
+  "POST /api/reports/:id/details": (body) => {
+    if (body.preparedBy !== undefined) requireString(body.preparedBy, "preparedBy");
+    if (body.attestation !== undefined) requireString(body.attestation, "attestation");
+    if (body.approvalLimit !== undefined) requireString(body.approvalLimit, "approvalLimit");
+    if (body.templateChecklist !== undefined) requireStringArray(body.templateChecklist, "templateChecklist");
+    if (body.reportFields !== undefined && (body.reportFields === null || typeof body.reportFields !== "object" || Array.isArray(body.reportFields))) throw validationError("reportFields must be an object");
+    if (body.routingStage !== undefined) requireString(body.routingStage, "routingStage");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
   "POST /api/reports/:id/evidence": (body) => {
     if (body.evidenceStatus !== undefined) requireString(body.evidenceStatus, "evidenceStatus");
   },
