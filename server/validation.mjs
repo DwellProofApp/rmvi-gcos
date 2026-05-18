@@ -142,6 +142,8 @@ const validators = {
     if (body.label !== undefined) requireString(body.label, "label");
   },
 
+  "POST /api/persistence/import-dry-run": () => {},
+
   "POST /api/files/upload": (body) => {
     requireString(body.name, "name");
     requireString(body.contentType, "contentType");

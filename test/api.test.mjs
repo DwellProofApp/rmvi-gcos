@@ -92,6 +92,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(schemaPlan.sql.includes("create schema if not exists gcos_core;"), true);
     assert.equal(schemaPlan.importOrder.includes("gcos_stations"), true);
 
+    const importDryRun = await getJson("/api/persistence/import-dry-run");
+    assert.equal(importDryRun.valid, true);
+    assert.equal(importDryRun.schema, "gcos_core");
+    assert.equal(importDryRun.estimatedRows, migrationPlan.estimatedRows);
+    assert.equal(importDryRun.batches.some((batch) => batch.table === "gcos_stations" && batch.status === "ready"), true);
+
     const localLogin = await postJson("/api/auth/login", {
       email: "local_branch_017@gcos.org",
       password: "gcos-local"
@@ -137,6 +143,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.match(schemaExport.schema.hash, /^sha256:/);
     assert.equal(schemaExport.schema.schema.schema, "gcos_core");
     assert.equal((await readFile(schemaExport.schema.path, "utf8")).includes("create table if not exists gcos_core.gcos_stations"), true);
+
+    const recordedImportDryRun = await postJson("/api/persistence/import-dry-run", {}, nationalToken);
+    assert.equal(recordedImportDryRun.dryRun.valid, true);
+    assert.equal(recordedImportDryRun.dryRun.estimatedBatches, schemaPlan.tableCount);
+    assert.equal(recordedImportDryRun.status.records.stations > 0, true);
 
     const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
       reason: "Automated readiness acknowledgement"

@@ -135,6 +135,36 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
       };
     },
 
+    importDryRun(state) {
+      const plan = this.migrationPlan(state);
+      const schema = this.schemaPlan(state);
+      return {
+        generatedAt: new Date().toISOString(),
+        provider: "database",
+        target: plan.target,
+        schema: schema.schema,
+        valid: configured,
+        estimatedRows: plan.estimatedRows,
+        estimatedBatches: schema.importOrder.length,
+        estimatedDurationMs: 0,
+        batches: schema.importOrder.map((table, index) => ({
+          batch: index + 1,
+          table,
+          collection: plan.collections[index]?.collection ?? table,
+          records: plan.collections[index]?.records ?? 0,
+          strategy: "provider-managed",
+          primaryKey: plan.collections[index]?.identityKey ?? "id",
+          status: configured ? "ready" : "blocked",
+          estimatedMs: 0
+        })),
+        objectStorage: plan.objectStorage,
+        checks: schema.checks,
+        warnings: [],
+        blockers: configured ? [] : ["Set GCOS_DATABASE_URL before running database import"],
+        nextAction: configured ? "Implement adapter import execution" : "Configure database provider"
+      };
+    },
+
     async exportMigrationBundle() {
       throw new Error("Database migration export is only available from the JSON provider");
     },

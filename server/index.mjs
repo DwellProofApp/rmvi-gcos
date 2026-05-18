@@ -67,6 +67,8 @@ const routes = {
   "POST /api/persistence/migration-export": async ({ body, session }) => createdResponse(await createPersistenceMigrationExport(body, session.email)),
   "GET /api/persistence/schema-plan": () => ok(persistenceSchemaPlan()),
   "POST /api/persistence/schema-export": async ({ body, session }) => createdResponse(await createPersistenceSchemaExport(body, session.email)),
+  "GET /api/persistence/import-dry-run": () => ok(persistenceImportDryRun()),
+  "POST /api/persistence/import-dry-run": ({ session }) => ok(recordPersistenceImportDryRun(session.email)),
   "GET /api/sessions": () => ok(sessionSummary()),
   "GET /api/sessions/digest": () => ok(sessionDigest()),
   "POST /api/sessions/renew": ({ session }) => ok(renewSession(session.token, session.email)),
@@ -527,6 +529,27 @@ function persistenceMigrationPlan() {
 
 function persistenceSchemaPlan() {
   return storage.schemaPlan(state);
+}
+
+function persistenceImportDryRun() {
+  return storage.importDryRun(state);
+}
+
+function recordPersistenceImportDryRun(actor) {
+  requirePermission(actor, "canApprove");
+  const dryRun = persistenceImportDryRun();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastImportDryRun = {
+    generatedAt: dryRun.generatedAt,
+    actor,
+    valid: dryRun.valid,
+    estimatedRows: dryRun.estimatedRows,
+    estimatedBatches: dryRun.estimatedBatches,
+    blockers: dryRun.blockers.length,
+    warnings: dryRun.warnings.length
+  };
+  record("PersistenceImportDryRun", actor, "Database import", dryRun.nextAction);
+  return { dryRun, status: persistenceStatusSync() };
 }
 
 async function createPersistenceMigrationExport(body, actor) {

@@ -186,6 +186,31 @@ type PersistenceSchemaPlan = {
   sql: string;
   checks: { name: string; ok: boolean; detail: string }[];
 };
+type PersistenceImportDryRun = {
+  generatedAt: string;
+  provider: string;
+  target: { provider: string; schema: string; mode: string };
+  schema: string;
+  valid: boolean;
+  estimatedRows: number;
+  estimatedBatches: number;
+  estimatedDurationMs: number;
+  batches: {
+    batch: number;
+    table: string;
+    collection: string;
+    records: number;
+    strategy: string;
+    primaryKey: string;
+    status: string;
+    estimatedMs: number;
+  }[];
+  objectStorage: { provider: string; files: number; bytes: number; strategy: string };
+  checks: { name: string; ok: boolean; detail: string }[];
+  warnings: string[];
+  blockers: string[];
+  nextAction: string;
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -9391,6 +9416,7 @@ function Audit({
   const [persistenceStatus, setPersistenceStatus] = React.useState<PersistenceStatus | null>(apiStatus?.persistenceStatus ?? null);
   const [migrationPlan, setMigrationPlan] = React.useState<PersistenceMigrationPlan | null>(null);
   const [schemaPlan, setSchemaPlan] = React.useState<PersistenceSchemaPlan | null>(null);
+  const [importDryRun, setImportDryRun] = React.useState<PersistenceImportDryRun | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -9432,6 +9458,7 @@ function Audit({
     void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
     void apiRequest<PersistenceMigrationPlan>("/api/persistence/migration-plan").then(setMigrationPlan).catch(() => undefined);
     void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
+    void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -9488,6 +9515,21 @@ function Audit({
       body: JSON.stringify({ label: "postgres-schema" })
     }).then((result) => {
       setSchemaPlan(result.schema.schema);
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function refreshImportDryRun() {
+    void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
+  }
+
+  function recordImportDryRun() {
+    void apiRequest<{ dryRun: PersistenceImportDryRun; status: PersistenceStatus }>("/api/persistence/import-dry-run", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setImportDryRun(result.dryRun);
       setPersistenceStatus(result.status);
       onRefreshAuditDigest();
     }).catch(() => undefined);
@@ -9958,6 +10000,7 @@ function Audit({
         <div className="action-row">
           <button onClick={refreshSchemaPlan}><RefreshCw size={15} /> Plan</button>
           <button onClick={exportSchemaPackage}><Download size={15} /> SQL</button>
+          <button onClick={recordImportDryRun}><CheckCircle2 size={15} /> Dry run</button>
         </div>
         <div className="office-summary-grid">
           <Insight label="Dialect" value={schemaPlan?.dialect ?? "Postgres"} />
@@ -9978,6 +10021,35 @@ function Audit({
               <span>{table.importStrategy}</span>
               <strong>{table.name}</strong>
               <small>{table.columns.length} columns, {table.indexes.length} indexes, {table.records} records</small>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={ClipboardCheck} title="Import Dry Run" action={importDryRun?.valid ? "ready" : "review"} />
+        <div className="action-row">
+          <button onClick={refreshImportDryRun}><RefreshCw size={15} /> Check</button>
+          <button onClick={recordImportDryRun}><ShieldCheck size={15} /> Record</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Rows" value={String(importDryRun?.estimatedRows ?? 0)} />
+          <Insight label="Batches" value={String(importDryRun?.estimatedBatches ?? 0)} />
+          <Insight label="Duration" value={`${Math.round((importDryRun?.estimatedDurationMs ?? 0) / 100) / 10}s`} />
+          <Insight label="Warnings" value={String(importDryRun?.warnings.length ?? 0)} />
+          <Insight label="Blockers" value={String(importDryRun?.blockers.length ?? 0)} />
+          <Insight label="Files" value={String(importDryRun?.objectStorage.files ?? 0)} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{importDryRun ? formatDateTime(importDryRun.generatedAt) : "No dry run loaded"}</span>
+            <strong>{importDryRun?.nextAction ?? "Run a staged import check before database cutover"}</strong>
+            <small>{importDryRun?.objectStorage.strategy ?? "Object vault copy checks will appear here."}</small>
+          </article>
+          {(importDryRun?.batches.slice(0, 5) ?? []).map((batch) => (
+            <article className="source-map-item" key={batch.table}>
+              <span>Batch {batch.batch} - {batch.status}</span>
+              <strong>{batch.collection} into {batch.table}</strong>
+              <small>{batch.records} records by {batch.primaryKey} using {batch.strategy}</small>
             </article>
           ))}
         </div>

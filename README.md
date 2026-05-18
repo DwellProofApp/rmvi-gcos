@@ -37,6 +37,7 @@ Production domain target: `rmvi.org`
 - Persistence operations for JSON store status, backup, verification, and protected export
 - Database migration planning and JSON-to-database bundle export
 - Postgres schema planning and SQL package export
+- Database import dry-run validation with ordered batches
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
@@ -175,6 +176,8 @@ GET  /api/persistence/migration-plan
 POST /api/persistence/migration-export
 GET  /api/persistence/schema-plan
 POST /api/persistence/schema-export
+GET  /api/persistence/import-dry-run
+POST /api/persistence/import-dry-run
 GET  /api/files
 POST /api/files/upload
 GET  /api/files/:id/download

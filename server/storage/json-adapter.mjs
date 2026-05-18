@@ -128,6 +128,10 @@ export function createJsonStorageAdapter({ dataPath }) {
       return buildSchemaPlan(this.migrationPlan(state));
     },
 
+    importDryRun(state) {
+      return buildImportDryRun(this.migrationPlan(state), this.schemaPlan(state));
+    },
+
     async exportMigrationBundle(state, { actor, label }) {
       const migrationDir = join(dirname(dataPath), "migrations");
       await mkdir(migrationDir, { recursive: true });
@@ -301,5 +305,52 @@ function buildSchemaPlan(plan) {
       { name: "table-count", ok: tables.length > 0, detail: `${tables.length} tables` },
       { name: "import-order", ok: importOrder.length === tables.length, detail: `${importOrder.length} ordered imports` }
     ]
+  };
+}
+
+function buildImportDryRun(plan, schema) {
+  const batches = schema.importOrder.map((tableName, index) => {
+    const table = schema.tables.find((item) => item.name === tableName);
+    const collection = plan.collections.find((item) => item.targetTable === tableName);
+    return {
+      batch: index + 1,
+      table: tableName,
+      collection: table?.collection ?? collection?.collection ?? tableName.replace(/^gcos_/, ""),
+      records: table?.records ?? collection?.records ?? 0,
+      strategy: table?.importStrategy ?? collection?.strategy ?? "bulk-upsert",
+      primaryKey: table?.primaryKey ?? collection?.identityKey ?? "id",
+      status: collection?.ready === false ? "blocked" : "ready",
+      estimatedMs: Math.max(25, Math.ceil(((table?.records ?? collection?.records ?? 0) || 1) * 6))
+    };
+  });
+  const warnings = [
+    ...batches.filter((batch) => batch.records === 0).map((batch) => `${batch.collection} has no records to import`),
+    ...(plan.objectStorage.files > 0 ? ["Object-vault binaries require a separate storage copy step"] : [])
+  ];
+  const blockers = [
+    ...plan.blockers,
+    ...batches.filter((batch) => batch.status === "blocked").map((batch) => `${batch.collection} is not ready`)
+  ];
+  const estimatedRows = batches.reduce((sum, batch) => sum + batch.records, 0);
+  return {
+    generatedAt: new Date().toISOString(),
+    provider: "json",
+    target: plan.target,
+    schema: schema.schema,
+    valid: blockers.length === 0 && schema.checks.every((check) => check.ok),
+    estimatedRows,
+    estimatedBatches: batches.length,
+    estimatedDurationMs: batches.reduce((sum, batch) => sum + batch.estimatedMs, 0),
+    batches,
+    objectStorage: plan.objectStorage,
+    checks: [
+      ...plan.checks,
+      ...schema.checks,
+      { name: "batch-order", ok: batches.length === schema.importOrder.length, detail: `${batches.length} ordered batches` },
+      { name: "row-total", ok: estimatedRows === plan.estimatedRows, detail: `${estimatedRows} rows matched` }
+    ],
+    warnings,
+    blockers,
+    nextAction: blockers.length ? "Resolve blockers before import" : "Ready for staging database import"
   };
 }
