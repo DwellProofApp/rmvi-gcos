@@ -177,6 +177,8 @@ GET  /health
 GET  /api/status
 GET  /api/launch/readiness
 POST /api/launch/readiness
+GET  /api/launch/deployment-plan
+POST /api/launch/deployment-plan
 GET  /api/persistence/status
 POST /api/persistence/backup
 POST /api/persistence/verify

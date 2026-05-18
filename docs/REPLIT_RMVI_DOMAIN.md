@@ -7,8 +7,15 @@ Use this when connecting the GCOS web deployment to `rmvi.org` in Replit.
 ```text
 VITE_GCOS_API_BASE=
 GCOS_HOST=0.0.0.0
+GCOS_DOMAIN=rmvi.org
+GCOS_DEPLOYMENT_TARGET=replit
 GCOS_SERVE_WEB=1
 GCOS_WEB_DIST_PATH=dist
+GCOS_STORAGE_PROVIDER=database
+GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
+GCOS_DATABASE_SSL=1
+GCOS_DATABASE_POOL_SIZE=5
+GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
 GCOS_ALLOWED_ORIGIN=https://rmvi.org
 GCOS_HEALTHCHECK_URL=https://rmvi.org
 GCOS_ENABLE_DEV_RESET=0
@@ -47,8 +54,15 @@ Add these as Replit environment variables or Secrets:
 
 ```text
 GCOS_HOST=0.0.0.0
+GCOS_DOMAIN=rmvi.org
+GCOS_DEPLOYMENT_TARGET=replit
 GCOS_SERVE_WEB=1
 GCOS_WEB_DIST_PATH=dist
+GCOS_STORAGE_PROVIDER=database
+GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
+GCOS_DATABASE_SSL=1
+GCOS_DATABASE_POOL_SIZE=5
+GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
 GCOS_ALLOWED_ORIGIN=https://rmvi.org
 GCOS_HEALTHCHECK_URL=https://rmvi.org
 GCOS_ENABLE_DEV_RESET=0
@@ -78,6 +92,7 @@ Current deployment state as of May 17, 2026:
 8. Open `https://rmvi.org`.
 9. Run `GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck`.
 10. Run `npm run domain:check` for DNS plus GCOS endpoint verification.
+11. Run `npm run production:check` in Replit after setting secrets.
 
 ## Launch Checks
 

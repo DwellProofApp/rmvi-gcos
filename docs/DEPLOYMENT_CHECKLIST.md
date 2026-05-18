@@ -19,7 +19,14 @@ Use `.env.production.example` as the production template.
 VITE_GCOS_API_BASE=
 GCOS_API_PORT=8787
 GCOS_HOST=0.0.0.0
+GCOS_DOMAIN=rmvi.org
+GCOS_DEPLOYMENT_TARGET=replit
+GCOS_STORAGE_PROVIDER=database
+GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
+GCOS_DATABASE_SSL=1
+GCOS_DATABASE_POOL_SIZE=5
 GCOS_DATA_PATH=/var/lib/gcos/gcos-state.json
+GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
 GCOS_SERVE_WEB=1
 GCOS_WEB_DIST_PATH=dist
 GCOS_HEALTHCHECK_URL=https://rmvi.org
@@ -80,12 +87,13 @@ Manual checks:
 
 ## 6. Persistence
 
-Current scaffold persistence is JSON-based.
+MVP persistence can run from the live Postgres JSONB adapter.
 
-- Set `GCOS_DATA_PATH` to a durable server path.
-- Make sure the runtime user can read/write that path.
-- Back up the data path before resets.
-- Replace JSON persistence with managed databases before high-volume production.
+- Set `GCOS_STORAGE_PROVIDER=database`.
+- Set `GCOS_DATABASE_URL` to the managed Postgres connection string.
+- Set `GCOS_DATABASE_SSL=1` for managed providers that require TLS.
+- Set `GCOS_OBJECT_VAULT_PATH` to a durable path for uploaded files.
+- Keep JSON backup/export artifacts until the database cutover checklist is clean.
 
 ## 7. Production Hardening
 
@@ -93,9 +101,8 @@ Before real organizational rollout:
 
 - Replace demo station passwords.
 - Move sessions to durable server-side storage.
-- Add password hashing and rotation.
 - Add rate limits for login and mutations.
-- Add database adapters for PostgreSQL, object storage, and audit retention.
+- Add specialized object storage and audit retention providers.
 - Disable or protect `/api/dev/reset`.
 - Add production monitoring and backups.
 

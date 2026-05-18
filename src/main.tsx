@@ -234,6 +234,17 @@ type LaunchReadiness = {
   nextActions: string[];
   summary: string;
 };
+type DeploymentPlan = {
+  generatedAt: string;
+  targetDomain: string;
+  deploymentTarget: string;
+  readiness: { mvpScore: number; productionScore: number; status: string; blockers: string[] };
+  requiredSecrets: { name: string; value: string; configured: boolean; sensitive: boolean }[];
+  commands: string[];
+  smokeUrls: string[];
+  goLive: boolean;
+  nextAction: string;
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -9442,6 +9453,7 @@ function Audit({
   const [importDryRun, setImportDryRun] = React.useState<PersistenceImportDryRun | null>(null);
   const [cutoverChecklist, setCutoverChecklist] = React.useState<PersistenceCutoverChecklist | null>(null);
   const [launchReadiness, setLaunchReadiness] = React.useState<LaunchReadiness | null>(null);
+  const [deploymentPlan, setDeploymentPlan] = React.useState<DeploymentPlan | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -9486,6 +9498,7 @@ function Audit({
     void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
     void apiRequest<PersistenceCutoverChecklist>("/api/persistence/cutover-checklist").then(setCutoverChecklist).catch(() => undefined);
     void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
+    void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -9587,6 +9600,21 @@ function Audit({
       body: JSON.stringify({})
     }).then((result) => {
       setLaunchReadiness(result.launch);
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function refreshDeploymentPlan() {
+    void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
+  }
+
+  function recordDeploymentPlan() {
+    void apiRequest<{ plan: DeploymentPlan; status: PersistenceStatus }>("/api/launch/deployment-plan", {
+      method: "POST",
+      body: JSON.stringify({})
+    }).then((result) => {
+      setDeploymentPlan(result.plan);
       setPersistenceStatus(result.status);
       onRefreshAuditDigest();
     }).catch(() => undefined);
@@ -10147,6 +10175,7 @@ function Audit({
         <div className="action-row">
           <button onClick={refreshLaunchReadiness}><RefreshCw size={15} /> Check</button>
           <button onClick={recordLaunchReadiness}><ShieldCheck size={15} /> Record</button>
+          <button onClick={recordDeploymentPlan}><Upload size={15} /> Deploy</button>
         </div>
         <div className="office-summary-grid">
           <Insight label="MVP" value={`${launchReadiness?.mvpScore ?? 0}%`} />
@@ -10167,6 +10196,35 @@ function Audit({
               <span>{check.category} - {check.ok ? "Pass" : "Hold"}</span>
               <strong>{check.name}</strong>
               <small>{check.detail}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={Upload} title="Deployment Plan" action={deploymentPlan?.goLive ? "go-live" : "setup"} />
+        <div className="action-row">
+          <button onClick={refreshDeploymentPlan}><RefreshCw size={15} /> Plan</button>
+          <button onClick={recordDeploymentPlan}><ShieldCheck size={15} /> Record</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Production" value={`${deploymentPlan?.readiness.productionScore ?? 0}%`} />
+          <Insight label="Secrets" value={String(deploymentPlan?.requiredSecrets.filter((secret) => secret.configured).length ?? 0)} />
+          <Insight label="Missing" value={String(deploymentPlan?.requiredSecrets.filter((secret) => !secret.configured).length ?? 0)} />
+          <Insight label="Commands" value={String(deploymentPlan?.commands.length ?? 0)} />
+          <Insight label="Smoke URLs" value={String(deploymentPlan?.smokeUrls.length ?? 0)} />
+          <Insight label="Target" value={deploymentPlan?.deploymentTarget ?? "replit"} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{deploymentPlan ? formatDateTime(deploymentPlan.generatedAt) : "No deployment plan loaded"}</span>
+            <strong>{deploymentPlan?.nextAction ?? "Set Replit secrets and run production checks"}</strong>
+            <small>{deploymentPlan?.smokeUrls[0] ?? "https://rmvi.org/health"}</small>
+          </article>
+          {(deploymentPlan?.requiredSecrets ?? []).map((secret) => (
+            <article className="source-map-item" key={secret.name}>
+              <span>{secret.configured ? "Set" : "Missing"}</span>
+              <strong>{secret.name}</strong>
+              <small>{secret.sensitive && secret.configured ? "configured secret" : secret.value}</small>
             </article>
           ))}
         </div>

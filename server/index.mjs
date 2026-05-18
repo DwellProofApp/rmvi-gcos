@@ -58,6 +58,8 @@ const routes = {
   "GET /api/status": () => ok(operationalStatus()),
   "GET /api/launch/readiness": async () => ok(await launchReadiness()),
   "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
+  "GET /api/launch/deployment-plan": async () => ok(await launchDeploymentPlan()),
+  "POST /api/launch/deployment-plan": async ({ session }) => ok(await recordLaunchDeploymentPlan(session.email)),
   "GET /api/files": () => ok(state.files ?? []),
   "POST /api/files/upload": async ({ body, session }) => createdResponse(await uploadFile(body, session.email)),
   "GET /api/files/:id/download": async ({ params, session }) => readStoredFile(params.id, session.email),
@@ -558,9 +560,78 @@ async function recordLaunchReadiness(actor) {
   return { launch, status: persistenceStatusSync() };
 }
 
+async function launchDeploymentPlan() {
+  const launch = await launchReadiness();
+  const requiredSecrets = [
+    { name: "NODE_ENV", value: "production", configured: process.env.NODE_ENV === "production", sensitive: false },
+    { name: "GCOS_DOMAIN", value: DOMAIN, configured: DOMAIN === "rmvi.org", sensitive: false },
+    { name: "GCOS_DEPLOYMENT_TARGET", value: DEPLOYMENT_TARGET || "replit", configured: Boolean(DEPLOYMENT_TARGET), sensitive: false },
+    { name: "GCOS_SERVE_WEB", value: SERVE_WEB ? "1" : "1", configured: SERVE_WEB, sensitive: false },
+    { name: "GCOS_ALLOWED_ORIGIN", value: "https://rmvi.org", configured: ALLOWED_ORIGIN === "https://rmvi.org", sensitive: false },
+    { name: "GCOS_HEALTHCHECK_URL", value: "https://rmvi.org", configured: (process.env.GCOS_HEALTHCHECK_URL ?? "") === "https://rmvi.org", sensitive: false },
+    { name: "GCOS_ENABLE_DEV_RESET", value: "0", configured: !DEV_RESET_ENABLED, sensitive: false },
+    { name: "GCOS_STORAGE_PROVIDER", value: "database", configured: STORAGE_PROVIDER === "database", sensitive: false },
+    { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? redactSecret(DATABASE_URL) : "required", configured: Boolean(DATABASE_URL), sensitive: true },
+    { name: "GCOS_DATABASE_SSL", value: "1", configured: process.env.GCOS_DATABASE_SSL === "1", sensitive: false },
+    { name: "GCOS_DATABASE_POOL_SIZE", value: process.env.GCOS_DATABASE_POOL_SIZE ?? "5", configured: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, sensitive: false },
+    { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false }
+  ];
+  const commands = [
+    "npm install",
+    "npm run build",
+    "npm run production:check",
+    "npm run replit:run",
+    "GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck",
+    "npm run domain:check"
+  ];
+  return {
+    generatedAt: new Date().toISOString(),
+    targetDomain: DOMAIN,
+    deploymentTarget: DEPLOYMENT_TARGET || "replit",
+    readiness: {
+      mvpScore: launch.mvpScore,
+      productionScore: launch.productionScore,
+      status: launch.status,
+      blockers: launch.blockers
+    },
+    requiredSecrets,
+    commands,
+    smokeUrls: [
+      `https://${DOMAIN}/health`,
+      `https://${DOMAIN}/api/status`,
+      `https://${DOMAIN}/api/launch/readiness`,
+      `https://${DOMAIN}/manifest.webmanifest`,
+      `https://${DOMAIN}/`
+    ],
+    goLive: launch.productionScore >= 90,
+    nextAction: launch.productionScore >= 90
+      ? "Run production smoke checks and sign off the rmvi.org deployment"
+      : "Set the missing Replit secrets, then rerun npm run production:check"
+  };
+}
+
+async function recordLaunchDeploymentPlan(actor) {
+  requirePermission(actor, "canApprove");
+  const plan = await launchDeploymentPlan();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastDeploymentPlan = {
+    generatedAt: plan.generatedAt,
+    actor,
+    productionScore: plan.readiness.productionScore,
+    goLive: plan.goLive,
+    missingSecrets: plan.requiredSecrets.filter((secret) => !secret.configured).length
+  };
+  record("LaunchDeploymentPlanChecked", actor, "GCOS deployment", plan.nextAction);
+  return { plan, status: persistenceStatusSync() };
+}
+
 function scoreChecks(checks) {
   if (!checks.length) return 0;
   return Math.round((checks.filter((check) => check.ok).length / checks.length) * 100);
+}
+
+function redactSecret(value) {
+  return value.replace(/:\/\/([^:@/]+):([^@/]+)@/, "://$1:***@");
 }
 
 function persistenceStatusSync() {

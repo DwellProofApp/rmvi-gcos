@@ -49,6 +49,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(launchReadiness.checks.some((check) => check.name === "deployment-target"), true);
     assert.equal(launchReadiness.checks.some((check) => check.name === "database-pool"), true);
 
+    const deploymentPlan = await getJson("/api/launch/deployment-plan");
+    assert.equal(deploymentPlan.targetDomain, "rmvi.org");
+    assert.equal(deploymentPlan.requiredSecrets.some((secret) => secret.name === "GCOS_DATABASE_URL"), true);
+    assert.equal(deploymentPlan.commands.includes("npm run production:check"), true);
+    assert.equal(deploymentPlan.smokeUrls.includes("https://rmvi.org/health"), true);
+
     const webShell = await fetch(`${BASE_URL}/`);
     assert.equal(webShell.status, 200);
     assert.equal((await webShell.text()).includes("GCOS Web"), true);
@@ -172,6 +178,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(recordedLaunchReadiness.launch.status, "mvp-launch-ready");
     assert.equal(recordedLaunchReadiness.launch.mvpScore >= 95, true);
     assert.equal(recordedLaunchReadiness.status.records.stations > 0, true);
+
+    const recordedDeploymentPlan = await postJson("/api/launch/deployment-plan", {}, nationalToken);
+    assert.equal(recordedDeploymentPlan.plan.requiredSecrets.some((secret) => secret.name === "GCOS_DATABASE_URL"), true);
+    assert.equal(recordedDeploymentPlan.plan.commands.includes("npm run domain:check"), true);
+    assert.equal(recordedDeploymentPlan.status.records.stations > 0, true);
 
     const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
       reason: "Automated readiness acknowledgement"

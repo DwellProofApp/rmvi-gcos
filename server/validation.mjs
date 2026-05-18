@@ -148,6 +148,8 @@ const validators = {
 
   "POST /api/launch/readiness": () => {},
 
+  "POST /api/launch/deployment-plan": () => {},
+
   "POST /api/files/upload": (body) => {
     requireString(body.name, "name");
     requireString(body.contentType, "contentType");
