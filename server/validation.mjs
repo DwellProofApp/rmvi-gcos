@@ -134,6 +134,10 @@ const validators = {
 
   "POST /api/persistence/verify": () => {},
 
+  "POST /api/persistence/migration-export": (body) => {
+    if (body.label !== undefined) requireString(body.label, "label");
+  },
+
   "POST /api/files/upload": (body) => {
     requireString(body.name, "name");
     requireString(body.contentType, "contentType");

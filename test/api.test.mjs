@@ -79,6 +79,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persistenceStatus.records.stations > 0, true);
     assert.match(persistenceStatus.hash, /^sha256:/);
 
+    const migrationPlan = await getJson("/api/persistence/migration-plan");
+    assert.equal(migrationPlan.source.provider, "json");
+    assert.equal(migrationPlan.target.schema, "gcos_core");
+    assert.equal(migrationPlan.estimatedRows > 0, true);
+    assert.equal(migrationPlan.collections.some((item) => item.collection === "stations" && item.targetTable === "gcos_stations"), true);
+
     const localLogin = await postJson("/api/auth/login", {
       email: "local_branch_017@gcos.org",
       password: "gcos-local"
@@ -108,6 +114,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const persistenceExport = await getJson("/api/persistence/export", nationalToken);
     assert.equal(persistenceExport.exportedBy, "np@rmvi.org");
     assert.equal(persistenceExport.state.stations.length > 0, true);
+
+    const migrationExport = await postJson("/api/persistence/migration-export", {
+      label: "automated-migration"
+    }, nationalToken);
+    assert.equal(migrationExport.migration.label, "automated-migration");
+    assert.match(migrationExport.migration.hash, /^sha256:/);
+    assert.equal(migrationExport.migration.plan.target.schema, "gcos_core");
+    assert.equal((await readFile(migrationExport.migration.path, "utf8")).includes("\"label\": \"automated-migration\""), true);
 
     const acknowledgedReadiness = await postJson("/api/readiness/web/acknowledge", {
       reason: "Automated readiness acknowledgement"

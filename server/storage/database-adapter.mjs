@@ -72,6 +72,46 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
         status: this.statusSync(state),
         state
       };
+    },
+
+    migrationPlan(state) {
+      return {
+        generatedAt: new Date().toISOString(),
+        source: {
+          provider: "database",
+          mode: this.mode,
+          source: databaseUrl ? redactDatabaseUrl(databaseUrl) : "GCOS_DATABASE_URL not configured"
+        },
+        target: {
+          provider: "database",
+          schema: "gcos_core",
+          mode: configured ? "live-provider" : "unconfigured"
+        },
+        estimatedRows: Object.values(this.statusSync(state).records).reduce((sum, count) => sum + count, 0),
+        collections: Object.entries(this.statusSync(state).records).map(([collection, records]) => ({
+          collection,
+          targetTable: `gcos_${collection.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`,
+          records,
+          strategy: "provider-managed",
+          identityKey: "id",
+          ready: configured
+        })),
+        objectStorage: {
+          provider: "external-object-vault",
+          files: state.files?.length ?? 0,
+          bytes: (state.files ?? []).reduce((sum, file) => sum + (file.size ?? 0), 0),
+          strategy: "managed by configured storage provider"
+        },
+        checks: [
+          { name: "database-url", ok: configured, detail: configured ? "Configured" : "Missing GCOS_DATABASE_URL" }
+        ],
+        blockers: configured ? [] : ["Set GCOS_DATABASE_URL before using database provider"],
+        nextSteps: configured ? ["Implement database adapter read/write operations"] : ["Configure GCOS_DATABASE_URL"]
+      };
+    },
+
+    async exportMigrationBundle() {
+      throw new Error("Database migration export is only available from the JSON provider");
     }
   };
 }

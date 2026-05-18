@@ -63,6 +63,8 @@ const routes = {
   "POST /api/persistence/backup": async ({ body, session }) => createdResponse(await createPersistenceBackup(body, session.email)),
   "POST /api/persistence/verify": async ({ session }) => ok(await verifyPersistence(session.email)),
   "GET /api/persistence/export": ({ session }) => ok(persistenceExport(session.email)),
+  "GET /api/persistence/migration-plan": () => ok(persistenceMigrationPlan()),
+  "POST /api/persistence/migration-export": async ({ body, session }) => createdResponse(await createPersistenceMigrationExport(body, session.email)),
   "GET /api/sessions": () => ok(sessionSummary()),
   "GET /api/sessions/digest": () => ok(sessionDigest()),
   "POST /api/sessions/renew": ({ session }) => ok(renewSession(session.token, session.email)),
@@ -515,6 +517,26 @@ async function verifyPersistence(actor) {
 
 function persistenceExport(actor) {
   return storage.exportState(state, actor);
+}
+
+function persistenceMigrationPlan() {
+  return storage.migrationPlan(state);
+}
+
+async function createPersistenceMigrationExport(body, actor) {
+  requirePermission(actor, "canApprove");
+  const migration = await storage.exportMigrationBundle(state, { actor, label: body.label });
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastMigrationExport = {
+    path: migration.path,
+    label: migration.label,
+    hash: migration.hash,
+    createdAt: migration.createdAt,
+    createdBy: migration.createdBy,
+    estimatedRows: migration.plan.estimatedRows
+  };
+  record("PersistenceMigrationExported", actor, "Database migration bundle", migration.path ?? migration.label);
+  return { migration, status: await persistenceStatus() };
 }
 
 async function uploadFile(body, actor) {

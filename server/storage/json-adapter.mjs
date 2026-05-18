@@ -118,6 +118,38 @@ export function createJsonStorageAdapter({ dataPath }) {
         status: this.statusSync(state),
         state
       };
+    },
+
+    migrationPlan(state) {
+      return buildMigrationPlan(state, { provider: "json", mode: "json-file", source: dataPath });
+    },
+
+    async exportMigrationBundle(state, { actor, label }) {
+      const migrationDir = join(dirname(dataPath), "migrations");
+      await mkdir(migrationDir, { recursive: true });
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const safeLabel = String(label ?? "database-ready").toLowerCase().replace(/[^a-z0-9-]+/g, "-").replace(/(^-|-$)/g, "") || "database-ready";
+      const bundlePath = join(migrationDir, `gcos-migration-${timestamp}-${safeLabel}.json`);
+      const plan = this.migrationPlan(state);
+      const bundle = {
+        exportedAt: new Date().toISOString(),
+        exportedBy: actor,
+        label: safeLabel,
+        provider: "json",
+        sourcePath: dataPath,
+        hash: hashState(state),
+        plan,
+        state
+      };
+      await writeFile(bundlePath, `${JSON.stringify(bundle, null, 2)}\n`);
+      return {
+        path: bundlePath,
+        label: safeLabel,
+        hash: bundle.hash,
+        createdAt: bundle.exportedAt,
+        createdBy: actor,
+        plan
+      };
     }
   };
 }
@@ -145,4 +177,53 @@ function recordCounts(state) {
     audit: state.audit.length,
     events: state.events.length
   };
+}
+
+function buildMigrationPlan(state, source) {
+  const records = recordCounts(state);
+  const collections = Object.entries(records).map(([collection, count]) => ({
+    collection,
+    targetTable: tableNameFor(collection),
+    records: count,
+    strategy: collection === "files" ? "metadata-table-plus-object-storage" : "bulk-upsert",
+    identityKey: collection === "authCredentials" ? "email" : "id",
+    ready: true
+  }));
+  const estimatedRows = collections.reduce((sum, item) => sum + item.records, 0);
+  const fileRecords = state.files ?? [];
+  return {
+    generatedAt: new Date().toISOString(),
+    source,
+    target: {
+      provider: "database",
+      schema: "gcos_core",
+      mode: "staged-import"
+    },
+    estimatedRows,
+    collections,
+    objectStorage: {
+      provider: "external-object-vault",
+      files: fileRecords.length,
+      bytes: fileRecords.reduce((sum, file) => sum + (file.size ?? 0), 0),
+      strategy: "copy object keys, then move binary payloads to S3/Supabase Storage"
+    },
+    checks: [
+      { name: "json-readable", ok: true, detail: source.source },
+      { name: "record-counts", ok: estimatedRows > 0, detail: `${estimatedRows} rows ready` },
+      { name: "object-vault", ok: true, detail: `${fileRecords.length} file records mapped` },
+      { name: "audit-chain", ok: (state.audit ?? []).length > 0, detail: `${state.audit?.length ?? 0} audit rows` }
+    ],
+    blockers: [],
+    nextSteps: [
+      "Create managed Postgres database",
+      "Run schema creation for gcos_core tables",
+      "Import migration bundle collections in dependency order",
+      "Move object vault binaries to managed object storage",
+      "Switch GCOS_STORAGE_PROVIDER to database after verification"
+    ]
+  };
+}
+
+function tableNameFor(collection) {
+  return `gcos_${collection.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`)}`;
 }

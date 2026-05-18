@@ -149,6 +149,24 @@ type PersistenceStatus = {
   readyForExternalDatabase?: boolean;
   note?: string;
 };
+type PersistenceMigrationPlan = {
+  generatedAt: string;
+  source: { provider: string; mode: string; source: string };
+  target: { provider: string; schema: string; mode: string };
+  estimatedRows: number;
+  collections: {
+    collection: string;
+    targetTable: string;
+    records: number;
+    strategy: string;
+    identityKey: string;
+    ready: boolean;
+  }[];
+  objectStorage: { provider: string; files: number; bytes: number; strategy: string };
+  checks: { name: string; ok: boolean; detail: string }[];
+  blockers: string[];
+  nextSteps: string[];
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -9352,6 +9370,7 @@ function Audit({
   const [evidenceVault, setEvidenceVault] = React.useState<EvidenceRecord[]>([]);
   const [evidenceDigest, setEvidenceDigest] = React.useState<EvidenceDigest | null>(null);
   const [persistenceStatus, setPersistenceStatus] = React.useState<PersistenceStatus | null>(apiStatus?.persistenceStatus ?? null);
+  const [migrationPlan, setMigrationPlan] = React.useState<PersistenceMigrationPlan | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -9391,6 +9410,7 @@ function Audit({
     void apiRequest<EvidenceRecord[]>("/api/evidence-vault").then(setEvidenceVault).catch(() => undefined);
     void apiRequest<EvidenceDigest>("/api/evidence-vault/digest").then(setEvidenceDigest).catch(() => undefined);
     void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
+    void apiRequest<PersistenceMigrationPlan>("/api/persistence/migration-plan").then(setMigrationPlan).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -9420,6 +9440,21 @@ function Audit({
     void apiRequest<{ status: PersistenceStatus }>("/api/persistence/export")
       .then((result) => setPersistenceStatus(result.status))
       .catch(() => undefined);
+  }
+
+  function refreshMigrationPlan() {
+    void apiRequest<PersistenceMigrationPlan>("/api/persistence/migration-plan").then(setMigrationPlan).catch(() => undefined);
+  }
+
+  function exportMigrationBundle() {
+    void apiRequest<{ migration: { plan: PersistenceMigrationPlan }; status: PersistenceStatus }>("/api/persistence/migration-export", {
+      method: "POST",
+      body: JSON.stringify({ label: "database-ready" })
+    }).then((result) => {
+      setMigrationPlan(result.migration.plan);
+      setPersistenceStatus(result.status);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
   }
 
   function refreshReadiness() {
@@ -9827,6 +9862,7 @@ function Audit({
           <button onClick={createPersistenceBackup}><Download size={15} /> Backup</button>
           <button onClick={verifyPersistenceStore}><ShieldCheck size={15} /> Verify</button>
           <button onClick={exportPersistenceStore}><Files size={15} /> Export</button>
+          <button onClick={exportMigrationBundle}><ArrowUpFromLine size={15} /> Migration</button>
         </div>
         <div className="office-summary-grid">
           <Insight label="Provider" value={persistenceStatus?.provider ?? apiStatus?.storageProvider ?? "Unknown"} />
@@ -9848,6 +9884,36 @@ function Audit({
             <small>Last verify: {persistenceStatus?.lastVerifiedAt ? `${formatDateTime(persistenceStatus.lastVerifiedAt)} by ${persistenceStatus.lastVerifiedBy}` : "not verified yet"}</small>
             {persistenceStatus?.note && <small>{persistenceStatus.note}</small>}
           </article>
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={Workflow} title="Database Migration" action={migrationPlan ? `${migrationPlan.estimatedRows} rows` : "planning"} />
+        <div className="action-row">
+          <button onClick={refreshMigrationPlan}><RefreshCw size={15} /> Plan</button>
+          <button onClick={exportMigrationBundle}><Download size={15} /> Bundle</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Tables" value={String(migrationPlan?.collections.length ?? 0)} />
+          <Insight label="Rows" value={String(migrationPlan?.estimatedRows ?? 0)} />
+          <Insight label="Files" value={String(migrationPlan?.objectStorage.files ?? 0)} />
+          <Insight label="Bytes" value={String(migrationPlan?.objectStorage.bytes ?? 0)} />
+          <Insight label="Checks" value={String(migrationPlan?.checks.filter((check) => check.ok).length ?? 0)} />
+          <Insight label="Blockers" value={String(migrationPlan?.blockers.length ?? 0)} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{migrationPlan ? formatDateTime(migrationPlan.generatedAt) : "No migration plan loaded"}</span>
+            <strong>{migrationPlan ? `${migrationPlan.source.provider} -> ${migrationPlan.target.provider}.${migrationPlan.target.schema}` : "Database migration plan"}</strong>
+            <small>{migrationPlan?.objectStorage.strategy ?? "Object storage mapping will appear here"}</small>
+            <small>{migrationPlan?.nextSteps[0] ?? "Create the managed database, then import a generated bundle."}</small>
+          </article>
+          {(migrationPlan?.collections.slice(0, 5) ?? []).map((item) => (
+            <article className="source-map-item" key={item.collection}>
+              <span>{item.strategy}</span>
+              <strong>{item.collection} &gt; {item.targetTable}</strong>
+              <small>{item.records} records using {item.identityKey} as identity key</small>
+            </article>
+          ))}
         </div>
       </div>
       <div className="panel module-side">
