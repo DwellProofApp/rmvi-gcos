@@ -1070,6 +1070,13 @@ function iconForLevel(level: StationLevel | string) {
   return Building2;
 }
 
+function resolveStationIcon(station: Pick<StationCard, "icon" | "level">) {
+  const icon = station.icon as unknown;
+  if (typeof icon === "function") return station.icon;
+  if (icon && typeof icon === "object" && "$$typeof" in icon) return station.icon;
+  return iconForLevel(station.level);
+}
+
 function normalizeStationEmail(email: string) {
   return email.toLowerCase().replace("@rmi.org", "@rmvi.org");
 }
@@ -1134,7 +1141,7 @@ function App() {
     const directory = new Map<string, StationCard>();
     const baseStations = apiStations.length ? apiStations : stations;
     baseStations.forEach((station) => {
-      directory.set(station.email, { ...station, icon: station.icon ?? iconForLevel(station.level) });
+      directory.set(station.email, { ...station, icon: resolveStationIcon(station) });
     });
     offices.forEach((office) => {
       directory.set(office.email, {
@@ -1351,7 +1358,7 @@ function App() {
       void apiRequest<AiDraftDigest>("/api/ai-drafts/digest").then(setAiDraftDigest).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
-        setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority, icon: current.icon ?? iconForLevel(serverStation.level) }));
+        setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority, icon: resolveStationIcon({ ...current, level: serverStation.level }) }));
       }
     } catch {
       setApiStatusError("API unavailable");
@@ -1403,7 +1410,7 @@ function App() {
 
   React.useEffect(() => {
     if (!session) return;
-    if (!session.token) {
+    if (!session.token && !isLocalPreview) {
       setSession(null);
       return;
     }
@@ -6091,8 +6098,8 @@ function LoginScreen({
   ));
   const gatewayStats = [
     { label: "Stations", value: String(stationDirectory.length) },
-    { label: "Access", value: "RBAC + ABAC" },
-    { label: "Mode", value: "Web gateway" }
+    { label: "Access model", value: "Station based" },
+    { label: "Portal", value: "rmvi.org" }
   ];
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -6109,25 +6116,31 @@ function LoginScreen({
 
   return (
     <main className="login-shell">
-      <section className="login-panel">
+      <header className="public-gateway-header" aria-label="RMVI public gateway header">
         <div className="brand login-brand">
           <div className="brand-mark">
             <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
           </div>
           <div>
-            <strong>GCOS</strong>
-            <span>RMVI Station Access Gateway</span>
+            <strong>RMVI GCOS</strong>
+            <span>Global Church Operating System</span>
           </div>
         </div>
+        <div className="gateway-status-pill">
+          <Globe2 size={15} />
+          Official web sign-in
+        </div>
+      </header>
 
+      <section className="login-panel">
         <div className="login-intro">
-          <div className="station-avatar login-gateway-icon">
-            <ShieldCheck size={26} />
+          <div className="login-emblem">
+            <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
           </div>
           <div>
-            <span>Official RMVI GCOS portal</span>
-            <h1>Sign in to your administrative workstation</h1>
-            <p>Every office enters through this web gateway with its assigned organizational email and station password.</p>
+            <span>Official RMVI administrative portal</span>
+            <h1>One secure sign-in point for every church office.</h1>
+            <p>Authorized users enter GCOS here with their assigned organizational email and station password. The correct workstation, permissions, reporting path, and workflow tools load after sign-in.</p>
           </div>
           <div className="login-stat-grid" aria-label="Gateway status">
             {gatewayStats.map((stat) => (
@@ -6137,45 +6150,59 @@ function LoginScreen({
               </div>
             ))}
           </div>
-        </div>
-
-        <div className="login-heading">
-          <div className="station-avatar">
-            <StationIcon size={24} />
-          </div>
-          <div>
-            <h2>{selectedStation.title}</h2>
-            <p>{selectedStation.level} - {selectedStation.authority}</p>
+          <div className="login-trust-row" aria-label="Access protections">
+            <span><ShieldCheck size={15} /> Protected access</span>
+            <span><GitBranch size={15} /> Hierarchy routed</span>
+            <span><FileCheck2 size={15} /> Audit recorded</span>
           </div>
         </div>
 
-        <form className="login-form" onSubmit={submit}>
-          <label>
-            <span>Organizational email</span>
-            <select value={email} onChange={(event) => chooseStation(event.target.value)} aria-label="Organizational email">
-              {visibleCredentials.map((station) => (
-                <option key={station.email} value={station.email}>{station.email}</option>
-              ))}
-            </select>
-          </label>
+        <div className="login-card" aria-label="Station sign-in form">
+          <div className="login-heading">
+            <div className="station-avatar">
+              <StationIcon size={24} />
+            </div>
+            <div>
+              <span>Selected workstation</span>
+              <h2>{selectedStation.title}</h2>
+              <p>{selectedStation.level} - {selectedStation.authority}</p>
+            </div>
+          </div>
 
-          <label>
-            <span>Password</span>
-            <input
-              aria-label="Password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-            />
-          </label>
+          <form className="login-form" onSubmit={submit}>
+            <label>
+              <span>Organizational email</span>
+              <select value={email} onChange={(event) => chooseStation(event.target.value)} aria-label="Organizational email">
+                {visibleCredentials.map((station) => (
+                  <option key={station.email} value={station.email}>{station.email}</option>
+                ))}
+              </select>
+            </label>
 
-          {error && <div className="login-error">{error}</div>}
+            <label>
+              <span>Password</span>
+              <input
+                aria-label="Password"
+                type="password"
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
+                placeholder="Enter station password"
+              />
+            </label>
 
-          <button type="submit">
-            <LockKeyhole size={16} />
-            Sign in
-          </button>
-        </form>
+            {error && <div className="login-error">{error}</div>}
+
+            <button type="submit">
+              <LockKeyhole size={16} />
+              Sign in to workstation
+            </button>
+          </form>
+
+          <div className="login-card-footer">
+            <span><Server size={14} /> RMVI GCOS</span>
+            <span><BadgeCheck size={14} /> Authorized offices only</span>
+          </div>
+        </div>
 
         {isLocalPreview ? (
           <div className="credential-grid" aria-label="Demo credentials">
