@@ -1158,6 +1158,44 @@ const validators = {
     if (body.result !== undefined) requireString(body.result, "result");
   },
 
+  "POST /api/transfers/:id/letter": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.reference !== undefined) requireString(body.reference, "reference");
+  },
+
+  "POST /api/transfers/:id/schedule": (body) => {
+    if (body.scheduledFor !== undefined) requireString(body.scheduledFor, "scheduledFor");
+  },
+
+  "POST /api/transfers/:id/note": (body) => {
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/transfers/:id/watch": (body) => {
+    if (body.watcher !== undefined) requireString(body.watcher, "watcher");
+  },
+
+  "POST /api/transfers/:id/personnel-link": (body) => {
+    if (body.personnelId !== undefined) requireString(body.personnelId, "personnelId");
+  },
+
+  "POST /api/transfers/:id/task": (body) => {
+    if (body.taskId !== undefined) requireString(body.taskId, "taskId");
+  },
+
+  "POST /api/transfers/:id/report": (body) => {
+    if (body.reportId !== undefined) requireString(body.reportId, "reportId");
+  },
+
+  "POST /api/transfers/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/transfers/bulk/verify": (body) => {
+    if (body.ids !== undefined) requireStringArray(body.ids, "ids");
+    if (body.result !== undefined) requireString(body.result, "result");
+  },
+
   "POST /api/ai-drafts": (body) => {
     if (body.kind !== undefined) requireEnum(body.kind, aiKinds, "kind");
     if (body.focus !== undefined) requireString(body.focus, "focus");

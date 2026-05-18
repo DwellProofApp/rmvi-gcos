@@ -1987,16 +1987,102 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    recordTransferLetter(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.letterStatus = body.status ?? "Received";
+      item.letterRef = body.reference ?? "Mission letter received";
+      record("TransferLetterRecorded", body.actor, item.person, item.letterRef);
+      return item;
+    },
+
+    scheduleTransfer(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.scheduledFor = body.scheduledFor ?? "Tomorrow";
+      record("TransferScheduled", body.actor, item.person, item.scheduledFor);
+      return item;
+    },
+
+    noteTransfer(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      const note = body.note ?? "Transfer reviewed";
+      item.notes = [...(item.notes ?? []), `${body.actor ?? "System"}: ${note}`];
+      record("TransferNoteAdded", body.actor, item.person, note);
+      return item;
+    },
+
+    watchTransfer(id, body) {
+      const item = findById(state.transfers, id);
+      const watcher = body.watcher ?? body.actor ?? "Watcher";
+      item.watchers = Array.from(new Set([...(item.watchers ?? []), watcher]));
+      record("TransferWatcherAdded", body.actor, item.person, watcher);
+      return item;
+    },
+
+    linkTransferPersonnel(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.personnelRecord = body.personnelId ?? state.personnel.find((person) => person.name === item.person)?.id ?? "personnel-follow-up";
+      record("TransferPersonnelLinked", body.actor, item.person, item.personnelRecord);
+      return item;
+    },
+
+    linkTransferTask(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.linkedTask = body.taskId ?? "task-follow-up";
+      record("TransferTaskLinked", body.actor, item.person, item.linkedTask);
+      return item;
+    },
+
+    linkTransferReport(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.linkedReport = body.reportId ?? "report-follow-up";
+      record("TransferReportLinked", body.actor, item.person, item.linkedReport);
+      return item;
+    },
+
+    archiveTransfer(id, body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const item = findById(state.transfers, id);
+      item.archived = true;
+      item.archiveReason = body.reason ?? "Transfer archived";
+      record("TransferArchived", body.actor, item.person, item.archiveReason);
+      return item;
+    },
+
+    bulkVerifyTransfers(body) {
+      requirePermission(body.actor, "canExecuteTransfers");
+      const ids = body.ids?.length ? body.ids : state.transfers.filter((item) => !item.archived && item.step !== "Verified").slice(0, 3).map((item) => item.id);
+      const updated = state.transfers.filter((item) => ids.includes(item.id)).map((item) => {
+        item.step = "Verified";
+        item.risk = body.result ?? "Bulk identity verification complete";
+        return item;
+      });
+      record("TransfersBulkVerified", body.actor, "Transfer console", `${updated.length} transfers verified`);
+      return { count: updated.length, updated };
+    },
+
     transferDigest() {
-      const ready = state.transfers.filter((item) => item.step === "New station login ready" || item.step === "Verified");
-      const risky = state.transfers.filter((item) => /risk|pending|required|review/i.test(item.risk));
-      const pending = state.transfers.filter((item) => !ready.includes(item));
+      const visible = state.transfers.filter((item) => !item.archived);
+      const ready = visible.filter((item) => item.step === "New station login ready" || item.step === "Verified");
+      const risky = visible.filter((item) => /risk|pending|required|review/i.test(item.risk));
+      const pending = visible.filter((item) => !ready.includes(item));
       return {
         generatedAt: new Date().toISOString(),
-        total: state.transfers.length,
+        total: visible.length,
         ready: ready.length,
         pending: pending.length,
         risk: risky.length,
+        letters: visible.filter((item) => item.letterStatus).length,
+        scheduled: visible.filter((item) => item.scheduledFor).length,
+        noted: visible.filter((item) => item.notes?.length).length,
+        watched: visible.filter((item) => item.watchers?.length).length,
+        linked: visible.filter((item) => item.personnelRecord || item.linkedTask || item.linkedReport).length,
+        archived: state.transfers.filter((item) => item.archived).length,
         nextTransfer: pending[0]?.person ?? ready[0]?.person ?? "No transfers"
       };
     },

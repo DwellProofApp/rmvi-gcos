@@ -66,7 +66,7 @@ type GovernanceTask = { id: string; title: string; owner: string; assignee: stri
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
-type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string };
+type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
 type OfflineAction = AuditRow & { queuedAt: string };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string };
@@ -315,6 +315,12 @@ type TransferDigest = {
   ready: number;
   pending: number;
   risk: number;
+  letters?: number;
+  scheduled?: number;
+  noted?: number;
+  watched?: number;
+  linked?: number;
+  archived?: number;
   nextTransfer: string;
 };
 type OfficeDigest = {
@@ -3421,6 +3427,129 @@ function App() {
     }
   }
 
+  function recordTransferLetter(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    const reference = "Mission letter received";
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, letterStatus: "Received", letterRef: reference } : item));
+    recordAudit("TransferLetterRecorded", transfer.person, reference);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/letter`, {
+        method: "POST",
+        body: JSON.stringify({ status: "Received", reference })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function scheduleTransfer(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    const scheduledFor = "Tomorrow";
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, scheduledFor } : item));
+    recordAudit("TransferScheduled", transfer.person, scheduledFor);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/schedule`, {
+        method: "POST",
+        body: JSON.stringify({ scheduledFor })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function noteTransfer(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    const note = "Transfer reviewed from console";
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, notes: [...(item.notes ?? []), `${activeStation.email}: ${note}`] } : item));
+    recordAudit("TransferNoteAdded", transfer.person, note);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/note`, {
+        method: "POST",
+        body: JSON.stringify({ note })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function watchTransfer(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, watchers: Array.from(new Set([...(item.watchers ?? []), activeStation.email])) } : item));
+    recordAudit("TransferWatcherAdded", transfer.person, activeStation.email);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/watch`, {
+        method: "POST",
+        body: JSON.stringify({ watcher: activeStation.email })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkTransferPersonnel(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    const personnelId = personnel.find((person) => person.name === transfer.person)?.id ?? personnel[0]?.id ?? "personnel-follow-up";
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, personnelRecord: personnelId } : item));
+    recordAudit("TransferPersonnelLinked", transfer.person, personnelId);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/personnel-link`, {
+        method: "POST",
+        body: JSON.stringify({ personnelId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkTransferTask(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    const taskId = tasks[0]?.id ?? "task-follow-up";
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, linkedTask: taskId } : item));
+    recordAudit("TransferTaskLinked", transfer.person, taskId);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/task`, {
+        method: "POST",
+        body: JSON.stringify({ taskId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function linkTransferReport(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    const reportId = reports[0]?.id ?? "report-follow-up";
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, linkedReport: reportId } : item));
+    recordAudit("TransferReportLinked", transfer.person, reportId);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/report`, {
+        method: "POST",
+        body: JSON.stringify({ reportId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveTransfer(id: string) {
+    const transfer = transfers.find((item) => item.id === id);
+    if (!transfer) return;
+    const reason = "Archived from transfer console";
+    setTransfers((items) => items.map((item) => item.id === id ? { ...item, archived: true, archiveReason: reason } : item));
+    recordAudit("TransferArchived", transfer.person, reason);
+    if (!offlineMode) {
+      void apiRequest<Transfer>(`/api/transfers/${id}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function bulkVerifyTransfers(ids: string[]) {
+    const targetIds = ids.length ? ids : transfers.filter((transfer) => !transfer.archived && transfer.step !== "Verified").slice(0, 3).map((transfer) => transfer.id);
+    setTransfers((items) => items.map((item) => targetIds.includes(item.id) ? { ...item, step: "Verified", risk: "Bulk identity verification complete" } : item));
+    recordAudit("TransfersBulkVerified", "Transfer console", `${targetIds.length} transfers verified`);
+    if (!offlineMode) {
+      void apiRequest<{ count: number; updated: Transfer[] }>("/api/transfers/bulk/verify", {
+        method: "POST",
+        body: JSON.stringify({ ids: targetIds, result: "Bulk identity verification complete" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
   function refreshTransferDigest() {
     if (offlineMode) {
       recordAudit("TransferDigestRefreshed", "Transfer digest", "Local transfer digest refreshed");
@@ -5494,6 +5623,15 @@ function App() {
             onRevokeAccess={revokeTransferAccess}
             onActivateStation={activateTransferStation}
             onVerifyTransfer={verifyTransfer}
+            onRecordLetter={recordTransferLetter}
+            onScheduleTransfer={scheduleTransfer}
+            onNoteTransfer={noteTransfer}
+            onWatchTransfer={watchTransfer}
+            onLinkPersonnel={linkTransferPersonnel}
+            onLinkTask={linkTransferTask}
+            onLinkReport={linkTransferReport}
+            onArchiveTransfer={archiveTransfer}
+            onBulkVerify={bulkVerifyTransfers}
             onRefreshDigest={refreshTransferDigest}
             digest={transferDigest}
           />
@@ -8388,6 +8526,15 @@ function Transfers({
   onRevokeAccess,
   onActivateStation,
   onVerifyTransfer,
+  onRecordLetter,
+  onScheduleTransfer,
+  onNoteTransfer,
+  onWatchTransfer,
+  onLinkPersonnel,
+  onLinkTask,
+  onLinkReport,
+  onArchiveTransfer,
+  onBulkVerify,
   onRefreshDigest,
   digest
 }: {
@@ -8403,6 +8550,15 @@ function Transfers({
   onRevokeAccess: (id: string) => void;
   onActivateStation: (id: string) => void;
   onVerifyTransfer: (id: string) => void;
+  onRecordLetter: (id: string) => void;
+  onScheduleTransfer: (id: string) => void;
+  onNoteTransfer: (id: string) => void;
+  onWatchTransfer: (id: string) => void;
+  onLinkPersonnel: (id: string) => void;
+  onLinkTask: (id: string) => void;
+  onLinkReport: (id: string) => void;
+  onArchiveTransfer: (id: string) => void;
+  onBulkVerify: (ids: string[]) => void;
   onRefreshDigest: () => void;
   digest: TransferDigest | null;
 }) {
@@ -8413,7 +8569,7 @@ function Transfers({
   const [feedback, setFeedback] = React.useState("");
   const stepOptions = React.useMemo(() => ["All steps", ...Array.from(new Set(transfers.map((transfer) => transfer.step))).sort()], [transfers]);
   const visibleTransfers = React.useMemo(() => (
-    stepFilter === "All steps" ? transfers : transfers.filter((transfer) => transfer.step === stepFilter)
+    transfers.filter((transfer) => !transfer.archived && (stepFilter === "All steps" || transfer.step === stepFilter))
   ), [stepFilter, transfers]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
@@ -8445,11 +8601,18 @@ function Transfers({
             </select>
           </label>
           <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
+          <button disabled={!permissions.canExecuteTransfers || !visibleTransfers.length} type="button" onClick={() => onBulkVerify(visibleTransfers.slice(0, 3).map((transfer) => transfer.id))}><ShieldCheck size={14} /> Bulk verify</button>
         </div>
         {digest && (
           <div className="workflow-digest">
             <Insight label="Ready" value={String(digest.ready)} />
             <Insight label="Pending" value={String(digest.pending)} />
+            <Insight label="Letters" value={String(digest.letters ?? 0)} />
+            <Insight label="Scheduled" value={String(digest.scheduled ?? 0)} />
+            <Insight label="Noted" value={String(digest.noted ?? 0)} />
+            <Insight label="Watched" value={String(digest.watched ?? 0)} />
+            <Insight label="Linked" value={String(digest.linked ?? 0)} />
+            <Insight label="Archived" value={String(digest.archived ?? 0)} />
             <Insight label="Next transfer" value={digest.nextTransfer} />
           </div>
         )}
@@ -8464,12 +8627,28 @@ function Transfers({
               </div>
               <span>{transfer.step}</span>
               <p>{transfer.risk}</p>
+              <div className="approval-meta">
+                <small>{transfer.letterStatus ? `${transfer.letterStatus}: ${transfer.letterRef}` : "No letter"}</small>
+                <small>{transfer.scheduledFor ? `Scheduled ${transfer.scheduledFor}` : "Unscheduled"}</small>
+                <small>{transfer.notes?.length ?? 0} notes</small>
+                <small>{transfer.watchers?.length ?? 0} watchers</small>
+                <small>{transfer.personnelRecord ? `Personnel ${transfer.personnelRecord}` : "No personnel link"}</small>
+                <small>{transfer.linkedTask ? `Task ${transfer.linkedTask}` : "No task link"}</small>
+                <small>{transfer.linkedReport ? `Report ${transfer.linkedReport}` : "No report link"}</small>
+              </div>
               <div className="pipeline mini">
                 {["Letter", "Acknowledge", "Revoke", "Activate", "Audit"].map((step) => (
                   <div className="pipeline-step" key={step}>{step}</div>
                 ))}
               </div>
               <div className="action-row">
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onRecordLetter(transfer.id)}><FileCheck2 size={15} /> Letter</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onScheduleTransfer(transfer.id)}><CalendarDays size={15} /> Schedule</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onNoteTransfer(transfer.id)}><MessageSquareText size={15} /> Note</button>
+                <button onClick={() => onWatchTransfer(transfer.id)}><Bell size={15} /> Watch</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkPersonnel(transfer.id)}><Users size={15} /> Personnel</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkTask(transfer.id)}><SquareCheckBig size={15} /> Task link</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkReport(transfer.id)}><FileCheck2 size={15} /> Report link</button>
                 <button
                   aria-label={`Prepare transfer for ${transfer.person}`}
                   disabled={!permissions.canExecuteTransfers}
@@ -8519,6 +8698,7 @@ function Transfers({
                 >
                   <CheckCircle2 size={15} /> Verify
                 </button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onArchiveTransfer(transfer.id)}><ArchiveIcon size={15} /> Archive</button>
               </div>
             </article>
           ))}

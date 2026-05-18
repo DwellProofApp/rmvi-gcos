@@ -1783,9 +1783,70 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(verifiedTransfer.step, "Verified");
 
+    const letterTransfer = await postJson(`/api/transfers/${createdTransfer.id}/letter`, {
+      status: "Received",
+      reference: "Automated mission letter"
+    }, nationalToken);
+    assert.equal(letterTransfer.letterStatus, "Received");
+    assert.equal(letterTransfer.letterRef, "Automated mission letter");
+
+    const scheduledTransfer = await postJson(`/api/transfers/${createdTransfer.id}/schedule`, {
+      scheduledFor: "Tomorrow"
+    }, nationalToken);
+    assert.equal(scheduledTransfer.scheduledFor, "Tomorrow");
+
+    const notedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/note`, {
+      note: "Automated transfer note"
+    }, nationalToken);
+    assert.equal(notedTransfer.notes.some((note) => note.includes("Automated transfer note")), true);
+
+    const watchedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/watch`, {
+      watcher: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(watchedTransfer.watchers.includes("np@rmvi.org"), true);
+
+    const personnelLinkedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/personnel-link`, {
+      personnelId: "per-test"
+    }, nationalToken);
+    assert.equal(personnelLinkedTransfer.personnelRecord, "per-test");
+
+    const taskLinkedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/task`, {
+      taskId: "tsk-test"
+    }, nationalToken);
+    assert.equal(taskLinkedTransfer.linkedTask, "tsk-test");
+
+    const reportLinkedTransfer = await postJson(`/api/transfers/${createdTransfer.id}/report`, {
+      reportId: "rep-test"
+    }, nationalToken);
+    assert.equal(reportLinkedTransfer.linkedReport, "rep-test");
+
+    const bulkTransfer = await postJson("/api/transfers", {
+      person: "Automated bulk transfer test",
+      from: "County Office",
+      to: "Area Office"
+    }, nationalToken);
+    const bulkVerifiedTransfers = await postJson("/api/transfers/bulk/verify", {
+      ids: [bulkTransfer.id],
+      result: "Automated bulk verification"
+    }, nationalToken);
+    assert.equal(bulkVerifiedTransfers.count, 1);
+    assert.equal(bulkVerifiedTransfers.updated[0].step, "Verified");
+
+    const archivedTransfer = await postJson(`/api/transfers/${bulkTransfer.id}/archive`, {
+      reason: "Automated transfer archive"
+    }, nationalToken);
+    assert.equal(archivedTransfer.archived, true);
+    assert.equal(archivedTransfer.archiveReason, "Automated transfer archive");
+
     const transferDigest = await getJson("/api/transfers/digest");
     assert.equal(transferDigest.total >= 1, true);
     assert.equal(transferDigest.nextTransfer.length > 0, true);
+    assert.equal(transferDigest.letters >= 1, true);
+    assert.equal(transferDigest.scheduled >= 1, true);
+    assert.equal(transferDigest.noted >= 1, true);
+    assert.equal(transferDigest.watched >= 1, true);
+    assert.equal(transferDigest.linked >= 1, true);
+    assert.equal(transferDigest.archived >= 1, true);
 
     const forbiddenTransfer = await rawPost(`/api/transfers/${transfers[0].id}/execute`, {}, localToken);
     assert.equal(forbiddenTransfer.status, 403);
@@ -2349,6 +2410,15 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(persisted.audit.some((row) => row.event === "TransferAccessRevoked"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferStationActivated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferLetterRecorded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferScheduled"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferNoteAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferWatcherAdded"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferPersonnelLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferTaskLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferReportLinked"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransfersBulkVerified"), true);
+    assert.equal(persisted.audit.some((row) => row.event === "TransferArchived"), true);
     assert.equal(persisted.audit.some((row) => row.event === "TransferExecuted"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentClassificationUpdated"), true);
     assert.equal(persisted.audit.some((row) => row.event === "DocumentOwnerUpdated"), true);
@@ -2415,7 +2485,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(personnelAfterRestart[0].name, "Automated personnel registry test");
 
     const transfersAfterRestart = await getJson("/api/transfers");
-    assert.equal(transfersAfterRestart[0].person, "Automated transfer test");
+    assert.equal(transfersAfterRestart.some((item) => item.person === "Automated transfer test"), true);
 
     const officesAfterRestart = await getJson("/api/offices");
     assert.equal(officesAfterRestart.some((item) => item.email === "automated_district@gcos.org"), true);
