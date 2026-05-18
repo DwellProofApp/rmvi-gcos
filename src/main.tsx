@@ -772,6 +772,7 @@ const stationPasswords: Record<string, string> = {
 
 const API_BASE = (import.meta.env.VITE_GCOS_API_BASE ?? (import.meta.env.DEV ? "http://127.0.0.1:8787" : "")).replace(/\/$/, "");
 const CHURCH_LOGO_SRC = "/brand/lion-of-judah-logo.jpg";
+const isLocalPreview = ["localhost", "127.0.0.1", ""].includes(window.location.hostname);
 
 const initialMessages: Message[] = [
   { id: "msg-001", kind: "Directive", subject: "Q2 governance reporting directive", from: "Regional HQ - West Africa", age: "12 min", status: "Ready", files: "Policy memo" },
@@ -1414,6 +1415,15 @@ function App() {
     const station = stationDirectory.find((item) => item.email === normalizedEmail);
     if (station) setActiveStation(station);
   }, [session, stationDirectory]);
+
+  React.useEffect(() => {
+    const url = new URL(window.location.href);
+    if (url.searchParams.get("logout") !== "1") return;
+    setSession(null);
+    setActiveSection("Control Center");
+    url.searchParams.delete("logout");
+    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+  }, [setSession]);
 
   React.useEffect(() => {
     void refreshFromApi();
@@ -6079,6 +6089,11 @@ function LoginScreen({
   const visibleCredentials = stationDirectory.filter((station, index, items) => (
     items.findIndex((item) => item.email === station.email) === index && credentialMap[station.email]
   ));
+  const gatewayStats = [
+    { label: "Stations", value: String(stationDirectory.length) },
+    { label: "Access", value: "RBAC + ABAC" },
+    { label: "Mode", value: "Web gateway" }
+  ];
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -6101,7 +6116,26 @@ function LoginScreen({
           </div>
           <div>
             <strong>GCOS</strong>
-            <span>Station Access Gateway</span>
+            <span>RMVI Station Access Gateway</span>
+          </div>
+        </div>
+
+        <div className="login-intro">
+          <div className="station-avatar login-gateway-icon">
+            <ShieldCheck size={26} />
+          </div>
+          <div>
+            <span>Official RMVI GCOS portal</span>
+            <h1>Sign in to your administrative workstation</h1>
+            <p>Every office enters through this web gateway with its assigned organizational email and station password.</p>
+          </div>
+          <div className="login-stat-grid" aria-label="Gateway status">
+            {gatewayStats.map((stat) => (
+              <div key={stat.label}>
+                <strong>{stat.value}</strong>
+                <span>{stat.label}</span>
+              </div>
+            ))}
           </div>
         </div>
 
@@ -6110,7 +6144,7 @@ function LoginScreen({
             <StationIcon size={24} />
           </div>
           <div>
-            <h1>{selectedStation.title}</h1>
+            <h2>{selectedStation.title}</h2>
             <p>{selectedStation.level} - {selectedStation.authority}</p>
           </div>
         </div>
@@ -6139,18 +6173,25 @@ function LoginScreen({
 
           <button type="submit">
             <LockKeyhole size={16} />
-            Enter workstation
+            Sign in
           </button>
         </form>
 
-        <div className="credential-grid" aria-label="Demo credentials">
-          {visibleCredentials.map((station) => (
-            <button key={station.email} onClick={() => chooseStation(station.email)}>
-              <strong>{station.email}</strong>
-              <span>{credentialMap[station.email]}</span>
-            </button>
-          ))}
-        </div>
+        {isLocalPreview ? (
+          <div className="credential-grid" aria-label="Demo credentials">
+            {visibleCredentials.map((station) => (
+              <button key={station.email} onClick={() => chooseStation(station.email)}>
+                <strong>{station.email}</strong>
+                <span>{credentialMap[station.email]}</span>
+              </button>
+            ))}
+          </div>
+        ) : (
+          <div className="login-support">
+            <ShieldCheck size={16} />
+            <span>Use the credentials issued to your office. Demo passwords are hidden on the public domain.</span>
+          </div>
+        )}
       </section>
     </main>
   );
