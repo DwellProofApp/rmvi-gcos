@@ -362,6 +362,21 @@ type LaunchSignoff = {
   blockers: string[];
   nextActions: string[];
 };
+type ProjectCompletion = {
+  generatedAt: string;
+  project: string;
+  targetDomain: string;
+  status: string;
+  moduleScore: number;
+  mvpScore: number;
+  productionScore: number;
+  enterpriseScore: number;
+  modules: { name: string; complete: boolean }[];
+  releaseCommands: string[];
+  smokeUrls: string[];
+  productionBlockers: string[];
+  nextActions: string[];
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -10822,6 +10837,7 @@ function Audit({
   const [deploymentPlan, setDeploymentPlan] = React.useState<DeploymentPlan | null>(null);
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
   const [launchSignoff, setLaunchSignoff] = React.useState<LaunchSignoff | null>(null);
+  const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -10871,6 +10887,7 @@ function Audit({
     void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
     void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
     void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
+    void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -11015,6 +11032,10 @@ function Audit({
 
   function refreshLaunchSignoff() {
     void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
+  }
+
+  function refreshProjectCompletion() {
+    void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
   }
 
   function recordLaunchSignoff() {
@@ -11633,6 +11654,49 @@ function Audit({
               <small>{check.detail}</small>
             </article>
           ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={BadgeCheck} title="Project Completion" action={projectCompletion?.status ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshProjectCompletion}><RefreshCw size={15} /> Completion</button>
+          <button onClick={refreshLaunchSignoff}><ShieldCheck size={15} /> Signoff</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Modules" value={`${projectCompletion?.moduleScore ?? 0}%`} />
+          <Insight label="MVP" value={`${projectCompletion?.mvpScore ?? 0}%`} />
+          <Insight label="Production" value={`${projectCompletion?.productionScore ?? 0}%`} />
+          <Insight label="Enterprise" value={`${projectCompletion?.enterpriseScore ?? 0}%`} />
+          <Insight label="Blockers" value={String(projectCompletion?.productionBlockers.length ?? 0)} />
+          <Insight label="Domain" value={projectCompletion?.targetDomain ?? "rmvi.org"} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{projectCompletion ? formatDateTime(projectCompletion.generatedAt) : "No completion report loaded"}</span>
+            <strong>{projectCompletion?.project ?? "Remedy Movement International GCOS"}</strong>
+            <small>{projectCompletion?.nextActions[0] ?? "Run the final release checks before live handoff."}</small>
+          </article>
+          {(projectCompletion?.modules ?? []).map((module) => (
+            <article className="source-map-item compact-check" key={module.name}>
+              <span>{module.complete ? "Complete" : "Hold"}</span>
+              <strong>{module.name}</strong>
+              <small>{module.complete ? "Module is present in this controlled MVP build." : "Module needs final attention."}</small>
+            </article>
+          ))}
+          <article className="source-map-item">
+            <span>Release</span>
+            <strong>Final command bundle</strong>
+            {(projectCompletion?.releaseCommands ?? ["npm test", "npm run build", "npm run release:check"]).map((command) => (
+              <small key={command}>{command}</small>
+            ))}
+          </article>
+          <article className="source-map-item">
+            <span>Smoke URLs</span>
+            <strong>Live verification targets</strong>
+            {(projectCompletion?.smokeUrls ?? ["https://rmvi.org/health", "https://rmvi.org/"]).map((url) => (
+              <small key={url}>{url}</small>
+            ))}
+          </article>
         </div>
       </div>
       <div className="panel module-side">
