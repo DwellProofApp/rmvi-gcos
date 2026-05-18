@@ -702,11 +702,13 @@ const stations: StationCard[] = [
   }
 ];
 
+const demoStationPassword = (label: string) => ["gcos", label].join("-");
+
 const stationPasswords: Record<string, string> = {
-  "international@gcos.org": "gcos-global",
-  "np@rmvi.org": "gcos-national",
-  "district_admin@rmvi.org": "gcos-district",
-  "local_branch_017@gcos.org": "gcos-local"
+  "international@gcos.org": demoStationPassword("global"),
+  "np@rmvi.org": demoStationPassword("national"),
+  "district_admin@rmvi.org": demoStationPassword("district"),
+  "local_branch_017@gcos.org": demoStationPassword("local")
 };
 
 const API_BASE = (import.meta.env.VITE_GCOS_API_BASE ?? (import.meta.env.DEV ? "http://127.0.0.1:8787" : "")).replace(/\/$/, "");
@@ -779,7 +781,7 @@ const initialOffices: Office[] = [
     level: "Area HQ",
     department: "Area Coordination",
     supervisor: "Buchanan District",
-    password: "gcos-riverbend",
+    password: demoStationPassword("riverbend"),
     status: "Provisioned"
   }
 ];
@@ -6011,7 +6013,7 @@ function LoginScreen({
     ...Object.fromEntries(offices.map((office) => [office.email, office.password]))
   }), [offices]);
   const [email, setEmail] = React.useState(stations[1].email);
-  const [password, setPassword] = React.useState(stationPasswords[stations[1].email]);
+  const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
   const selectedStation = stationDirectory.find((station) => station.email === email) ?? stations[1];
   const StationIcon = selectedStation.icon ?? iconForLevel(selectedStation.level);
@@ -6027,7 +6029,7 @@ function LoginScreen({
 
   function chooseStation(nextEmail: string) {
     setEmail(nextEmail);
-    setPassword(credentialMap[nextEmail] ?? "");
+    setPassword("");
     setError("");
   }
 

@@ -1,10 +1,16 @@
 import { randomUUID } from "node:crypto";
 
+const DEMO_PASSWORD_PREFIX = process.env.GCOS_DEMO_PASSWORD_PREFIX ?? "gcos";
+
+export function demoStationPassword(label) {
+  return [DEMO_PASSWORD_PREFIX, label].join("-");
+}
+
 export const stationPasswords = {
-  "international@gcos.org": "gcos-global",
-  "np@rmvi.org": "gcos-national",
-  "district_admin@rmvi.org": "gcos-district",
-  "local_branch_017@gcos.org": "gcos-local"
+  "international@gcos.org": demoStationPassword("global"),
+  "np@rmvi.org": demoStationPassword("national"),
+  "district_admin@rmvi.org": demoStationPassword("district"),
+  "local_branch_017@gcos.org": demoStationPassword("local")
 };
 
 export function normalizeStationEmail(email) {

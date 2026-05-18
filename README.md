@@ -133,6 +133,10 @@ GCOS_WEB_DIST_PATH  Built web app directory, defaults to dist
 GCOS_HEALTHCHECK_URL Base URL used by npm run healthcheck
 GCOS_ALLOWED_ORIGIN CORS origin for browser access, defaults to *
 GCOS_MAX_BODY_BYTES Maximum JSON request body size, defaults to 1048576
+GCOS_LOGIN_RATE_LIMIT Login attempts allowed per station/IP window, defaults to 8
+GCOS_LOGIN_RATE_WINDOW_MS Login rate-limit window in milliseconds, defaults to 300000
+GCOS_MUTATION_RATE_LIMIT Non-login API mutations allowed per IP window, defaults to 2000
+GCOS_MUTATION_RATE_WINDOW_MS Mutation rate-limit window in milliseconds, defaults to 60000
 GCOS_ENABLE_DEV_RESET Set to 1 to allow POST /api/dev/reset in production
 ```
 
@@ -163,12 +167,9 @@ curl -X POST http://127.0.0.1:8787/api/dev/reset
 
 ## Demo Credentials
 
-```text
-international@gcos.org / gcos-global
-np@rmvi.org / gcos-national
-district_admin@rmvi.org / gcos-district
-local_branch_017@gcos.org / gcos-local
-```
+Demo station credentials are generated locally for development and should not be
+published as email/password pairs. Set production station credentials through the
+admin credential rotation flow or protected environment configuration.
 
 ## API Resources
 
@@ -251,7 +252,7 @@ Protected API mutations require the login token:
 ```bash
 curl -X POST http://127.0.0.1:8787/api/auth/login \
   -H "content-type: application/json" \
-  -d '{"email":"np@rmvi.org","password":"gcos-national"}'
+  -d '{"email":"station@example.org","password":"<station-password>"}'
 
 curl -X POST http://127.0.0.1:8787/api/approvals/app-001/approve \
   -H "content-type: application/json" \

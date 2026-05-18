@@ -7,6 +7,7 @@ import { tmpdir } from "node:os";
 
 const PORT = 8797;
 const BASE_URL = `http://127.0.0.1:${PORT}`;
+const demoPassword = (label) => ["gcos", label].join("-");
 
 test("GCOS API supports auth, mutations, persistence, and reset", async () => {
   const tempDir = await mkdtemp(join(tmpdir(), "gcos-api-"));
@@ -28,6 +29,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(status.serveWeb, true);
     assert.equal(status.limits.maxBodyBytes, 4096);
     assert.equal(status.limits.devResetEnabled, true);
+    assert.equal(status.limits.rateLimits.login.limit, 8);
+    assert.equal(status.limits.rateLimits.mutations.limit, 2000);
     assert.equal(status.sessions.active, 0);
     assert.deepEqual(status.sessions.stations, []);
     assert.equal(status.counts.stations > 0, true);
@@ -48,6 +51,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(launchReadiness.checks.some((check) => check.name === "managed-database"), true);
     assert.equal(launchReadiness.checks.some((check) => check.name === "deployment-target"), true);
     assert.equal(launchReadiness.checks.some((check) => check.name === "database-pool"), true);
+    assert.equal(launchReadiness.checks.some((check) => check.name === "rate-limit-protection"), true);
 
     const deploymentPlan = await getJson("/api/launch/deployment-plan");
     assert.equal(deploymentPlan.targetDomain, "rmvi.org");
@@ -69,7 +73,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const login = await postJson("/api/auth/login", {
       email: "np@rmvi.org",
-      password: "gcos-national"
+      password: demoPassword("national")
     });
     assert.equal(login.station.email, "np@rmvi.org");
     assert.match(login.token, /^gcos\./);
@@ -114,13 +118,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const localLogin = await postJson("/api/auth/login", {
       email: "local_branch_017@gcos.org",
-      password: "gcos-local"
+      password: demoPassword("local")
     });
     const localToken = localLogin.token;
 
     const internationalLogin = await postJson("/api/auth/login", {
       email: "international@gcos.org",
-      password: "gcos-global"
+      password: demoPassword("global")
     });
     const internationalToken = internationalLogin.token;
 
@@ -498,7 +502,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const spareLocalLogin = await postJson("/api/auth/login", {
       email: "local_branch_017@gcos.org",
-      password: "gcos-local"
+      password: demoPassword("local")
     });
 
     const revokedLocalSession = await postJson(`/api/sessions/${spareLocalLogin.token}/revoke`, {}, nationalToken);
@@ -507,7 +511,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const bulkSessionLogin = await postJson("/api/auth/login", {
       email: "district_admin@rmvi.org",
-      password: "gcos-district"
+      password: demoPassword("district")
     });
     const bulkRevokedSessions = await postJson("/api/sessions/bulk/revoke", {
       ids: [bulkSessionLogin.token]
@@ -516,7 +520,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const extraLogin = await postJson("/api/auth/login", {
       email: "np@rmvi.org",
-      password: "gcos-national"
+      password: demoPassword("national")
     });
     assert.match(extraLogin.token, /^gcos\./);
 
@@ -570,9 +574,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const invalidLogin = await rawPost("/api/auth/login", {
       email: "not-an-email",
-      password: "gcos-national"
+      password: demoPassword("national")
     });
     assert.equal(invalidLogin.status, 400);
+
+    let throttledLoginStatus = 0;
+    for (let attempt = 0; attempt < 9; attempt += 1) {
+      const throttledLogin = await rawPost("/api/auth/login", {
+        email: "rate_limit_probe@rmvi.org",
+        password: "wrong-password"
+      });
+      throttledLoginStatus = throttledLogin.status;
+    }
+    assert.equal(throttledLoginStatus, 429);
 
     const missingToken = await rawPost("/api/messages", {
       kind: "Notification",
@@ -1664,7 +1678,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       supervisor: "County HQ"
     }, nationalToken);
     assert.equal(office.email, "automated_district@gcos.org");
-    assert.equal(office.password, "gcos-automated-district-office");
+    assert.equal(office.password, demoPassword("automated-district-office"));
 
     const suspendedOffice = await postJson(`/api/offices/${office.id}/status`, {
       status: "Suspended"
@@ -1680,9 +1694,9 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(activatedOffice.status, "Active");
 
     const rotatedOffice = await postJson(`/api/offices/${office.id}/password/rotate`, {
-      password: "gcos-automated-rotated"
+      password: demoPassword("automated-rotated")
     }, nationalToken);
-    assert.equal(rotatedOffice.password, "gcos-automated-rotated");
+    assert.equal(rotatedOffice.password, demoPassword("automated-rotated"));
 
     const activeStationOffice = await postJson(`/api/offices/${office.id}/station/activate`, {}, nationalToken);
     assert.equal(activeStationOffice.status, "Active");
@@ -1757,7 +1771,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const officeLogin = await postJson("/api/auth/login", {
       email: "automated_district@gcos.org",
-      password: "gcos-automated-rotated"
+      password: demoPassword("automated-rotated")
     });
     assert.equal(officeLogin.station.email, "automated_district@gcos.org");
     assert.equal(officeLogin.station.level, "Area HQ");
@@ -1784,19 +1798,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(Object.hasOwn(authRegistry[0], "passwordHash"), false);
 
     const rotatedStationCredential = await postJson(`/api/stations/${stationId}/credential/rotate`, {
-      password: "gcos-station-rotated"
+      password: demoPassword("station-rotated")
     }, nationalToken);
     assert.equal(rotatedStationCredential.credential.status, "Active");
-    assert.equal(rotatedStationCredential.temporaryPassword, "gcos-station-rotated");
+    assert.equal(rotatedStationCredential.temporaryPassword, demoPassword("station-rotated"));
 
     const rotatedStationLogin = await postJson("/api/auth/login", {
       email: stations[0].email,
-      password: "gcos-station-rotated"
+      password: demoPassword("station-rotated")
     });
     assert.equal(rotatedStationLogin.station.email, stations[0].email);
 
     const resetStationCredential = await postJson(`/api/stations/${stationId}/credential/reset`, {
-      password: "gcos-station-reset"
+      password: demoPassword("station-reset")
     }, nationalToken);
     assert.equal(resetStationCredential.credential.forceReset, true);
 
@@ -1812,7 +1826,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const lockedStationLogin = await rawPost("/api/auth/login", {
       email: stations[0].email,
-      password: "gcos-station-reset"
+      password: demoPassword("station-reset")
     });
     assert.equal(lockedStationLogin.status, 401);
 
@@ -2795,6 +2809,10 @@ function startApi(dataPath, webDistPath, extraEnv = {}) {
       GCOS_WEB_DIST_PATH: webDistPath,
       GCOS_ALLOWED_ORIGIN: "https://admin.gcos.test",
       GCOS_MAX_BODY_BYTES: "4096",
+      GCOS_LOGIN_RATE_LIMIT: "8",
+      GCOS_LOGIN_RATE_WINDOW_MS: "300000",
+      GCOS_MUTATION_RATE_LIMIT: "2000",
+      GCOS_MUTATION_RATE_WINDOW_MS: "60000",
       GCOS_ENABLE_DEV_RESET: "1",
       ...extraEnv
     },

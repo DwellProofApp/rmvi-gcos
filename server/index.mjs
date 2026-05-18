@@ -27,11 +27,16 @@ const MAX_BODY_BYTES = Number.isFinite(parsedMaxBodyBytes) && parsedMaxBodyBytes
   ? parsedMaxBodyBytes
   : 1024 * 1024;
 const DEV_RESET_ENABLED = process.env.GCOS_ENABLE_DEV_RESET === "1" || process.env.NODE_ENV !== "production";
+const LOGIN_RATE_LIMIT = positiveNumber(process.env.GCOS_LOGIN_RATE_LIMIT, 8);
+const LOGIN_RATE_WINDOW_MS = positiveNumber(process.env.GCOS_LOGIN_RATE_WINDOW_MS, 5 * 60 * 1000);
+const MUTATION_RATE_LIMIT = positiveNumber(process.env.GCOS_MUTATION_RATE_LIMIT, 2000);
+const MUTATION_RATE_WINDOW_MS = positiveNumber(process.env.GCOS_MUTATION_RATE_WINDOW_MS, 60 * 1000);
 const storage = createStorageAdapter({ provider: STORAGE_PROVIDER, dataPath: DATA_PATH, databaseUrl: DATABASE_URL });
 
 const state = await loadState();
 const services = createServices({ state, record, requirePermission, findById });
 const sessions = new Map();
+const rateLimitBuckets = new Map();
 
 const routes = {
   "GET /health": () => ok({ status: "ok", service: "gcos-api", time: new Date().toISOString() }),
@@ -418,6 +423,7 @@ const routes = {
   "POST /api/ai-drafts/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateAiDraft(params.id, body)),
   "POST /api/offline-sync": ({ body }) => ok(services.syncOfflineActions(body)),
   "POST /api/auth/login": ({ body }) => {
+    assertLoginRateLimit(body.email, body.clientIp);
     const result = services.login(body);
     if (result.unauthorized) return unauthorized({ error: result.error });
     const session = createSession(result.station.email);
@@ -428,8 +434,9 @@ const routes = {
 const server = createServer(async (request, response) => {
   try {
     if (request.method === "OPTIONS") return send(response, { status: 204, body: null });
-    const requestBody = await readJson(request);
     const pathname = new URL(request.url ?? "/", `http://${request.headers.host}`).pathname;
+    assertMutationRateLimit(request, pathname);
+    const requestBody = await readJson(request);
     const match = matchRoute(request.method, pathname);
     if (!match) {
       if (request.method === "GET" && SERVE_WEB && !pathname.startsWith("/api/") && pathname !== "/health") {
@@ -440,7 +447,7 @@ const server = createServer(async (request, response) => {
     }
     validateRequest(match.pattern, requestBody);
     const session = authenticateRequest(request, pathname);
-    const body = session ? { ...requestBody, actor: session.email } : requestBody;
+    const body = session ? { ...requestBody, actor: session.email } : { ...requestBody, clientIp: clientIp(request) };
     const payload = await match.handler({ body, params: match.params, session });
     if (payload?.raw) return sendRaw(response, payload);
     if (request.method !== "GET") await saveState();
@@ -476,7 +483,8 @@ function operationalStatus() {
     persistenceStatus: persistenceStatusSync(),
     limits: {
       maxBodyBytes: MAX_BODY_BYTES,
-      devResetEnabled: DEV_RESET_ENABLED
+      devResetEnabled: DEV_RESET_ENABLED,
+      rateLimits: rateLimitStatus()
     },
     sessions: sessionSummary(),
     counts: {
@@ -523,6 +531,7 @@ async function launchReadiness() {
     { name: "healthcheck-domain", category: "production", ok: (process.env.GCOS_HEALTHCHECK_URL ?? "").includes(DOMAIN), detail: process.env.GCOS_HEALTHCHECK_URL ?? "not configured" },
     { name: "object-vault-path", category: "production", ok: !OBJECT_VAULT_PATH.includes("/data/object-vault") || process.env.GCOS_OBJECT_VAULT_PATH !== undefined, detail: OBJECT_VAULT_PATH },
     { name: "body-limit", category: "production", ok: MAX_BODY_BYTES >= 1048576, detail: `${MAX_BODY_BYTES} bytes` },
+    { name: "rate-limit-protection", category: "production", ok: LOGIN_RATE_LIMIT > 0 && MUTATION_RATE_LIMIT > 0, detail: `${LOGIN_RATE_LIMIT} login attempts / ${Math.round(LOGIN_RATE_WINDOW_MS / 1000)}s` },
     { name: "database-pool", category: "production", ok: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, detail: process.env.GCOS_DATABASE_POOL_SIZE ?? "default" }
   ];
   const mvpChecks = checks.filter((check) => check.category === "mvp");
@@ -574,7 +583,11 @@ async function launchDeploymentPlan() {
     { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? redactSecret(DATABASE_URL) : "required", configured: Boolean(DATABASE_URL), sensitive: true },
     { name: "GCOS_DATABASE_SSL", value: "1", configured: process.env.GCOS_DATABASE_SSL === "1", sensitive: false },
     { name: "GCOS_DATABASE_POOL_SIZE", value: process.env.GCOS_DATABASE_POOL_SIZE ?? "5", configured: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, sensitive: false },
-    { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false }
+    { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false },
+    { name: "GCOS_LOGIN_RATE_LIMIT", value: String(LOGIN_RATE_LIMIT), configured: LOGIN_RATE_LIMIT >= 5, sensitive: false },
+    { name: "GCOS_LOGIN_RATE_WINDOW_MS", value: String(LOGIN_RATE_WINDOW_MS), configured: LOGIN_RATE_WINDOW_MS >= 60000, sensitive: false },
+    { name: "GCOS_MUTATION_RATE_LIMIT", value: String(MUTATION_RATE_LIMIT), configured: MUTATION_RATE_LIMIT >= 100, sensitive: false },
+    { name: "GCOS_MUTATION_RATE_WINDOW_MS", value: String(MUTATION_RATE_WINDOW_MS), configured: MUTATION_RATE_WINDOW_MS >= 60000, sensitive: false }
   ];
   const commands = [
     "npm install",
@@ -628,6 +641,63 @@ async function recordLaunchDeploymentPlan(actor) {
 function scoreChecks(checks) {
   if (!checks.length) return 0;
   return Math.round((checks.filter((check) => check.ok).length / checks.length) * 100);
+}
+
+function rateLimitStatus() {
+  return {
+    login: {
+      limit: LOGIN_RATE_LIMIT,
+      windowSeconds: Math.round(LOGIN_RATE_WINDOW_MS / 1000)
+    },
+    mutations: {
+      limit: MUTATION_RATE_LIMIT,
+      windowSeconds: Math.round(MUTATION_RATE_WINDOW_MS / 1000)
+    }
+  };
+}
+
+function assertLoginRateLimit(email, ip) {
+  const normalizedEmail = normalizeStationEmail(email);
+  assertRateLimit(`login:${ip}:${normalizedEmail}`, LOGIN_RATE_LIMIT, LOGIN_RATE_WINDOW_MS, "Too many login attempts");
+}
+
+function assertMutationRateLimit(request, pathname) {
+  if (!pathname.startsWith("/api/")) return;
+  if (request.method === "GET" || request.method === "HEAD" || request.method === "OPTIONS") return;
+  if (pathname === "/api/auth/login") return;
+  assertRateLimit(`mutation:${clientIp(request)}`, MUTATION_RATE_LIMIT, MUTATION_RATE_WINDOW_MS, "Too many API mutations");
+}
+
+function assertRateLimit(key, limit, windowMs, message) {
+  if (!limit || !windowMs) return;
+  const now = Date.now();
+  const bucket = rateLimitBuckets.get(key) ?? { count: 0, resetAt: now + windowMs };
+  if (bucket.resetAt <= now) {
+    bucket.count = 0;
+    bucket.resetAt = now + windowMs;
+  }
+  bucket.count += 1;
+  rateLimitBuckets.set(key, bucket);
+  pruneRateLimitBuckets(now);
+  if (bucket.count > limit) throw new HttpError(429, message);
+}
+
+function pruneRateLimitBuckets(now) {
+  if (rateLimitBuckets.size < 5000) return;
+  for (const [key, bucket] of rateLimitBuckets.entries()) {
+    if (bucket.resetAt <= now) rateLimitBuckets.delete(key);
+  }
+}
+
+function clientIp(request) {
+  const forwarded = request.headers["x-forwarded-for"];
+  if (typeof forwarded === "string" && forwarded.trim()) return forwarded.split(",")[0].trim();
+  return request.socket.remoteAddress ?? "unknown";
+}
+
+function positiveNumber(value, fallback) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
 function redactSecret(value) {
