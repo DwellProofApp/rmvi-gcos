@@ -157,6 +157,7 @@ const routes = {
   "POST /api/reports/:id/evidence": ({ params, body }) => ok(services.markReportEvidence(params.id, body)),
   "POST /api/reports/:id/review": ({ params, body }) => ok(services.reviewReport(params.id, body)),
   "POST /api/reports/:id/verify": ({ params, body }) => ok(services.verifyReport(params.id, body)),
+  "POST /api/reports/:id/packet": ({ params, body, session }) => createdResponse(services.buildReportGovernancePacket(params.id, { ...body, actor: session.email })),
   "POST /api/reports/:id/watch": ({ params, body }) => ok(services.watchReport(params.id, body)),
   "POST /api/reports/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateReport(params.id, body)),
   "POST /api/reports/:id/archive": ({ params, body }) => ok(services.archiveReport(params.id, body)),

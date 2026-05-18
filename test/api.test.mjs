@@ -132,13 +132,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(importDryRun.batches.some((batch) => batch.table === "gcos_stations" && batch.status === "ready"), true);
 
     const localLogin = await postJson("/api/auth/login", {
-      email: "local_branch_017@gcos.org",
+      email: "local_branch_017@rmvi.org",
       password: demoPassword("local")
     });
     const localToken = localLogin.token;
 
     const internationalLogin = await postJson("/api/auth/login", {
-      email: "international@gcos.org",
+      email: "international@rmvi.org",
       password: demoPassword("global")
     });
     const internationalToken = internationalLogin.token;
@@ -558,10 +558,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(sessionDigest.labeled >= 1, true);
 
     const localSessionIdsBeforeSpare = new Set(
-      privateSessions.stations.filter((session) => session.email === "local_branch_017@gcos.org").map((session) => session.id)
+      privateSessions.stations.filter((session) => session.email === "local_branch_017@rmvi.org").map((session) => session.id)
     );
     const spareLocalLogin = await postJson("/api/auth/login", {
-      email: "local_branch_017@gcos.org",
+      email: "local_branch_017@rmvi.org",
       password: demoPassword("local")
     });
     const sessionsWithSpareLocal = await getJson("/api/sessions", nationalToken);
@@ -848,6 +848,27 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(reportDigest.evidenceReady >= 1, true);
     assert.equal(reportDigest.submitted >= 1, true);
     assert.equal(reportDigest.types.Financial >= 1, true);
+
+    const packetReport = await postJson("/api/reports", {
+      name: "Automated bundled governance report",
+      path: "Local -> District -> National",
+      owner: "Workflow Test",
+      due: "Overdue",
+      type: "Audit",
+      period: "May 2026"
+    }, nationalToken);
+    const governancePacket = await postJson(`/api/reports/${packetReport.id}/packet`, {
+      approvalRequest: "Automated bundled governance approval",
+      route: "District -> National -> Archive",
+      limit: "Delegated packet approval",
+      escalate: true
+    }, nationalToken);
+    assert.equal(governancePacket.report.routingStage, "Governance packet assembled");
+    assert.equal(governancePacket.report.evidenceStatus, "Evidence packet bundled");
+    assert.equal(governancePacket.approval.linkedReport, packetReport.id);
+    assert.equal(governancePacket.document.linkedReport, packetReport.id);
+    assert.equal(governancePacket.document.linkedApproval, governancePacket.approval.id);
+    assert.equal(governancePacket.escalation.linkedApproval, governancePacket.approval.id);
 
     const bulkReport = await postJson("/api/reports", {
       name: "Automated bulk workflow report",
@@ -1739,7 +1760,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const forbiddenOffice = await rawPost("/api/offices", {
       name: "Forbidden Branch Office",
-      email: "forbidden_branch@gcos.org",
+      email: "forbidden_branch@rmvi.org",
       level: "Area HQ",
       department: "Area Coordination",
       supervisor: "District HQ"
@@ -1755,14 +1776,23 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(invalidOffice.status, 400);
 
-    const office = await postJson("/api/offices", {
-      name: "Automated District Office",
-      email: "automated_district@gcos.org",
+    const wrongDomainOffice = await rawPost("/api/offices", {
+      name: "Wrong Domain Office",
+      email: "wrong_domain@example.org",
       level: "District HQ",
       department: "District Command",
       supervisor: "County HQ"
     }, nationalToken);
-    assert.equal(office.email, "automated_district@gcos.org");
+    assert.equal(wrongDomainOffice.status, 400);
+
+    const office = await postJson("/api/offices", {
+      name: "Automated District Office",
+      email: "automated_district@rmvi.org",
+      level: "District HQ",
+      department: "District Command",
+      supervisor: "County HQ"
+    }, nationalToken);
+    assert.equal(office.email, "automated_district@rmvi.org");
     assert.equal(office.password, demoPassword("automated-district-office"));
 
     const suspendedOffice = await postJson(`/api/offices/${office.id}/status`, {
@@ -1821,7 +1851,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const bulkOffice = await postJson("/api/offices", {
       name: "Automated Bulk Office",
-      email: "automated_bulk@gcos.org",
+      email: "automated_bulk@rmvi.org",
       level: "Area HQ",
       department: "Area Coordination",
       supervisor: "District HQ"
@@ -1855,10 +1885,10 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(officeDigest.archived >= 1, true);
 
     const officeLogin = await postJson("/api/auth/login", {
-      email: "automated_district@gcos.org",
+      email: "automated_district@rmvi.org",
       password: demoPassword("automated-rotated")
     });
-    assert.equal(officeLogin.station.email, "automated_district@gcos.org");
+    assert.equal(officeLogin.station.email, "automated_district@rmvi.org");
     assert.equal(officeLogin.station.level, "Area HQ");
 
     const duplicateOffice = await fetch(`${BASE_URL}/api/offices`, {
@@ -1866,7 +1896,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       headers: { "content-type": "application/json", authorization: `Bearer ${nationalToken}` },
       body: JSON.stringify({
         name: "Duplicate Office",
-        email: "automated_district@gcos.org",
+        email: "automated_district@rmvi.org",
         level: "District HQ",
         department: "District Command",
         supervisor: "County HQ"
@@ -1875,7 +1905,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(duplicateOffice.status, 409);
 
     const stations = await getJson("/api/stations");
-    assert.equal(stations.some((station) => station.email === "automated_district@gcos.org"), true);
+    assert.equal(stations.some((station) => station.email === "automated_district@rmvi.org"), true);
     const stationId = stations[0].id;
 
     const authRegistry = await getJson("/api/station-auth", nationalToken);
@@ -1971,6 +2001,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(mirroredStation.email, "automated_mirror@rmvi.org");
     assert.equal(mirroredStation.mirrorOf, stationId);
+
+    const wrongDomainMirror = await rawPost(`/api/stations/${stationId}/mirror`, {
+      email: "automated_mirror@example.org",
+      title: "Wrong Domain Mirror"
+    }, nationalToken);
+    assert.equal(wrongDomainMirror.status, 400);
 
     const bulkVerifiedStations = await postJson("/api/stations/bulk/verify", {
       ids: [stationId, mirroredStation.id]
@@ -2839,7 +2875,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(transfersAfterRestart.some((item) => item.person === "Automated transfer test"), true);
 
     const officesAfterRestart = await getJson("/api/offices");
-    assert.equal(officesAfterRestart.some((item) => item.email === "automated_district@gcos.org"), true);
+    assert.equal(officesAfterRestart.some((item) => item.email === "automated_district@rmvi.org"), true);
 
     const documentsAfterRestart = await getJson("/api/documents");
     assert.equal(documentsAfterRestart.some((item) => item.name === "Automated signed packet.pdf"), true);

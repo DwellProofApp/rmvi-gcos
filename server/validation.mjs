@@ -321,7 +321,7 @@ const validators = {
   },
 
   "POST /api/stations/:id/mirror": (body) => {
-    if (body.email !== undefined) requireEmail(body.email, "email");
+    if (body.email !== undefined) requireRmviEmail(body.email, "email");
     if (body.title !== undefined) requireString(body.title, "title");
     if (body.authority !== undefined) requireString(body.authority, "authority");
     if (body.password !== undefined) requireString(body.password, "password");
@@ -433,6 +433,16 @@ const validators = {
 
   "POST /api/reports/:id/verify": (body) => {
     if (body.state !== undefined) requireString(body.state, "state");
+  },
+
+  "POST /api/reports/:id/packet": (body) => {
+    if (body.approvalRequest !== undefined) requireString(body.approvalRequest, "approvalRequest");
+    if (body.route !== undefined) requireString(body.route, "route");
+    if (body.limit !== undefined) requireString(body.limit, "limit");
+    if (body.delegate !== undefined) requireString(body.delegate, "delegate");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.note !== undefined) requireString(body.note, "note");
+    if (body.escalate !== undefined && typeof body.escalate !== "boolean") throw validationError("escalate must be boolean");
   },
 
   "POST /api/reports/:id/watch": (body) => {
@@ -985,7 +995,7 @@ const validators = {
 
   "POST /api/offices": (body) => {
     requireString(body.name, "name");
-    requireEmail(body.email, "email");
+    requireRmviEmail(body.email, "email");
     requireEnum(body.level, stationLevels, "level");
     requireString(body.department, "department");
     requireString(body.supervisor, "supervisor");
@@ -1371,6 +1381,13 @@ function requireEmail(value, field) {
   requireString(value, field);
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
     throw new ValidationError(`${field} must be a valid email address`);
+  }
+}
+
+function requireRmviEmail(value, field) {
+  requireEmail(value, field);
+  if (!String(value).toLowerCase().endsWith("@rmvi.org")) {
+    throw new ValidationError(`${field} must use the rmvi.org domain`);
   }
 }
 

@@ -7,10 +7,10 @@ export function demoStationPassword(label) {
 }
 
 export const stationPasswords = {
-  "international@gcos.org": demoStationPassword("global"),
+  "international@rmvi.org": demoStationPassword("global"),
   "np@rmvi.org": demoStationPassword("national"),
   "district_admin@rmvi.org": demoStationPassword("district"),
-  "local_branch_017@gcos.org": demoStationPassword("local")
+  "local_branch_017@rmvi.org": demoStationPassword("local")
 };
 
 export function normalizeStationEmail(email) {
@@ -18,13 +18,13 @@ export function normalizeStationEmail(email) {
 }
 
 export function createSeedState() {
-  const riverbendOffice = office("Riverbend Area Office", "riverbend_area@gcos.org", "Area HQ", "Area Coordination", "Buchanan District");
+  const riverbendOffice = office("Riverbend Area Office", "riverbend_area@rmvi.org", "Area HQ", "Area Coordination", "Buchanan District");
   return {
     stations: [
-      station("international@gcos.org", "International Executive Workstation", "International HQ", "Global override, policy registry, audit control"),
+      station("international@rmvi.org", "International Executive Workstation", "International HQ", "Global override, policy registry, audit control"),
       station("np@rmvi.org", "National Presidency Workstation", "National HQ", "National directives, county oversight, executive summaries"),
       station("district_admin@rmvi.org", "District Command Workstation", "District HQ", "Branch oversight, workflow monitor, transfer approvals"),
-      station("local_branch_017@gcos.org", "Local Branch Workstation", "Local Branch", "Local reports, member registry, directive acknowledgement"),
+      station("local_branch_017@rmvi.org", "Local Branch Workstation", "Local Branch", "Local reports, member registry, directive acknowledgement"),
       station(riverbendOffice.email, `${riverbendOffice.name} Workstation`, riverbendOffice.level, `${riverbendOffice.department}, supervised by ${riverbendOffice.supervisor}`)
     ],
     messages: [

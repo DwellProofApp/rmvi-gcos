@@ -1323,6 +1323,52 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    buildReportGovernancePacket(id, body) {
+      const item = findById(state.reports, id);
+      item.evidenceStatus = "Evidence packet bundled";
+      item.routingStage = "Governance packet assembled";
+      item.reviewNote = body.note ?? "Report packet assembled for approval, archive, and audit follow-through";
+      item.score = Math.max(item.score, 88);
+      if (item.state !== "Approved") item.state = "In Review";
+
+      const packetApproval = approval(
+        body.approvalRequest ?? `${item.name} approval packet`,
+        body.route ?? item.path,
+        body.limit ?? "Delegated authority review",
+        "Validation",
+        "0/3"
+      );
+      packetApproval.linkedReport = item.id;
+      packetApproval.delegate = body.delegate ?? item.owner;
+      state.approvals.unshift(packetApproval);
+
+      const packetDocument = documentRecord(
+        `${item.name} governance packet.pdf`,
+        "Report governance packet",
+        "Report",
+        item.owner,
+        "PDF",
+        "Archived"
+      );
+      packetDocument.linkedReport = item.id;
+      packetDocument.linkedApproval = packetApproval.id;
+      packetDocument.verified = false;
+      state.documents.unshift(packetDocument);
+
+      const shouldEscalate = item.due === "Overdue" || item.state === "Escalated" || body.escalate;
+      const packetEscalation = shouldEscalate
+        ? escalation("Report", item.name, body.reason ?? "Governance packet requires supervisory attention", item.due === "Overdue" ? "Critical" : "High", item.owner)
+        : null;
+      if (packetEscalation) {
+        packetEscalation.linkedReport = item.id;
+        packetEscalation.linkedApproval = packetApproval.id;
+        state.escalations.unshift(packetEscalation);
+      }
+
+      record("ReportGovernancePacketBuilt", body.actor, item.name, `${packetApproval.request} / ${packetDocument.name}`);
+      return { report: item, approval: packetApproval, document: packetDocument, escalation: packetEscalation };
+    },
+
     watchReport(id, body) {
       const item = findById(state.reports, id);
       const watcher = body.watcher ?? body.actor ?? "Watcher";

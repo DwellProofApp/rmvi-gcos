@@ -679,6 +679,12 @@ type ReportDigest = {
   averageScore: number;
   nextReport: string;
 };
+type ReportGovernancePacket = {
+  report: Report;
+  approval: Approval;
+  document: DocumentRecord;
+  escalation: Escalation | null;
+};
 type ApprovalDigest = {
   generatedAt: string;
   total: number;
@@ -755,7 +761,7 @@ const hierarchy: { level: StationLevel; node: string; metric: string; command: n
 
 const stations: StationCard[] = [
   {
-    email: "international@gcos.org",
+    email: "international@rmvi.org",
     title: "International Executive Workstation",
     level: "International HQ",
     authority: "Global override, policy registry, audit control",
@@ -776,7 +782,7 @@ const stations: StationCard[] = [
     icon: Building2
   },
   {
-    email: "local_branch_017@gcos.org",
+    email: "local_branch_017@rmvi.org",
     title: "Local Branch Workstation",
     level: "Local Branch",
     authority: "Local reports, member registry, directive acknowledgement",
@@ -787,10 +793,10 @@ const stations: StationCard[] = [
 const demoStationPassword = (label: string) => ["gcos", label].join("-");
 
 const stationPasswords: Record<string, string> = {
-  "international@gcos.org": demoStationPassword("global"),
+  "international@rmvi.org": demoStationPassword("global"),
   "np@rmvi.org": demoStationPassword("national"),
   "district_admin@rmvi.org": demoStationPassword("district"),
-  "local_branch_017@gcos.org": demoStationPassword("local")
+  "local_branch_017@rmvi.org": demoStationPassword("local")
 };
 
 const API_BASE = (import.meta.env.VITE_GCOS_API_BASE ?? (import.meta.env.DEV ? "http://127.0.0.1:8787" : "")).replace(/\/$/, "");
@@ -863,7 +869,7 @@ const initialOffices: Office[] = [
   {
     id: "ofc-001",
     name: "Riverbend Area Office",
-    email: "riverbend_area@gcos.org",
+    email: "riverbend_area@rmvi.org",
     level: "Area HQ",
     department: "Area Coordination",
     supervisor: "Buchanan District",
@@ -936,7 +942,7 @@ const initialAuditRows: AuditRow[] = [
   { id: "aud-002", event: "ApprovalGranted", actor: "district_admin@rmvi.org", object: "Area vehicle repair release", result: "Logged", time: "08:14" },
   { id: "aud-003", event: "EscalationTriggered", actor: "Workflow Engine", object: "Construction milestone report", result: "Executive alert", time: "08:21" },
   { id: "aud-004", event: "TransferExecuted", actor: "Mission Office", object: "Area Coordinator reassignment", result: "Session invalidated", time: "08:27" },
-  { id: "aud-005", event: "OfficeCreated", actor: "international@gcos.org", object: "Riverbend Area Office", result: "Graph updated", time: "08:31" }
+  { id: "aud-005", event: "OfficeCreated", actor: "international@rmvi.org", object: "Riverbend Area Office", result: "Graph updated", time: "08:31" }
 ];
 
 const initialOfflineQueue: OfflineAction[] = [];
@@ -3353,6 +3359,55 @@ function App() {
       status: offlineMode ? "Queued" : "Archived"
     });
     setActiveSection("Archive");
+  }
+
+  function buildReportGovernancePacket(id: string) {
+    const report = reports.find((item) => item.id === id);
+    if (!report) return;
+    const approval: Approval = {
+      id: `app-${Date.now()}`,
+      request: `${report.name} approval packet`,
+      route: report.path,
+      limit: "Delegated authority review",
+      state: offlineMode ? "Queued" : "Validation",
+      signatures: "0/3",
+      delegate: report.owner
+    };
+    setReports((items) => items.map((item) => item.id === id ? {
+      ...item,
+      evidenceStatus: "Evidence packet bundled",
+      routingStage: "Governance packet assembled",
+      reviewNote: "Report packet assembled for approval, archive, and audit follow-through",
+      score: Math.max(item.score, 88),
+      state: item.state === "Approved" ? item.state : "In Review"
+    } : item));
+    setApprovals((items) => [approval, ...items]);
+    archiveDocument({
+      name: `${report.name} governance packet.pdf`,
+      classification: "Report governance packet",
+      source: "Report",
+      owner: report.owner,
+      fileType: "PDF",
+      status: offlineMode ? "Queued" : "Archived",
+      linkedReport: report.id,
+      linkedApproval: approval.id
+    });
+    if (report.due === "Overdue" || report.state === "Escalated") {
+      triggerEscalation("Report", report.name, "Governance packet requires supervisory attention", report.owner, report.due === "Overdue" ? "Critical" : "High");
+    }
+    recordAudit("ReportGovernancePacketBuilt", report.name, `${approval.request} / archive packet created`);
+    if (!offlineMode) {
+      void apiRequest<ReportGovernancePacket>(`/api/reports/${id}/packet`, {
+        method: "POST",
+        body: JSON.stringify({
+          approvalRequest: approval.request,
+          route: approval.route,
+          limit: approval.limit,
+          delegate: approval.delegate,
+          escalate: report.due === "Overdue" || report.state === "Escalated"
+        })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
   }
 
   function triggerEscalation(source: Escalation["source"], item: string, reason: string, owner: string, severity: Escalation["severity"] = "High") {
@@ -5798,6 +5853,7 @@ function App() {
             onWatchReport={watchReport}
             onDuplicateReport={duplicateReport}
             onArchiveReport={archiveReportRecord}
+            onBuildGovernancePacket={buildReportGovernancePacket}
             onBulkSubmit={bulkSubmitReports}
             onBulkCorrection={bulkRequestReportCorrections}
             onRefreshDigest={refreshReportDigest}
@@ -6861,6 +6917,7 @@ function Reports({
   onWatchReport,
   onDuplicateReport,
   onArchiveReport,
+  onBuildGovernancePacket,
   onBulkSubmit,
   onBulkCorrection,
   onRefreshDigest,
@@ -6883,6 +6940,7 @@ function Reports({
   onWatchReport: (id: string) => void;
   onDuplicateReport: (id: string) => void;
   onArchiveReport: (id: string) => void;
+  onBuildGovernancePacket: (id: string) => void;
   onBulkSubmit: (ids: string[]) => void;
   onBulkCorrection: (ids: string[]) => void;
   onRefreshDigest: () => void;
@@ -7007,6 +7065,7 @@ function Reports({
                 <button aria-label={`Duplicate ${report.name}`} onClick={() => onDuplicateReport(report.id)}><Files size={14} /> Duplicate</button>
                 <button aria-label={`Archive ${report.name}`} onClick={() => onArchiveReport(report.id)}><LockKeyhole size={14} /> Archive</button>
                 <button aria-label={`Vault evidence for ${report.name}`} onClick={() => onArchiveEvidence(report.id)}><Files size={14} /> Vault</button>
+                <button aria-label={`Build governance packet for ${report.name}`} onClick={() => onBuildGovernancePacket(report.id)}><Workflow size={14} /> Packet</button>
                 <button
                   aria-label={`Escalate ${report.name}`}
                   onClick={() => onEscalateReport("Report", report.name, `${report.due} report requires supervisory attention`, report.owner, report.due === "Overdue" ? "Critical" : "Medium")}
@@ -8936,7 +8995,7 @@ function Offices({
   digest: OfficeDigest | null;
 }) {
   const [name, setName] = React.useState("New Hope District Office");
-  const [email, setEmail] = React.useState("newhope_district@gcos.org");
+  const [email, setEmail] = React.useState("newhope_district@rmvi.org");
   const [level, setLevel] = React.useState<StationLevel>("District HQ");
   const [department, setDepartment] = React.useState("District Command");
   const [supervisor, setSupervisor] = React.useState("County/State Headquarters");
@@ -8980,7 +9039,7 @@ function Offices({
     setFeedback(`${name} has been provisioned.`);
     const nextName = `Mission Office ${offices.length + 2}`;
     setName(nextName);
-    setEmail(`${nextName.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/(^_|_$)/g, "")}@gcos.org`);
+    setEmail(`${nextName.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/(^_|_$)/g, "")}@rmvi.org`);
   }
 
   return (
