@@ -1817,6 +1817,9 @@ h1 {
 .template-list {
   display: grid;
   gap: 8px;
+  max-height: 470px;
+  overflow: auto;
+  padding-right: 2px;
 }
 
 .template-list button {
@@ -1830,8 +1833,14 @@ h1 {
   cursor: pointer;
 }
 
+.template-list button.is-selected {
+  border-color: #d6a631;
+  box-shadow: 0 0 0 3px rgba(214, 166, 49, 0.16);
+}
+
 .template-list strong,
 .template-list span,
+.template-list small,
 .score-row small {
   display: block;
 }
@@ -1842,10 +1851,65 @@ h1 {
 }
 
 .template-list span,
+.template-list small,
 .score-row small {
   color: #5b6680;
   font-size: 12px;
   margin-top: 3px;
+}
+
+.template-list small {
+  line-height: 1.45;
+}
+
+.template-preview {
+  border: 1px solid #d8e2f2;
+  border-radius: 8px;
+  background: linear-gradient(135deg, rgba(11, 47, 107, 0.06), rgba(214, 166, 49, 0.12));
+  margin-top: 12px;
+  padding: 12px;
+}
+
+.template-preview strong,
+.template-preview span {
+  display: block;
+}
+
+.template-preview strong {
+  color: #0b2f6b;
+  font-size: 13px;
+}
+
+.template-preview span {
+  color: #5b6680;
+  font-size: 12px;
+  font-weight: 700;
+  margin-top: 4px;
+}
+
+.template-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.template-chip-row span {
+  border: 1px solid rgba(11, 47, 107, 0.14);
+  border-radius: 999px;
+  background: #ffffff;
+  color: #1c2f54;
+  padding: 5px 8px;
+}
+
+.template-checklist {
+  display: grid;
+  gap: 6px;
+  margin: 12px 0 0;
+  padding: 0 0 0 18px;
+  color: #33405c;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .table-actions .file-action,

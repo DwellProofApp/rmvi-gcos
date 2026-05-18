@@ -86,6 +86,20 @@ type Report = {
   archived?: boolean;
   watchers?: string[];
 };
+type ReportTemplate = {
+  id: string;
+  type: string;
+  name: string;
+  owner: string;
+  due: string;
+  period: string;
+  path: string;
+  evidenceStatus: string;
+  routingStage: string;
+  approvalLimit: string;
+  description: string;
+  checklist: string[];
+};
 type Approval = {
   id: string;
   request: string;
@@ -839,6 +853,317 @@ const initialReports: Report[] = [
   { id: "rep-002", name: "County finance summary", owner: "County Finance", path: "County -> National", due: "Tomorrow", state: "Ready", score: 94, type: "Financial", period: "Q2 2026", routingStage: "County validation", evidenceStatus: "Ledger pending" },
   { id: "rep-003", name: "Construction milestone report", owner: "District Works", path: "District -> County", due: "Overdue", state: "Escalated", score: 58, type: "Construction", period: "May 2026", routingStage: "District correction", evidenceStatus: "Photo packet incomplete", correctionReason: "Missing site photos" },
   { id: "rep-004", name: "Education directorate update", owner: "Directorate Office", path: "National -> Regional", due: "May 20", state: "Approved", score: 100, type: "Education", period: "May 2026", routingStage: "Regional archive", evidenceStatus: "Evidence verified", verified: true, approvedBy: "Regional HQ" }
+];
+
+const churchReportTemplates: ReportTemplate[] = [
+  {
+    id: "tpl-branch-admin",
+    type: "Administrative",
+    name: "Monthly Branch Administration Report",
+    owner: "Branch Secretary",
+    due: "This week",
+    period: "Current month",
+    path: "Local Branch -> Area Office -> District HQ",
+    evidenceStatus: "Minutes and attendance pending",
+    routingStage: "Branch drafting",
+    approvalLimit: "Area supervisor review",
+    description: "Standard monthly operating report for local branch leadership, activities, needs, and governance matters.",
+    checklist: ["Meeting minutes", "Leadership updates", "Department summaries", "Open issues", "Required approvals"]
+  },
+  {
+    id: "tpl-attendance",
+    type: "Membership",
+    name: "Weekly Attendance and Membership Report",
+    owner: "Membership Desk",
+    due: "Today",
+    period: "Current week",
+    path: "Local Branch -> Area Office",
+    evidenceStatus: "Attendance register pending",
+    routingStage: "Local validation",
+    approvalLimit: "Area office acknowledgement",
+    description: "Weekly rollup of worship attendance, visitors, absences, membership changes, and follow-up needs.",
+    checklist: ["Service attendance", "Visitors", "New members", "Absentees needing follow-up", "Membership movements"]
+  },
+  {
+    id: "tpl-finance-tithe",
+    type: "Financial",
+    name: "Tithe and Offering Finance Report",
+    owner: "Finance Desk",
+    due: "Today",
+    period: "Current week",
+    path: "Local Finance -> District Finance -> County Finance",
+    evidenceStatus: "Ledger and deposit slip pending",
+    routingStage: "Finance validation",
+    approvalLimit: "District finance sign-off",
+    description: "Official stewardship report for tithe, offering, special collections, deposits, and variance notes.",
+    checklist: ["Collection totals", "Deposit reference", "Cash count signatures", "Expense deductions", "Variance explanation"]
+  },
+  {
+    id: "tpl-budget-expense",
+    type: "Financial",
+    name: "Department Expense and Budget Report",
+    owner: "Department Finance Officer",
+    due: "This week",
+    period: "Current month",
+    path: "Department -> Station Finance -> Supervising Office",
+    evidenceStatus: "Receipts pending",
+    routingStage: "Budget review",
+    approvalLimit: "Budget holder and finance approval",
+    description: "Tracks department spending, approved budgets, receipts, balances, and requests for additional release.",
+    checklist: ["Budget line", "Amount spent", "Receipts", "Remaining balance", "Additional request"]
+  },
+  {
+    id: "tpl-mission-outreach",
+    type: "Mission",
+    name: "Mission Outreach Activity Report",
+    owner: "Mission Desk",
+    due: "Tomorrow",
+    period: "Current month",
+    path: "Local Mission -> District Mission -> National Programs",
+    evidenceStatus: "Photos and testimony notes pending",
+    routingStage: "Mission review",
+    approvalLimit: "District mission endorsement",
+    description: "Captures outreach activity, locations reached, workers involved, outcomes, resources used, and follow-up needs.",
+    checklist: ["Outreach location", "Workers present", "Souls reached", "Materials used", "Follow-up plan"]
+  },
+  {
+    id: "tpl-evangelism",
+    type: "Mission",
+    name: "Evangelism and Souls Won Report",
+    owner: "Evangelism Desk",
+    due: "This week",
+    period: "Current month",
+    path: "Local Evangelism -> Area Office -> District HQ",
+    evidenceStatus: "Convert cards pending",
+    routingStage: "Area review",
+    approvalLimit: "Area evangelism acknowledgement",
+    description: "Designed for recording evangelism work, new converts, prayer requests, follow-up assignments, and baptism readiness.",
+    checklist: ["Outreach date", "New converts", "Prayer requests", "Follow-up leaders", "Baptism candidates"]
+  },
+  {
+    id: "tpl-education",
+    type: "Education",
+    name: "Education and Sunday School Report",
+    owner: "Education Desk",
+    due: "Tomorrow",
+    period: "Current month",
+    path: "Local Education -> District Education -> National Education",
+    evidenceStatus: "Lesson roster pending",
+    routingStage: "Education review",
+    approvalLimit: "District education approval",
+    description: "Education ministry update for classes, teachers, attendance, curriculum progress, and student development needs.",
+    checklist: ["Classes held", "Teacher roster", "Student attendance", "Curriculum progress", "Material needs"]
+  },
+  {
+    id: "tpl-youth",
+    type: "Youth",
+    name: "Youth Ministry Activity Report",
+    owner: "Youth Ministry Desk",
+    due: "This week",
+    period: "Current month",
+    path: "Local Youth -> District Youth -> National Youth",
+    evidenceStatus: "Activity photos pending",
+    routingStage: "Youth desk review",
+    approvalLimit: "District youth approval",
+    description: "Prebuilt youth ministry report covering programs, attendance, discipline, leadership training, and requests.",
+    checklist: ["Programs held", "Youth attendance", "Leadership training", "Challenges", "Resource requests"]
+  },
+  {
+    id: "tpl-women",
+    type: "Women",
+    name: "Women's Ministry Report",
+    owner: "Women's Ministry Desk",
+    due: "This week",
+    period: "Current month",
+    path: "Local Women -> District Women -> National Women",
+    evidenceStatus: "Program notes pending",
+    routingStage: "Ministry review",
+    approvalLimit: "District ministry endorsement",
+    description: "Monthly ministry report for fellowship activity, service work, teaching, member care, and planned programs.",
+    checklist: ["Fellowship meetings", "Service activities", "Teaching sessions", "Member care", "Upcoming programs"]
+  },
+  {
+    id: "tpl-men",
+    type: "Men",
+    name: "Men's Fellowship Report",
+    owner: "Men's Fellowship Desk",
+    due: "This week",
+    period: "Current month",
+    path: "Local Men -> District Men -> National Men",
+    evidenceStatus: "Attendance notes pending",
+    routingStage: "Fellowship review",
+    approvalLimit: "District fellowship acknowledgement",
+    description: "Operational report for men's fellowship meetings, projects, discipline support, and leadership assignments.",
+    checklist: ["Meeting attendance", "Projects", "Leadership assignments", "Family support cases", "Needs"]
+  },
+  {
+    id: "tpl-media",
+    type: "Media",
+    name: "Media and Communications Report",
+    owner: "Media Desk",
+    due: "This week",
+    period: "Current month",
+    path: "Local Media -> National Media -> Regional Communications",
+    evidenceStatus: "Media links pending",
+    routingStage: "Communications review",
+    approvalLimit: "National media approval",
+    description: "Captures broadcasts, announcements, media assets, equipment condition, publication needs, and communications risks.",
+    checklist: ["Broadcasts", "Announcements", "Media assets", "Equipment status", "Publication requests"]
+  },
+  {
+    id: "tpl-construction",
+    type: "Construction",
+    name: "Construction and Facilities Progress Report",
+    owner: "Works Desk",
+    due: "This week",
+    period: "Current month",
+    path: "Local Works -> District Works -> County Works",
+    evidenceStatus: "Photo packet pending",
+    routingStage: "Works validation",
+    approvalLimit: "County works review",
+    description: "Facilities and construction report for project milestones, materials, site photos, spending, and blockers.",
+    checklist: ["Milestone status", "Materials received", "Site photos", "Labor update", "Blockers"]
+  },
+  {
+    id: "tpl-welfare",
+    type: "Social Development",
+    name: "Welfare and Social Development Report",
+    owner: "Welfare Desk",
+    due: "This week",
+    period: "Current month",
+    path: "Local Welfare -> District Welfare -> National Programs",
+    evidenceStatus: "Case notes pending",
+    routingStage: "Welfare review",
+    approvalLimit: "District welfare approval",
+    description: "Preloaded report for benevolence, social assistance, community development, and vulnerable member support.",
+    checklist: ["Support cases", "Community activity", "Assistance issued", "Pending needs", "Confidential notes"]
+  },
+  {
+    id: "tpl-prayer-counseling",
+    type: "Pastoral Care",
+    name: "Prayer and Counseling Report",
+    owner: "Pastoral Care Desk",
+    due: "This week",
+    period: "Current week",
+    path: "Local Pastoral Care -> Area Office -> District HQ",
+    evidenceStatus: "Confidential summary pending",
+    routingStage: "Pastoral review",
+    approvalLimit: "Pastoral supervisor review",
+    description: "Confidential administrative summary of prayer sessions, counseling volume, urgent care needs, and referrals.",
+    checklist: ["Prayer requests", "Counseling sessions", "Urgent cases", "Referrals", "Pastoral follow-up"]
+  },
+  {
+    id: "tpl-baptism-converts",
+    type: "Membership",
+    name: "Baptism and New Converts Report",
+    owner: "Membership Desk",
+    due: "This week",
+    period: "Current month",
+    path: "Local Branch -> Area Office -> District Secretariat",
+    evidenceStatus: "Candidate register pending",
+    routingStage: "Membership validation",
+    approvalLimit: "District secretariat acknowledgement",
+    description: "Tracks new converts, baptism candidates, completed baptisms, discipleship assignments, and records updates.",
+    checklist: ["New converts", "Baptism candidates", "Completed baptisms", "Discipleship leader", "Record updates"]
+  },
+  {
+    id: "tpl-transfer-personnel",
+    type: "Personnel",
+    name: "Transfer and Personnel Movement Report",
+    owner: "Personnel Desk",
+    due: "Today",
+    period: "Current month",
+    path: "Station Personnel -> Mission Office -> National Secretariat",
+    evidenceStatus: "Transfer letter pending",
+    routingStage: "Personnel validation",
+    approvalLimit: "Mission office authorization",
+    description: "Administrative report for transfers, assignments, acknowledgements, permission changes, and station onboarding.",
+    checklist: ["Transfer letter", "Current station", "New station", "Acknowledgement", "Access change"]
+  },
+  {
+    id: "tpl-audit",
+    type: "Audit",
+    name: "Audit Compliance Packet",
+    owner: "Audit Desk",
+    due: "Today",
+    period: "Current quarter",
+    path: "Station Audit -> County Audit -> National Audit",
+    evidenceStatus: "Compliance evidence pending",
+    routingStage: "Audit review",
+    approvalLimit: "National audit sign-off",
+    description: "Formal audit packet for policy compliance, finance evidence, approval records, exceptions, and corrective action.",
+    checklist: ["Policy acknowledgements", "Finance evidence", "Approval records", "Exceptions", "Corrective action"]
+  },
+  {
+    id: "tpl-incident-care",
+    type: "Pastoral Care",
+    name: "Incident and Pastoral Care Report",
+    owner: "Pastoral Care Desk",
+    due: "Today",
+    period: "Incident date",
+    path: "Local Branch -> District HQ -> National Secretariat",
+    evidenceStatus: "Incident statement pending",
+    routingStage: "Confidential review",
+    approvalLimit: "District leadership escalation",
+    description: "Sensitive incident report for pastoral care, safety concerns, dispute mediation, and leadership attention.",
+    checklist: ["Incident summary", "Persons involved", "Care action", "Risk level", "Escalation need"]
+  },
+  {
+    id: "tpl-inventory",
+    type: "Asset",
+    name: "Inventory and Asset Report",
+    owner: "Asset Desk",
+    due: "This week",
+    period: "Current quarter",
+    path: "Local Asset Desk -> District Administration -> County Administration",
+    evidenceStatus: "Asset photos pending",
+    routingStage: "Asset verification",
+    approvalLimit: "District administration approval",
+    description: "Inventory report for church property, equipment, condition, custody, maintenance needs, and replacement requests.",
+    checklist: ["Asset list", "Condition", "Custodian", "Photos", "Maintenance request"]
+  },
+  {
+    id: "tpl-district-summary",
+    type: "Executive",
+    name: "District Consolidated Summary Report",
+    owner: "District Secretariat",
+    due: "This week",
+    period: "Current month",
+    path: "District HQ -> County/State HQ -> National HQ",
+    evidenceStatus: "Branch summaries pending",
+    routingStage: "District consolidation",
+    approvalLimit: "County secretariat review",
+    description: "District-level rollup of branch reports, ministry performance, financial posture, escalations, and priority needs.",
+    checklist: ["Branch summaries", "Finance position", "Mission activity", "Escalations", "Priority needs"]
+  },
+  {
+    id: "tpl-executive-summary",
+    type: "Executive",
+    name: "Regional and National Executive Summary",
+    owner: "Executive Secretariat",
+    due: "This week",
+    period: "Current quarter",
+    path: "National HQ -> Regional HQ -> International HQ",
+    evidenceStatus: "Consolidated evidence pending",
+    routingStage: "Executive synthesis",
+    approvalLimit: "Executive council review",
+    description: "High-level governance summary for leadership review, operating performance, risks, decisions, and executive actions.",
+    checklist: ["Performance metrics", "Major risks", "Finance overview", "Leadership decisions", "Executive actions"]
+  },
+  {
+    id: "tpl-convention",
+    type: "Event",
+    name: "Annual Convention and Event Report",
+    owner: "Events Desk",
+    due: "This week",
+    period: "Event period",
+    path: "Event Desk -> National Secretariat -> Regional HQ",
+    evidenceStatus: "Event packet pending",
+    routingStage: "Event closeout",
+    approvalLimit: "National secretariat approval",
+    description: "Event closeout report for conventions, conferences, attendance, finances, logistics, media, and decisions.",
+    checklist: ["Attendance", "Finance closeout", "Logistics", "Program notes", "Decisions"]
+  }
 ];
 
 const workflows = [
@@ -7007,23 +7332,18 @@ function Reports({
   const [period, setPeriod] = React.useState("May 2026");
   const [stateFilter, setStateFilter] = React.useState("All states");
   const [feedback, setFeedback] = React.useState("");
+  const [selectedTemplate, setSelectedTemplate] = React.useState<ReportTemplate>(churchReportTemplates[0]);
   const visibleReports = React.useMemo(() => (
     stateFilter === "All states" ? reports : reports.filter((report) => report.state === stateFilter)
   ), [reports, stateFilter]);
   const stateOptions = React.useMemo(() => ["All states", ...Array.from(new Set(reports.map((report) => report.state))).sort()], [reports]);
+  const templateTypes = React.useMemo(() => Array.from(new Set(churchReportTemplates.map((template) => template.type))).sort(), []);
   const openCount = reports.filter((report) => report.state !== "Approved").length;
   const overdueCount = reports.filter((report) => report.due === "Overdue").length;
   const correctionCount = reports.filter((report) => report.state === "Correction Requested").length;
   const watchedCount = reports.filter((report) => report.watchers?.length).length;
   const evidenceReadyCount = reports.filter((report) => report.evidenceStatus?.toLowerCase().includes("attached") || report.evidenceStatus?.toLowerCase().includes("verified")).length;
   const approvalReadyCount = reports.filter((report) => report.score >= 80 && report.state !== "Approved").length;
-  const reportTemplates = [
-    { type: "Financial", name: "Monthly finance stewardship report", owner: "Finance Desk", due: "This week" },
-    { type: "Mission", name: "Mission outreach activity report", owner: "Mission Desk", due: "Today" },
-    { type: "Education", name: "Education directorate update", owner: "Education Desk", due: "Tomorrow" },
-    { type: "Construction", name: "Construction milestone report", owner: "Works Desk", due: "This week" },
-    { type: "Audit", name: "Audit compliance packet", owner: "Audit Desk", due: "Today" }
-  ];
 
   React.useEffect(() => {
     setOwner(String(station.level));
@@ -7032,17 +7352,30 @@ function Reports({
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    onCreateReport({ name, owner, path, due, type, period, routingStage: "Drafting", evidenceStatus: "Evidence pending" });
-    setFeedback(`${name} has been drafted.`);
+    onCreateReport({
+      name,
+      owner,
+      path,
+      due,
+      type,
+      period,
+      routingStage: selectedTemplate.routingStage,
+      evidenceStatus: selectedTemplate.evidenceStatus,
+      reviewNote: `Template checklist: ${selectedTemplate.checklist.join("; ")}. Approval: ${selectedTemplate.approvalLimit}.`
+    });
+    setFeedback(`${name} has been drafted from the ${selectedTemplate.type} template.`);
     setName("New administrative report");
   }
 
-  function applyTemplate(template: typeof reportTemplates[number]) {
+  function applyTemplate(template: ReportTemplate) {
+    setSelectedTemplate(template);
     setType(template.type);
     setName(template.name);
     setOwner(template.owner);
     setDue(template.due);
-    setFeedback(`${template.type} template loaded.`);
+    setPeriod(template.period);
+    setPath(template.path);
+    setFeedback(`${template.name} loaded with ${template.checklist.length} required sections.`);
   }
 
   function exportReports() {
@@ -7146,14 +7479,7 @@ function Reports({
           <label>
             <span>Report type</span>
             <select value={type} onChange={(event) => setType(event.target.value)}>
-              <option>Administrative</option>
-              <option>Financial</option>
-              <option>Mission</option>
-              <option>Education</option>
-              <option>Construction</option>
-              <option>Audit</option>
-              <option>Media</option>
-              <option>Social Development</option>
+              {templateTypes.map((option) => <option key={option}>{option}</option>)}
             </select>
           </label>
           <label>
@@ -7183,14 +7509,33 @@ function Reports({
         </form>
       </div>
       <div className="panel module-side">
-        <PanelHeader icon={ScrollText} title="Report Templates" action="Load" />
+        <PanelHeader icon={ScrollText} title="Preloaded Church Reports" action={`${churchReportTemplates.length} templates`} />
         <div className="template-list">
-          {reportTemplates.map((template) => (
-            <button type="button" key={template.type} onClick={() => applyTemplate(template)}>
+          {churchReportTemplates.map((template) => (
+            <button
+              type="button"
+              key={template.id}
+              className={selectedTemplate.id === template.id ? "is-selected" : ""}
+              onClick={() => applyTemplate(template)}
+            >
               <strong>{template.type}</strong>
               <span>{template.name}</span>
+              <small>{template.description}</small>
             </button>
           ))}
+        </div>
+        <div className="template-preview">
+          <div>
+            <strong>{selectedTemplate.name}</strong>
+            <span>{selectedTemplate.path}</span>
+          </div>
+          <div className="template-chip-row">
+            <span>{selectedTemplate.approvalLimit}</span>
+            <span>{selectedTemplate.evidenceStatus}</span>
+          </div>
+          <ul className="template-checklist">
+            {selectedTemplate.checklist.map((item) => <li key={item}>{item}</li>)}
+          </ul>
         </div>
       </div>
       <div className="panel module-side">
