@@ -581,7 +581,7 @@ h1 {
 }
 
 .login-intro > div:nth-child(2) > span {
-  color: #cfe2d7;
+  color: #f3fbf6;
   font-size: 12px;
   font-weight: 800;
   text-transform: uppercase;
@@ -597,10 +597,11 @@ h1 {
 }
 
 .login-intro p {
-  color: #e5efe9;
+  color: #ffffff;
   line-height: 1.55;
   max-width: 62ch;
   font-size: 16px;
+  font-weight: 650;
 }
 
 .login-stat-grid {
@@ -610,21 +611,23 @@ h1 {
 }
 
 .login-stat-grid div {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.72);
   border-radius: 8px;
   padding: 13px;
+  box-shadow: 0 10px 26px rgba(5, 18, 15, 0.1);
 }
 
 .login-stat-grid strong {
   display: block;
-  color: #ffffff;
+  color: #173d32;
   font-size: 16px;
 }
 
 .login-stat-grid span {
-  color: #cfe2d7;
+  color: #52635a;
   font-size: 12px;
+  font-weight: 750;
 }
 
 .login-trust-row {
@@ -639,12 +642,13 @@ h1 {
   gap: 7px;
   min-height: 32px;
   border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.82);
   padding: 0 11px;
-  background: rgba(255, 255, 255, 0.1);
-  color: #f5fbf7;
+  background: #ffffff;
+  color: #173d32;
   font-size: 12px;
   font-weight: 800;
+  box-shadow: 0 8px 20px rgba(5, 18, 15, 0.1);
 }
 
 .login-card {
