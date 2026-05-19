@@ -59,7 +59,7 @@ type StationLevel =
   | "Area HQ"
   | "Local Branch";
 
-type Section = "Control Center" | "ChurchMail" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit";
+type Section = "Control Center" | "Admin Board" | "ChurchMail" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit";
 type MessageKind = "Directive" | "Report" | "Approval" | "Notification" | "Transfer";
 type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
 type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string };
@@ -845,6 +845,7 @@ type Permissions = {
 
 const navItems: { icon: React.ElementType; label: Section }[] = [
   { icon: LayoutDashboard, label: "Control Center" },
+  { icon: KeyRound, label: "Admin Board" },
   { icon: Mail, label: "ChurchMail" },
   { icon: FileCheck2, label: "Reports" },
   { icon: Workflow, label: "Approvals" },
@@ -5052,7 +5053,12 @@ function App() {
   }
 
   function patchStation(id: string, updates: Partial<StationCard>) {
-    setApiStations((items) => items.map((item) => stationKey(item) === id || item.email === id ? { ...item, ...updates } : item));
+    setApiStations((items) => {
+      const updated = items.map((item) => stationKey(item) === id || item.email === id ? { ...item, ...updates } : item);
+      if (updated.some((item) => stationKey(item) === id || item.email === id)) return updated;
+      const station = stations.find((item) => stationKey(item) === id || item.email === id);
+      return station ? [...updated, { ...station, ...updates }] : updated;
+    });
   }
 
   function updateStationLevel(id: string) {
@@ -5162,8 +5168,12 @@ function App() {
   }
 
   function bulkVerifyStations() {
-    const ids = stationDirectory.slice(0, 3).map(stationKey);
-    setApiStations((items) => items.map((item) => ids.includes(stationKey(item)) ? { ...item, verified: true, status: "Verified" } : item));
+    const ids = stationDirectory.map(stationKey);
+    setApiStations((items) => {
+      const merged = new Map(items.map((item) => [stationKey(item), item]));
+      stationDirectory.forEach((station) => merged.set(stationKey(station), { ...station, verified: true, status: "Verified" }));
+      return Array.from(merged.values());
+    });
     recordAudit("StationsBulkVerified", "Hierarchy graph", `${ids.length} stations verified`);
     if (!offlineMode) {
       void apiRequest<{ count: number; updated: StationCard[] }>("/api/stations/bulk/verify", {
@@ -7034,6 +7044,41 @@ function App() {
           />
         )}
         {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onVerifyDocument={verifyDocument} onAssignCustody={assignDocumentCustody} onUpdateChain={updateDocumentChain} onExtractText={extractDocumentText} onLinkReport={linkDocumentReport} onLinkApproval={linkDocumentApproval} onWatchDocument={watchDocument} onExportDocument={exportDocumentRecord} onUploadFile={uploadDocumentFile} onBulkSeal={bulkSealDocuments} onRefreshManifest={refreshArchiveManifest} />}
+        {activeSection === "Admin Board" && (
+          <AdminBoard
+            stationDirectory={stationDirectory}
+            offices={offices}
+            apiStatus={apiStatus}
+            session={session}
+            permissions={permissions}
+            auditRows={auditRows}
+            events={events}
+            reports={reports}
+            approvals={approvals}
+            tasks={tasks}
+            escalations={escalations}
+            transfers={transfers}
+            documents={documents}
+            auditDigest={auditDigest}
+            readinessDigest={readinessDigest}
+            sessionDigest={sessionDigest}
+            onRefreshApi={refreshFromApi}
+            onOpenSection={setActiveSection}
+            onCreateOffice={createOffice}
+            onVerifyStation={verifyStation}
+            onSuspendStation={suspendStation}
+            onActivateStation={activateStation}
+            onBulkVerifyStations={bulkVerifyStations}
+            onRenewSession={renewCurrentSession}
+            onRevokeSession={revokeSession}
+            onRevokeStationSessions={revokeStationSessions}
+            onTrustSession={trustSession}
+            onRequireSessionMfa={requireSessionMfa}
+            onCreateAuditNote={createAuditNote}
+            onArchiveGovernanceSnapshot={archiveGovernanceSnapshot}
+            onRefreshAuditDigest={refreshAuditDigest}
+          />
+        )}
         {activeSection === "Audit" && (
           <Audit
             auditRows={auditRows}
@@ -10792,6 +10837,243 @@ function Archive({
         <div className="provision-summary">
           <strong>Storage target</strong>
           <span>Records are assigned object-vault keys now. Later this maps directly to S3, Supabase Storage, or another object storage provider.</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AdminBoard({
+  stationDirectory,
+  offices,
+  apiStatus,
+  session,
+  permissions,
+  auditRows,
+  events,
+  reports,
+  approvals,
+  tasks,
+  escalations,
+  transfers,
+  documents,
+  auditDigest,
+  readinessDigest,
+  sessionDigest,
+  onRefreshApi,
+  onOpenSection,
+  onCreateOffice,
+  onVerifyStation,
+  onSuspendStation,
+  onActivateStation,
+  onBulkVerifyStations,
+  onRenewSession,
+  onRevokeSession,
+  onRevokeStationSessions,
+  onTrustSession,
+  onRequireSessionMfa,
+  onCreateAuditNote,
+  onArchiveGovernanceSnapshot,
+  onRefreshAuditDigest
+}: {
+  stationDirectory: StationCard[];
+  offices: Office[];
+  apiStatus: ApiStatus | null;
+  session: Session;
+  permissions: Permissions;
+  auditRows: AuditRow[];
+  events: string[];
+  reports: Report[];
+  approvals: Approval[];
+  tasks: GovernanceTask[];
+  escalations: Escalation[];
+  transfers: Transfer[];
+  documents: DocumentRecord[];
+  auditDigest: AuditDigest | null;
+  readinessDigest: ReadinessDigest | null;
+  sessionDigest: SessionDigest | null;
+  onRefreshApi: () => void;
+  onOpenSection: (section: Section) => void;
+  onCreateOffice: () => void;
+  onVerifyStation: (id: string) => void;
+  onSuspendStation: (id: string) => void;
+  onActivateStation: (id: string) => void;
+  onBulkVerifyStations: () => void;
+  onRenewSession: () => void;
+  onRevokeSession: (id: string) => void;
+  onRevokeStationSessions: (email: string) => void;
+  onTrustSession: (id: string) => void;
+  onRequireSessionMfa: (id: string) => void;
+  onCreateAuditNote: () => void;
+  onArchiveGovernanceSnapshot: () => void;
+  onRefreshAuditDigest: () => void;
+}) {
+  const officialStations = stationDirectory.filter((station, index, items) => (
+    items.findIndex((item) => item.email === station.email) === index
+  ));
+  const activeSessions = apiStatus?.sessions?.stations.length ? apiStatus.sessions.stations : [{
+    id: session.token,
+    email: session.email,
+    startedAt: new Date().toISOString(),
+    expiresAt: session.expiresAt ?? new Date().toISOString(),
+    minutesRemaining: session.expiresAt ? Math.max(0, Math.round((Date.parse(session.expiresAt) - Date.now()) / 60000)) : 0,
+    status: "Local"
+  }];
+  const openApprovals = approvals.filter((approval) => approval.state !== "Approved").length;
+  const openTasks = tasks.filter((task) => task.status !== "Complete").length;
+  const openEscalations = escalations.filter((item) => item.status !== "Resolved").length;
+  const pendingTransfers = transfers.filter((transfer) => transfer.step !== "New station login ready").length;
+  const readyStations = officialStations.filter((station) => station.verified || !["Suspended", "Locked"].includes(station.status ?? "")).length;
+  const sealedAuditRows = auditDigest?.sealed ?? auditRows.filter((row) => row.sealed || row.result.startsWith("Sealed:")).length;
+  const apiConnected = apiStatus?.status?.toLowerCase() === "ok";
+  const systemReadiness = readinessDigest
+    ? `${readinessDigest.ready}/${readinessDigest.ready + readinessDigest.attention}`
+    : `${apiStatus ? 4 : 1}/5`;
+  const adminRoutes: { label: Section; icon: React.ElementType; detail: string }[] = [
+    { label: "Offices", icon: Building2, detail: "Create offices, rotate credentials, verify station emails" },
+    { label: "Hierarchy", icon: GitBranch, detail: "Verify station graph, suspend or reactivate station identities" },
+    { label: "Personnel", icon: Users, detail: "Manage people, station access, training, clearance, transfers" },
+    { label: "Audit", icon: ShieldCheck, detail: "Seal ledger rows, review sessions, run readiness and launch checks" },
+    { label: "Archive", icon: Files, detail: "Inspect documents, evidence, object storage, chain custody" },
+    { label: "Reports", icon: FileCheck2, detail: "Review report templates, submissions, approvals, evidence" }
+  ];
+
+  return (
+    <section className="module-grid">
+      <div className="panel module-primary">
+        <PanelHeader icon={KeyRound} title="Administrator Command Board" action={permissions.canOverride ? "Full access" : "Limited"} />
+        <div className="office-summary-grid audit-integrity-grid">
+          <Insight label="Station accounts" value={String(officialStations.length)} />
+          <Insight label="Ready stations" value={`${readyStations}/${officialStations.length}`} />
+          <Insight label="API status" value={apiStatus?.status ?? "Offline"} />
+          <Insight label="Active sessions" value={String(sessionDigest?.active ?? activeSessions.length)} />
+          <Insight label="Readiness" value={systemReadiness} />
+          <Insight label="Open escalations" value={String(openEscalations)} />
+          <Insight label="Open approvals" value={String(openApprovals)} />
+          <Insight label="Audit sealed" value={String(sealedAuditRows)} />
+        </div>
+        <div className="action-row">
+          <button onClick={onRefreshApi}><RefreshCw size={15} /> Refresh system</button>
+          <button onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Plus size={15} /> Create office</button>
+          <button onClick={onBulkVerifyStations}><ShieldCheck size={15} /> Verify stations</button>
+          <button onClick={onRenewSession}><TimerReset size={15} /> Renew session</button>
+          <button onClick={onCreateAuditNote}><FileText size={15} /> Admin note</button>
+          <button onClick={onArchiveGovernanceSnapshot}><Files size={15} /> Archive snapshot</button>
+          <button onClick={onRefreshAuditDigest}><RefreshCw size={15} /> Audit digest</button>
+        </div>
+        <div className="data-table">
+          <div className="table-row table-head">
+            <span>Station</span><span>Level</span><span>Authority</span><span>Status</span><span>Actions</span>
+          </div>
+          {officialStations.map((station) => {
+            const stationId = station.id ?? station.email;
+            return (
+              <div className="table-row" key={station.email}>
+                <strong>{station.email}<small>{station.title}</small></strong>
+                <span>{station.level}</span>
+                <span>{station.authority}</span>
+                <span>{station.status ?? (station.verified ? "Verified" : "Ready")}</span>
+                <span className="table-actions">
+                  <button onClick={() => onVerifyStation(stationId)}><ShieldCheck size={14} /> Verify</button>
+                  <button onClick={() => onSuspendStation(stationId)}><LockKeyhole size={14} /> Suspend</button>
+                  <button onClick={() => onActivateStation(stationId)}><CheckCircle2 size={14} /> Activate</button>
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div className="panel module-side">
+        <PanelHeader icon={Server} title="Live System Health" action={apiStatus?.status ?? "checking"} />
+        <div className="office-summary-grid">
+          <Insight label="Service" value={apiStatus?.service ?? "GCOS API"} />
+          <Insight label="Uptime" value={apiStatus ? `${apiStatus.uptimeSeconds}s` : "Local"} />
+          <Insight label="Persistence" value={apiStatus?.storageProvider ?? apiStatus?.persistence ?? "local cache"} />
+          <Insight label="Web served" value={apiStatus?.serveWeb ? "Yes" : "Preview"} />
+          <Insight label="Reports" value={String(reports.length)} />
+          <Insight label="Tasks" value={String(openTasks)} />
+          <Insight label="Transfers" value={String(pendingTransfers)} />
+          <Insight label="Documents" value={String(documents.length)} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{apiStatus?.time ? formatDateTime(apiStatus.time) : "Local browser"}</span>
+            <strong>{apiConnected ? "Backend is connected" : "Backend is not connected"}</strong>
+            <small>{apiStatus?.persistence ?? "Start the API service for full session, file, and persistence operations."}</small>
+          </article>
+          {events.slice(0, 5).map((event, index) => (
+            <article className="source-map-item" key={`${event}-${index}`}>
+              <span>Event {index + 1}</span>
+              <strong>{event}</strong>
+              <small>{event.includes(":") ? event.split(":")[0] : "Administrative event"}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel module-side">
+        <PanelHeader icon={LockKeyhole} title="Sessions & Access" action={`${activeSessions.length} active`} />
+        <div className="action-row">
+          <button onClick={onRenewSession}><RefreshCw size={15} /> Renew</button>
+          <button onClick={() => onRevokeStationSessions(session.email)}><LockKeyhole size={15} /> Revoke station</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Current user" value={session.email} />
+          <Insight label="Expiring soon" value={String(sessionDigest?.expiringSoon ?? activeSessions.filter((item) => item.minutesRemaining <= 30).length)} />
+          <Insight label="Trusted" value={String(sessionDigest?.trusted ?? activeSessions.filter((item) => item.trusted).length)} />
+          <Insight label="MFA required" value={String(sessionDigest?.mfaRequired ?? activeSessions.filter((item) => item.mfaRequired).length)} />
+        </div>
+        <div className="source-map-list">
+          {activeSessions.map((item) => (
+            <article className="source-map-item" key={`${item.email}-${item.startedAt}`}>
+              <span>{item.status ?? "Active"}</span>
+              <strong>{item.email}</strong>
+              <small>{item.minutesRemaining} minutes remaining - {item.deviceLabel ?? "unlabeled device"} - expires {formatDateTime(item.expiresAt)}</small>
+              <div className="action-row compact-actions">
+                <button disabled={!item.id} onClick={() => item.id && onTrustSession(item.id)}><ShieldCheck size={14} /> Trust</button>
+                <button disabled={!item.id} onClick={() => item.id && onRequireSessionMfa(item.id)}><Signature size={14} /> MFA</button>
+                <button disabled={!item.id || item.id === session.token} onClick={() => item.id && onRevokeSession(item.id)}><LockKeyhole size={14} /> Revoke</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel module-side">
+        <PanelHeader icon={SlidersHorizontal} title="Admin Routes" action="Command map" />
+        <div className="source-map-list">
+          {adminRoutes.map(({ label, icon: Icon, detail }) => (
+            <article className="source-map-item" key={label}>
+              <span>{label}</span>
+              <strong>{detail}</strong>
+              <button onClick={() => onOpenSection(label)}><Icon size={15} /> Open {label}</button>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel module-side">
+        <PanelHeader icon={BadgeCheck} title="Administrative Readiness" action={readinessDigest ? "tracked" : "local"} />
+        <div className="office-summary-grid">
+          <Insight label="Ready checks" value={String(readinessDigest?.ready ?? 0)} />
+          <Insight label="Needs attention" value={String(readinessDigest?.attention ?? openEscalations)} />
+          <Insight label="Acknowledged" value={String(readinessDigest?.acknowledged ?? 0)} />
+          <Insight label="Owners" value={String(readinessDigest?.owned ?? offices.length)} />
+          <Insight label="Scheduled" value={String(readinessDigest?.scheduled ?? 0)} />
+          <Insight label="Next check" value={readinessDigest?.nextCheck ?? "API, storage, domain, users"} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>Launch gate</span>
+            <strong>{apiConnected ? "Local stack is live for testing" : "Connect the API before live rollout"}</strong>
+            <small>Use Audit for full production readiness, deployment signoff, persistence, and compliance controls.</small>
+          </article>
+          <article className="source-map-item">
+            <span>Work queue</span>
+            <strong>{openTasks} tasks, {openApprovals} approvals, {pendingTransfers} transfers</strong>
+            <small>{openEscalations} escalations require administrator visibility.</small>
+          </article>
         </div>
       </div>
     </section>
