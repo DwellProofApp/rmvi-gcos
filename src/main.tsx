@@ -7104,10 +7104,16 @@ function LoginScreen({
     ...stationPasswords,
     ...Object.fromEntries(offices.map((office) => [office.email, office.password]))
   }), [offices]);
-  const [email, setEmail] = React.useState(stations[1].email);
+  const [email, setEmail] = React.useState("admin@rmvi.org");
   const [password, setPassword] = React.useState("");
   const [error, setError] = React.useState("");
-  const selectedStation = stationDirectory.find((station) => station.email === email) ?? stations[1];
+  const selectedStation = stationDirectory.find((station) => station.email === email) ?? {
+    email,
+    title: "Manual Station Sign-In",
+    level: "Station",
+    authority: "Credentials will determine workstation access",
+    icon: KeyRound
+  };
   const StationIcon = selectedStation.icon ?? iconForLevel(selectedStation.level);
   const visibleCredentials = stationDirectory.filter((station, index, items) => (
     items.findIndex((item) => item.email === station.email) === index && credentialMap[station.email]
@@ -7188,11 +7194,23 @@ function LoginScreen({
           <form className="login-form" onSubmit={submit}>
             <label>
               <span>Organizational email</span>
-              <select value={email} onChange={(event) => chooseStation(event.target.value)} aria-label="Organizational email">
+              <input
+                aria-label="Organizational email"
+                type="email"
+                value={email}
+                onChange={(event) => {
+                  setEmail(event.target.value.toLowerCase());
+                  setError("");
+                }}
+                placeholder="admin@rmvi.org"
+                list="station-email-suggestions"
+                autoComplete="username"
+              />
+              <datalist id="station-email-suggestions">
                 {visibleCredentials.map((station) => (
                   <option key={station.email} value={station.email}>{station.email}</option>
                 ))}
-              </select>
+              </datalist>
             </label>
 
             <label>
