@@ -1800,9 +1800,20 @@ function isSection(value: string | null): value is Section {
   return navItems.some((item) => item.label === value);
 }
 
+function adminRouteRequested() {
+  return window.location.pathname.replace(/\/+$/, "") === "/admin";
+}
+
 function getInitialSection(): Section {
+  if (adminRouteRequested()) return "Admin Board";
   const section = new URLSearchParams(window.location.search).get("section");
   return isSection(section) ? section : "Control Center";
+}
+
+function sectionPath(section: Section) {
+  if (section === "Admin Board") return "/admin";
+  if (section === "Control Center") return "/";
+  return `/?section=${encodeURIComponent(section).replaceAll("%20", "+")}`;
 }
 
 function inferFileType(files: string) {
@@ -2173,13 +2184,18 @@ function App() {
     return records.filter((record) => [record.title, record.meta, record.status, record.section].join(" ").toLowerCase().includes(query)).slice(0, 8);
   }, [approvals, auditRows, calendarEvents, documents, escalations, messages, offices, personnel, policies, reports, searchQuery, tasks, transfers]);
 
+  function openSection(section: Section) {
+    setActiveSection(section);
+    window.history.pushState({}, "", sectionPath(section));
+  }
+
   function openSearchResult(result: SearchResult) {
-    setActiveSection(result.section);
+    openSection(result.section);
     setSearchQuery("");
   }
 
   function openNotification(item: NotificationItem) {
-    setActiveSection(item.section);
+    openSection(item.section);
     setNotificationsOpen(false);
   }
 
@@ -2332,13 +2348,7 @@ function App() {
   }, []);
 
   React.useEffect(() => {
-    const nextUrl = new URL(window.location.href);
-    if (activeSection === "Control Center") {
-      nextUrl.searchParams.delete("section");
-    } else {
-      nextUrl.searchParams.set("section", activeSection);
-    }
-    window.history.replaceState({}, "", nextUrl);
+    window.history.replaceState({}, "", sectionPath(activeSection));
   }, [activeSection]);
 
   function recordAudit(event: string, object: string, result: string) {
@@ -2398,9 +2408,11 @@ function App() {
     }
 
     const startedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const landingSection: Section = adminRouteRequested() ? "Admin Board" : "Control Center";
     setSession({ email: normalizedEmail, startedAt });
     setActiveStation(station);
-    setActiveSection("Control Center");
+    setActiveSection(landingSection);
+    window.history.replaceState({}, "", sectionPath(landingSection));
     setAuditRows((rows) => [
       {
         id: `aud-${Date.now()}`,
@@ -2426,7 +2438,8 @@ function App() {
   function handleLogout() {
     recordAudit("Logout", activeStation.title, "Session closed");
     setSession(null);
-    setActiveSection("Control Center");
+    const landingSection: Section = adminRouteRequested() ? "Admin Board" : "Control Center";
+    setActiveSection(landingSection);
   }
 
   if (!session) {
@@ -6580,7 +6593,7 @@ function App() {
               className={label === activeSection ? "nav-item active" : "nav-item"}
               key={label}
               aria-label={label}
-              onClick={() => setActiveSection(label)}
+              onClick={() => openSection(label)}
             >
               <Icon size={18} />
               <span>{label}</span>
@@ -7063,7 +7076,7 @@ function App() {
             readinessDigest={readinessDigest}
             sessionDigest={sessionDigest}
             onRefreshApi={refreshFromApi}
-            onOpenSection={setActiveSection}
+            onOpenSection={openSection}
             onCreateOffice={createOffice}
             onVerifyStation={verifyStation}
             onSuspendStation={suspendStation}
@@ -10943,6 +10956,7 @@ function AdminBoard({
       <div className="panel module-primary">
         <PanelHeader icon={KeyRound} title="Administrator Command Board" action={permissions.canOverride ? "Full access" : "Limited"} />
         <div className="office-summary-grid audit-integrity-grid">
+          <Insight label="Admin live link" value="rmvi.org/admin" />
           <Insight label="Station accounts" value={String(officialStations.length)} />
           <Insight label="Ready stations" value={`${readyStations}/${officialStations.length}`} />
           <Insight label="API status" value={apiStatus?.status ?? "Offline"} />
