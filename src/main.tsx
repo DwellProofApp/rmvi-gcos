@@ -395,6 +395,26 @@ type ProjectCompletion = {
   productionBlockers: string[];
   nextActions: string[];
 };
+type EnterpriseCompletion = {
+  generatedAt: string;
+  project: string;
+  targetDomain: string;
+  status: string;
+  overallScore: number;
+  mvpScore: number;
+  productionScore: number;
+  tracks: {
+    id: string;
+    name: string;
+    score: number;
+    status: string;
+    gates: { name: string; ok: boolean; detail: string }[];
+    blockers: string[];
+    nextActions: string[];
+  }[];
+  blockers: string[];
+  nextActions: string[];
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -10857,6 +10877,7 @@ function Audit({
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
   const [launchSignoff, setLaunchSignoff] = React.useState<LaunchSignoff | null>(null);
   const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
+  const [enterpriseCompletion, setEnterpriseCompletion] = React.useState<EnterpriseCompletion | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -10908,6 +10929,7 @@ function Audit({
     void apiRequest<ProductionSecretsPlan>("/api/production/secrets-plan").then(setProductionSecretsPlan).catch(() => undefined);
     void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
+    void apiRequest<EnterpriseCompletion>("/api/enterprise/completion").then(setEnterpriseCompletion).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -11056,6 +11078,10 @@ function Audit({
 
   function refreshProjectCompletion() {
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
+  }
+
+  function refreshEnterpriseCompletion() {
+    void apiRequest<EnterpriseCompletion>("/api/enterprise/completion").then(setEnterpriseCompletion).catch(() => undefined);
   }
 
   function recordLaunchSignoff() {
@@ -11721,6 +11747,36 @@ function Audit({
               <small key={url}>{url}</small>
             ))}
           </article>
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={Workflow} title="Enterprise Completion 1-12" action={enterpriseCompletion?.status ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshEnterpriseCompletion}><RefreshCw size={15} /> Tracks</button>
+          <button onClick={refreshProjectCompletion}><BadgeCheck size={15} /> MVP</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Overall" value={`${enterpriseCompletion?.overallScore ?? 0}%`} />
+          <Insight label="MVP" value={`${enterpriseCompletion?.mvpScore ?? 0}%`} />
+          <Insight label="Production" value={`${enterpriseCompletion?.productionScore ?? 0}%`} />
+          <Insight label="Tracks" value={String(enterpriseCompletion?.tracks.length ?? 12)} />
+          <Insight label="Blockers" value={String(enterpriseCompletion?.blockers.length ?? 0)} />
+          <Insight label="Domain" value={enterpriseCompletion?.targetDomain ?? "rmvi.org"} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{enterpriseCompletion ? formatDateTime(enterpriseCompletion.generatedAt) : "No enterprise report loaded"}</span>
+            <strong>{enterpriseCompletion?.nextActions[0] ?? "Review all 12 enterprise completion tracks."}</strong>
+            <small>Tracks 1-12 cover identity, storage, roles, signing, notifications, offline sync, search, onboarding, imports, operations, policy, and AI governance.</small>
+          </article>
+          {(enterpriseCompletion?.tracks ?? []).map((track) => (
+            <article className="source-map-item" key={track.id}>
+              <span>{track.status}</span>
+              <strong>{track.name}: {track.score}%</strong>
+              <small>{track.blockers.length ? `${track.blockers.length} blockers: ${track.blockers.slice(0, 3).join(", ")}` : "Track complete"}</small>
+              {track.nextActions[0] && <small>{track.nextActions[0]}</small>}
+            </article>
+          ))}
         </div>
       </div>
       <div className="panel module-side">

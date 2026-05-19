@@ -69,6 +69,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(completion.releaseCommands.includes("npm run release:check"), true);
     assert.equal(completion.smokeUrls.includes("https://rmvi.org/health"), true);
 
+    const enterpriseCompletion = await getJson("/api/enterprise/completion");
+    assert.equal(enterpriseCompletion.project, "Remedy Movement International GCOS");
+    assert.equal(enterpriseCompletion.tracks.length, 12);
+    assert.equal(enterpriseCompletion.tracks.some((track) => track.id === "identity" && track.score >= 67), true);
+    assert.equal(enterpriseCompletion.tracks.some((track) => track.id === "database-storage"), true);
+    assert.equal(enterpriseCompletion.tracks.some((track) => track.id === "ai-controls"), true);
+    assert.equal(enterpriseCompletion.nextActions.some((action) => action.includes("GCOS_DATABASE_URL")), true);
+
     const deploymentPlan = await getJson("/api/launch/deployment-plan");
     assert.equal(deploymentPlan.targetDomain, "rmvi.org");
     assert.equal(deploymentPlan.requiredSecrets.some((secret) => secret.name === "GCOS_DATABASE_URL"), true);

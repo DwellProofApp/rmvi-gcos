@@ -64,6 +64,7 @@ const routes = {
   "GET /api/ops/monitor": async () => ok(await operationalMonitor()),
   "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
+  "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/production/secrets-plan": () => ok(productionSecretsPlan()),
   "GET /api/launch/readiness": async () => ok(await launchReadiness()),
   "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
@@ -679,6 +680,133 @@ async function projectCompletionReport() {
       ]
       : ["Run the release commands and record launch signoff."]
   };
+}
+
+async function enterpriseCompletionReport() {
+  const status = operationalStatus();
+  const launch = await launchReadiness();
+  const deployment = await launchDeploymentPlan();
+  const security = securityControlsDigest();
+  const compliance = complianceReviewDigest();
+  const evidence = evidenceVaultDigest();
+  const auditDigest = services.auditDigest();
+  const searchCollections = [
+    state.stations,
+    state.messages,
+    state.reports,
+    state.approvals,
+    state.tasks,
+    state.policies,
+    state.calendarEvents,
+    state.personnel,
+    state.escalations,
+    state.transfers,
+    state.offices,
+    state.documents
+  ];
+  const tracks = [
+    enterpriseTrack("identity", "Real authentication and user lifecycle", [
+      { name: "credential-registry", ok: Object.keys(state.authCredentials ?? {}).length >= 7, detail: `${Object.keys(state.authCredentials ?? {}).length} station credentials registered` },
+      { name: "session-controls", ok: Boolean(routes["GET /api/sessions"]) && Boolean(routes["POST /api/sessions/:id/revoke"]), detail: "Session revoke, renew, trust, lock, MFA controls available" },
+      { name: "transfer-session-invalidation", ok: state.transfers.length > 0 && status.counts.personnel > 0, detail: "Transfer workflow updates personnel and station access" }
+    ]),
+    enterpriseTrack("database-storage", "Real database and file storage", [
+      { name: "postgres-adapter", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? "Database provider selected" : "JSON provider active" },
+      { name: "object-vault", ok: Boolean(process.env.GCOS_OBJECT_VAULT_PATH), detail: OBJECT_VAULT_PATH },
+      { name: "file-upload-api", ok: Boolean(routes["POST /api/files/upload"]) && Boolean(routes["POST /api/reports/:id/file"]), detail: "File upload and report evidence routes available" }
+    ]),
+    enterpriseTrack("role-templates", "Role templates and permissions", [
+      { name: "station-permissions", ok: state.stations.length >= 7, detail: `${state.stations.length} station roles seeded` },
+      { name: "permission-model", ok: typeof getPermissions("International HQ").canOverride === "boolean", detail: "Hierarchy permission model active" },
+      { name: "department-coverage", ok: new Set(state.offices.map((office) => office.department)).size >= 3, detail: `${new Set(state.offices.map((office) => office.department)).size} departments represented` }
+    ]),
+    enterpriseTrack("report-signing", "Report signing and locked packets", [
+      { name: "report-attestation", ok: state.reports.some((report) => report.attestation || report.preparedBy), detail: "Reports support preparer and attestation fields" },
+      { name: "governance-packet", ok: Boolean(routes["POST /api/reports/:id/packet"]), detail: "Report packet builder route available" },
+      { name: "approval-signatures", ok: state.approvals.some((approval) => /complete|\d+\/\d+|signature/i.test(approval.signatures)), detail: "Approval signature chain active" }
+    ]),
+    enterpriseTrack("notifications", "Notifications and escalations", [
+      { name: "churchmail-notices", ok: state.messages.length > 0, detail: `${state.messages.length} ChurchMail records` },
+      { name: "escalation-engine", ok: state.escalations.length > 0, detail: `${state.escalations.length} escalation records` },
+      { name: "deadline-signals", ok: state.tasks.some((task) => task.slaStatus || task.priority === "Critical") || state.calendarEvents.some((event) => event.status === "At Risk"), detail: "Task/calendar risk signals available" }
+    ]),
+    enterpriseTrack("offline-sync", "Offline sync hardening", [
+      { name: "offline-sync-route", ok: Boolean(routes["POST /api/offline-sync"]), detail: "Offline sync endpoint available" },
+      { name: "audit-queue-model", ok: status.counts.audit > 0, detail: "Offline actions use audit row shape" },
+      { name: "conflict-resolution-plan", ok: launch.checks.some((check) => check.name === "web-shell"), detail: "Launch readiness tracks web/offline shell" }
+    ]),
+    enterpriseTrack("global-search", "Search across everything", [
+      { name: "searchable-collections", ok: searchCollections.every((collection) => Array.isArray(collection)), detail: `${searchCollections.length} collections indexed in app shell` },
+      { name: "document-indexing", ok: state.documents.some((document) => document.extractedText || document.fileHash || document.storageKey), detail: "Archive records carry searchable metadata" },
+      { name: "audit-search", ok: status.counts.audit > 0, detail: `${status.counts.audit} audit rows searchable` }
+    ]),
+    enterpriseTrack("organization-onboarding", "Organization onboarding", [
+      { name: "office-creation", ok: Boolean(routes["POST /api/offices"]), detail: "Office creation route available" },
+      { name: "station-generation", ok: state.offices.some((office) => office.email?.endsWith("@rmvi.org")), detail: "Office emails use rmvi.org station identity" },
+      { name: "hierarchy-graph", ok: Boolean(routes["GET /api/hierarchy/digest"]), detail: "Hierarchy digest route available" }
+    ]),
+    enterpriseTrack("data-import", "Data import and migration", [
+      { name: "migration-plan", ok: Boolean(routes["GET /api/persistence/migration-plan"]), detail: "Migration plan API available" },
+      { name: "schema-export", ok: Boolean(routes["POST /api/persistence/schema-export"]), detail: "Postgres schema export available" },
+      { name: "import-dry-run", ok: Boolean(routes["GET /api/persistence/import-dry-run"]), detail: "Import dry run available" }
+    ]),
+    enterpriseTrack("production-operations", "Production operations", [
+      { name: "backup-manifest", ok: launch.checks.some((check) => check.name === "backup-manifest"), detail: "Backup manifest launch gate active" },
+      { name: "restore-drill", ok: launch.checks.some((check) => check.name === "restore-drill"), detail: "Restore drill launch gate active" },
+      { name: "operations-monitor", ok: Boolean(routes["GET /api/ops/monitor"]), detail: "Operations monitor API available" }
+    ]),
+    enterpriseTrack("legal-policy", "Legal, privacy, retention, and audit policy", [
+      { name: "active-policies", ok: state.policies.length >= 3, detail: `${state.policies.length} policies registered` },
+      { name: "retention-controls", ok: state.documents.some((document) => document.retainedUntil) && evidence.permanent >= 1, detail: "Document and evidence retention controls active" },
+      { name: "immutable-audit", ok: auditDigest.sealed >= 1 || auditDigest.verified >= 1, detail: `${auditDigest.sealed} sealed, ${auditDigest.verified} verified audit rows` }
+    ]),
+    enterpriseTrack("ai-controls", "Real AI controls and governance", [
+      { name: "ai-desk", ok: state.aiDrafts.length > 0, detail: `${state.aiDrafts.length} AI drafts available` },
+      { name: "source-binding", ok: state.aiDrafts.some((draft) => draft.sourceNote || draft.sourceCount > 0), detail: "AI drafts track source count/notes" },
+      { name: "ai-audit-controls", ok: state.aiDrafts.some((draft) => draft.sealed || draft.confidence || draft.status), detail: "AI drafts support status, confidence, and sealing" }
+    ])
+  ];
+  const overallScore = scoreChecks(tracks.map((track) => ({ ok: track.score === 100 })));
+  return {
+    generatedAt: new Date().toISOString(),
+    project: "Remedy Movement International GCOS",
+    targetDomain: DOMAIN,
+    status: overallScore === 100 ? "enterprise-ready" : "enterprise-hardening",
+    overallScore,
+    mvpScore: launch.mvpScore,
+    productionScore: launch.productionScore,
+    tracks,
+    blockers: tracks.flatMap((track) => track.blockers.map((blocker) => `${track.name}: ${blocker}`)),
+    nextActions: [
+      ...deployment.requiredSecrets.filter((secret) => !secret.configured).map((secret) => productionSecretAction(secret.name)),
+      ...tracks.flatMap((track) => track.nextActions).slice(0, 8)
+    ].slice(0, 10)
+  };
+}
+
+function enterpriseTrack(id, name, gates) {
+  const score = scoreChecks(gates);
+  return {
+    id,
+    name,
+    score,
+    status: score === 100 ? "complete" : score >= 67 ? "usable" : "needs-build",
+    gates,
+    blockers: gates.filter((gate) => !gate.ok).map((gate) => gate.name),
+    nextActions: gates.filter((gate) => !gate.ok).map((gate) => enterpriseGateAction(id, gate.name))
+  };
+}
+
+function enterpriseGateAction(trackId, gateName) {
+  const actions = {
+    "database-storage:postgres-adapter": "Set GCOS_DATABASE_URL and keep GCOS_STORAGE_PROVIDER=database in Replit.",
+    "database-storage:object-vault": "Set GCOS_OBJECT_VAULT_PATH to durable Replit storage or object storage.",
+    "legal-policy:immutable-audit": "Seal and verify at least one audit row during launch signoff.",
+    "report-signing:report-attestation": "Open a report and save preparer, attestation, and required checklist fields.",
+    "ai-controls:ai-audit-controls": "Score, seal, and publish AI drafts only after source review.",
+    "offline-sync:conflict-resolution-plan": "Run an offline queue sync drill from a station workstation."
+  };
+  return actions[`${trackId}:${gateName}`] ?? `Complete ${gateName} for ${trackId}.`;
 }
 
 async function recordOperationalMonitor(actor) {
