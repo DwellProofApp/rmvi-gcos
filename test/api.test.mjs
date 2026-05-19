@@ -3019,6 +3019,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
 
     const publicStatus = await getJson("/api/status");
     assert.equal(publicStatus.limits.requireApiAuth, true);
+    assert.equal("sessions" in publicStatus, false);
 
     const protectedReadiness = await fetch(`${BASE_URL}/api/readiness`);
     assert.equal(protectedReadiness.status, 401);

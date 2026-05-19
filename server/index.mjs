@@ -61,7 +61,7 @@ const routes = {
   "POST /api/security-controls/:name/exception": ({ params, body, session }) => ok(openSecurityControlException(params.name, body, session.email)),
   "POST /api/security-controls/:name/remediation": ({ params, body, session }) => createdResponse(createSecurityControlRemediation(params.name, body, session.email)),
   "POST /api/security-controls/:name/verify": ({ params, body, session }) => ok(verifySecurityControl(params.name, body, session.email)),
-  "GET /api/status": () => ok(operationalStatus()),
+  "GET /api/status": () => ok(operationalStatus({ includeSessions: !REQUIRE_API_AUTH })),
   "GET /api/ops/monitor": async () => ok(await operationalMonitor()),
   "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
@@ -487,8 +487,8 @@ function record(event, actor, object, result) {
   state.events = state.events.slice(0, 20);
 }
 
-function operationalStatus() {
-  return {
+function operationalStatus({ includeSessions = true } = {}) {
+  const status = {
     status: "ok",
     service: "gcos-api",
     time: new Date().toISOString(),
@@ -504,7 +504,6 @@ function operationalStatus() {
       requireApiAuth: REQUIRE_API_AUTH,
       rateLimits: rateLimitStatus()
     },
-    sessions: sessionSummary(),
     counts: {
       stations: state.stations.length,
       messages: state.messages.length,
@@ -523,6 +522,8 @@ function operationalStatus() {
       events: state.events.length
     }
   };
+  if (includeSessions) status.sessions = sessionSummary();
+  return status;
 }
 
 async function launchReadiness() {
