@@ -10998,11 +10998,15 @@ function AdminBoard({
           </div>
           <div>
             <span>REMEDY MOVEMENT INTERNATIONAL</span>
-            <h1>GCOS System Administration Board</h1>
-            <p>Manage station identities, user access, deployment health, audit controls, governance queues, and production readiness from one administrator console.</p>
+            <h1>System Administrator Workstation</h1>
+            <p>International HQ command board for deployment control, user lifecycle, station authority, audit override, ChurchMail governance, and live operations.</p>
           </div>
         </div>
         <div className="admin-hero-actions">
+          <div className="admin-command-badge">
+            <span>Admin board</span>
+            <strong>rmvi.org/admin</strong>
+          </div>
           <button onClick={onRefreshApi}><RefreshCw size={15} /> Refresh live status</button>
           <button onClick={onArchiveGovernanceSnapshot}><Files size={15} /> Archive snapshot</button>
           <button onClick={() => onOpenSection("Audit")}><ShieldCheck size={15} /> Open audit control</button>
