@@ -6,6 +6,7 @@ const required = [
   ["GCOS_ALLOWED_ORIGIN", (value) => value === "https://rmvi.org", "set GCOS_ALLOWED_ORIGIN=https://rmvi.org"],
   ["GCOS_HEALTHCHECK_URL", (value) => value === "https://rmvi.org", "set GCOS_HEALTHCHECK_URL=https://rmvi.org"],
   ["GCOS_ENABLE_DEV_RESET", (value) => value === "0", "set GCOS_ENABLE_DEV_RESET=0"],
+  ["GCOS_REQUIRE_API_AUTH", (value) => value === "1", "set GCOS_REQUIRE_API_AUTH=1"],
   ["GCOS_STORAGE_PROVIDER", (value) => value === "database", "set GCOS_STORAGE_PROVIDER=database"],
   ["GCOS_DATABASE_URL", (value) => Boolean(value) && !/USER:PASSWORD|HOST|DATABASE/.test(value), "set a real managed Postgres URL"],
   ["GCOS_DATABASE_SSL", (value) => value === "1", "set GCOS_DATABASE_SSL=1"],

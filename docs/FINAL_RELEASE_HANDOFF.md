@@ -31,6 +31,7 @@ GCOS_SERVE_WEB=1
 GCOS_ALLOWED_ORIGIN=https://rmvi.org
 GCOS_HEALTHCHECK_URL=https://rmvi.org
 GCOS_ENABLE_DEV_RESET=0
+GCOS_REQUIRE_API_AUTH=1
 GCOS_STORAGE_PROVIDER=database
 GCOS_DATABASE_URL=<managed postgres connection string>
 GCOS_DATABASE_SSL=1
@@ -73,6 +74,7 @@ npm run launch:verify:live
 - `npm run launch:verify:live` passes from Replit after domain activation.
 - `https://rmvi.org/health` returns `gcos-api`.
 - `https://rmvi.org/api/status` reports workflow counts and production limits.
+- `https://rmvi.org/api/bootstrap` requires an authenticated station session.
 - `https://rmvi.org/` displays the RMVI GCOS sign-in portal.
 - Audit workspace records backup manifest, restore drill, launch readiness, deployment plan, operations monitor, and launch signoff.
 

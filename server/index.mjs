@@ -27,6 +27,7 @@ const MAX_BODY_BYTES = Number.isFinite(parsedMaxBodyBytes) && parsedMaxBodyBytes
   ? parsedMaxBodyBytes
   : 1024 * 1024;
 const DEV_RESET_ENABLED = process.env.GCOS_ENABLE_DEV_RESET === "1" || process.env.NODE_ENV !== "production";
+const REQUIRE_API_AUTH = process.env.GCOS_REQUIRE_API_AUTH === "1";
 const LOGIN_RATE_LIMIT = positiveNumber(process.env.GCOS_LOGIN_RATE_LIMIT, 8);
 const LOGIN_RATE_WINDOW_MS = positiveNumber(process.env.GCOS_LOGIN_RATE_WINDOW_MS, 5 * 60 * 1000);
 const MUTATION_RATE_LIMIT = positiveNumber(process.env.GCOS_MUTATION_RATE_LIMIT, 2000);
@@ -500,6 +501,7 @@ function operationalStatus() {
     limits: {
       maxBodyBytes: MAX_BODY_BYTES,
       devResetEnabled: DEV_RESET_ENABLED,
+      requireApiAuth: REQUIRE_API_AUTH,
       rateLimits: rateLimitStatus()
     },
     sessions: sessionSummary(),
@@ -543,6 +545,7 @@ async function launchReadiness() {
     { name: "deployment-target", category: "production", ok: Boolean(DEPLOYMENT_TARGET), detail: DEPLOYMENT_TARGET || "not configured" },
     { name: "serve-web", category: "production", ok: SERVE_WEB, detail: SERVE_WEB ? "Web served by API" : "Set GCOS_SERVE_WEB=1" },
     { name: "production-reset-lock", category: "production", ok: !DEV_RESET_ENABLED, detail: DEV_RESET_ENABLED ? "Development reset enabled" : "Development reset disabled" },
+    { name: "api-auth-lock", category: "production", ok: REQUIRE_API_AUTH, detail: REQUIRE_API_AUTH ? "Production API data requires station sessions" : "Set GCOS_REQUIRE_API_AUTH=1" },
     { name: "managed-database", category: "production", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? "Database provider selected" : "JSON provider active" },
     { name: "database-ssl", category: "production", ok: process.env.GCOS_DATABASE_SSL === "1" || STORAGE_PROVIDER !== "database", detail: process.env.GCOS_DATABASE_SSL === "1" ? "Database SSL enabled" : "Database SSL not required for current provider" },
     { name: "cors-origin", category: "production", ok: ALLOWED_ORIGIN !== "*", detail: ALLOWED_ORIGIN },
@@ -973,6 +976,7 @@ function productionSecretEntries() {
     { name: "GCOS_ALLOWED_ORIGIN", value: "https://rmvi.org", configured: ALLOWED_ORIGIN === "https://rmvi.org", sensitive: false },
     { name: "GCOS_HEALTHCHECK_URL", value: "https://rmvi.org", configured: (process.env.GCOS_HEALTHCHECK_URL ?? "") === "https://rmvi.org", sensitive: false },
     { name: "GCOS_ENABLE_DEV_RESET", value: "0", configured: !DEV_RESET_ENABLED, sensitive: false },
+    { name: "GCOS_REQUIRE_API_AUTH", value: "1", configured: REQUIRE_API_AUTH, sensitive: false },
     { name: "GCOS_STORAGE_PROVIDER", value: "database", configured: STORAGE_PROVIDER === "database", sensitive: false },
     { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? redactSecret(DATABASE_URL) : "required", configured: Boolean(DATABASE_URL), sensitive: true },
     { name: "GCOS_DATABASE_SSL", value: "1", configured: process.env.GCOS_DATABASE_SSL === "1", sensitive: false },
@@ -1016,6 +1020,7 @@ function productionSecretAction(name) {
   if (name === "NODE_ENV") return "Set NODE_ENV=production in Replit Secrets.";
   if (name === "GCOS_ALLOWED_ORIGIN") return "Set GCOS_ALLOWED_ORIGIN=https://rmvi.org.";
   if (name === "GCOS_HEALTHCHECK_URL") return "Set GCOS_HEALTHCHECK_URL=https://rmvi.org.";
+  if (name === "GCOS_REQUIRE_API_AUTH") return "Set GCOS_REQUIRE_API_AUTH=1 so production API data requires a station session.";
   return `Set ${name} in Replit Secrets.`;
 }
 
@@ -2259,7 +2264,8 @@ function findSessionById(id) {
 }
 
 function authenticateRequest(request, pathname) {
-  const requiresSession = pathname.startsWith("/api/sessions")
+  const requiresSession = (REQUIRE_API_AUTH && pathname.startsWith("/api/") && !isPublicApiPath(pathname))
+    || pathname.startsWith("/api/sessions")
     || (pathname.startsWith("/api/")
     && pathname !== "/api/auth/login"
     && pathname !== "/api/dev/reset"
@@ -2276,6 +2282,12 @@ function authenticateRequest(request, pathname) {
     throw new HttpError(401, "Expired session token");
   }
   return { ...session, token };
+}
+
+function isPublicApiPath(pathname) {
+  return pathname === "/api/auth/login"
+    || pathname === "/api/status"
+    || pathname === "/api/bootstrap/public";
 }
 
 function readBearerToken(header) {
@@ -2373,14 +2385,20 @@ function send(response, payload) {
 }
 
 function baseHeaders() {
-  return {
+  const headers = {
     "access-control-allow-origin": ALLOWED_ORIGIN,
     "access-control-allow-methods": "GET,POST,PUT,PATCH,DELETE,OPTIONS",
     "access-control-allow-headers": "content-type,authorization",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
-    "referrer-policy": "no-referrer"
+    "referrer-policy": "no-referrer",
+    "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
+    "content-security-policy": "default-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
   };
+  if (process.env.NODE_ENV === "production") {
+    headers["strict-transport-security"] = "max-age=31536000; includeSubDomains";
+  }
+  return headers;
 }
 
 async function readWebAsset(pathname) {

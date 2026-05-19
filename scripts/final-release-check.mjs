@@ -48,7 +48,8 @@ check("Production env template", [
   "GCOS_STORAGE_PROVIDER=database",
   "GCOS_DATABASE_URL=",
   "GCOS_ALLOWED_ORIGIN=https://rmvi.org",
-  "GCOS_ENABLE_DEV_RESET=0"
+  "GCOS_ENABLE_DEV_RESET=0",
+  "GCOS_REQUIRE_API_AUTH=1"
 ].every((entry) => productionEnv.includes(entry)), "required rmvi.org production variables documented");
 check("Final handoff acceptance", [
   "npm run production:check",

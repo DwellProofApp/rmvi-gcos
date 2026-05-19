@@ -1,6 +1,7 @@
 import React from "react";
 import { createRoot } from "react-dom/client";
 import {
+  Activity,
   AlertTriangle,
   Archive as ArchiveIcon,
   ArrowDownToLine,
@@ -14,6 +15,7 @@ import {
   ChevronRight,
   CircleDot,
   CloudOff,
+  Database,
   Download,
   FileBarChart2,
   FileCheck2,
@@ -133,7 +135,7 @@ type PersonRecord = { id: string; name: string; role: string; currentStation: st
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
 type OfflineAction = AuditRow & { queuedAt: string };
-type Session = { email: string; startedAt: string; token?: string; expiresAt?: string };
+type Session = { email: string; startedAt: string; token?: string; expiresAt?: string; authPending?: boolean };
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
 type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[]; evidence?: string; comments?: string[]; resolutionNote?: string; due?: string; linkedTask?: string; linkedReport?: string; linkedApproval?: string; impactScore?: number; impactSummary?: string; archived?: boolean; archiveReason?: string };
 type AiDraft = { id: string; kind: "Executive Summary" | "Memo" | "Report Brief"; title: string; body: string; sourceCount: number; createdAt: string; status?: string; confidence?: number; sourceNote?: string; sealed?: boolean; chainHash?: string; publishedBy?: string; watchers?: string[] };
@@ -155,6 +157,7 @@ type ApiStatus = {
   limits: {
     maxBodyBytes: number;
     devResetEnabled: boolean;
+    requireApiAuth?: boolean;
   };
   sessions: {
     active: number;
@@ -2312,7 +2315,7 @@ function App() {
 
   React.useEffect(() => {
     if (!session) return;
-    if (!session.token && !isLocalPreview) {
+    if (!session.token && !session.authPending && !isLocalPreview) {
       setSession(null);
       return;
     }
@@ -2410,13 +2413,14 @@ function App() {
     if (!station || expectedPassword !== password) {
       return false;
     }
-    if (adminRouteRequested() && !getPermissions(station).canOverride) {
+    const stationPermissions = getPermissions(station);
+    if (adminRouteRequested() && !stationPermissions.canOverride) {
       return false;
     }
 
     const startedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const landingSection: Section = adminRouteRequested() ? "Admin Board" : "Control Center";
-    setSession({ email: normalizedEmail, startedAt });
+    const landingSection: Section = stationPermissions.canOverride ? "Admin Board" : "Control Center";
+    setSession({ email: normalizedEmail, startedAt, authPending: true });
     setActiveStation(station);
     setActiveSection(landingSection);
     window.history.replaceState({}, "", sectionPath(landingSection));
@@ -2436,9 +2440,16 @@ function App() {
       method: "POST",
       body: JSON.stringify({ email: normalizedEmail, password })
     }).then((result) => {
-      setSession({ email: normalizedEmail, startedAt, token: result.token, expiresAt: result.expiresAt });
+      const authenticatedSession = { email: normalizedEmail, startedAt, token: result.token, expiresAt: result.expiresAt };
+      window.localStorage.setItem("gcos.session", JSON.stringify(authenticatedSession));
+      setSession(authenticatedSession);
       return refreshFromApi();
-    }).catch(() => undefined);
+    }).catch(() => {
+      if (!isLocalPreview) {
+        window.localStorage.removeItem("gcos.session");
+        setSession(null);
+      }
+    });
     return true;
   }
 
@@ -10952,6 +10963,237 @@ function AdminBoard({
     { label: "Archive", icon: Files, detail: "Inspect documents, evidence, object storage, chain custody" },
     { label: "Reports", icon: FileCheck2, detail: "Review report templates, submissions, approvals, evidence" }
   ];
+  const storageMode = apiStatus?.storageProvider ?? (apiStatus?.persistence ? "json" : "local");
+  const productionGate = storageMode === "database" ? "Production database" : "Database secret needed";
+  const operatingStatus = apiConnected ? "Live" : "Needs API";
+  const queueItems = [
+    { icon: AlertTriangle, label: "Escalations", value: openEscalations, detail: "Executive attention queue", section: "Escalations" as Section },
+    { icon: Workflow, label: "Approvals", value: openApprovals, detail: "Pending approval chains", section: "Approvals" as Section },
+    { icon: SquareCheckBig, label: "Tasks", value: openTasks, detail: "Open administrative work", section: "Tasks" as Section },
+    { icon: Signature, label: "Transfers", value: pendingTransfers, detail: "Identity migration queue", section: "Transfers" as Section }
+  ];
+  const systemCards = [
+    { icon: Server, label: "Live service", value: apiStatus?.status?.toUpperCase() ?? "LOCAL", detail: apiStatus ? `${formatUptime(apiStatus.uptimeSeconds)} uptime` : "Backend heartbeat unavailable" },
+    { icon: Database, label: "Persistence", value: storageMode.toUpperCase(), detail: productionGate },
+    { icon: LockKeyhole, label: "Current admin", value: session.email, detail: permissions.canOverride ? "Full administrator authority" : "Limited administrator view" },
+    { icon: BadgeCheck, label: "Readiness", value: systemReadiness, detail: readinessDigest ? "Tracked launch checks" : "Local readiness estimate" }
+  ];
+  const stationGroups = [
+    { label: "Verified", value: officialStations.filter((station) => station.verified).length },
+    { label: "Ready", value: officialStations.filter((station) => !station.status || station.status === "Ready").length },
+    { label: "Suspended", value: officialStations.filter((station) => station.status === "Suspended").length },
+    { label: "Locked", value: officialStations.filter((station) => station.status === "Locked").length }
+  ];
+  const recentAdminEvents = [
+    ...events.slice(0, 3).map((event) => ({ label: event.includes(":") ? event.split(":")[0] : "Event", detail: event })),
+    ...auditRows.slice(0, 3).map((row) => ({ label: row.event, detail: `${row.actor} - ${row.object}` }))
+  ].slice(0, 5);
+
+  return (
+    <section className="admin-board-shell" aria-label="Remedy Movement International administrator board">
+      <div className="admin-hero">
+        <div className="admin-identity">
+          <div className="admin-brand-mark">
+            <img src={CHURCH_LOGO_SRC} alt="Remedy Movement International logo" />
+          </div>
+          <div>
+            <span>REMEDY MOVEMENT INTERNATIONAL</span>
+            <h1>GCOS System Administration Board</h1>
+            <p>Manage station identities, user access, deployment health, audit controls, governance queues, and production readiness from one administrator console.</p>
+          </div>
+        </div>
+        <div className="admin-hero-actions">
+          <button onClick={onRefreshApi}><RefreshCw size={15} /> Refresh live status</button>
+          <button onClick={onArchiveGovernanceSnapshot}><Files size={15} /> Archive snapshot</button>
+          <button onClick={() => onOpenSection("Audit")}><ShieldCheck size={15} /> Open audit control</button>
+        </div>
+      </div>
+
+      <div className="admin-status-strip">
+        <div>
+          <span>Operating status</span>
+          <strong>{operatingStatus}</strong>
+          <small>{apiStatus?.time ? formatDateTime(apiStatus.time) : "Local preview session"}</small>
+        </div>
+        <div>
+          <span>Administrator</span>
+          <strong>{session.email}</strong>
+          <small>{sessionDigest?.active ?? activeSessions.length} active session records</small>
+        </div>
+        <div>
+          <span>Stations</span>
+          <strong>{readyStations}/{officialStations.length}</strong>
+          <small>ready for sign-in and routing</small>
+        </div>
+        <div className={storageMode === "database" ? "ok" : "queued"}>
+          <span>Production gate</span>
+          <strong>{productionGate}</strong>
+          <small>{storageMode === "database" ? "Managed persistence active" : "Set GCOS_DATABASE_URL in Replit"}</small>
+        </div>
+      </div>
+
+      <div className="admin-board-grid">
+        <div className="panel admin-primary-panel">
+          <PanelHeader icon={SlidersHorizontal} title="Administrator Control Center" action="System console" />
+          <div className="admin-system-grid">
+            {systemCards.map(({ icon: Icon, label, value, detail }) => (
+              <article className="admin-system-card" key={label}>
+                <div><Icon size={17} /></div>
+                <span>{label}</span>
+                <strong>{value}</strong>
+                <small>{detail}</small>
+              </article>
+            ))}
+          </div>
+          <div className="admin-control-list">
+            <article>
+              <div>
+                <strong>User lifecycle</strong>
+                <span>Create offices, activate stations, suspend compromised accounts, and revoke sessions.</span>
+              </div>
+              <button onClick={() => onOpenSection("Offices")}><Building2 size={15} /> Manage offices</button>
+            </article>
+            <article>
+              <div>
+                <strong>Security and audit</strong>
+                <span>Review active sessions, seal audit rows, archive snapshots, and verify launch readiness.</span>
+              </div>
+              <button onClick={() => onOpenSection("Audit")}><ShieldCheck size={15} /> Security desk</button>
+            </article>
+            <article>
+              <div>
+                <strong>Governance operations</strong>
+                <span>Watch escalations, approvals, report submissions, transfers, and blocked tasks.</span>
+              </div>
+              <button onClick={() => onOpenSection("Escalations")}><AlertTriangle size={15} /> Operations queue</button>
+            </article>
+          </div>
+        </div>
+
+        <div className="panel admin-side-panel">
+          <PanelHeader icon={Activity} title="Live Health" action={apiStatus?.status ?? "local"} />
+          <div className="admin-health-list">
+            <div><span>API service</span><strong>{apiStatus?.service ?? "GCOS API"}</strong></div>
+            <div><span>Web served</span><strong>{apiStatus?.serveWeb ? "Yes" : "Preview"}</strong></div>
+            <div><span>Storage</span><strong>{storageMode}</strong></div>
+            <div><span>Audit rows</span><strong>{auditRows.length}</strong></div>
+            <div><span>Documents</span><strong>{documents.length}</strong></div>
+            <div><span>Transfers pending</span><strong>{pendingTransfers}</strong></div>
+          </div>
+          <button className="wide-action" onClick={onRefreshApi}><RefreshCw size={15} /> Refresh health</button>
+        </div>
+
+        <div className="panel admin-side-panel">
+          <PanelHeader icon={RadioTower} title="Active Work Queue" action={`${openEscalations + openApprovals + openTasks + pendingTransfers} open`} />
+          <div className="admin-queue-list">
+            {queueItems.map(({ icon: Icon, label, value, detail, section }) => (
+              <button key={label} onClick={() => onOpenSection(section)}>
+                <Icon size={16} />
+                <span>{label}<small>{detail}</small></span>
+                <strong>{value}</strong>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel admin-primary-panel">
+          <PanelHeader icon={KeyRound} title="Station Registry" action={`${officialStations.length} identities`} />
+          <div className="admin-station-summary">
+            {stationGroups.map((group) => (
+              <div key={group.label}>
+                <strong>{group.value}</strong>
+                <span>{group.label}</span>
+              </div>
+            ))}
+          </div>
+          <div className="admin-station-list">
+            {officialStations.map((station) => {
+              const stationId = station.id ?? station.email;
+              return (
+                <article key={station.email}>
+                  <div>
+                    <strong>{station.title}</strong>
+                    <span>{station.email}</span>
+                    <small>{station.level} - {station.authority}</small>
+                  </div>
+                  <div className="admin-station-actions">
+                    <span>{station.status ?? (station.verified ? "Verified" : "Ready")}</span>
+                    <button onClick={() => onVerifyStation(stationId)}><ShieldCheck size={14} /> Verify</button>
+                    <button onClick={() => onSuspendStation(stationId)}><LockKeyhole size={14} /> Suspend</button>
+                    <button onClick={() => onActivateStation(stationId)}><CheckCircle2 size={14} /> Activate</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+          <div className="action-row">
+            <button onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Plus size={15} /> Create office</button>
+            <button onClick={onBulkVerifyStations}><ShieldCheck size={15} /> Bulk verify</button>
+          </div>
+        </div>
+
+        <div className="panel admin-side-panel">
+          <PanelHeader icon={LockKeyhole} title="Sessions & Access" action={`${activeSessions.length} records`} />
+          <div className="office-summary-grid">
+            <Insight label="Expiring soon" value={String(sessionDigest?.expiringSoon ?? activeSessions.filter((item) => item.minutesRemaining <= 30).length)} />
+            <Insight label="Trusted" value={String(sessionDigest?.trusted ?? activeSessions.filter((item) => item.trusted).length)} />
+            <Insight label="MFA required" value={String(sessionDigest?.mfaRequired ?? activeSessions.filter((item) => item.mfaRequired).length)} />
+            <Insight label="Current" value={session.email} />
+          </div>
+          <div className="admin-session-list">
+            {activeSessions.slice(0, 4).map((item) => (
+              <article key={`${item.email}-${item.startedAt}`}>
+                <strong>{item.email}</strong>
+                <span>{item.status ?? "Active"} - {item.minutesRemaining} minutes remaining</span>
+                <div className="compact-actions">
+                  <button disabled={!item.id} onClick={() => item.id && onTrustSession(item.id)}>Trust</button>
+                  <button disabled={!item.id} onClick={() => item.id && onRequireSessionMfa(item.id)}>MFA</button>
+                  <button disabled={!item.id || item.id === session.token} onClick={() => item.id && onRevokeSession(item.id)}>Revoke</button>
+                </div>
+              </article>
+            ))}
+          </div>
+          <div className="action-row">
+            <button onClick={onRenewSession}><RefreshCw size={15} /> Renew current</button>
+            <button onClick={() => onRevokeStationSessions(session.email)}><LockKeyhole size={15} /> Revoke station</button>
+          </div>
+        </div>
+
+        <div className="panel admin-side-panel">
+          <PanelHeader icon={GitBranch} title="Admin Navigation" action="Control map" />
+          <div className="admin-route-list">
+            {adminRoutes.map(({ label, icon: Icon, detail }) => (
+              <button key={label} onClick={() => onOpenSection(label)}>
+                <Icon size={16} />
+                <span>{label}<small>{detail}</small></span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="panel admin-side-panel">
+          <PanelHeader icon={ShieldCheck} title="Audit Stream" action={`${sealedAuditRows} sealed`} />
+          <div className="admin-event-list">
+            {recentAdminEvents.length ? recentAdminEvents.map((event, index) => (
+              <article key={`${event.label}-${index}`}>
+                <span>{event.label}</span>
+                <strong>{event.detail}</strong>
+              </article>
+            )) : (
+              <article>
+                <span>No events</span>
+                <strong>Audit stream is waiting for activity.</strong>
+              </article>
+            )}
+          </div>
+          <div className="action-row">
+            <button onClick={onCreateAuditNote}><FileText size={15} /> Admin note</button>
+            <button onClick={onRefreshAuditDigest}><RefreshCw size={15} /> Refresh digest</button>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 
   return (
     <section className="module-grid">

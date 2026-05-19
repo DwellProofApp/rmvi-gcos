@@ -39,6 +39,7 @@ GCOS_WEB_DIST_PATH=dist
 GCOS_ALLOWED_ORIGIN=https://rmvi.org
 GCOS_HEALTHCHECK_URL=https://rmvi.org
 GCOS_ENABLE_DEV_RESET=0
+GCOS_REQUIRE_API_AUTH=1
 GCOS_STORAGE_PROVIDER=database
 GCOS_DATABASE_URL=<managed postgres connection string>
 GCOS_DATABASE_SSL=1
@@ -126,4 +127,5 @@ Do not invite production users if any of these are true:
 - `rmvi.org` serves another app.
 - `GCOS_DATABASE_URL` is still a placeholder.
 - Demo station passwords are still active for real offices.
+- `GCOS_REQUIRE_API_AUTH` is not enabled.
 - Backup manifest and restore drill are not recorded.

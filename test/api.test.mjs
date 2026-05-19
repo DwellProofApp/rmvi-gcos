@@ -3010,11 +3010,28 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     await stopApi(api);
     api = await startApi(dataPath, webDistPath, {
       NODE_ENV: "production",
-      GCOS_ENABLE_DEV_RESET: "0"
+      GCOS_ENABLE_DEV_RESET: "0",
+      GCOS_REQUIRE_API_AUTH: "1"
     });
 
     const disabledReset = await rawPost("/api/dev/reset", {});
-    assert.equal(disabledReset.status, 403);
+    assert.equal(disabledReset.status, 401);
+
+    const publicStatus = await getJson("/api/status");
+    assert.equal(publicStatus.limits.requireApiAuth, true);
+
+    const protectedReadiness = await fetch(`${BASE_URL}/api/readiness`);
+    assert.equal(protectedReadiness.status, 401);
+
+    const protectedBootstrap = await fetch(`${BASE_URL}/api/bootstrap`);
+    assert.equal(protectedBootstrap.status, 401);
+
+    const productionLogin = await postJson("/api/auth/login", {
+      email: "mission@rmvi.org",
+      password: demoPassword("mission")
+    });
+    const protectedReadinessWithToken = await getJson("/api/readiness", productionLogin.token);
+    assert.equal(protectedReadinessWithToken.status, "ready");
   } finally {
     await stopApi(api);
     await rm(tempDir, { recursive: true, force: true });
