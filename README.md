@@ -81,6 +81,7 @@ npm run healthcheck
 npm run domain:check
 npm run production:check
 npm run release:check
+npm run launch:verify
 ```
 
 Frontend:
@@ -117,12 +118,14 @@ Deployment checklist:
 docs/DEPLOYMENT_CHECKLIST.md
 docs/REPLIT_RMVI_DOMAIN.md
 docs/FINAL_RELEASE_HANDOFF.md
+docs/PRODUCTION_INFRASTRUCTURE.md
 ```
 
 Final release handoff:
 
 ```text
 docs/FINAL_RELEASE_HANDOFF.md
+docs/PRODUCTION_INFRASTRUCTURE.md
 ```
 
 ## Environment

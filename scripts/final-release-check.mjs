@@ -15,6 +15,7 @@ const replitConfig = await readFile(".replit", "utf8");
 const replitNix = await readFile("replit.nix", "utf8");
 const productionEnv = await readFile(".env.production.example", "utf8");
 const finalHandoff = await readFile("docs/FINAL_RELEASE_HANDOFF.md", "utf8");
+const productionInfrastructure = await readFile("docs/PRODUCTION_INFRASTRUCTURE.md", "utf8");
 
 const templateCount = (main.match(/id: "tpl-/g) ?? []).length;
 const officialStations = [
@@ -32,10 +33,12 @@ check("Official station accounts", officialStations.every((email) => main.includ
 check("Report detail editing", server.includes("POST /api/reports/:id/details") && main.includes("saveSelectedReportDetails"), "editable detail workspace and API route");
 check("Evidence uploads", server.includes("POST /api/reports/:id/file") && main.includes("onUploadReportEvidence"), "report file upload route and UI action");
 check("Launch completion endpoint", server.includes("GET /api/project/completion") && server.includes("projectCompletionReport"), "project completion report API");
-check("Release scripts", ["test", "build", "production:check", "healthcheck", "domain:check", "release:check"].every((script) => packageJson.scripts?.[script]), "release scripts registered");
+check("Release scripts", ["test", "build", "production:check", "healthcheck", "domain:check", "release:check", "launch:verify", "launch:verify:live"].every((script) => packageJson.scripts?.[script]), "release scripts registered");
 check("Deployment docs", readme.includes("Final release handoff") && readme.includes("docs/FINAL_RELEASE_HANDOFF.md"), "README points to final handoff");
+check("Production infrastructure runbook", readme.includes("docs/PRODUCTION_INFRASTRUCTURE.md") && productionInfrastructure.includes("npm run launch:verify:live"), "production launch runbook linked and actionable");
 check("Replit launcher", replitConfig.includes("npm run replit:run") && replitNix.includes("nodejs_22"), "Replit run command and Node runtime configured");
 check("Production env template", [
+  "NODE_ENV=production",
   "GCOS_DOMAIN=rmvi.org",
   "GCOS_DEPLOYMENT_TARGET=replit",
   "GCOS_STORAGE_PROVIDER=database",
@@ -45,6 +48,7 @@ check("Production env template", [
 ].every((entry) => productionEnv.includes(entry)), "required rmvi.org production variables documented");
 check("Final handoff acceptance", [
   "npm run production:check",
+  "npm run launch:verify:live",
   "https://rmvi.org/health",
   "https://rmvi.org/api/status",
   "Audit workspace records"

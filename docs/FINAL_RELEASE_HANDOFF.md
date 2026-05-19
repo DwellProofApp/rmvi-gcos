@@ -17,6 +17,7 @@ This build is ready for a controlled web MVP launch once the production host sec
 - JSON persistence, backup, restore drill, migration bundle, Postgres schema package, import dry run, and cutover checklist.
 - Launch readiness, deployment plan, operations monitor, and launch signoff matrix.
 - Production scripts for build, test, readiness, healthcheck, domain check, and final release check.
+- Launch verification runner for local release gates and live `rmvi.org` smoke checks.
 
 ## Required Replit Secrets
 
@@ -59,6 +60,7 @@ npm run production:check
 npm run replit:run
 GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck
 npm run domain:check
+npm run launch:verify:live
 ```
 
 ## Production Acceptance Criteria
@@ -66,7 +68,9 @@ npm run domain:check
 - `npm test` passes.
 - `npm run build` passes.
 - `npm run release:check` returns 100%.
+- `npm run launch:verify` passes locally before deployment.
 - `npm run production:check` returns at least 90%.
+- `npm run launch:verify:live` passes from Replit after domain activation.
 - `https://rmvi.org/health` returns `gcos-api`.
 - `https://rmvi.org/api/status` reports workflow counts and production limits.
 - `https://rmvi.org/` displays the RMVI GCOS sign-in portal.
@@ -74,4 +78,4 @@ npm run domain:check
 
 ## Known Launch Boundary
 
-The codebase is complete for a controlled web MVP and has the production readiness framework. Enterprise deployment still depends on real hosting operations: managed database provisioning, real station password rotation, production backups, domain DNS completion, and live smoke tests.
+The codebase is complete for a controlled web MVP and has the production readiness framework. Enterprise deployment still depends on real hosting operations: managed database provisioning, real station password rotation, production backups, domain DNS completion, and live smoke tests. Use `docs/PRODUCTION_INFRASTRUCTURE.md` as the launch infrastructure runbook.
