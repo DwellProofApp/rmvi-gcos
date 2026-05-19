@@ -648,6 +648,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(revokedStationSessions.revoked >= 1, true);
 
+    const adminLogin = await postJson("/api/auth/login", {
+      email: "admin@rmvi.org",
+      password: demoPassword("admin")
+    });
+    assert.equal(adminLogin.station.email, "admin@rmvi.org");
+    assert.equal(adminLogin.station.level, "International HQ");
+    assert.equal(adminLogin.permissions.canOverride, true);
+
     const commandBriefing = await getJson("/api/command-center/briefing");
     assert.equal(commandBriefing.title, "Executive command briefing");
     assert.equal(commandBriefing.riskScore > 0, true);

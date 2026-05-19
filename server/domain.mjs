@@ -7,6 +7,7 @@ export function demoStationPassword(label) {
 }
 
 export const stationPasswords = {
+  "admin@rmvi.org": demoStationPassword("admin"),
   "international@rmvi.org": demoStationPassword("global"),
   "np@rmvi.org": demoStationPassword("national"),
   "district_admin@rmvi.org": demoStationPassword("district"),
@@ -24,6 +25,7 @@ export function createSeedState() {
   const riverbendOffice = office("Riverbend Area Office", "riverbend_area@rmvi.org", "Area HQ", "Area Coordination", "Buchanan District");
   return {
     stations: [
+      station("admin@rmvi.org", "System Administrator Workstation", "International HQ", "Full GCOS administration, deployment control, user lifecycle, audit override"),
       station("international@rmvi.org", "International Executive Workstation", "International HQ", "Global override, policy registry, audit control"),
       station("np@rmvi.org", "National Presidency Workstation", "National HQ", "National directives, county oversight, executive summaries"),
       station("district_admin@rmvi.org", "District Command Workstation", "District HQ", "Branch oversight, workflow monitor, transfer approvals"),

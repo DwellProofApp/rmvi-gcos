@@ -443,7 +443,7 @@ const routes = {
     const result = services.login(body);
     if (result.unauthorized) return unauthorized({ error: result.error });
     const session = createSession(result.station.email);
-    return ok({ ...result, token: session.token, expiresAt: session.expiresAt });
+    return ok({ ...result, permissions: getPermissions(result.station), token: session.token, expiresAt: session.expiresAt });
   }
 };
 

@@ -873,6 +873,13 @@ const hierarchy: { level: StationLevel; node: string; metric: string; command: n
 
 const stations: StationCard[] = [
   {
+    email: "admin@rmvi.org",
+    title: "System Administrator Workstation",
+    level: "International HQ",
+    authority: "Full GCOS administration, deployment control, user lifecycle, audit override",
+    icon: KeyRound
+  },
+  {
     email: "international@rmvi.org",
     title: "International Executive Workstation",
     level: "International HQ",
@@ -926,6 +933,7 @@ const stations: StationCard[] = [
 const demoStationPassword = (label: string) => ["gcos", label].join("-");
 
 const stationPasswords: Record<string, string> = {
+  "admin@rmvi.org": demoStationPassword("admin"),
   "international@rmvi.org": demoStationPassword("global"),
   "np@rmvi.org": demoStationPassword("national"),
   "district_admin@rmvi.org": demoStationPassword("district"),

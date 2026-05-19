@@ -19,6 +19,7 @@ const productionInfrastructure = await readFile("docs/PRODUCTION_INFRASTRUCTURE.
 
 const templateCount = (main.match(/id: "tpl-/g) ?? []).length;
 const officialStations = [
+  "admin@rmvi.org",
   "international@rmvi.org",
   "np@rmvi.org",
   "district_admin@rmvi.org",
