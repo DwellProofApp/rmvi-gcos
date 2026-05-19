@@ -34,6 +34,7 @@ check("Report detail editing", server.includes("POST /api/reports/:id/details") 
 check("Evidence uploads", server.includes("POST /api/reports/:id/file") && main.includes("onUploadReportEvidence"), "report file upload route and UI action");
 check("Launch completion endpoint", server.includes("GET /api/project/completion") && server.includes("projectCompletionReport"), "project completion report API");
 check("Enterprise completion tracks", server.includes("GET /api/enterprise/completion") && server.includes("enterpriseCompletionReport") && main.includes("Enterprise Completion 1-12"), "12-track enterprise completion board");
+check("Rollout readiness tracks", server.includes("GET /api/rollout/readiness") && server.includes("rolloutReadinessReport") && main.includes("Rollout Readiness"), "deployment/data/users/policies/training/operations rollout board");
 check("Production secrets workspace", server.includes("GET /api/production/secrets-plan") && main.includes("Production Secrets") && main.includes("/api/production/secrets-plan"), "production secrets API and Audit panel");
 check("Release scripts", ["test", "build", "production:check", "healthcheck", "domain:check", "release:check", "secrets:plan", "launch:verify", "launch:verify:live"].every((script) => packageJson.scripts?.[script]), "release scripts registered");
 check("Deployment docs", readme.includes("Final release handoff") && readme.includes("docs/FINAL_RELEASE_HANDOFF.md"), "README points to final handoff");

@@ -65,6 +65,7 @@ const routes = {
   "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
+  "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
   "GET /api/production/secrets-plan": () => ok(productionSecretsPlan()),
   "GET /api/launch/readiness": async () => ok(await launchReadiness()),
   "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
@@ -805,6 +806,90 @@ function enterpriseGateAction(trackId, gateName) {
     "report-signing:report-attestation": "Open a report and save preparer, attestation, and required checklist fields.",
     "ai-controls:ai-audit-controls": "Score, seal, and publish AI drafts only after source review.",
     "offline-sync:conflict-resolution-plan": "Run an offline queue sync drill from a station workstation."
+  };
+  return actions[`${trackId}:${gateName}`] ?? `Complete ${gateName} for ${trackId}.`;
+}
+
+async function rolloutReadinessReport() {
+  const launch = await launchReadiness();
+  const deployment = await launchDeploymentPlan();
+  const migrationPlan = persistenceMigrationPlan();
+  const importDryRun = persistenceImportDryRun();
+  const backupManifest = await persistenceBackupManifest();
+  const restoreDrill = await persistenceRestoreDrill();
+  const security = securityControlsDigest();
+  const compliance = complianceReviewDigest();
+  const personnelDigest = services.personnelDigest();
+  const policyDigest = services.policyDigest();
+  const tracks = [
+    rolloutTrack("deployment", "Deployment", [
+      { name: "release-gate", ok: deployment.commands.includes("npm run launch:verify:live"), detail: "Live launch verification command registered" },
+      { name: "domain-smoke", ok: deployment.smokeUrls.includes(`https://${DOMAIN}/health`), detail: `${DOMAIN} smoke URLs prepared` },
+      { name: "production-secrets", ok: deployment.requiredSecrets.filter((secret) => !secret.configured).length === 0, detail: `${deployment.requiredSecrets.filter((secret) => !secret.configured).length} missing secrets` }
+    ]),
+    rolloutTrack("real-data", "Real Data", [
+      { name: "migration-plan", ok: migrationPlan.estimatedRows > 0, detail: `${migrationPlan.estimatedRows} records mapped for migration` },
+      { name: "schema-package", ok: persistenceSchemaPlan().tableCount > 0, detail: `${persistenceSchemaPlan().tableCount} Postgres tables planned` },
+      { name: "import-dry-run", ok: importDryRun.valid, detail: `${importDryRun.estimatedRows} rows dry-run ready` }
+    ]),
+    rolloutTrack("user-rollout", "User Rollout", [
+      { name: "station-accounts", ok: state.stations.length >= 7, detail: `${state.stations.length} station accounts` },
+      { name: "credential-controls", ok: Object.keys(state.authCredentials ?? {}).length >= 7, detail: `${Object.keys(state.authCredentials ?? {}).length} credential records` },
+      { name: "personnel-onboarding", ok: state.personnel.length > 0 && personnelDigest.training >= 1, detail: `${state.personnel.length} personnel, ${personnelDigest.training} training assignments` }
+    ]),
+    rolloutTrack("policy-pack", "Policies", [
+      { name: "active-policy-pack", ok: policyDigest.active >= 2, detail: `${policyDigest.active} active policies` },
+      { name: "compliance-reviews", ok: compliance.total >= 3, detail: `${compliance.total} compliance reviews` },
+      { name: "retention-policy", ok: state.documents.some((document) => document.retainedUntil), detail: "Document retention metadata present" }
+    ]),
+    rolloutTrack("training", "Training", [
+      { name: "policy-training", ok: policyDigest.training >= 1, detail: `${policyDigest.training} policy training assignments` },
+      { name: "personnel-training", ok: personnelDigest.training >= 1, detail: `${personnelDigest.training} personnel training records` },
+      { name: "station-guides", ok: state.reports.length >= 10 && state.policies.length >= 3, detail: "Report templates and policies support station training" }
+    ]),
+    rolloutTrack("live-operations", "Live Operations", [
+      { name: "backup-manifest", ok: backupManifest.status === "protected", detail: `${backupManifest.total} backups / ${backupManifest.status}` },
+      { name: "restore-drill", ok: restoreDrill.valid, detail: restoreDrill.nextAction },
+      { name: "security-controls", ok: security.total >= 6 && launch.productionScore >= 90, detail: `${security.total} controls, ${launch.productionScore}% production profile` }
+    ])
+  ];
+  const overallScore = Math.round(tracks.reduce((sum, track) => sum + track.score, 0) / tracks.length);
+  return {
+    generatedAt: new Date().toISOString(),
+    project: "Remedy Movement International GCOS",
+    targetDomain: DOMAIN,
+    status: overallScore === 100 ? "rollout-ready" : "rollout-hardening",
+    overallScore,
+    tracks,
+    blockers: tracks.flatMap((track) => track.blockers.map((blocker) => `${track.name}: ${blocker}`)),
+    nextActions: [
+      ...deployment.requiredSecrets.filter((secret) => !secret.configured).map((secret) => productionSecretAction(secret.name)),
+      ...tracks.flatMap((track) => track.nextActions)
+    ].slice(0, 8)
+  };
+}
+
+function rolloutTrack(id, name, gates) {
+  const score = scoreChecks(gates);
+  return {
+    id,
+    name,
+    score,
+    status: score === 100 ? "complete" : score >= 67 ? "field-ready" : "needs-work",
+    gates,
+    blockers: gates.filter((gate) => !gate.ok).map((gate) => gate.name),
+    nextActions: gates.filter((gate) => !gate.ok).map((gate) => rolloutGateAction(id, gate.name))
+  };
+}
+
+function rolloutGateAction(trackId, gateName) {
+  const actions = {
+    "deployment:production-secrets": "Set all Replit production secrets, especially GCOS_DATABASE_URL.",
+    "user-rollout:personnel-onboarding": "Assign training to each first-wave station user before rollout.",
+    "policy-pack:active-policy-pack": "Activate privacy, retention, audit, access, and acceptable-use policies.",
+    "training:station-guides": "Publish station training guides for Local, District, National, Finance, Audit, Mission, and International users.",
+    "live-operations:backup-manifest": "Create and record a production backup manifest.",
+    "live-operations:restore-drill": "Run and record a restore drill before inviting users."
   };
   return actions[`${trackId}:${gateName}`] ?? `Complete ${gateName} for ${trackId}.`;
 }

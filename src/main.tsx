@@ -415,6 +415,24 @@ type EnterpriseCompletion = {
   blockers: string[];
   nextActions: string[];
 };
+type RolloutReadiness = {
+  generatedAt: string;
+  project: string;
+  targetDomain: string;
+  status: string;
+  overallScore: number;
+  tracks: {
+    id: string;
+    name: string;
+    score: number;
+    status: string;
+    gates: { name: string; ok: boolean; detail: string }[];
+    blockers: string[];
+    nextActions: string[];
+  }[];
+  blockers: string[];
+  nextActions: string[];
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -10878,6 +10896,7 @@ function Audit({
   const [launchSignoff, setLaunchSignoff] = React.useState<LaunchSignoff | null>(null);
   const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
   const [enterpriseCompletion, setEnterpriseCompletion] = React.useState<EnterpriseCompletion | null>(null);
+  const [rolloutReadiness, setRolloutReadiness] = React.useState<RolloutReadiness | null>(null);
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -10930,6 +10949,7 @@ function Audit({
     void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
     void apiRequest<EnterpriseCompletion>("/api/enterprise/completion").then(setEnterpriseCompletion).catch(() => undefined);
+    void apiRequest<RolloutReadiness>("/api/rollout/readiness").then(setRolloutReadiness).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -11082,6 +11102,10 @@ function Audit({
 
   function refreshEnterpriseCompletion() {
     void apiRequest<EnterpriseCompletion>("/api/enterprise/completion").then(setEnterpriseCompletion).catch(() => undefined);
+  }
+
+  function refreshRolloutReadiness() {
+    void apiRequest<RolloutReadiness>("/api/rollout/readiness").then(setRolloutReadiness).catch(() => undefined);
   }
 
   function recordLaunchSignoff() {
@@ -11774,6 +11798,34 @@ function Audit({
               <span>{track.status}</span>
               <strong>{track.name}: {track.score}%</strong>
               <small>{track.blockers.length ? `${track.blockers.length} blockers: ${track.blockers.slice(0, 3).join(", ")}` : "Track complete"}</small>
+              {track.nextActions[0] && <small>{track.nextActions[0]}</small>}
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={Globe2} title="Rollout Readiness" action={rolloutReadiness?.status ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshRolloutReadiness}><RefreshCw size={15} /> Rollout</button>
+          <button onClick={recordLaunchReadiness}><ShieldCheck size={15} /> Record</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Overall" value={`${rolloutReadiness?.overallScore ?? 0}%`} />
+          <Insight label="Tracks" value={String(rolloutReadiness?.tracks.length ?? 6)} />
+          <Insight label="Blockers" value={String(rolloutReadiness?.blockers.length ?? 0)} />
+          <Insight label="Domain" value={rolloutReadiness?.targetDomain ?? "rmvi.org"} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{rolloutReadiness ? formatDateTime(rolloutReadiness.generatedAt) : "No rollout report loaded"}</span>
+            <strong>{rolloutReadiness?.nextActions[0] ?? "Build deployment, data, user rollout, policies, training, and operations readiness."}</strong>
+            <small>Tracks cover deployment, real data, first-wave users, policy pack, station training, and live operations.</small>
+          </article>
+          {(rolloutReadiness?.tracks ?? []).map((track) => (
+            <article className="source-map-item" key={track.id}>
+              <span>{track.status}</span>
+              <strong>{track.name}: {track.score}%</strong>
+              <small>{track.blockers.length ? `${track.blockers.length} blockers: ${track.blockers.join(", ")}` : "Ready for rollout"}</small>
               {track.nextActions[0] && <small>{track.nextActions[0]}</small>}
             </article>
           ))}
