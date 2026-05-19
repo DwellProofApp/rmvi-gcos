@@ -64,6 +64,7 @@ const routes = {
   "GET /api/ops/monitor": async () => ok(await operationalMonitor()),
   "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
+  "GET /api/production/secrets-plan": () => ok(productionSecretsPlan()),
   "GET /api/launch/readiness": async () => ok(await launchReadiness()),
   "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
   "GET /api/launch/deployment-plan": async () => ok(await launchDeploymentPlan()),
@@ -713,32 +714,16 @@ async function recordLaunchReadiness(actor) {
 
 async function launchDeploymentPlan() {
   const launch = await launchReadiness();
-  const requiredSecrets = [
-    { name: "NODE_ENV", value: "production", configured: process.env.NODE_ENV === "production", sensitive: false },
-    { name: "GCOS_DOMAIN", value: DOMAIN, configured: DOMAIN === "rmvi.org", sensitive: false },
-    { name: "GCOS_DEPLOYMENT_TARGET", value: DEPLOYMENT_TARGET || "replit", configured: Boolean(DEPLOYMENT_TARGET), sensitive: false },
-    { name: "GCOS_SERVE_WEB", value: SERVE_WEB ? "1" : "1", configured: SERVE_WEB, sensitive: false },
-    { name: "GCOS_ALLOWED_ORIGIN", value: "https://rmvi.org", configured: ALLOWED_ORIGIN === "https://rmvi.org", sensitive: false },
-    { name: "GCOS_HEALTHCHECK_URL", value: "https://rmvi.org", configured: (process.env.GCOS_HEALTHCHECK_URL ?? "") === "https://rmvi.org", sensitive: false },
-    { name: "GCOS_ENABLE_DEV_RESET", value: "0", configured: !DEV_RESET_ENABLED, sensitive: false },
-    { name: "GCOS_STORAGE_PROVIDER", value: "database", configured: STORAGE_PROVIDER === "database", sensitive: false },
-    { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? redactSecret(DATABASE_URL) : "required", configured: Boolean(DATABASE_URL), sensitive: true },
-    { name: "GCOS_DATABASE_SSL", value: "1", configured: process.env.GCOS_DATABASE_SSL === "1", sensitive: false },
-    { name: "GCOS_DATABASE_POOL_SIZE", value: process.env.GCOS_DATABASE_POOL_SIZE ?? "5", configured: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, sensitive: false },
-    { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false },
-    { name: "GCOS_LOGIN_RATE_LIMIT", value: String(LOGIN_RATE_LIMIT), configured: LOGIN_RATE_LIMIT >= 5, sensitive: false },
-    { name: "GCOS_LOGIN_RATE_WINDOW_MS", value: String(LOGIN_RATE_WINDOW_MS), configured: LOGIN_RATE_WINDOW_MS >= 60000, sensitive: false },
-    { name: "GCOS_MUTATION_RATE_LIMIT", value: String(MUTATION_RATE_LIMIT), configured: MUTATION_RATE_LIMIT >= 100, sensitive: false },
-    { name: "GCOS_MUTATION_RATE_WINDOW_MS", value: String(MUTATION_RATE_WINDOW_MS), configured: MUTATION_RATE_WINDOW_MS >= 60000, sensitive: false },
-    { name: "GCOS_MANAGED_RESTORE_DRILL", value: "1", configured: process.env.GCOS_MANAGED_RESTORE_DRILL === "1", sensitive: false }
-  ];
+  const requiredSecrets = productionSecretEntries();
   const commands = [
     "npm install",
     "npm run build",
     "npm run production:check",
+    "npm run secrets:plan",
     "npm run replit:run",
     "GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck",
-    "npm run domain:check"
+    "npm run domain:check",
+    "npm run launch:verify:live"
   ];
   return {
     generatedAt: new Date().toISOString(),
@@ -764,6 +749,61 @@ async function launchDeploymentPlan() {
       ? "Run production smoke checks and sign off the rmvi.org deployment"
       : "Set the missing Replit secrets, then rerun npm run production:check"
   };
+}
+
+function productionSecretEntries() {
+  return [
+    { name: "NODE_ENV", value: "production", configured: process.env.NODE_ENV === "production", sensitive: false },
+    { name: "GCOS_DOMAIN", value: DOMAIN, configured: DOMAIN === "rmvi.org", sensitive: false },
+    { name: "GCOS_DEPLOYMENT_TARGET", value: DEPLOYMENT_TARGET || "replit", configured: Boolean(DEPLOYMENT_TARGET), sensitive: false },
+    { name: "GCOS_SERVE_WEB", value: SERVE_WEB ? "1" : "1", configured: SERVE_WEB, sensitive: false },
+    { name: "GCOS_ALLOWED_ORIGIN", value: "https://rmvi.org", configured: ALLOWED_ORIGIN === "https://rmvi.org", sensitive: false },
+    { name: "GCOS_HEALTHCHECK_URL", value: "https://rmvi.org", configured: (process.env.GCOS_HEALTHCHECK_URL ?? "") === "https://rmvi.org", sensitive: false },
+    { name: "GCOS_ENABLE_DEV_RESET", value: "0", configured: !DEV_RESET_ENABLED, sensitive: false },
+    { name: "GCOS_STORAGE_PROVIDER", value: "database", configured: STORAGE_PROVIDER === "database", sensitive: false },
+    { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? redactSecret(DATABASE_URL) : "required", configured: Boolean(DATABASE_URL), sensitive: true },
+    { name: "GCOS_DATABASE_SSL", value: "1", configured: process.env.GCOS_DATABASE_SSL === "1", sensitive: false },
+    { name: "GCOS_DATABASE_POOL_SIZE", value: process.env.GCOS_DATABASE_POOL_SIZE ?? "5", configured: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, sensitive: false },
+    { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false },
+    { name: "GCOS_LOGIN_RATE_LIMIT", value: String(LOGIN_RATE_LIMIT), configured: LOGIN_RATE_LIMIT >= 5, sensitive: false },
+    { name: "GCOS_LOGIN_RATE_WINDOW_MS", value: String(LOGIN_RATE_WINDOW_MS), configured: LOGIN_RATE_WINDOW_MS >= 60000, sensitive: false },
+    { name: "GCOS_MUTATION_RATE_LIMIT", value: String(MUTATION_RATE_LIMIT), configured: MUTATION_RATE_LIMIT >= 100, sensitive: false },
+    { name: "GCOS_MUTATION_RATE_WINDOW_MS", value: String(MUTATION_RATE_WINDOW_MS), configured: MUTATION_RATE_WINDOW_MS >= 60000, sensitive: false },
+    { name: "GCOS_MANAGED_RESTORE_DRILL", value: "1", configured: process.env.GCOS_MANAGED_RESTORE_DRILL === "1", sensitive: false }
+  ];
+}
+
+function productionSecretsPlan() {
+  const entries = productionSecretEntries().map((secret) => ({
+    ...secret,
+    status: secret.configured ? "ready" : "needed",
+    displayValue: secret.sensitive && secret.configured ? "configured secret" : secret.value,
+    nextAction: secret.configured ? "No action needed" : productionSecretAction(secret.name)
+  }));
+  const required = entries.length;
+  const ready = entries.filter((entry) => entry.configured).length;
+  const missing = entries.filter((entry) => !entry.configured).map((entry) => entry.name);
+  return {
+    generatedAt: new Date().toISOString(),
+    targetDomain: DOMAIN,
+    status: missing.length ? "secrets-pending" : "secrets-ready",
+    required,
+    ready,
+    missing,
+    entries,
+    nextActions: missing.length
+      ? missing.slice(0, 5).map((name) => productionSecretAction(name))
+      : ["Run npm run launch:verify:live from Replit."]
+  };
+}
+
+function productionSecretAction(name) {
+  if (name === "GCOS_DATABASE_URL") return "Create/connect managed Postgres and set GCOS_DATABASE_URL in Replit Secrets.";
+  if (name === "GCOS_OBJECT_VAULT_PATH") return "Set GCOS_OBJECT_VAULT_PATH to a persistent upload vault path.";
+  if (name === "NODE_ENV") return "Set NODE_ENV=production in Replit Secrets.";
+  if (name === "GCOS_ALLOWED_ORIGIN") return "Set GCOS_ALLOWED_ORIGIN=https://rmvi.org.";
+  if (name === "GCOS_HEALTHCHECK_URL") return "Set GCOS_HEALTHCHECK_URL=https://rmvi.org.";
+  return `Set ${name} in Replit Secrets.`;
 }
 
 async function launchSignoffMatrix() {

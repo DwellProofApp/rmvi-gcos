@@ -332,6 +332,24 @@ type DeploymentPlan = {
   goLive: boolean;
   nextAction: string;
 };
+type ProductionSecretsPlan = {
+  generatedAt: string;
+  targetDomain: string;
+  status: string;
+  required: number;
+  ready: number;
+  missing: string[];
+  entries: {
+    name: string;
+    value: string;
+    configured: boolean;
+    sensitive: boolean;
+    status: string;
+    displayValue: string;
+    nextAction: string;
+  }[];
+  nextActions: string[];
+};
 type OperationalMonitor = {
   generatedAt: string;
   status: string;
@@ -10835,6 +10853,7 @@ function Audit({
   const [cutoverChecklist, setCutoverChecklist] = React.useState<PersistenceCutoverChecklist | null>(null);
   const [launchReadiness, setLaunchReadiness] = React.useState<LaunchReadiness | null>(null);
   const [deploymentPlan, setDeploymentPlan] = React.useState<DeploymentPlan | null>(null);
+  const [productionSecretsPlan, setProductionSecretsPlan] = React.useState<ProductionSecretsPlan | null>(null);
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
   const [launchSignoff, setLaunchSignoff] = React.useState<LaunchSignoff | null>(null);
   const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
@@ -10886,6 +10905,7 @@ function Audit({
     void apiRequest<OperationalMonitor>("/api/ops/monitor").then(setOperationalMonitor).catch(() => undefined);
     void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
     void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
+    void apiRequest<ProductionSecretsPlan>("/api/production/secrets-plan").then(setProductionSecretsPlan).catch(() => undefined);
     void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
   }, []);
@@ -11062,6 +11082,10 @@ function Audit({
 
   function refreshDeploymentPlan() {
     void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
+  }
+
+  function refreshProductionSecretsPlan() {
+    void apiRequest<ProductionSecretsPlan>("/api/production/secrets-plan").then(setProductionSecretsPlan).catch(() => undefined);
   }
 
   function recordDeploymentPlan() {
@@ -11812,6 +11836,34 @@ function Audit({
               <span>{secret.configured ? "Set" : "Missing"}</span>
               <strong>{secret.name}</strong>
               <small>{secret.sensitive && secret.configured ? "configured secret" : secret.value}</small>
+            </article>
+          ))}
+        </div>
+      </div>
+      <div className="panel module-side">
+        <PanelHeader icon={KeyRound} title="Production Secrets" action={productionSecretsPlan?.status ?? "checking"} />
+        <div className="action-row">
+          <button onClick={refreshProductionSecretsPlan}><RefreshCw size={15} /> Secrets</button>
+          <button onClick={refreshDeploymentPlan}><Upload size={15} /> Deploy</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Ready" value={`${productionSecretsPlan?.ready ?? 0}/${productionSecretsPlan?.required ?? 0}`} />
+          <Insight label="Missing" value={String(productionSecretsPlan?.missing.length ?? 0)} />
+          <Insight label="Domain" value={productionSecretsPlan?.targetDomain ?? "rmvi.org"} />
+          <Insight label="Status" value={productionSecretsPlan?.status ?? "Pending"} />
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>{productionSecretsPlan ? formatDateTime(productionSecretsPlan.generatedAt) : "No secrets plan loaded"}</span>
+            <strong>{productionSecretsPlan?.nextActions[0] ?? "Generate the production secrets plan before live deployment."}</strong>
+            <small>Use Replit Secrets for required values. Sensitive values stay redacted in GCOS.</small>
+          </article>
+          {(productionSecretsPlan?.entries ?? []).map((entry) => (
+            <article className="source-map-item" key={entry.name}>
+              <span>{entry.configured ? "Ready" : "Needed"}</span>
+              <strong>{entry.name}</strong>
+              <small>{entry.sensitive && entry.configured ? "configured secret" : entry.displayValue}</small>
+              {!entry.configured && <small>{entry.nextAction}</small>}
             </article>
           ))}
         </div>

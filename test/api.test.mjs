@@ -73,7 +73,16 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(deploymentPlan.targetDomain, "rmvi.org");
     assert.equal(deploymentPlan.requiredSecrets.some((secret) => secret.name === "GCOS_DATABASE_URL"), true);
     assert.equal(deploymentPlan.commands.includes("npm run production:check"), true);
+    assert.equal(deploymentPlan.commands.includes("npm run secrets:plan"), true);
+    assert.equal(deploymentPlan.commands.includes("npm run launch:verify:live"), true);
     assert.equal(deploymentPlan.smokeUrls.includes("https://rmvi.org/health"), true);
+
+    const secretsPlan = await getJson("/api/production/secrets-plan");
+    assert.equal(secretsPlan.targetDomain, "rmvi.org");
+    assert.equal(secretsPlan.status, "secrets-pending");
+    assert.equal(secretsPlan.entries.some((entry) => entry.name === "GCOS_DATABASE_URL" && entry.status === "needed"), true);
+    assert.equal(secretsPlan.missing.includes("GCOS_DATABASE_URL"), true);
+    assert.equal(secretsPlan.entries.some((entry) => entry.name === "GCOS_DATABASE_URL" && entry.nextAction.includes("managed Postgres")), true);
 
     const launchSignoff = await getJson("/api/launch/signoff");
     assert.equal(launchSignoff.tracks.length, 3);
