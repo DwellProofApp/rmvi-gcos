@@ -2325,10 +2325,11 @@ function App() {
   React.useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("logout") !== "1") return;
+    const landingSection: Section = adminRouteRequested() ? "Admin Board" : "Control Center";
     setSession(null);
-    setActiveSection("Control Center");
+    setActiveSection(landingSection);
     url.searchParams.delete("logout");
-    window.history.replaceState({}, "", `${url.pathname}${url.search}${url.hash}`);
+    window.history.replaceState({}, "", sectionPath(landingSection));
   }, [setSession]);
 
   React.useEffect(() => {
@@ -7183,6 +7184,7 @@ function LoginScreen({
     { label: "Access model", value: "Station based" },
     { label: "Portal", value: "rmvi.org" }
   ];
+  const isAdminPortal = adminRouteRequested();
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -7263,14 +7265,8 @@ function LoginScreen({
                   setError("");
                 }}
                 placeholder="admin@rmvi.org"
-                list="station-email-suggestions"
                 autoComplete="username"
               />
-              <datalist id="station-email-suggestions">
-                {visibleCredentials.map((station) => (
-                  <option key={station.email} value={station.email}>{station.email}</option>
-                ))}
-              </datalist>
             </label>
 
             <label>
@@ -7298,7 +7294,7 @@ function LoginScreen({
           </div>
         </div>
 
-        {isLocalPreview ? (
+        {isLocalPreview && !isAdminPortal ? (
           <div className="credential-grid" aria-label="Demo credentials">
             {visibleCredentials.map((station) => (
               <button key={station.email} onClick={() => chooseStation(station.email)}>
@@ -7310,7 +7306,7 @@ function LoginScreen({
         ) : (
           <div className="login-support">
             <ShieldCheck size={16} />
-            <span>Use the credentials issued to your office. Demo passwords are hidden on the public domain.</span>
+            <span>{isAdminPortal ? "Admin users enter their assigned administrator email and password manually." : "Use the credentials issued to your office. Demo passwords are hidden on the public domain."}</span>
           </div>
         )}
       </section>
