@@ -3044,6 +3044,499 @@ h1 {
   font-size: 13px;
 }
 
+/* Enterprise board polish shared by every GCOS workstation page. */
+.section-banner {
+  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(340px, 0.46fr);
+  gap: 16px;
+  align-items: stretch;
+  overflow: hidden;
+  margin: 0 0 14px;
+  padding: 18px;
+  border: 1px solid rgba(11, 47, 107, 0.18);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(11, 47, 107, 0.98), rgba(31, 78, 157, 0.94) 56%, rgba(214, 166, 49, 0.92)),
+    #0b2f6b;
+  box-shadow: 0 18px 44px rgba(10, 36, 84, 0.16);
+  color: #ffffff;
+}
+
+.section-banner::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06), transparent 38%),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.08) 0 1px, transparent 1px 18px);
+  opacity: 0.55;
+}
+
+.section-banner > * {
+  position: relative;
+  z-index: 1;
+}
+
+.section-banner-main {
+  display: grid;
+  grid-template-columns: 58px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+}
+
+.section-banner-icon {
+  width: 58px;
+  height: 58px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #ffffff;
+  color: #0b2f6b;
+  box-shadow: inset 0 0 0 1px rgba(214, 166, 49, 0.45);
+}
+
+.section-banner span {
+  display: block;
+  color: #f4c542;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.section-banner h2 {
+  margin: 5px 0 6px;
+  color: #ffffff;
+  font-size: clamp(23px, 2.4vw, 34px);
+  line-height: 1.05;
+  letter-spacing: 0;
+}
+
+.section-banner p {
+  max-width: 860px;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.section-banner-status {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.section-banner-status div {
+  min-width: 0;
+  display: grid;
+  align-content: center;
+  gap: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.12);
+  padding: 12px;
+}
+
+.section-banner-status strong {
+  min-width: 0;
+  color: #ffffff;
+  font-size: 14px;
+  line-height: 1.18;
+  overflow-wrap: anywhere;
+}
+
+.workspace {
+  background:
+    radial-gradient(circle at top right, rgba(244, 197, 66, 0.14), transparent 30%),
+    radial-gradient(circle at top left, rgba(31, 78, 157, 0.1), transparent 28%);
+}
+
+.panel,
+.metric-card,
+.message-item,
+.workflow-item,
+.approval-item,
+.sync-stage,
+.draft-card,
+.approval-lane,
+.transfer-card,
+.escalation-card,
+.task-card,
+.policy-card,
+.calendar-card,
+.personnel-card,
+.report-detail-card,
+.template-preview,
+.provision-summary,
+.route-box,
+.mail-preview {
+  border-color: rgba(11, 47, 107, 0.14);
+  box-shadow: 0 12px 28px rgba(16, 33, 63, 0.07);
+}
+
+.panel {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(248, 251, 255, 0.97));
+}
+
+.panel-header {
+  min-height: 44px;
+  border-bottom: 1px solid rgba(11, 47, 107, 0.1);
+  padding-bottom: 10px;
+}
+
+.panel-header div:first-child svg {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 8px;
+  background: #e7eefc;
+  color: #0b2f6b;
+}
+
+.panel-header h2 {
+  color: #0b2f6b;
+  font-size: 16px;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.panel-header > span,
+.panel-header > button,
+.panel-header div + span {
+  border: 1px solid rgba(214, 166, 49, 0.36);
+  border-radius: 999px;
+  background: #fff8e8;
+  color: #8a6818;
+  min-height: 30px;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 10px;
+  font-size: 12px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.metric-grid {
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.metric-card {
+  min-height: 86px;
+  background: #ffffff;
+}
+
+.metric-icon {
+  box-shadow: inset 0 0 0 1px rgba(11, 47, 107, 0.08);
+}
+
+.metric-card strong {
+  color: #0b2f6b;
+}
+
+.office-summary-grid,
+.workflow-digest,
+.admin-status-strip {
+  gap: 10px;
+}
+
+.insight {
+  min-height: 76px;
+  grid-template-columns: 1fr;
+  align-content: center;
+  border: 1px solid rgba(11, 47, 107, 0.12);
+  border-bottom: 1px solid rgba(11, 47, 107, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.insight span {
+  color: #697891;
+  font-weight: 800;
+}
+
+.insight strong {
+  grid-column: auto;
+  color: #0b2f6b;
+  font-size: 16px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.module-grid,
+.dashboard-grid {
+  gap: 14px;
+}
+
+.module-primary,
+.module-side {
+  align-self: start;
+}
+
+.archive-toolbar,
+.audit-toolbar,
+.registry-toolbar {
+  border: 1px solid rgba(11, 47, 107, 0.12);
+  border-radius: 8px;
+  background: #f8fbff;
+  padding: 10px;
+  margin-bottom: 12px;
+}
+
+.archive-toolbar label,
+.registry-toolbar label,
+.audit-toolbar label {
+  min-width: 0;
+}
+
+.archive-toolbar select,
+.archive-toolbar input,
+.registry-toolbar select,
+.registry-toolbar input,
+.audit-toolbar select,
+.audit-toolbar input,
+.office-form input,
+.office-form select,
+.office-form textarea,
+.churchmail-form input,
+.churchmail-form select,
+.ai-desk-form select,
+.ai-desk-form textarea {
+  border-color: #cfdcf0;
+  background: #ffffff;
+}
+
+.archive-toolbar button,
+.registry-toolbar button,
+.audit-toolbar button,
+.action-row button,
+.compact-actions button,
+.table-actions button,
+.table-actions .file-action,
+.admin-control-list button,
+.admin-queue-list button,
+.admin-route-list button,
+.admin-station-actions button,
+.admin-session-list button,
+.office-form button {
+  border: 1px solid #d8e2f2;
+  background: #ffffff;
+  color: #173b72;
+  box-shadow: 0 4px 10px rgba(16, 33, 63, 0.05);
+  transition:
+    transform 140ms ease,
+    border-color 140ms ease,
+    background 140ms ease,
+    box-shadow 140ms ease;
+}
+
+.archive-toolbar button:hover,
+.registry-toolbar button:hover,
+.audit-toolbar button:hover,
+.action-row button:hover,
+.compact-actions button:hover,
+.table-actions button:hover,
+.table-actions .file-action:hover,
+.admin-control-list button:hover,
+.admin-queue-list button:hover,
+.admin-route-list button:hover,
+.admin-station-actions button:hover,
+.admin-session-list button:hover,
+.office-form button:hover {
+  transform: translateY(-1px);
+  border-color: #9bb8ea;
+  background: #f7faff;
+  box-shadow: 0 10px 18px rgba(16, 33, 63, 0.08);
+}
+
+.office-form button[type="submit"],
+.churchmail-form button,
+.ai-desk-form button {
+  background: #0b2f6b;
+  color: #ffffff;
+  border-color: #0b2f6b;
+}
+
+.action-row,
+.compact-actions,
+.table-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.action-row {
+  border-top: 1px solid rgba(11, 47, 107, 0.1);
+  padding-top: 10px;
+}
+
+.approval-board,
+.transfer-list,
+.escalation-list,
+.task-board,
+.policy-list,
+.calendar-list,
+.personnel-list {
+  gap: 14px;
+}
+
+.approval-lane,
+.transfer-card,
+.escalation-card,
+.task-card,
+.policy-card,
+.calendar-card,
+.personnel-card {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.approval-lane::before,
+.transfer-card::before,
+.escalation-card::before,
+.task-card::before,
+.policy-card::before,
+.calendar-card::before,
+.personnel-card::before,
+.table-row::before,
+.message-item::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 4px;
+  background: #f4c542;
+}
+
+.approval-lane h2,
+.transfer-card h2,
+.escalation-card h2,
+.task-card h2,
+.policy-card h2,
+.calendar-card h2,
+.personnel-card h2,
+.mail-preview h2 {
+  color: #0b2f6b;
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.approval-meta {
+  justify-content: flex-start;
+}
+
+.approval-meta small,
+.message-footer small {
+  border: 1px solid #e4ebf7;
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #5b6680;
+  padding: 5px 8px;
+  font-weight: 750;
+}
+
+.mail-layout {
+  align-items: stretch;
+}
+
+.message-list {
+  gap: 10px;
+}
+
+.message-button {
+  width: 100%;
+}
+
+.message-item {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.mail-preview {
+  background:
+    linear-gradient(180deg, #ffffff, #f8fbff);
+}
+
+.route-box {
+  background: #ffffff;
+}
+
+.table-row {
+  position: relative;
+  overflow: hidden;
+  background: #ffffff;
+}
+
+.table-head {
+  background: #0b2f6b;
+  box-shadow: none;
+}
+
+.table-head::before {
+  display: none;
+}
+
+.data-table {
+  gap: 10px;
+}
+
+.document-table .table-row,
+.audit-table .table-row {
+  align-items: start;
+}
+
+.report-workspace-head {
+  background:
+    linear-gradient(135deg, rgba(11, 47, 107, 0.07), rgba(244, 197, 66, 0.13));
+}
+
+.template-list button,
+.source-map-item,
+.completion-track {
+  border-color: rgba(11, 47, 107, 0.14);
+  background: #ffffff;
+}
+
+.template-list button:hover,
+.source-map-item:hover {
+  border-color: #9bb8ea;
+  background: #f7faff;
+}
+
+.command-card,
+.sync-stage,
+.event-line,
+.control-row,
+.graph-node {
+  border: 1px solid rgba(11, 47, 107, 0.12);
+  border-radius: 8px;
+  background: #ffffff;
+  padding-inline: 12px;
+}
+
+.control-row,
+.graph-node {
+  border-bottom: 1px solid rgba(11, 47, 107, 0.12);
+}
+
+.pipeline-step {
+  background: #ffffff;
+  border-color: #d8e2f2;
+  color: #173b72;
+}
+
+.empty-state {
+  border-color: rgba(11, 47, 107, 0.22);
+  background:
+    linear-gradient(135deg, rgba(11, 47, 107, 0.04), rgba(244, 197, 66, 0.08));
+}
+
 @media (max-width: 1180px) {
   .app-shell {
     grid-template-columns: 78px minmax(0, 1fr);
@@ -3169,8 +3662,32 @@ h1 {
     flex-direction: column;
   }
 
+  .topbar-actions {
+    align-items: center;
+    flex-direction: row;
+    justify-content: flex-start;
+  }
+
+  .station-title,
+  .topbar-actions {
+    flex: 0 1 auto;
+  }
+
   .search-box {
+    flex: 1 1 100%;
     min-width: 100%;
+  }
+
+  .sync-toggle,
+  .api-status,
+  .install-toggle,
+  .session-pill {
+    flex: 1 1 210px;
+    justify-content: center;
+  }
+
+  .permission-strip {
+    flex: 1 1 100%;
   }
 
   .metric-grid,
@@ -3187,6 +3704,14 @@ h1 {
 
   .admin-hero {
     flex-direction: column;
+  }
+
+  .section-banner {
+    grid-template-columns: 1fr;
+  }
+
+  .section-banner-status {
+    grid-template-columns: 1fr;
   }
 
   .admin-hero-actions {

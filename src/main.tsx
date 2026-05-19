@@ -865,6 +865,121 @@ const navItems: { icon: React.ElementType; label: Section }[] = [
   { icon: ShieldCheck, label: "Audit" }
 ];
 
+const sectionProfiles: Record<Section, { icon: React.ElementType; eyebrow: string; title: string; description: string; signal: string }> = {
+  "Control Center": {
+    icon: LayoutDashboard,
+    eyebrow: "Executive operations",
+    title: "Global Governance Control Center",
+    description: "A command view for workflow risk, reporting health, approvals, escalations, offline queue, and station performance.",
+    signal: "Command ready"
+  },
+  "Admin Board": {
+    icon: KeyRound,
+    eyebrow: "System administration",
+    title: "System Administrator Workstation",
+    description: "Full RMVI platform administration for users, offices, station authority, sessions, audit controls, and deployment readiness.",
+    signal: "Admin authority"
+  },
+  ChurchMail: {
+    icon: Mail,
+    eyebrow: "Governance communication",
+    title: "ChurchMail Governance Inbox",
+    description: "Classified official communication for directives, reports, approvals, notifications, transfers, routing, and archival traceability.",
+    signal: "Classified routing"
+  },
+  Reports: {
+    icon: FileCheck2,
+    eyebrow: "Hierarchical reporting",
+    title: "Reporting Center",
+    description: "Preloaded church reports, full report forms, evidence readiness, review workflows, corrections, exports, and upward routing.",
+    signal: "Templates loaded"
+  },
+  Approvals: {
+    icon: Workflow,
+    eyebrow: "Delegated authority",
+    title: "Approval and Delegation Engine",
+    description: "Validation, signature chains, authority limits, delegated review, execution, hold/release controls, and audit-backed approvals.",
+    signal: "Rule checks live"
+  },
+  Tasks: {
+    icon: SquareCheckBig,
+    eyebrow: "Administrative execution",
+    title: "Station Task Center",
+    description: "Track assigned work, blockers, SLA status, dispatch, evidence, dependencies, QA review, comments, and operational handoffs.",
+    signal: "Work queue active"
+  },
+  Policies: {
+    icon: ScrollText,
+    eyebrow: "Governance policy",
+    title: "Policy Registry",
+    description: "Create, distribute, review, acknowledge, train, archive, and bind policies to evidence, approvals, tasks, and compliance checks.",
+    signal: "Policy controlled"
+  },
+  Calendar: {
+    icon: CalendarDays,
+    eyebrow: "Governance calendar",
+    title: "Calendar and Readiness Board",
+    description: "Schedule meetings, conferences, reviews, deadlines, reminders, venues, attendance, readiness checks, and linked work.",
+    signal: "Schedule visible"
+  },
+  Personnel: {
+    icon: Users,
+    eyebrow: "People and access",
+    title: "Personnel Directory",
+    description: "Manage staff, roles, station assignments, credentials, clearance, training, leave, access grants, incidents, and transfers.",
+    signal: "Access governed"
+  },
+  Escalations: {
+    icon: AlertTriangle,
+    eyebrow: "Executive attention",
+    title: "Escalation Command Queue",
+    description: "Triage urgent matters, ownership, severity, SLA, evidence, impact scoring, linked work, resolution notes, and executive routing.",
+    signal: "Priority watch"
+  },
+  "AI Desk": {
+    icon: Sparkles,
+    eyebrow: "AI administration",
+    title: "AI Administrative Desk",
+    description: "Generate briefs, memos, report summaries, delay insights, source-bound drafts, readiness checks, and administrative recommendations.",
+    signal: "Assist ready"
+  },
+  Hierarchy: {
+    icon: GitBranch,
+    eyebrow: "Station graph",
+    title: "Organizational Hierarchy",
+    description: "Verify station levels, authority, reporting lines, suspension, activation, mirrors, bulk verification, and graph integrity.",
+    signal: "Graph live"
+  },
+  Offices: {
+    icon: Building2,
+    eyebrow: "Office provisioning",
+    title: "Office Creation and Workstations",
+    description: "Create offices, assign levels, departments, supervisors, credentials, station capacity, compliance status, and access readiness.",
+    signal: "Provisioning"
+  },
+  Transfers: {
+    icon: Signature,
+    eyebrow: "Identity migration",
+    title: "Transfer Management",
+    description: "Control reassignment letters, acknowledgements, old access revocation, new station activation, schedule, risk, and audit readiness.",
+    signal: "Session guarded"
+  },
+  Archive: {
+    icon: Files,
+    eyebrow: "Evidence vault",
+    title: "Document Archive Vault",
+    description: "Register, classify, seal, verify, retain, export, upload, index, and link documents to reports, approvals, and audit records.",
+    signal: "Vault integrity"
+  },
+  Audit: {
+    icon: ShieldCheck,
+    eyebrow: "Immutable audit",
+    title: "Audit and Session Monitor",
+    description: "Inspect audit rows, event severity, session safety, evidence chain, readiness checks, incident review, and immutable records.",
+    signal: "Audit locked"
+  }
+};
+
 const hierarchy: { level: StationLevel; node: string; metric: string; command: number; reports: number }[] = [
   { level: "International HQ", node: "Global Authority", metric: "Worldwide governance", command: 98, reports: 92 },
   { level: "Regional HQ", node: "Continental Oversight", metric: "6 active regions", command: 91, reports: 88 },
@@ -6735,6 +6850,7 @@ function App() {
           </div>
         </header>
 
+        <SectionBanner section={activeSection} station={activeStation} offlineMode={offlineMode} />
         <Metrics metrics={operatingMetrics} />
         {activeSection === "Control Center" && (
           <ControlCenter
@@ -7351,6 +7467,39 @@ function Metrics({
       <Metric icon={ArrowUpFromLine} label="Active Reports" value={String(metrics.activeReports)} trend={metrics.reportTrend} />
       <Metric icon={TimerReset} label="Workflow SLA" value={`${metrics.sla}%`} trend={metrics.slaTrend} />
       <Metric icon={LockKeyhole} label="Audit Events" value={String(metrics.auditEvents)} trend={metrics.auditTrend} />
+    </section>
+  );
+}
+
+function SectionBanner({ section, station, offlineMode }: { section: Section; station: StationCard; offlineMode: boolean }) {
+  const profile = sectionProfiles[section];
+  const Icon = profile.icon;
+  return (
+    <section className="section-banner" aria-label={`${section} overview`}>
+      <div className="section-banner-main">
+        <div className="section-banner-icon">
+          <Icon size={24} />
+        </div>
+        <div>
+          <span>{profile.eyebrow}</span>
+          <h2>{profile.title}</h2>
+          <p>{profile.description}</p>
+        </div>
+      </div>
+      <div className="section-banner-status">
+        <div>
+          <span>Station</span>
+          <strong>{station.level}</strong>
+        </div>
+        <div>
+          <span>Mode</span>
+          <strong>{offlineMode ? "Offline queue" : "Live sync"}</strong>
+        </div>
+        <div>
+          <span>Status</span>
+          <strong>{profile.signal}</strong>
+        </div>
+      </div>
     </section>
   );
 }
