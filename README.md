@@ -81,6 +81,7 @@ npm run healthcheck
 npm run domain:check
 npm run production:check
 npm run release:check
+npm run secrets:plan
 npm run launch:verify
 ```
 

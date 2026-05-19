@@ -73,6 +73,12 @@ Set `GCOS_OBJECT_VAULT_PATH` to a persistent path supported by the host. Uploade
 
 ## Verification Commands
 
+Production secrets worksheet:
+
+```bash
+npm run secrets:plan
+```
+
 Local release gate:
 
 ```bash
@@ -95,6 +101,8 @@ The live command runs:
 - DNS and domain ownership check
 
 Every run writes a JSON report into `launch-reports/`. The folder is ignored by git because each launch report is environment-specific evidence.
+
+`npm run secrets:plan` writes `launch-reports/production-secrets-plan.md` and `launch-reports/production-secrets-plan.json`. Use the Markdown file as the Replit Secrets checklist.
 
 ## Final Signoff
 

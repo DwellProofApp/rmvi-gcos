@@ -11,6 +11,7 @@
     "replit:run": "npm run build && npm run start:replit",
     "production:check": "node scripts/production-readiness.mjs",
     "release:check": "node scripts/final-release-check.mjs",
+    "secrets:plan": "node scripts/production-secrets-plan.mjs",
     "launch:verify": "node scripts/launch-verify.mjs",
     "launch:verify:live": "node scripts/launch-verify.mjs --live",
     "build": "vite build",
