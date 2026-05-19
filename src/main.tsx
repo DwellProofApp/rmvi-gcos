@@ -2019,8 +2019,10 @@ function App() {
   const [aiDraftDigest, setAiDraftDigest] = React.useState<AiDraftDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => {
     const directory = new Map<string, StationCard>();
-    const baseStations = apiStations.length ? apiStations : stations;
-    baseStations.forEach((station) => {
+    stations.forEach((station) => {
+      directory.set(station.email, { ...station, icon: resolveStationIcon(station) });
+    });
+    apiStations.forEach((station) => {
       directory.set(station.email, { ...station, icon: resolveStationIcon(station) });
     });
     offices.forEach((office) => {
