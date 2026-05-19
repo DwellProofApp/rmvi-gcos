@@ -2296,7 +2296,7 @@ async function loadState() {
 }
 
 function migratePersistedState(loadedState) {
-  const migratedState = JSON.parse(JSON.stringify(loadedState).replaceAll("@rmi.org", "@rmvi.org"));
+  const migratedState = JSON.parse(JSON.stringify(loadedState).replaceAll("@rmi.org", "@rmvi.org").replaceAll("@gcos.org", "@rmvi.org"));
   for (const station of migratedState.stations) station.email = normalizeStationEmail(station.email);
   for (const office of migratedState.offices) office.email = normalizeStationEmail(office.email);
   const seenStationEmails = new Set();

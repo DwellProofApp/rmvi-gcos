@@ -1841,7 +1841,7 @@ function usePersistentState<T>(key: string, initialValue: T) {
     if (!stored) return initialValue;
 
     try {
-      const parsed = JSON.parse(stored) as T;
+      const parsed = JSON.parse(stored.replaceAll("@rmi.org", "@rmvi.org").replaceAll("@gcos.org", "@rmvi.org")) as T;
       if (Array.isArray(initialValue) && !Array.isArray(parsed)) return initialValue;
       if (initialValue !== null && typeof initialValue === "object" && (parsed === null || typeof parsed !== "object")) return initialValue;
       return parsed;
@@ -1970,7 +1970,7 @@ function resolveStationIcon(station: Pick<StationCard, "icon" | "level">) {
 }
 
 function normalizeStationEmail(email: string) {
-  return email.toLowerCase().replace("@rmi.org", "@rmvi.org");
+  return email.toLowerCase().replace("@rmi.org", "@rmvi.org").replace("@gcos.org", "@rmvi.org");
 }
 
 function getPermissions(station: StationCard): Permissions {
@@ -2032,14 +2032,17 @@ function App() {
   const stationDirectory = React.useMemo<StationCard[]>(() => {
     const directory = new Map<string, StationCard>();
     stations.forEach((station) => {
-      directory.set(station.email, { ...station, icon: resolveStationIcon(station) });
+      const email = normalizeStationEmail(station.email);
+      directory.set(email, { ...station, email, icon: resolveStationIcon(station) });
     });
     apiStations.forEach((station) => {
-      directory.set(station.email, { ...station, icon: resolveStationIcon(station) });
+      const email = normalizeStationEmail(station.email);
+      directory.set(email, { ...station, email, icon: resolveStationIcon(station) });
     });
     offices.forEach((office) => {
-      directory.set(office.email, {
-      email: office.email,
+      const email = normalizeStationEmail(office.email);
+      directory.set(email, {
+      email,
       title: `${office.name} Workstation`,
       level: office.level,
       authority: `${office.department}, supervised by ${office.supervisor}`,
@@ -2405,6 +2408,9 @@ function App() {
     const officePassword = offices.find((office) => office.email === normalizedEmail)?.password;
     const expectedPassword = stationPasswords[normalizedEmail] ?? officePassword;
     if (!station || expectedPassword !== password) {
+      return false;
+    }
+    if (adminRouteRequested() && !getPermissions(station).canOverride) {
       return false;
     }
 
@@ -6589,7 +6595,7 @@ function App() {
         </div>
 
         <nav className="nav-list" aria-label="Primary">
-          {navItems.map(({ icon: Icon, label }) => (
+          {navItems.filter((item) => item.label !== "Admin Board" || permissions.canOverride).map(({ icon: Icon, label }) => (
             <button
               className={label === activeSection ? "nav-item active" : "nav-item"}
               key={label}
