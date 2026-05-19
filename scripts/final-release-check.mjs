@@ -11,6 +11,10 @@ const main = await readFile("src/main.tsx", "utf8");
 const server = await readFile("server/index.mjs", "utf8");
 const domain = await readFile("server/domain.mjs", "utf8");
 const readme = await readFile("README.md", "utf8");
+const replitConfig = await readFile(".replit", "utf8");
+const replitNix = await readFile("replit.nix", "utf8");
+const productionEnv = await readFile(".env.production.example", "utf8");
+const finalHandoff = await readFile("docs/FINAL_RELEASE_HANDOFF.md", "utf8");
 
 const templateCount = (main.match(/id: "tpl-/g) ?? []).length;
 const officialStations = [
@@ -30,6 +34,21 @@ check("Evidence uploads", server.includes("POST /api/reports/:id/file") && main.
 check("Launch completion endpoint", server.includes("GET /api/project/completion") && server.includes("projectCompletionReport"), "project completion report API");
 check("Release scripts", ["test", "build", "production:check", "healthcheck", "domain:check", "release:check"].every((script) => packageJson.scripts?.[script]), "release scripts registered");
 check("Deployment docs", readme.includes("Final release handoff") && readme.includes("docs/FINAL_RELEASE_HANDOFF.md"), "README points to final handoff");
+check("Replit launcher", replitConfig.includes("npm run replit:run") && replitNix.includes("nodejs_22"), "Replit run command and Node runtime configured");
+check("Production env template", [
+  "GCOS_DOMAIN=rmvi.org",
+  "GCOS_DEPLOYMENT_TARGET=replit",
+  "GCOS_STORAGE_PROVIDER=database",
+  "GCOS_DATABASE_URL=",
+  "GCOS_ALLOWED_ORIGIN=https://rmvi.org",
+  "GCOS_ENABLE_DEV_RESET=0"
+].every((entry) => productionEnv.includes(entry)), "required rmvi.org production variables documented");
+check("Final handoff acceptance", [
+  "npm run production:check",
+  "https://rmvi.org/health",
+  "https://rmvi.org/api/status",
+  "Audit workspace records"
+].every((entry) => finalHandoff.includes(entry)), "production acceptance criteria documented");
 
 for (const item of checks) {
   console.log(`${item.ok ? "✓" : "✕"} ${item.name}: ${item.detail}`);
