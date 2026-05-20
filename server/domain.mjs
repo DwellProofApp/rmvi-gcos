@@ -23,6 +23,15 @@ export function normalizeStationEmail(email) {
 
 export function createSeedState() {
   const riverbendOffice = office("Riverbend Area Office", "riverbend_area@rmvi.org", "Area HQ", "Area Coordination", "Buchanan District");
+  const riverbendStation = station(riverbendOffice.email, `${riverbendOffice.name} Workstation`, riverbendOffice.level, `${riverbendOffice.department}, supervised by ${riverbendOffice.supervisor}`);
+  Object.assign(riverbendStation, {
+    nodeKind: riverbendOffice.nodeKind,
+    parentId: riverbendOffice.parentId,
+    parentName: riverbendOffice.parentName,
+    permissionPreset: riverbendOffice.permissionPreset,
+    reportingRoute: riverbendOffice.reportingRoute,
+    workflowAccess: riverbendOffice.workflowAccess
+  });
   return {
     stations: [
       station("admin@rmvi.org", "System Administrator Workstation", "International HQ", "Full GCOS administration, deployment control, user lifecycle, audit override"),
@@ -33,7 +42,7 @@ export function createSeedState() {
       station("finance@rmvi.org", "Finance Desk Workstation", "National HQ", "Financial reports, budgets, releases, reconciliation, audit evidence"),
       station("audit@rmvi.org", "Audit Desk Workstation", "National HQ", "Compliance review, audit packets, evidence sealing, control testing"),
       station("mission@rmvi.org", "Mission Office Workstation", "National HQ", "Mission outreach, transfers, church planting, personnel movement"),
-      station(riverbendOffice.email, `${riverbendOffice.name} Workstation`, riverbendOffice.level, `${riverbendOffice.department}, supervised by ${riverbendOffice.supervisor}`)
+      riverbendStation
     ],
     messages: [
       message("Directive", "Q2 governance reporting directive", "Regional HQ - West Africa", "Ready", "Policy memo"),
@@ -170,7 +179,9 @@ export function transfer(person, from, to, step, risk) {
   return { id: randomUUID(), person, from, to, step, risk };
 }
 
-export function office(name, email, level, department, supervisor) {
+export function office(name, email, level, department, supervisor, metadata = {}) {
+  const parentName = metadata.parentName ?? supervisor;
+  const permissionPreset = metadata.permissionPreset ?? "Reporter";
   return {
     id: randomUUID(),
     name,
@@ -178,6 +189,12 @@ export function office(name, email, level, department, supervisor) {
     level,
     department,
     supervisor,
+    nodeKind: metadata.nodeKind ?? "Office",
+    parentId: metadata.parentId,
+    parentName,
+    permissionPreset,
+    reportingRoute: metadata.reportingRoute ?? [level, parentName || "Parent office", "Supervising authority", "Archive vault"].join(" -> "),
+    workflowAccess: metadata.workflowAccess ?? ["ChurchMail", "Reports", "Tasks", "Archive"],
     password: `gcos-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`,
     status: "Provisioned"
   };

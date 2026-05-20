@@ -67,7 +67,9 @@ type StationLevel =
 type Section = "Control Center" | "Admin Board" | "ChurchMail" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit" | "Account Settings";
 type MessageKind = "Directive" | "Report" | "Approval" | "Notification" | "Transfer";
 type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
-type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string };
+type OrgNodeKind = "Office" | "Directorate" | "Department" | "Unit" | "Staff Structure";
+type PermissionPreset = "Reporter" | "Department Lead" | "Approver" | "Office Admin" | "Transfer Officer" | "Executive Override";
+type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string; nodeKind?: OrgNodeKind; parentId?: string; parentName?: string; permissionPreset?: PermissionPreset; reportingRoute?: string; workflowAccess?: string[] };
 type StationAuth = { email: string; status: string; failedAttempts: number; lockedUntil?: string; mfaRequired?: boolean; forceReset?: boolean; updatedAt?: string; updatedBy?: string; lastLoginAt?: string; lastFailedAt?: string };
 type StationAuthDigest = { generatedAt: string; total: number; locked: number; mfaRequired: number; resetRequired: number; failedAttempts: number; nextCredential: string };
 type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[] };
@@ -141,7 +143,7 @@ type OfflineAction = AuditRow & { queuedAt: string; syncStatus?: "Queued" | "Syn
 type OfflineSyncRecord = { id: string; status: "Synced" | "Deferred" | "Conflict"; count: number; detail: string; at: string };
 type OfflineConflict = { id: string; object: string; count: number; latestEvent: string; priority: "Review" | "High" };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string; authPending?: boolean };
-type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
+type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; nodeKind?: OrgNodeKind; parentId?: string; parentName?: string; permissionPreset?: PermissionPreset; reportingRoute?: string; workflowAccess?: string[]; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
 type CreateAccountInput = { fullName: string; officeName: string; email: string; password: string; level: StationLevel; department: string; autoApprove?: boolean };
 type AuthActionResult = { ok: boolean; message?: string };
 type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[]; evidence?: string; comments?: string[]; resolutionNote?: string; due?: string; linkedTask?: string; linkedReport?: string; linkedApproval?: string; impactScore?: number; impactSummary?: string; archived?: boolean; archiveReason?: string };
@@ -1130,6 +1132,38 @@ const missionStationRoleOptions = [
   "Census Service Group"
 ];
 
+const organizationNodeKinds: OrgNodeKind[] = ["Office", "Directorate", "Department", "Unit", "Staff Structure"];
+const permissionPresets: PermissionPreset[] = ["Reporter", "Department Lead", "Approver", "Office Admin", "Transfer Officer", "Executive Override"];
+
+function slugifyStationName(value: string) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/(^_|_$)/g, "") || "new_station";
+}
+
+function buildReportingRoute(level: StationLevel, parentName: string) {
+  return [level, parentName || "Parent office", "Supervising authority", "Archive vault"].join(" -> ");
+}
+
+function workflowAccessForPreset(permissionPreset: PermissionPreset) {
+  const access = new Set(["ChurchMail", "Reports", "Tasks", "Archive"]);
+  if (["Department Lead", "Approver", "Office Admin", "Executive Override"].includes(permissionPreset)) {
+    access.add("Approvals");
+  }
+  if (["Transfer Officer", "Executive Override"].includes(permissionPreset)) {
+    access.add("Transfers");
+    access.add("Personnel");
+  }
+  if (["Office Admin", "Executive Override"].includes(permissionPreset)) {
+    access.add("Offices");
+    access.add("Hierarchy");
+  }
+  if (permissionPreset === "Executive Override") {
+    access.add("Audit");
+    access.add("Escalations");
+    access.add("AI Desk");
+  }
+  return Array.from(access);
+}
+
 const initialReports: Report[] = [
   { id: "rep-001", name: "National mission activity report", owner: "National Programs", path: "Local -> Area -> District -> County -> National", due: "Today", state: "In Review", score: 86, type: "Mission", period: "May 2026", routingStage: "National review", evidenceStatus: "Evidence attached" },
   { id: "rep-002", name: "County finance summary", owner: "County Finance", path: "County -> National", due: "Tomorrow", state: "Ready", score: 94, type: "Financial", period: "Q2 2026", routingStage: "County validation", evidenceStatus: "Ledger pending" },
@@ -2044,6 +2078,11 @@ const initialOffices: Office[] = [
     level: "Area HQ",
     department: "Area Coordination",
     supervisor: "Buchanan District",
+    nodeKind: "Office",
+    parentName: "Buchanan District",
+    permissionPreset: "Reporter",
+    reportingRoute: "Area HQ -> Buchanan District -> Supervising authority -> Archive vault",
+    workflowAccess: ["ChurchMail", "Reports", "Tasks", "Archive"],
     password: demoStationPassword("riverbend"),
     status: "Provisioned"
   }
@@ -2349,11 +2388,12 @@ function buildOfflineConflicts(queue: OfflineAction[]): OfflineConflict[] {
 
 function getPermissions(station: StationCard): Permissions {
   const level = station.level;
+  const preset = station.permissionPreset;
   return {
-    canCreateOffices: ["International HQ", "Regional HQ", "National HQ"].includes(level),
-    canApprove: ["International HQ", "Regional HQ", "National HQ", "County/State HQ", "District HQ"].includes(level),
-    canExecuteTransfers: ["International HQ", "Regional HQ", "National HQ", "District HQ"].includes(level),
-    canOverride: ["International HQ", "Regional HQ"].includes(level)
+    canCreateOffices: preset === "Executive Override" || preset === "Office Admin" || ["International HQ", "Regional HQ", "National HQ"].includes(level),
+    canApprove: ["Executive Override", "Office Admin", "Approver", "Department Lead"].includes(String(preset)) || ["International HQ", "Regional HQ", "National HQ", "County/State HQ", "District HQ"].includes(level),
+    canExecuteTransfers: preset === "Executive Override" || preset === "Transfer Officer" || ["International HQ", "Regional HQ", "National HQ", "District HQ"].includes(level),
+    canOverride: preset === "Executive Override" || ["International HQ", "Regional HQ"].includes(level)
   };
 }
 
@@ -2817,13 +2857,20 @@ function App() {
     offices.filter((office) => office.status !== "Deleted").forEach((office) => {
       const email = normalizeStationEmail(office.email);
       directory.set(email, {
-      email,
-      title: `${office.name} Workstation`,
-      level: office.level,
-      authority: `${office.department}, supervised by ${office.supervisor}`,
-      icon: Building2,
-      status: office.status,
-      verified: office.emailVerified
+        id: office.id,
+        email,
+        title: `${office.name} Workstation`,
+        level: office.level,
+        authority: `${office.department}, supervised by ${office.supervisor}`,
+        icon: Building2,
+        status: office.status,
+        verified: office.emailVerified,
+        nodeKind: office.nodeKind,
+        parentId: office.parentId,
+        parentName: office.parentName,
+        permissionPreset: office.permissionPreset,
+        reportingRoute: office.reportingRoute,
+        workflowAccess: office.workflowAccess
       });
     });
     return Array.from(directory.values());
@@ -3344,15 +3391,24 @@ function App() {
 
     const officeId = `ofc-${Date.now()}`;
     const approvedAtSignup = Boolean(account.autoApprove);
+    const parentName = account.level === "Local Branch" ? "Area Office" : "International HQ";
+    const permissionPreset: PermissionPreset = "Reporter";
+    const reportingRoute = buildReportingRoute(account.level, parentName);
+    const workflowAccess = workflowAccessForPreset(permissionPreset);
     const createdOffice: Office = {
       id: officeId,
       name: cleanOfficeName,
       email: normalizedEmail,
       level: account.level,
       department: cleanDepartment,
-      supervisor: account.level === "Local Branch" ? "Area Office" : "International HQ",
+      supervisor: parentName,
       password: account.password,
       status: approvedAtSignup ? "Ready" : "Pending Approval",
+      nodeKind: "Office",
+      parentName,
+      permissionPreset,
+      reportingRoute,
+      workflowAccess,
       emailVerified: approvedAtSignup,
       notes: [`Created by ${cleanFullName} from the RMVI software sign-up portal.`, approvedAtSignup ? "Auto-approved for local preview." : "Awaiting administrator review."],
       complianceStatus: "Onboarding"
@@ -3365,7 +3421,12 @@ function App() {
       authority: `${cleanDepartment}, created by ${cleanFullName}`,
       icon: iconForLevel(account.level),
       status: approvedAtSignup ? "Ready" : "Pending Approval",
-      verified: approvedAtSignup
+      verified: approvedAtSignup,
+      nodeKind: "Office",
+      parentName,
+      permissionPreset,
+      reportingRoute,
+      workflowAccess
     };
     const startedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     setOffices((items) => [createdOffice, ...items]);
@@ -5791,9 +5852,16 @@ function App() {
     const exists = stationDirectory.some((station) => station.email === normalizedEmail);
     if (exists) return false;
 
+    const parentName = office.parentName ?? office.supervisor;
+    const permissionPreset = office.permissionPreset ?? "Reporter";
     const createdOffice: Office = {
       ...office,
       email: normalizedEmail,
+      nodeKind: office.nodeKind ?? "Office",
+      parentName,
+      permissionPreset,
+      reportingRoute: office.reportingRoute ?? buildReportingRoute(office.level, parentName),
+      workflowAccess: office.workflowAccess ?? workflowAccessForPreset(permissionPreset),
       id: `ofc-${Date.now()}`,
       password: `gcos-${office.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`,
       status: "Provisioned"
@@ -5968,15 +6036,24 @@ function App() {
     }
     const officeId = `ofc-${Date.now()}`;
     const status = permissions.canCreateOffices || permissions.canOverride ? "Ready" : "Pending Approval";
+    const parentName = account.level === "Local Branch" ? "Area Office" : String(activeStation.level);
+    const permissionPreset: PermissionPreset = permissions.canCreateOffices || permissions.canOverride ? "Department Lead" : "Reporter";
+    const reportingRoute = buildReportingRoute(account.level, parentName);
+    const workflowAccess = workflowAccessForPreset(permissionPreset);
     const createdOffice: Office = {
       id: officeId,
       name: cleanOfficeName,
       email: normalizedEmail,
       level: account.level,
       department: cleanDepartment,
-      supervisor: account.level === "Local Branch" ? "Area Office" : String(activeStation.level),
+      supervisor: parentName,
       password: account.password,
       status,
+      nodeKind: "Office",
+      parentName,
+      permissionPreset,
+      reportingRoute,
+      workflowAccess,
       emailVerified: status === "Ready",
       notes: [`Created by ${cleanFullName} from Account Settings.`],
       complianceStatus: status === "Ready" ? "Approved" : "Onboarding"
@@ -5989,7 +6066,12 @@ function App() {
       authority: `${cleanDepartment}, created by ${cleanFullName}`,
       icon: iconForLevel(account.level),
       status,
-      verified: status === "Ready"
+      verified: status === "Ready",
+      nodeKind: "Office",
+      parentName,
+      permissionPreset,
+      reportingRoute,
+      workflowAccess
     };
     setOffices((items) => [createdOffice, ...items]);
     setApiStations((items) => [createdStation, ...items.filter((station) => station.email !== normalizedEmail)]);
@@ -12006,11 +12088,19 @@ function Offices({
   const [level, setLevel] = React.useState<StationLevel>("District HQ");
   const [department, setDepartment] = React.useState("District Command");
   const [supervisor, setSupervisor] = React.useState("County/State Headquarters");
+  const [nodeKind, setNodeKind] = React.useState<OrgNodeKind>("Office");
+  const [parentId, setParentId] = React.useState("");
+  const [permissionPreset, setPermissionPreset] = React.useState<PermissionPreset>("Office Admin");
   const [levelFilter, setLevelFilter] = React.useState<StationLevel | "All levels">("All levels");
   const [feedback, setFeedback] = React.useState("");
   const filteredOffices = React.useMemo(() => (
     offices.filter((office) => !office.archived && (levelFilter === "All levels" || office.level === levelFilter))
   ), [levelFilter, offices]);
+  const parentOptions = React.useMemo(() => offices.filter((office) => !office.archived), [offices]);
+  const selectedParent = parentOptions.find((office) => office.id === parentId);
+  const effectiveParentName = selectedParent?.name || supervisor;
+  const reportingRoute = buildReportingRoute(level, effectiveParentName);
+  const workflowAccess = workflowAccessForPreset(permissionPreset);
   const activeOffices = offices.filter((office) => !office.archived);
   const provisionedCount = activeOffices.filter((office) => office.status === "Provisioned").length;
   const supervisorCount = new Set(offices.map((office) => office.supervisor)).size;
@@ -12037,7 +12127,19 @@ function Offices({
       setFeedback("This station is not authorized to create offices.");
       return;
     }
-    const ok = onCreateOffice({ name, email, level, department, supervisor });
+    const ok = onCreateOffice({
+      name,
+      email,
+      level,
+      department,
+      supervisor: effectiveParentName,
+      nodeKind,
+      parentId: selectedParent?.id,
+      parentName: effectiveParentName,
+      permissionPreset,
+      reportingRoute,
+      workflowAccess
+    });
     if (!ok) {
       setFeedback("That station email already exists.");
       return;
@@ -12046,7 +12148,8 @@ function Offices({
     setFeedback(`${name} has been provisioned.`);
     const nextName = `Mission Office ${offices.length + 2}`;
     setName(nextName);
-    setEmail(`${nextName.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/(^_|_$)/g, "")}@rmvi.org`);
+    setEmail(`${slugifyStationName(nextName)}@rmvi.org`);
+    setParentId("");
   }
 
   return (
@@ -12090,12 +12193,17 @@ function Offices({
           </div>
           {filteredOffices.map((office) => (
             <div className="table-row" key={office.id}>
-              <strong>{office.name}</strong>
+              <strong>
+                {office.name}
+                <small>{office.nodeKind ?? "Office"} - {office.department}</small>
+              </strong>
               <span>{office.email}</span>
               <span>{office.level}</span>
-              <span>{office.supervisor}</span>
+              <span>{office.parentName ?? office.supervisor}</span>
               <div className="table-actions">
                 <StatusPill status={office.status} />
+                <span>{office.permissionPreset ?? "Reporter"}</span>
+                {office.reportingRoute && <span>{office.reportingRoute}</span>}
                 {office.emailVerified && <span>Verified</span>}
                 {office.watchers?.length ? <span>{office.watchers.length} watchers</span> : null}
                 {office.notes?.length ? <span>{office.notes.length} notes</span> : null}
@@ -12135,11 +12243,14 @@ function Offices({
           </div>
           {stationRows.map((station) => (
             <div className="table-row" key={station.email}>
-              <strong>{station.title}</strong>
+              <strong>
+                {station.title}
+                <small>{station.nodeKind ?? "Station"}{station.parentName ? ` under ${station.parentName}` : ""}</small>
+              </strong>
               <span>{station.email}</span>
               <span>{station.level}</span>
               <span>{station.origin}</span>
-              <span>{station.permissions}</span>
+              <span>{station.permissionPreset ?? station.permissions}</span>
             </div>
           ))}
         </div>
@@ -12162,6 +12273,15 @@ function Offices({
             <span>Station email</span>
             <input value={email} onChange={(event) => setEmail(event.target.value)} />
           </label>
+          <button className="secondary" type="button" onClick={() => setEmail(`${slugifyStationName(name)}@rmvi.org`)}>
+            <Mail size={14} /> Generate official email
+          </button>
+          <label>
+            <span>Node type</span>
+            <select value={nodeKind} onChange={(event) => setNodeKind(event.target.value as OrgNodeKind)}>
+              {organizationNodeKinds.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
           <label>
             <span>Hierarchy level</span>
             <select value={level} onChange={(event) => setLevel(event.target.value as StationLevel)}>
@@ -12175,16 +12295,37 @@ function Offices({
             <input value={department} onChange={(event) => setDepartment(event.target.value)} />
           </label>
           <label>
-            <span>Supervisor</span>
+            <span>Parent office / directorate</span>
+            <select value={parentId} onChange={(event) => setParentId(event.target.value)}>
+              <option value="">Manual parent</option>
+              {parentOptions.map((office) => (
+                <option key={office.id} value={office.id}>{office.name} - {office.level}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Manual supervisor / parent</span>
             <input value={supervisor} onChange={(event) => setSupervisor(event.target.value)} />
           </label>
+          <label>
+            <span>Permission preset</span>
+            <select value={permissionPreset} onChange={(event) => setPermissionPreset(event.target.value as PermissionPreset)}>
+              {permissionPresets.map((option) => <option key={option} value={option}>{option}</option>)}
+            </select>
+          </label>
+          <div className="provision-summary compact">
+            <strong>Generated structure</strong>
+            <span>{reportingRoute}</span>
+            <span>{workflowAccess.join(", ")}</span>
+          </div>
           {feedback && <div className="login-error">{feedback}</div>}
           <button disabled={!permissions.canCreateOffices} type="submit"><Plus size={15} /> Provision workstation</button>
         </form>
 
         <div className="provision-summary">
           <strong>Generated assets</strong>
-          <span>Dashboard, inbox, reporting structure, approval permissions, analytics panel, audit ledger registration.</span>
+          <span>Dashboard, inbox, reporting route, workflow access, permission profile, station email, analytics panel, audit ledger registration.</span>
+          <span>Default departments are templates only. Create AI Research Unit, Legal Affairs, RMVI Television, or any future structure from this same control.</span>
         </div>
       </div>
     </section>

@@ -1892,9 +1892,17 @@ export function createServices({ state, record, requirePermission, findById }) {
       if (state.stations.some((entry) => entry.email === body.email) || state.offices.some((entry) => entry.email === body.email)) {
         return { conflict: true, error: "Station email already exists" };
       }
-      const created = office(body.name, body.email, body.level, body.department, body.supervisor);
+      const created = office(body.name, body.email, body.level, body.department, body.supervisor, body);
       state.offices.unshift(created);
       const createdStation = station(created.email, `${created.name} Workstation`, created.level, `${created.department}, supervised by ${created.supervisor}`);
+      Object.assign(createdStation, {
+        nodeKind: created.nodeKind,
+        parentId: created.parentId,
+        parentName: created.parentName,
+        permissionPreset: created.permissionPreset,
+        reportingRoute: created.reportingRoute,
+        workflowAccess: created.workflowAccess
+      });
       state.stations.push(createdStation);
       ensureStationCredential(created.email, created.password);
       record("OfficeCreated", body.actor, created.name, `${created.level} workstation provisioned`);
@@ -1905,8 +1913,14 @@ export function createServices({ state, record, requirePermission, findById }) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);
       item.supervisor = body.supervisor ?? item.supervisor;
+      item.parentName = body.parentName ?? body.supervisor ?? item.parentName;
+      item.reportingRoute = body.reportingRoute ?? item.reportingRoute;
       const stationRecord = state.stations.find((entry) => entry.email === item.email);
-      if (stationRecord) stationRecord.authority = `${item.department}, supervised by ${item.supervisor}`;
+      if (stationRecord) {
+        stationRecord.authority = `${item.department}, supervised by ${item.supervisor}`;
+        stationRecord.parentName = item.parentName;
+        stationRecord.reportingRoute = item.reportingRoute;
+      }
       record("OfficeSupervisorUpdated", body.actor, item.name, item.supervisor);
       return item;
     },
@@ -1949,7 +1963,16 @@ export function createServices({ state, record, requirePermission, findById }) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);
       if (!state.stations.some((entry) => entry.email === item.email)) {
-        state.stations.push(station(item.email, `${item.name} Workstation`, item.level, `${item.department}, supervised by ${item.supervisor}`));
+        const createdStation = station(item.email, `${item.name} Workstation`, item.level, `${item.department}, supervised by ${item.supervisor}`);
+        Object.assign(createdStation, {
+          nodeKind: item.nodeKind,
+          parentId: item.parentId,
+          parentName: item.parentName,
+          permissionPreset: item.permissionPreset,
+          reportingRoute: item.reportingRoute,
+          workflowAccess: item.workflowAccess
+        });
+        state.stations.push(createdStation);
       }
       ensureStationCredential(item.email, item.password);
       item.status = "Active";
@@ -1962,7 +1985,12 @@ export function createServices({ state, record, requirePermission, findById }) {
       const item = findById(state.offices, id);
       item.department = body.department ?? item.department;
       const stationRecord = state.stations.find((entry) => entry.email === item.email);
-      if (stationRecord) stationRecord.authority = `${item.department}, supervised by ${item.supervisor}`;
+      if (stationRecord) {
+        stationRecord.authority = `${item.department}, supervised by ${item.supervisor}`;
+        stationRecord.nodeKind = item.nodeKind;
+        stationRecord.permissionPreset = item.permissionPreset;
+        stationRecord.workflowAccess = item.workflowAccess;
+      }
       record("OfficeDepartmentUpdated", body.actor, item.name, item.department);
       return item;
     },
@@ -1971,8 +1999,12 @@ export function createServices({ state, record, requirePermission, findById }) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);
       item.level = body.level ?? item.level;
+      item.reportingRoute = body.reportingRoute ?? item.reportingRoute;
       const stationRecord = state.stations.find((entry) => entry.email === item.email);
-      if (stationRecord) stationRecord.level = item.level;
+      if (stationRecord) {
+        stationRecord.level = item.level;
+        stationRecord.reportingRoute = item.reportingRoute;
+      }
       record("OfficeLevelUpdated", body.actor, item.name, item.level);
       return item;
     },
