@@ -9098,6 +9098,719 @@ h1 {
   }
 }
 
+/* Last-mile admin override: readable royal-blue command board at the in-app viewport. */
+.admin-shell .workspace {
+  background: linear-gradient(180deg, #061a3d 0%, #0b2f6b 330px, #f3f6fb 330px, #f3f6fb 100%) !important;
+}
+
+.admin-portal-topbar {
+  background: #061a3d !important;
+  color: #ffffff !important;
+}
+
+.admin-portal-topbar .admin-portal-brand strong,
+.admin-portal-topbar .admin-portal-brand span {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.admin-portal-topbar .admin-portal-brand span {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.admin-portal-main {
+  background:
+    radial-gradient(circle at 96% 0%, rgba(244, 197, 66, 0.18), transparent 260px),
+    linear-gradient(180deg, transparent 0, transparent 300px, #f3f6fb 300px, #f3f6fb 100%) !important;
+}
+
+.admin-tab-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04)),
+    #0b2f6b !important;
+  border-color: rgba(244, 197, 66, 0.26) !important;
+  color: #ffffff !important;
+}
+
+.admin-tab-heading h1,
+.admin-tab-heading p,
+.admin-tab-heading span,
+.admin-tab-status strong,
+.admin-tab-status small,
+.admin-tab-status span {
+  color: #ffffff !important;
+}
+
+.admin-tab-heading > div:last-child > span {
+  color: #f4c542 !important;
+}
+
+.admin-tab-heading p {
+  color: rgba(255, 255, 255, 0.84) !important;
+}
+
+.admin-hero-brief span,
+.admin-tab-status div {
+  background: rgba(255, 255, 255, 0.11) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.admin-tab-status {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.admin-focus-board,
+.admin-console-panel {
+  background: #ffffff !important;
+  color: #10213f !important;
+  border: 1px solid #dce6f5 !important;
+  border-radius: 24px !important;
+}
+
+.admin-focus-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+
+.admin-focus-card {
+  min-height: 96px !important;
+  display: grid !important;
+  grid-template-columns: 40px minmax(0, 1fr) !important;
+  grid-template-areas:
+    "icon label"
+    "icon value" !important;
+  align-content: center !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+}
+
+.admin-focus-card > svg {
+  display: none !important;
+}
+
+.admin-focus-card > span {
+  grid-area: icon !important;
+}
+
+.admin-focus-card small {
+  grid-area: label !important;
+  color: #5c6c84 !important;
+}
+
+.admin-focus-card strong {
+  grid-area: value !important;
+  color: #10213f !important;
+}
+
+@media (max-width: 760px) {
+  .admin-tab-status {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .admin-focus-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .admin-console-panel .admin-system-grid,
+  .admin-action-list,
+  .admin-station-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-tab-status,
+  .admin-focus-grid,
+  .admin-console-panel .admin-system-grid,
+  .admin-action-list,
+  .admin-station-summary {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Final admin contrast and layout correction. Keep this last so older polish passes cannot dim it. */
+.admin-shell .workspace {
+  background: linear-gradient(180deg, #061a3d 0%, #0b2f6b 330px, #f3f6fb 330px, #f3f6fb 100%) !important;
+}
+
+.admin-portal-topbar {
+  background: #061a3d !important;
+  color: #ffffff !important;
+}
+
+.admin-portal-topbar .admin-portal-brand strong,
+.admin-portal-topbar .admin-portal-brand span {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.admin-portal-topbar .admin-portal-brand span {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.admin-portal-main {
+  background:
+    radial-gradient(circle at 96% 0%, rgba(244, 197, 66, 0.18), transparent 260px),
+    linear-gradient(180deg, transparent 0, transparent 300px, #f3f6fb 300px, #f3f6fb 100%) !important;
+}
+
+.admin-tab-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04)),
+    #0b2f6b !important;
+  border-color: rgba(244, 197, 66, 0.26) !important;
+  color: #ffffff !important;
+}
+
+.admin-tab-heading h1,
+.admin-tab-heading p,
+.admin-tab-heading span,
+.admin-tab-status strong,
+.admin-tab-status small,
+.admin-tab-status span {
+  color: #ffffff !important;
+}
+
+.admin-tab-heading > div:last-child > span {
+  color: #f4c542 !important;
+}
+
+.admin-tab-heading p {
+  color: rgba(255, 255, 255, 0.84) !important;
+}
+
+.admin-hero-brief span,
+.admin-tab-status div {
+  background: rgba(255, 255, 255, 0.11) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.admin-tab-status {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.admin-focus-board,
+.admin-console-panel {
+  background: #ffffff !important;
+  color: #10213f !important;
+  border: 1px solid #dce6f5 !important;
+  border-radius: 24px !important;
+}
+
+.admin-focus-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+
+.admin-focus-card {
+  min-height: 96px !important;
+  display: grid !important;
+  grid-template-columns: 40px minmax(0, 1fr) !important;
+  grid-template-areas:
+    "icon label"
+    "icon value" !important;
+  align-content: center !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+}
+
+.admin-focus-card > svg {
+  display: none !important;
+}
+
+.admin-focus-card > span {
+  grid-area: icon !important;
+}
+
+.admin-focus-card small {
+  grid-area: label !important;
+  color: #5c6c84 !important;
+}
+
+.admin-focus-card strong {
+  grid-area: value !important;
+  color: #10213f !important;
+}
+
+@media (max-width: 760px) {
+  .admin-tab-status {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .admin-focus-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .admin-console-panel .admin-system-grid,
+  .admin-action-list,
+  .admin-station-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-tab-status,
+  .admin-focus-grid,
+  .admin-console-panel .admin-system-grid,
+  .admin-action-list,
+  .admin-station-summary {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* RMVI workstation redesign v2: royal-blue command surface with compact, intentional pages. */
+.admin-shell .workspace {
+  background:
+    linear-gradient(180deg, #061a3d 0%, #0b2f6b 360px, #f3f6fb 360px, #f3f6fb 100%);
+}
+
+.admin-portal-shell {
+  background: transparent;
+}
+
+.admin-portal-topbar {
+  min-height: 78px;
+  border: 0;
+  background: #061a3d;
+  color: #ffffff;
+  box-shadow: none;
+}
+
+.admin-portal-brand strong {
+  color: #ffffff;
+  font-size: 18px;
+  letter-spacing: 0;
+}
+
+.admin-portal-brand span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.admin-portal-logo {
+  width: 48px;
+  height: 48px;
+  border: 2px solid rgba(244, 197, 66, 0.75);
+  background: #ffffff;
+}
+
+.admin-portal-state span,
+.admin-portal-state button {
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.admin-portal-state span:first-child {
+  border-color: rgba(244, 197, 66, 0.48);
+  background: rgba(244, 197, 66, 0.16);
+  color: #fff4d1;
+}
+
+.admin-portal-state button {
+  background: #f4c542;
+  border-color: #f4c542;
+  color: #061a3d;
+}
+
+.admin-portal-layout {
+  grid-template-columns: 264px minmax(0, 1fr);
+}
+
+.admin-portal-rail {
+  top: 78px;
+  height: calc(100vh - 78px);
+  border-right: 0;
+  background:
+    linear-gradient(180deg, #071f4f 0%, #061a3d 100%);
+  color: #ffffff;
+}
+
+.admin-workspace-card {
+  border-color: rgba(244, 197, 66, 0.34);
+  border-radius: 20px;
+  background:
+    linear-gradient(160deg, rgba(244, 197, 66, 0.22), rgba(255, 255, 255, 0.08));
+}
+
+.admin-nav-group p {
+  color: rgba(244, 197, 66, 0.82);
+}
+
+.admin-nav-group button {
+  color: rgba(255, 255, 255, 0.82);
+  border-color: transparent;
+}
+
+.admin-nav-group button svg:first-child {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.admin-nav-group button.active,
+.admin-nav-group button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: rgba(244, 197, 66, 0.42);
+  color: #ffffff;
+}
+
+.admin-nav-group button.active svg:first-child {
+  background: #f4c542;
+  color: #061a3d;
+}
+
+.admin-portal-main {
+  max-width: 1540px;
+  padding: 22px;
+  background:
+    radial-gradient(circle at 90px 60px, rgba(244, 197, 66, 0.18), transparent 260px),
+    linear-gradient(180deg, transparent 0, transparent 310px, #f3f6fb 310px, #f3f6fb 100%);
+}
+
+.admin-tab-hero {
+  border: 1px solid rgba(244, 197, 66, 0.22);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.05)),
+    #0b2f6b;
+  color: #ffffff;
+  box-shadow: 0 24px 58px rgba(2, 12, 31, 0.24);
+}
+
+.admin-tab-icon {
+  background: #f4c542;
+  color: #061a3d;
+}
+
+.admin-tab-heading > div:last-child > span,
+.admin-tab-heading span {
+  color: #f4c542;
+}
+
+.admin-tab-heading h1,
+.admin-tab-status strong {
+  color: #ffffff;
+}
+
+.admin-tab-heading p,
+.admin-tab-status small,
+.admin-tab-status span {
+  color: rgba(255, 255, 255, 0.78);
+}
+
+.admin-hero-brief span,
+.admin-tab-status div {
+  border-color: rgba(255, 255, 255, 0.16);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.admin-hero-brief span svg {
+  color: #f4c542;
+}
+
+.admin-focus-board,
+.admin-console-panel {
+  border: 1px solid #dce6f5;
+  border-radius: 24px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(16, 33, 63, 0.09);
+}
+
+.admin-focus-board {
+  margin-top: 18px;
+  padding: 18px;
+}
+
+.admin-focus-title {
+  min-height: 44px;
+  margin-bottom: 14px;
+}
+
+.admin-focus-title > svg,
+.admin-console-panel .panel-header div:first-child svg {
+  background: #0b2f6b;
+  color: #ffffff;
+}
+
+.admin-focus-title strong,
+.admin-console-panel .panel-header h2 {
+  color: #0b2f6b;
+  font-size: 17px;
+}
+
+.admin-focus-title span {
+  color: #6b7890;
+}
+
+.admin-focus-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+  gap: 12px;
+}
+
+.admin-focus-card {
+  min-height: 104px;
+  border-radius: 20px;
+  border-color: #dce6f5;
+  background:
+    linear-gradient(180deg, #ffffff, #f8fbff);
+  grid-template-columns: 40px minmax(0, 1fr);
+  grid-template-areas:
+    "icon label"
+    "icon value";
+  gap: 4px 12px;
+}
+
+.admin-focus-card > svg {
+  display: none;
+}
+
+.admin-focus-card > span {
+  width: 40px;
+  height: 40px;
+  border-radius: 14px;
+  background: #eef4ff;
+  color: #0b2f6b;
+}
+
+.admin-focus-card.urgent > span {
+  background: #feecec;
+  color: #b42318;
+}
+
+.admin-focus-card.warning > span {
+  background: #fff4d1;
+  color: #7a5a10;
+}
+
+.admin-focus-card strong {
+  color: #10213f;
+  font-size: 31px;
+}
+
+.admin-focus-card small {
+  color: #5c6c84;
+  font-size: 12px;
+  text-transform: none;
+}
+
+.admin-console-grid {
+  gap: 18px;
+}
+
+.admin-console-panel {
+  padding: 18px;
+}
+
+.admin-system-card,
+.admin-action-list button,
+.admin-queue-list button,
+.admin-health-list div,
+.admin-station-summary div,
+.admin-station-row,
+.admin-session-list article,
+.admin-event-list article,
+.admin-approval-queue article {
+  border-radius: 18px;
+  background: #ffffff;
+}
+
+.admin-system-card {
+  min-height: 112px;
+}
+
+.admin-system-card div,
+.admin-action-list button > svg:first-child,
+.admin-queue-list button svg {
+  background: #eef4ff;
+  color: #0b2f6b;
+}
+
+.admin-action-list {
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+}
+
+.admin-action-list button,
+.admin-queue-list button {
+  border-color: #dce6f5;
+}
+
+.admin-action-list span,
+.admin-queue-list span,
+.admin-system-card strong,
+.admin-health-list strong,
+.admin-station-row strong,
+.admin-session-list strong,
+.admin-event-list strong {
+  color: #10213f;
+}
+
+.admin-action-list small,
+.admin-queue-list small,
+.admin-system-card small,
+.admin-health-list span,
+.admin-station-row span,
+.admin-station-row small,
+.admin-session-list span,
+.admin-event-list span {
+  color: #65758d;
+}
+
+.admin-station-row.head {
+  background: #0b2f6b;
+  border-color: #0b2f6b;
+}
+
+.admin-station-row.head span {
+  color: rgba(255, 255, 255, 0.84);
+}
+
+.admin-station-actions button:first-child,
+.admin-shell .action-row button:first-child,
+.wide-action {
+  background: #0b2f6b;
+  border-color: #0b2f6b;
+  color: #ffffff;
+}
+
+.app-shell:not(.admin-shell) {
+  background: #f3f6fb;
+}
+
+.app-shell:not(.admin-shell) .workspace {
+  background:
+    radial-gradient(circle at top right, rgba(244, 197, 66, 0.12), transparent 300px),
+    #f3f6fb;
+}
+
+.app-shell:not(.admin-shell) .section-banner {
+  background:
+    linear-gradient(135deg, #061a3d, #0b2f6b 68%, #123977);
+  box-shadow: 0 22px 48px rgba(6, 26, 61, 0.2);
+}
+
+.app-shell:not(.admin-shell) .panel,
+.app-shell:not(.admin-shell) .station-panel,
+.app-shell:not(.admin-shell) .reports-left-panel,
+.app-shell:not(.admin-shell) .reports-main-panel,
+.app-shell:not(.admin-shell) .reports-right-panel {
+  border-radius: 24px;
+}
+
+@media (max-width: 760px) {
+  .admin-portal-topbar {
+    display: grid;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .admin-portal-layout {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-portal-rail {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    height: auto;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    padding: 10px;
+    overflow-x: auto;
+    background: #071f4f;
+    border-bottom: 1px solid rgba(244, 197, 66, 0.24);
+  }
+
+  .admin-nav-group {
+    display: contents;
+  }
+
+  .admin-nav-group button {
+    width: 48px;
+    min-width: 48px;
+    height: 48px;
+    min-height: 48px;
+    padding: 0;
+    place-items: center;
+  }
+
+  .admin-nav-group button svg:first-child {
+    width: 34px;
+    height: 34px;
+  }
+
+  .admin-portal-main {
+    padding: 12px;
+  }
+
+  .admin-tab-hero {
+    grid-template-columns: 1fr;
+    padding: 18px;
+    border-radius: 24px;
+  }
+
+  .admin-tab-heading {
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+  }
+
+  .admin-tab-heading h1 {
+    font-size: 30px;
+  }
+
+  .admin-tab-status {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-tab-status div {
+    min-width: 0;
+    padding: 10px;
+  }
+
+  .admin-tab-status strong {
+    font-size: 14px;
+  }
+
+  .admin-focus-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .admin-focus-card {
+    min-height: 96px;
+    padding: 12px;
+    grid-template-columns: 36px minmax(0, 1fr);
+  }
+
+  .admin-focus-card strong {
+    font-size: 26px;
+  }
+
+  .admin-console-wide,
+  .admin-console-panel {
+    grid-column: 1 / -1;
+  }
+
+  .admin-console-panel .admin-system-grid,
+  .admin-action-list,
+  .admin-station-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .admin-station-row,
+  .admin-station-row.head {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-focus-grid,
+  .admin-console-panel .admin-system-grid,
+  .admin-action-list,
+  .admin-station-summary {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Google-workspace design pass: calm shell, app-like navigation, organized admin board. */
 .app-shell:not(.admin-shell) {
   grid-template-columns: 248px minmax(0, 1fr);
@@ -11253,5 +11966,135 @@ button:disabled,
   .app-shell:not(.admin-shell) .reports-main-panel,
   .app-shell:not(.admin-shell) .reports-right-panel {
     padding: 14px;
+  }
+}
+
+/* FINAL OVERRIDE: visible, compact admin command board. */
+.admin-shell .workspace {
+  background: linear-gradient(180deg, #061a3d 0%, #0b2f6b 330px, #f3f6fb 330px, #f3f6fb 100%) !important;
+}
+
+.admin-portal-topbar {
+  background: #061a3d !important;
+  color: #ffffff !important;
+}
+
+.admin-portal-topbar .admin-portal-brand strong,
+.admin-portal-topbar .admin-portal-brand span {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.admin-portal-topbar .admin-portal-brand span {
+  color: rgba(255, 255, 255, 0.78) !important;
+}
+
+.admin-portal-main {
+  background:
+    radial-gradient(circle at 96% 0%, rgba(244, 197, 66, 0.18), transparent 260px),
+    linear-gradient(180deg, transparent 0, transparent 300px, #f3f6fb 300px, #f3f6fb 100%) !important;
+}
+
+.admin-tab-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.13), rgba(255, 255, 255, 0.04)),
+    #0b2f6b !important;
+  border-color: rgba(244, 197, 66, 0.26) !important;
+  color: #ffffff !important;
+}
+
+.admin-tab-heading h1,
+.admin-tab-heading p,
+.admin-tab-heading span,
+.admin-tab-status strong,
+.admin-tab-status small,
+.admin-tab-status span {
+  color: #ffffff !important;
+}
+
+.admin-tab-heading > div:last-child > span {
+  color: #f4c542 !important;
+}
+
+.admin-tab-heading p {
+  color: rgba(255, 255, 255, 0.84) !important;
+}
+
+.admin-hero-brief span,
+.admin-tab-status div {
+  background: rgba(255, 255, 255, 0.11) !important;
+  border-color: rgba(255, 255, 255, 0.18) !important;
+  color: #ffffff !important;
+}
+
+.admin-tab-status {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+}
+
+.admin-focus-board,
+.admin-console-panel {
+  background: #ffffff !important;
+  color: #10213f !important;
+  border: 1px solid #dce6f5 !important;
+  border-radius: 24px !important;
+}
+
+.admin-focus-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+
+.admin-focus-card {
+  min-height: 96px !important;
+  display: grid !important;
+  grid-template-columns: 40px minmax(0, 1fr) !important;
+  grid-template-areas:
+    "icon label"
+    "icon value" !important;
+  align-content: center !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+}
+
+.admin-focus-card > svg {
+  display: none !important;
+}
+
+.admin-focus-card > span {
+  grid-area: icon !important;
+}
+
+.admin-focus-card small {
+  grid-area: label !important;
+  color: #5c6c84 !important;
+}
+
+.admin-focus-card strong {
+  grid-area: value !important;
+  color: #10213f !important;
+}
+
+@media (max-width: 760px) {
+  .admin-tab-status {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .admin-focus-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .admin-console-panel .admin-system-grid,
+  .admin-action-list,
+  .admin-station-summary {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-tab-status,
+  .admin-focus-grid,
+  .admin-console-panel .admin-system-grid,
+  .admin-action-list,
+  .admin-station-summary {
+    grid-template-columns: 1fr !important;
   }
 }
