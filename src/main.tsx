@@ -1094,11 +1094,23 @@ const initialMessages: Message[] = [
 
 const missionStationRoleOptions = [
   "Church Administration",
+  "Executive Leadership",
+  "International / National Secretariat",
   "Full Time Pastor",
   "Pastoral Assistant",
   "Local Church Management Board",
   "Elder Assembly",
   "Deacon Board",
+  "Finance Desk",
+  "Board and Finance Committee",
+  "Audit and Compliance",
+  "Mission Administration",
+  "Education and Sunday School",
+  "Pastoral Care",
+  "Personnel and Transfers",
+  "Security and Safety",
+  "Construction and Facilities",
+  "Social Development and Welfare",
   "Youth and Young Adult Ministry",
   "Children and Teens Ministry",
   "Marriage Committee",
@@ -8347,12 +8359,39 @@ function LoginScreen({
             <span><Server size={14} /> {CHURCH_NAME} {PLATFORM_NAME}</span>
             <span><BadgeCheck size={14} /> Authorized offices only</span>
           </div>
+
+          <div className="station-flow-note">
+            <span><ShieldCheck size={14} /> Station-based access</span>
+            <p>New offices request approval first. Approved users sign in with their assigned @rmvi.org station email, then GCOS opens the right workstation, department tools, permissions, reporting route, inbox, archive, and audit trail.</p>
+          </div>
         </div>
 
         <div className="login-support">
           <ShieldCheck size={16} />
           <span>{isAdminPortal ? "Admin users enter their assigned administrator email and password manually." : "Create a new RMVI office account or sign in with the email and password issued to your station."}</span>
         </div>
+      </section>
+
+      <section className="gateway-flow-steps" aria-label="GCOS station access flow">
+        {[
+          { icon: Plus, label: "Request account", text: "A church office or department submits its official @rmvi.org station account." },
+          { icon: ShieldCheck, label: "Admin approval", text: "Administrators approve the account, verify the office, and assign permissions." },
+          { icon: LockKeyhole, label: "Station sign-in", text: "Users sign in manually with their assigned station email and password." },
+          { icon: LayoutDashboard, label: "Workstation opens", text: "GCOS loads the correct dashboard, inbox, reports, approvals, tasks, and archive." },
+          { icon: FileCheck2, label: "Submit upward", text: "Reports, ChurchMail, evidence, corrections, and approvals route through hierarchy." }
+        ].map((step, index) => {
+          const StepIcon = step.icon;
+          return (
+            <article key={step.label}>
+              <div>
+                <span>{index + 1}</span>
+                <StepIcon size={18} />
+              </div>
+              <strong>{step.label}</strong>
+              <p>{step.text}</p>
+            </article>
+          );
+        })}
       </section>
 
       <footer className="public-download-footer" aria-label="Download footer">

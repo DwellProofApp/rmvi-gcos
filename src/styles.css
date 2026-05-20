@@ -1511,6 +1511,88 @@ h1 {
   font-weight: 800;
 }
 
+.station-flow-note {
+  margin-top: 14px;
+  border: 1px solid #d8e2f2;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #f8fbff 0%, #fff8e6 100%);
+  padding: 12px;
+  display: grid;
+  gap: 6px;
+}
+
+.station-flow-note span {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: #0b2f6b;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.station-flow-note p {
+  margin: 0;
+  color: #47546d;
+  font-size: 13px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.gateway-flow-steps {
+  width: min(1220px, 100%);
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.gateway-flow-steps article {
+  min-height: 150px;
+  border: 1px solid #d8e2f2;
+  border-radius: 8px;
+  background: #ffffff;
+  padding: 14px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  box-shadow: 0 10px 24px rgba(8, 31, 70, 0.06);
+}
+
+.gateway-flow-steps article > div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: #0b2f6b;
+}
+
+.gateway-flow-steps article > div span {
+  width: 28px;
+  height: 28px;
+  display: grid;
+  place-items: center;
+  border-radius: 7px;
+  background: #123d82;
+  color: #ffffff;
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.gateway-flow-steps strong {
+  color: #0b2f6b;
+  font-size: 14px;
+  font-weight: 950;
+}
+
+.gateway-flow-steps p {
+  margin: 0;
+  color: #5b6680;
+  font-size: 12px;
+  line-height: 1.45;
+  font-weight: 700;
+}
+
 .public-download-footer {
   width: min(1220px, 100%);
   margin: 0 auto;
@@ -8528,6 +8610,14 @@ h1 {
 
   .download-gateway {
     grid-template-columns: 1fr;
+  }
+
+  .gateway-flow-steps {
+    grid-template-columns: 1fr;
+  }
+
+  .gateway-flow-steps article {
+    min-height: auto;
   }
 
   .download-card {
