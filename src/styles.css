@@ -10168,3 +10168,456 @@ button:disabled,
     display: block;
   }
 }
+
+/* Full workstation redesign pass: make every signed-in module read as one polished product. */
+.app-shell:not(.admin-shell) {
+  grid-template-columns: 292px minmax(0, 1fr);
+  background: #eef4fb;
+}
+
+.app-shell:not(.admin-shell) .sidebar {
+  gap: 18px;
+  padding: 18px 14px;
+  background:
+    linear-gradient(180deg, #071f4d 0%, #0b3477 52%, #06183a 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.16);
+}
+
+.app-shell:not(.admin-shell) .brand-button {
+  align-items: center;
+  gap: 12px;
+  min-height: 74px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.08);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.12);
+}
+
+.app-shell:not(.admin-shell) .brand-mark {
+  width: 50px;
+  height: 50px;
+  background: #ffffff;
+}
+
+.app-shell:not(.admin-shell) .brand strong {
+  color: #ffffff;
+  font-size: 15px;
+  line-height: 1.1;
+}
+
+.app-shell:not(.admin-shell) .brand span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 750;
+}
+
+.app-shell:not(.admin-shell) .nav-list {
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 12px;
+  background: rgba(2, 12, 31, 0.16);
+}
+
+.app-shell:not(.admin-shell) .nav-item {
+  min-height: 42px;
+  border-radius: 10px;
+  padding: 10px 12px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  font-weight: 850;
+  letter-spacing: 0;
+  box-shadow: none;
+}
+
+.app-shell:not(.admin-shell) .nav-item svg {
+  width: 18px;
+  height: 18px;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.app-shell:not(.admin-shell) .nav-item span {
+  color: inherit;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.app-shell:not(.admin-shell) .nav-item.active,
+.app-shell:not(.admin-shell) .nav-item:hover {
+  border-color: rgba(244, 197, 66, 0.4);
+  background: linear-gradient(135deg, rgba(244, 197, 66, 0.24), rgba(255, 255, 255, 0.13));
+  color: #ffffff;
+  box-shadow: inset 4px 0 0 #f4c542, 0 10px 24px rgba(2, 12, 31, 0.16);
+}
+
+.app-shell:not(.admin-shell) .nav-item.active svg,
+.app-shell:not(.admin-shell) .nav-item:hover svg {
+  color: #f8d777;
+}
+
+.app-shell:not(.admin-shell) .station-switcher {
+  margin-top: auto;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  padding: 12px;
+}
+
+.app-shell:not(.admin-shell) .station-switcher p {
+  margin: 0 0 8px;
+  color: #f4c542;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+}
+
+.app-shell:not(.admin-shell) .station-option {
+  min-height: 42px;
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #ffffff;
+}
+
+.app-shell:not(.admin-shell) .station-option span {
+  color: rgba(255, 255, 255, 0.88);
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.app-shell:not(.admin-shell) .workspace {
+  padding: 22px;
+  background:
+    radial-gradient(circle at 94% 0%, rgba(244, 197, 66, 0.13), transparent 30%),
+    linear-gradient(180deg, #f8fbff 0%, #edf3fb 100%);
+}
+
+.app-shell:not(.admin-shell) .user-topbar {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(380px, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+  border: 1px solid rgba(11, 47, 107, 0.13);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  color: #10213f;
+  box-shadow: 0 16px 38px rgba(16, 33, 63, 0.09);
+}
+
+.app-shell:not(.admin-shell) .user-topbar .station-title h1 {
+  color: #10213f;
+  font-size: 24px;
+}
+
+.app-shell:not(.admin-shell) .user-topbar .station-title p {
+  color: #5b6680;
+  white-space: normal;
+  line-height: 1.35;
+}
+
+.app-shell:not(.admin-shell) .user-topbar .search-box {
+  background: #ffffff;
+  border-color: #d8e2f2;
+  color: #10213f;
+}
+
+.app-shell:not(.admin-shell) .user-topbar .search-box input,
+.app-shell:not(.admin-shell) .user-topbar .search-box input::placeholder {
+  color: #5b6680;
+}
+
+.app-shell:not(.admin-shell) .user-topbar .icon-button,
+.app-shell:not(.admin-shell) .user-topbar .account-menu-button,
+.app-shell:not(.admin-shell) .user-topbar .notification-button {
+  border-color: #d8e2f2;
+  background: #ffffff;
+  color: #0b2f6b;
+  box-shadow: 0 8px 18px rgba(16, 33, 63, 0.07);
+}
+
+.app-shell:not(.admin-shell) .module-grid,
+.app-shell:not(.admin-shell) .mail-layout,
+.app-shell:not(.admin-shell) .reports-layout,
+.app-shell:not(.admin-shell) .dashboard-grid {
+  gap: 16px;
+}
+
+.app-shell:not(.admin-shell) .reports-layout {
+  grid-template-columns: minmax(300px, 0.32fr) minmax(420px, 1fr) minmax(300px, 0.32fr);
+}
+
+.app-shell:not(.admin-shell) .panel,
+.app-shell:not(.admin-shell) .station-panel,
+.app-shell:not(.admin-shell) .admin-console-panel,
+.app-shell:not(.admin-shell) .role-system-panel,
+.app-shell:not(.admin-shell) .reports-left-panel,
+.app-shell:not(.admin-shell) .reports-main-panel,
+.app-shell:not(.admin-shell) .reports-right-panel,
+.app-shell:not(.admin-shell) .approval-lane,
+.app-shell:not(.admin-shell) .transfer-card,
+.app-shell:not(.admin-shell) .escalation-card,
+.app-shell:not(.admin-shell) .task-card,
+.app-shell:not(.admin-shell) .policy-card,
+.app-shell:not(.admin-shell) .calendar-card,
+.app-shell:not(.admin-shell) .personnel-card,
+.app-shell:not(.admin-shell) .office-table,
+.app-shell:not(.admin-shell) .audit-table {
+  border: 1px solid rgba(11, 47, 107, 0.12);
+  border-radius: 14px;
+  background: #ffffff;
+  color: #10213f;
+  box-shadow: 0 16px 36px rgba(16, 33, 63, 0.085);
+}
+
+.app-shell:not(.admin-shell) .panel,
+.app-shell:not(.admin-shell) .station-panel,
+.app-shell:not(.admin-shell) .reports-left-panel,
+.app-shell:not(.admin-shell) .reports-main-panel,
+.app-shell:not(.admin-shell) .reports-right-panel {
+  padding: 18px;
+}
+
+.app-shell:not(.admin-shell) .panel-header {
+  align-items: center;
+  min-height: 54px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid rgba(11, 47, 107, 0.1);
+}
+
+.app-shell:not(.admin-shell) .panel-header div:first-child {
+  gap: 10px;
+}
+
+.app-shell:not(.admin-shell) .panel-header div:first-child svg {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #eaf2ff;
+  color: #0b2f6b;
+  padding: 9px;
+}
+
+.app-shell:not(.admin-shell) .panel-header h2 {
+  color: #10213f;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
+.app-shell:not(.admin-shell) .panel-header > span,
+.app-shell:not(.admin-shell) .panel-header > button,
+.app-shell:not(.admin-shell) .panel-header div + span {
+  border: 1px solid rgba(244, 197, 66, 0.46);
+  border-radius: 999px;
+  background: #fff8e8;
+  color: #755600;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.app-shell:not(.admin-shell) .office-summary-grid,
+.app-shell:not(.admin-shell) .report-stats-grid,
+.app-shell:not(.admin-shell) .audit-integrity-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  gap: 10px;
+}
+
+.app-shell:not(.admin-shell) .insight,
+.app-shell:not(.admin-shell) .metric-card,
+.app-shell:not(.admin-shell) .command-card {
+  border: 1px solid #d8e2f2;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #10213f;
+  box-shadow: none;
+}
+
+.app-shell:not(.admin-shell) .message-item,
+.app-shell:not(.admin-shell) .workflow-item,
+.app-shell:not(.admin-shell) .approval-item,
+.app-shell:not(.admin-shell) .station-list button,
+.app-shell:not(.admin-shell) .station-inbox-row,
+.app-shell:not(.admin-shell) .report-template-list button,
+.app-shell:not(.admin-shell) .report-inbox-list button,
+.app-shell:not(.admin-shell) .template-list button,
+.app-shell:not(.admin-shell) .table-row {
+  border: 1px solid #d8e2f2;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #10213f;
+  box-shadow: 0 8px 18px rgba(16, 33, 63, 0.045);
+}
+
+.app-shell:not(.admin-shell) .message-item:hover,
+.app-shell:not(.admin-shell) .workflow-item:hover,
+.app-shell:not(.admin-shell) .approval-item:hover,
+.app-shell:not(.admin-shell) .station-list button:hover,
+.app-shell:not(.admin-shell) .station-inbox-row:hover,
+.app-shell:not(.admin-shell) .report-template-list button:hover,
+.app-shell:not(.admin-shell) .report-inbox-list button:hover,
+.app-shell:not(.admin-shell) .template-list button:hover,
+.app-shell:not(.admin-shell) .table-row:hover {
+  border-color: #f4c542;
+  background: #fffdf5;
+  transform: translateY(-1px);
+}
+
+.app-shell:not(.admin-shell) .approval-board,
+.app-shell:not(.admin-shell) .transfer-list,
+.app-shell:not(.admin-shell) .escalation-list,
+.app-shell:not(.admin-shell) .task-board,
+.app-shell:not(.admin-shell) .policy-list,
+.app-shell:not(.admin-shell) .calendar-list,
+.app-shell:not(.admin-shell) .personnel-list {
+  gap: 14px;
+}
+
+.app-shell:not(.admin-shell) .approval-lane,
+.app-shell:not(.admin-shell) .transfer-card,
+.app-shell:not(.admin-shell) .escalation-card,
+.app-shell:not(.admin-shell) .task-card,
+.app-shell:not(.admin-shell) .policy-card,
+.app-shell:not(.admin-shell) .calendar-card,
+.app-shell:not(.admin-shell) .personnel-card {
+  padding: 16px;
+  display: grid;
+  gap: 12px;
+}
+
+.app-shell:not(.admin-shell) .approval-lane h2,
+.app-shell:not(.admin-shell) .transfer-card h2,
+.app-shell:not(.admin-shell) .escalation-card h2,
+.app-shell:not(.admin-shell) .task-card h2,
+.app-shell:not(.admin-shell) .policy-card h2,
+.app-shell:not(.admin-shell) .calendar-card h2,
+.app-shell:not(.admin-shell) .personnel-card h2 {
+  color: #10213f;
+  font-size: 18px;
+  line-height: 1.18;
+}
+
+.app-shell:not(.admin-shell) .approval-lane p,
+.app-shell:not(.admin-shell) .transfer-card p,
+.app-shell:not(.admin-shell) .escalation-card p,
+.app-shell:not(.admin-shell) .task-card p,
+.app-shell:not(.admin-shell) .policy-card p,
+.app-shell:not(.admin-shell) .calendar-card p,
+.app-shell:not(.admin-shell) .personnel-card p {
+  color: #5b6680;
+  line-height: 1.45;
+}
+
+.app-shell:not(.admin-shell) .action-row,
+.app-shell:not(.admin-shell) .compact-actions,
+.app-shell:not(.admin-shell) .table-actions,
+.app-shell:not(.admin-shell) .report-actions-row,
+.app-shell:not(.admin-shell) .report-command-grid,
+.app-shell:not(.admin-shell) .station-inbox-actions {
+  gap: 8px;
+}
+
+.app-shell:not(.admin-shell) .action-row button,
+.app-shell:not(.admin-shell) .compact-actions button,
+.app-shell:not(.admin-shell) .table-actions button,
+.app-shell:not(.admin-shell) .report-actions-row button,
+.app-shell:not(.admin-shell) .report-selected-actions button,
+.app-shell:not(.admin-shell) .station-inbox-actions button,
+.app-shell:not(.admin-shell) .archive-toolbar button,
+.app-shell:not(.admin-shell) .audit-toolbar button,
+.app-shell:not(.admin-shell) .office-form button,
+.app-shell:not(.admin-shell) .churchmail-form button,
+.app-shell:not(.admin-shell) .ai-desk-form button {
+  min-height: 38px;
+  border: 1px solid #d8e2f2;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0b2f6b;
+  font-size: 12px;
+  font-weight: 900;
+  box-shadow: 0 6px 14px rgba(16, 33, 63, 0.055);
+}
+
+.app-shell:not(.admin-shell) .action-row button:first-child,
+.app-shell:not(.admin-shell) .station-inbox-actions button:first-child,
+.app-shell:not(.admin-shell) .office-form button[type="submit"],
+.app-shell:not(.admin-shell) .churchmail-form button,
+.app-shell:not(.admin-shell) .ai-desk-form button {
+  border-color: #0b2f6b;
+  background: #0b2f6b;
+  color: #ffffff;
+}
+
+.app-shell:not(.admin-shell) input,
+.app-shell:not(.admin-shell) select,
+.app-shell:not(.admin-shell) textarea {
+  border: 1px solid #d8e2f2;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #10213f;
+}
+
+.app-shell:not(.admin-shell) input:focus,
+.app-shell:not(.admin-shell) select:focus,
+.app-shell:not(.admin-shell) textarea:focus {
+  outline: 2px solid rgba(244, 197, 66, 0.45);
+  border-color: #d6a631;
+}
+
+.app-shell:not(.admin-shell) .archive-toolbar,
+.app-shell:not(.admin-shell) .audit-toolbar {
+  border: 1px solid #d8e2f2;
+  border-radius: 12px;
+  background: #f8fbff;
+  padding: 12px;
+  margin-bottom: 14px;
+}
+
+@media (max-width: 980px) {
+  .app-shell:not(.admin-shell) {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell:not(.admin-shell) .sidebar {
+    position: static;
+    height: auto;
+    gap: 12px;
+  }
+
+  .app-shell:not(.admin-shell) .nav-list {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+
+  .app-shell:not(.admin-shell) .station-switcher {
+    display: none;
+  }
+
+  .app-shell:not(.admin-shell) .user-topbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .app-shell:not(.admin-shell) .workspace {
+    padding: 10px;
+  }
+
+  .app-shell:not(.admin-shell) .brand-button {
+    min-height: 64px;
+  }
+
+  .app-shell:not(.admin-shell) .nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .app-shell:not(.admin-shell) .nav-item {
+    min-height: 46px;
+  }
+
+  .app-shell:not(.admin-shell) .panel,
+  .app-shell:not(.admin-shell) .station-panel,
+  .app-shell:not(.admin-shell) .reports-left-panel,
+  .app-shell:not(.admin-shell) .reports-main-panel,
+  .app-shell:not(.admin-shell) .reports-right-panel {
+    padding: 14px;
+  }
+}
