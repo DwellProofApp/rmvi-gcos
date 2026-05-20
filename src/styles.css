@@ -9027,3 +9027,940 @@ h1 {
     flex-direction: column;
   }
 }
+
+/* RMVI product design system refresh.
+   This final layer normalizes earlier prototype styles into one polished,
+   readable SaaS interface without removing any application behavior. */
+:root {
+  --rmvi-blue-950: #06183a;
+  --rmvi-blue-900: #08245a;
+  --rmvi-blue-800: #0b2f6b;
+  --rmvi-blue-700: #123f86;
+  --rmvi-blue-100: #eaf2ff;
+  --rmvi-gold-500: #f4c542;
+  --rmvi-gold-600: #d6a631;
+  --rmvi-ink: #10213f;
+  --rmvi-muted: #5b6680;
+  --rmvi-line: #d8e2f2;
+  --rmvi-soft: #f5f8fd;
+  --rmvi-card: #ffffff;
+  --rmvi-danger: #a83434;
+  --rmvi-success: #147a55;
+  --rmvi-radius: 10px;
+  --rmvi-radius-sm: 8px;
+  --rmvi-shadow: 0 16px 36px rgba(16, 33, 63, 0.09);
+  --rmvi-shadow-strong: 0 24px 60px rgba(6, 24, 58, 0.18);
+}
+
+body {
+  color: var(--rmvi-ink);
+  background:
+    radial-gradient(circle at 12% -8%, rgba(244, 197, 66, 0.16), transparent 26%),
+    linear-gradient(180deg, #f8fbff 0%, #edf3fb 100%);
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  letter-spacing: 0;
+}
+
+button,
+a,
+.nav-item,
+.station-option,
+.icon-button,
+.message-button,
+.report-template-list button,
+.report-inbox-list button,
+.admin-focus-card,
+.admin-action-list button,
+.admin-queue-list button,
+.admin-station-actions button {
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease, box-shadow 160ms ease, color 160ms ease;
+}
+
+button:hover,
+a:hover,
+.nav-item:hover,
+.station-option:hover,
+.message-button:hover,
+.report-template-list button:hover,
+.report-inbox-list button:hover {
+  transform: translateY(-1px);
+}
+
+.app-shell:not(.admin-shell) {
+  grid-template-columns: 288px minmax(0, 1fr);
+  background: #edf3fb;
+}
+
+.app-shell:not(.admin-shell) .sidebar {
+  padding: 20px 16px;
+  background:
+    linear-gradient(180deg, var(--rmvi-blue-950) 0%, var(--rmvi-blue-800) 58%, var(--rmvi-blue-950) 100%);
+  border-right: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 18px 0 42px rgba(6, 24, 58, 0.18);
+}
+
+.brand-button {
+  border-radius: var(--rmvi-radius);
+  padding: 10px;
+}
+
+.brand-button:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.brand-mark {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--rmvi-radius-sm);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.18);
+}
+
+.brand strong {
+  font-size: 17px;
+  letter-spacing: 0;
+}
+
+.nav-list {
+  gap: 7px;
+}
+
+.nav-item,
+.station-option {
+  min-height: 44px;
+  border: 1px solid transparent;
+  border-radius: var(--rmvi-radius-sm);
+  padding: 10px 11px;
+  font-weight: 800;
+}
+
+.nav-item svg,
+.station-option svg,
+.topbar-actions > button svg,
+.panel-header div:first-child svg,
+.admin-nav-group button svg,
+.admin-focus-card > span,
+.admin-action-list button > svg:first-child,
+.admin-queue-list button svg,
+.station-home-actions button svg {
+  flex: 0 0 auto;
+}
+
+.nav-item.active,
+.nav-item:hover,
+.station-option.selected,
+.station-option:hover {
+  border-color: rgba(244, 197, 66, 0.36);
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  box-shadow: inset 4px 0 0 var(--rmvi-gold-500);
+}
+
+.workspace,
+.app-shell:not(.admin-shell) .workspace {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(244, 197, 66, 0.16), transparent 28%),
+    linear-gradient(180deg, #f8fbff 0%, #edf3fb 100%);
+  padding: 22px;
+}
+
+.topbar,
+.app-shell:not(.admin-shell) .topbar,
+.user-topbar {
+  border: 1px solid rgba(11, 47, 107, 0.14);
+  border-radius: var(--rmvi-radius);
+  background: rgba(255, 255, 255, 0.92);
+  color: var(--rmvi-ink);
+  padding: 14px;
+  box-shadow: var(--rmvi-shadow);
+  backdrop-filter: blur(16px);
+}
+
+.station-title h1,
+.app-shell:not(.admin-shell) .station-title h1 {
+  color: var(--rmvi-ink);
+  font-size: clamp(20px, 2vw, 28px);
+  line-height: 1.08;
+}
+
+.topbar p,
+.app-shell:not(.admin-shell) .topbar p,
+.user-topbar .station-title p {
+  color: var(--rmvi-muted);
+  white-space: normal;
+}
+
+.organization-kicker,
+.app-shell:not(.admin-shell) .organization-kicker {
+  color: var(--rmvi-gold-600);
+}
+
+.station-avatar {
+  border-radius: var(--rmvi-radius-sm);
+  background: var(--rmvi-gold-500);
+  color: var(--rmvi-blue-900);
+  box-shadow: 0 10px 22px rgba(214, 166, 49, 0.22);
+}
+
+.search-box,
+.app-shell:not(.admin-shell) .search-box,
+.icon-button,
+.app-shell:not(.admin-shell) .icon-button,
+.account-menu-button,
+.sync-toggle,
+.api-status,
+.install-toggle,
+.session-pill {
+  border: 1px solid var(--rmvi-line);
+  border-radius: var(--rmvi-radius-sm);
+  background: #ffffff;
+  color: var(--rmvi-ink);
+  box-shadow: 0 8px 18px rgba(16, 33, 63, 0.055);
+}
+
+.search-box input,
+.app-shell:not(.admin-shell) .search-box input {
+  color: var(--rmvi-ink);
+}
+
+.search-box input::placeholder,
+.app-shell:not(.admin-shell) .search-box input::placeholder {
+  color: #9aa7bd;
+}
+
+.account-menu-button span,
+.account-menu-button small {
+  color: var(--rmvi-ink);
+}
+
+.section-banner {
+  border-radius: var(--rmvi-radius);
+  background:
+    linear-gradient(135deg, var(--rmvi-blue-950) 0%, var(--rmvi-blue-800) 62%, var(--rmvi-blue-700) 100%);
+  box-shadow: var(--rmvi-shadow-strong);
+}
+
+.section-banner-icon,
+.panel-header div:first-child svg,
+.metric-icon,
+.command-icon,
+.station-home-actions button svg {
+  border-radius: var(--rmvi-radius-sm);
+}
+
+.panel,
+.metric-card,
+.message-item,
+.workflow-item,
+.approval-item,
+.station-panel,
+.command-card,
+.approval-lane,
+.transfer-card,
+.escalation-card,
+.task-card,
+.policy-card,
+.calendar-card,
+.personnel-card,
+.table-row,
+.report-library-card,
+.report-editor-card,
+.report-template-preview,
+.report-route-box,
+.report-section-card,
+.selected-report-summary,
+.archive-toolbar,
+.registry-toolbar,
+.audit-toolbar,
+.app-shell:not(.admin-shell) .panel,
+.app-shell:not(.admin-shell) .metric-card,
+.app-shell:not(.admin-shell) .message-item,
+.app-shell:not(.admin-shell) .workflow-item,
+.app-shell:not(.admin-shell) .approval-item,
+.app-shell:not(.admin-shell) .command-card,
+.app-shell:not(.admin-shell) .station-panel,
+.app-shell:not(.admin-shell) .table-row {
+  border: 1px solid rgba(11, 47, 107, 0.12);
+  border-radius: var(--rmvi-radius);
+  background: var(--rmvi-card);
+  color: var(--rmvi-ink);
+  box-shadow: var(--rmvi-shadow);
+}
+
+.panel-header {
+  min-height: 50px;
+  margin-bottom: 14px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(11, 47, 107, 0.1);
+}
+
+.panel-header h2,
+.app-shell:not(.admin-shell) .panel-header h2,
+.metric-card strong,
+.app-shell:not(.admin-shell) .metric-card strong,
+.command-card strong,
+.app-shell:not(.admin-shell) .command-card strong,
+.message-item strong,
+.app-shell:not(.admin-shell) .message-item strong,
+.workflow-item strong,
+.app-shell:not(.admin-shell) .workflow-item strong,
+.approval-item strong,
+.app-shell:not(.admin-shell) .approval-item strong,
+.approval-lane h2,
+.transfer-card h2,
+.escalation-card h2,
+.task-card h2,
+.policy-card h2,
+.calendar-card h2,
+.personnel-card h2,
+.table-row strong,
+.app-shell:not(.admin-shell) .table-row strong {
+  color: var(--rmvi-ink);
+}
+
+.panel-header div:first-child svg,
+.metric-icon,
+.app-shell:not(.admin-shell) .metric-icon,
+.command-card .command-icon,
+.app-shell:not(.admin-shell) .command-card .command-icon,
+.app-shell:not(.admin-shell) .command-card.risk .command-icon,
+.app-shell:not(.admin-shell) .command-card.queued .command-icon {
+  background: var(--rmvi-blue-100);
+  color: var(--rmvi-blue-800);
+}
+
+.panel-header > span,
+.panel-header > button,
+.panel-header div + span,
+.metric-card small,
+.approval-meta small,
+.message-footer small,
+.status,
+.kind,
+.mail-kind-marker {
+  border-radius: 999px;
+  border: 1px solid rgba(244, 197, 66, 0.42);
+  background: #fff8e8;
+  color: #725300;
+  font-weight: 850;
+}
+
+.metric-card span,
+.command-card span,
+.command-card small,
+.message-item span,
+.workflow-item span,
+.approval-item span,
+.table-row span,
+.table-row small,
+.app-shell:not(.admin-shell) .metric-card span,
+.app-shell:not(.admin-shell) .command-card span,
+.app-shell:not(.admin-shell) .command-card small,
+.app-shell:not(.admin-shell) .message-item span,
+.app-shell:not(.admin-shell) .workflow-item span,
+.app-shell:not(.admin-shell) .approval-item span,
+.app-shell:not(.admin-shell) .table-row span,
+.app-shell:not(.admin-shell) .table-row small {
+  color: var(--rmvi-muted);
+}
+
+.action-row button,
+.compact-actions button,
+.table-actions button,
+.report-actions-row button,
+.report-selected-actions button,
+.archive-toolbar button,
+.registry-toolbar button,
+.audit-toolbar button,
+.office-form button,
+.churchmail-form button,
+.ai-desk-form button,
+.login-form button,
+.admin-station-actions button,
+.admin-session-list button,
+.wide-action {
+  min-height: 40px;
+  border-radius: var(--rmvi-radius-sm);
+  border: 1px solid var(--rmvi-line);
+  background: #ffffff;
+  color: var(--rmvi-blue-800);
+  font-weight: 850;
+  box-shadow: 0 6px 14px rgba(16, 33, 63, 0.055);
+}
+
+.action-row button:first-child,
+.report-actions-row button:first-child,
+.office-form button[type="submit"],
+.churchmail-form button,
+.ai-desk-form button,
+.login-form button,
+.wide-action,
+.primary-download-action {
+  border-color: var(--rmvi-blue-800);
+  background: var(--rmvi-blue-800);
+  color: #ffffff;
+}
+
+.action-row button:hover,
+.compact-actions button:hover,
+.table-actions button:hover,
+.report-actions-row button:hover,
+.report-selected-actions button:hover,
+.archive-toolbar button:hover,
+.registry-toolbar button:hover,
+.audit-toolbar button:hover,
+.office-form button:hover,
+.churchmail-form button:hover,
+.ai-desk-form button:hover,
+.admin-station-actions button:hover,
+.admin-session-list button:hover {
+  transform: translateY(-1px);
+  border-color: var(--rmvi-blue-700);
+  background: #f7faff;
+  box-shadow: 0 12px 22px rgba(16, 33, 63, 0.09);
+}
+
+.login-shell.public-software-gateway {
+  background:
+    radial-gradient(circle at 18% 8%, rgba(244, 197, 66, 0.14), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #edf3fb 100%);
+}
+
+.public-gateway-header {
+  border-radius: var(--rmvi-radius);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: var(--rmvi-shadow);
+}
+
+.public-software-gateway .login-intro {
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, rgba(6, 24, 58, 0.98), rgba(11, 47, 107, 0.98) 56%, rgba(18, 63, 134, 0.98)),
+    var(--rmvi-blue-800);
+  box-shadow: var(--rmvi-shadow-strong);
+}
+
+.public-software-gateway .login-card,
+.public-software-gateway .public-download-footer {
+  border-radius: 12px;
+  box-shadow: var(--rmvi-shadow);
+}
+
+.public-software-gateway .download-hero-copy h1 {
+  max-width: 14ch;
+  letter-spacing: 0;
+}
+
+.download-hero-actions button {
+  border-radius: var(--rmvi-radius-sm);
+}
+
+.download-hero-actions .primary-download-action {
+  background: var(--rmvi-gold-500);
+  border-color: var(--rmvi-gold-500);
+  color: var(--rmvi-blue-950);
+}
+
+.login-form input,
+.login-form select,
+.login-form textarea,
+.report-form input,
+.report-form select,
+.report-form textarea,
+.report-template-select select,
+.report-route-box input,
+.office-form input,
+.office-form select,
+.office-form textarea,
+.churchmail-form input,
+.churchmail-form select,
+.ai-desk-form select,
+.ai-desk-form textarea,
+.archive-toolbar input,
+.archive-toolbar select,
+.registry-toolbar input,
+.registry-toolbar select,
+.audit-toolbar input,
+.audit-toolbar select {
+  border: 1px solid #cfdcf0;
+  border-radius: var(--rmvi-radius-sm);
+  background: #ffffff;
+  color: var(--rmvi-ink);
+}
+
+.login-form input:focus,
+.login-form select:focus,
+.login-form textarea:focus,
+.report-form input:focus,
+.report-form select:focus,
+.report-form textarea:focus,
+.office-form input:focus,
+.office-form select:focus,
+.office-form textarea:focus,
+.churchmail-form input:focus,
+.churchmail-form select:focus,
+.ai-desk-form textarea:focus {
+  outline: 3px solid rgba(244, 197, 66, 0.3);
+  border-color: var(--rmvi-gold-600);
+}
+
+.report-template-list button,
+.report-inbox-list button,
+.station-list button {
+  border-radius: var(--rmvi-radius);
+  background: #ffffff;
+  color: var(--rmvi-ink);
+  box-shadow: 0 8px 18px rgba(16, 33, 63, 0.045);
+}
+
+.report-template-list button.selected,
+.report-template-list button:hover,
+.report-inbox-list button.active,
+.report-inbox-list button:hover {
+  border-color: var(--rmvi-gold-500);
+  background: linear-gradient(180deg, #ffffff, #fffaf0);
+}
+
+.report-template-preview {
+  background:
+    linear-gradient(135deg, var(--rmvi-blue-950), var(--rmvi-blue-800));
+  color: #ffffff;
+}
+
+.report-document-head,
+.report-meta-strip,
+.report-route-box,
+.selected-report-summary,
+.report-sticky-actions {
+  border-radius: var(--rmvi-radius);
+}
+
+.report-command-grid button,
+.report-command-grid .report-file-command {
+  border-radius: var(--rmvi-radius);
+}
+
+.station-home-hero {
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, var(--rmvi-blue-950), var(--rmvi-blue-800));
+  box-shadow: var(--rmvi-shadow-strong);
+}
+
+.station-home-actions button {
+  border-radius: var(--rmvi-radius);
+  background: #ffffff;
+}
+
+.station-home-actions button:hover {
+  border-color: var(--rmvi-gold-500);
+  box-shadow: 0 18px 34px rgba(16, 33, 63, 0.12);
+}
+
+.admin-shell .workspace,
+.admin-portal-main {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(244, 197, 66, 0.14), transparent 26%),
+    linear-gradient(180deg, #f8fbff 0%, #edf3fb 100%);
+}
+
+.admin-portal-shell {
+  background: #edf3fb;
+  color: var(--rmvi-ink);
+}
+
+.admin-portal-topbar,
+.admin-portal-rail {
+  background:
+    linear-gradient(180deg, var(--rmvi-blue-950), var(--rmvi-blue-800));
+}
+
+.admin-tab-hero {
+  border-radius: 12px;
+  background:
+    linear-gradient(135deg, var(--rmvi-blue-950), var(--rmvi-blue-800) 64%, var(--rmvi-blue-700));
+  box-shadow: var(--rmvi-shadow-strong);
+}
+
+.admin-focus-board,
+.admin-console-panel {
+  border: 1px solid rgba(11, 47, 107, 0.12);
+  border-radius: 12px;
+  background: #ffffff;
+  color: var(--rmvi-ink);
+  box-shadow: var(--rmvi-shadow);
+}
+
+.admin-focus-title,
+.admin-console-panel .panel-header {
+  border-bottom-color: rgba(11, 47, 107, 0.1);
+}
+
+.admin-focus-title strong,
+.admin-console-panel .panel-header h2,
+.admin-action-list span,
+.admin-station-row strong,
+.admin-session-list strong,
+.admin-event-list strong,
+.admin-system-card strong,
+.admin-health-list strong,
+.admin-queue-list span,
+.admin-station-summary strong,
+.admin-focus-card strong {
+  color: var(--rmvi-ink);
+}
+
+.admin-focus-title span,
+.admin-action-list small,
+.admin-system-card small,
+.admin-health-list span,
+.admin-queue-list small,
+.admin-station-row small,
+.admin-station-row span,
+.admin-session-list span,
+.admin-event-list span,
+.admin-focus-card small,
+.admin-system-card span,
+.admin-station-summary span {
+  color: var(--rmvi-muted);
+}
+
+.admin-focus-card,
+.admin-system-card,
+.admin-action-list button,
+.admin-queue-list button,
+.admin-health-list div,
+.admin-station-summary div,
+.admin-station-row,
+.admin-session-list article,
+.admin-event-list article,
+.admin-approval-queue article {
+  border-color: rgba(11, 47, 107, 0.12);
+  border-radius: var(--rmvi-radius);
+  background: linear-gradient(180deg, #ffffff, #f8fbff);
+  color: var(--rmvi-ink);
+  box-shadow: 0 8px 18px rgba(16, 33, 63, 0.045);
+}
+
+.admin-focus-title > svg,
+.admin-console-panel .panel-header div:first-child svg,
+.admin-system-card div,
+.admin-focus-card > span,
+.admin-action-list button > svg:first-child,
+.admin-queue-list button svg {
+  background: var(--rmvi-blue-100);
+  color: var(--rmvi-blue-800);
+}
+
+.admin-focus-card.urgent > span {
+  background: #fde8e8;
+  color: var(--rmvi-danger);
+}
+
+.admin-focus-card.warning > span,
+.admin-station-state,
+.admin-queue-list strong {
+  background: #fff4d1;
+  color: var(--rmvi-blue-950) !important;
+  box-shadow: inset 0 0 0 1px rgba(244, 197, 66, 0.5);
+}
+
+.admin-station-row.head {
+  background: var(--rmvi-blue-800);
+  color: #ffffff;
+}
+
+.admin-station-row.head span {
+  color: rgba(255, 255, 255, 0.82);
+}
+
+.empty-state {
+  border-radius: var(--rmvi-radius);
+  border: 1px dashed #b9c9e2;
+  background: #f8fbff;
+  color: var(--rmvi-muted);
+}
+
+@media (max-width: 1100px) {
+  .app-shell:not(.admin-shell) {
+    grid-template-columns: 92px minmax(0, 1fr);
+  }
+
+  .sidebar .brand div:last-child,
+  .sidebar .nav-item span,
+  .sidebar .station-switcher p,
+  .sidebar .station-option span {
+    display: none;
+  }
+
+  .sidebar {
+    align-items: center;
+  }
+
+  .nav-item,
+  .station-option {
+    justify-content: center;
+    width: 54px;
+  }
+}
+
+@media (max-width: 760px) {
+  .workspace,
+  .app-shell:not(.admin-shell) .workspace {
+    padding: 14px;
+  }
+
+  .app-shell:not(.admin-shell) {
+    display: block;
+    background: #edf3fb;
+  }
+
+  .app-shell:not(.admin-shell) .sidebar {
+    position: static;
+    width: 100%;
+    height: auto;
+    min-height: 104px;
+    padding: 14px;
+    flex-direction: row;
+    align-items: center;
+    gap: 12px;
+    overflow-x: auto;
+  }
+
+  .app-shell:not(.admin-shell) .brand {
+    flex: 0 0 64px;
+    padding: 0;
+  }
+
+  .app-shell:not(.admin-shell) .brand-mark {
+    width: 58px;
+    height: 58px;
+  }
+
+  .app-shell:not(.admin-shell) .nav-list {
+    flex: 1 0 auto;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    overflow-x: auto;
+  }
+
+  .app-shell:not(.admin-shell) .nav-item {
+    width: 48px;
+    height: 48px;
+    min-height: 48px;
+    justify-content: center;
+  }
+
+  .topbar,
+  .user-topbar,
+  .app-shell:not(.admin-shell) .topbar {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 12px;
+    padding: 14px;
+  }
+
+  .station-title {
+    align-items: flex-start;
+  }
+
+  .station-title h1,
+  .app-shell:not(.admin-shell) .station-title h1 {
+    font-size: 24px;
+  }
+
+  .topbar-actions,
+  .user-topbar .topbar-actions {
+    display: grid;
+    grid-template-columns: 1fr 48px 48px;
+    gap: 8px;
+    width: 100%;
+  }
+
+  .search-box,
+  .user-topbar .search-box {
+    min-width: 0;
+    grid-column: 1 / -1;
+  }
+
+  .account-menu-button {
+    grid-column: 1 / 2;
+    min-width: 0;
+  }
+
+  .section-banner,
+  .section-banner-main,
+  .section-banner-status,
+  .station-workspace-grid,
+  .dashboard-grid,
+  .command-grid,
+  .report-layout,
+  .reports-workspace,
+  .admin-portal-layout,
+  .admin-console-grid,
+  .admin-focus-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .panel,
+  .metric-card,
+  .station-panel,
+  .admin-console-panel,
+  .admin-focus-board {
+    padding: 14px;
+  }
+
+  .public-software-gateway .login-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .public-software-gateway .login-intro {
+    min-height: auto;
+    padding: 22px;
+  }
+
+  .public-software-gateway .download-hero-copy h1 {
+    font-size: 34px;
+    max-width: 13ch;
+  }
+
+  .download-hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .download-hero-actions button {
+    width: 100%;
+  }
+}
+
+@media (max-width: 430px) {
+  .workspace,
+  .app-shell:not(.admin-shell) .workspace {
+    padding-inline: 10px;
+  }
+
+  .station-avatar {
+    display: grid;
+    width: 42px;
+    height: 42px;
+  }
+
+  .topbar-actions,
+  .user-topbar .topbar-actions {
+    grid-template-columns: 1fr 44px 44px;
+  }
+
+  .station-home-actions,
+  .report-form-grid,
+  .report-section-editor,
+  .template-checklist-preview,
+  .template-requirement-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-station-row {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Admin board readability pass: prevent clipped focus cards and station rows. */
+.admin-focus-grid {
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+}
+
+.admin-focus-card {
+  min-height: 104px;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  grid-template-areas:
+    "icon label arrow"
+    "icon value arrow";
+  align-items: center;
+  align-content: center;
+  gap: 4px 12px;
+}
+
+.admin-focus-card > span {
+  grid-area: icon;
+  width: 38px;
+  height: 38px;
+}
+
+.admin-focus-card strong {
+  grid-area: value;
+  margin: 0;
+  font-size: 30px;
+  line-height: 1;
+}
+
+.admin-focus-card small {
+  grid-area: label;
+  max-width: none;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.2;
+}
+
+.admin-focus-card > svg {
+  grid-area: arrow;
+  position: static;
+}
+
+.admin-station-row {
+  grid-template-columns: minmax(240px, 1.1fr) minmax(180px, 0.9fr) minmax(92px, auto);
+  align-items: start;
+}
+
+.admin-station-row.head {
+  grid-template-columns: minmax(240px, 1.1fr) minmax(180px, 0.9fr) minmax(92px, auto);
+  align-items: center;
+}
+
+.admin-station-row.head span:last-child {
+  display: none;
+}
+
+.admin-station-actions {
+  grid-column: 1 / -1;
+  justify-content: flex-start;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(11, 47, 107, 0.1);
+}
+
+.admin-station-actions button {
+  min-width: 112px;
+}
+
+button:disabled,
+.admin-shell button:disabled {
+  opacity: 0.56;
+  cursor: not-allowed;
+  transform: none;
+  color: #6b7890;
+}
+
+@media (max-width: 760px) {
+  .admin-focus-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-focus-card {
+    min-height: 82px;
+  }
+
+  .admin-station-row,
+  .admin-station-row.head {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-station-row.head span:last-child {
+    display: block;
+  }
+}
