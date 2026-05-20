@@ -30,6 +30,7 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
   const configured = Boolean(databaseUrl);
   let pool = null;
   let schemaReady = false;
+  let lastDatabaseError = configured ? null : "GCOS_DATABASE_URL not configured";
 
   async function getPool() {
     if (!configured) return null;
@@ -74,9 +75,10 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
         console.warn("GCOS_STORAGE_PROVIDER=database is selected, but GCOS_DATABASE_URL is not set. Starting from seed state.");
         return seed;
       }
-      const activePool = await getPool();
-      const client = await activePool.connect();
+      let client = null;
       try {
+        const activePool = await getPool();
+        client = await activePool.connect();
         await ensureSchema(client);
         const loaded = {};
         let totalRows = 0;
@@ -91,17 +93,22 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
           ...seed,
           ...loaded
         });
+      } catch (error) {
+        lastDatabaseError = error.message;
+        console.warn(`GCOS database unavailable during startup: ${error.message}. Starting from seed state.`);
+        return seed;
       } finally {
-        client.release();
+        client?.release();
       }
     },
 
     async saveState(state) {
       if (!configured) return;
-      const activePool = await getPool();
-      const client = await activePool.connect();
+      let client = null;
       let inTransaction = false;
       try {
+        const activePool = await getPool();
+        client = await activePool.connect();
         await ensureSchema(client);
         await client.query("begin");
         inTransaction = true;
@@ -120,11 +127,13 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
         }
         await client.query("commit");
         inTransaction = false;
+        lastDatabaseError = null;
       } catch (error) {
-        if (inTransaction) await client.query("rollback");
-        throw error;
+        if (inTransaction && client) await client.query("rollback");
+        lastDatabaseError = error.message;
+        console.warn(`GCOS database save skipped: ${error.message}`);
       } finally {
-        client.release();
+        client?.release();
       }
     },
 
@@ -138,12 +147,13 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
         lastBackup: state.persistenceMeta?.lastBackup ?? null,
         lastVerifiedAt: state.persistenceMeta?.lastVerifiedAt ?? null,
         lastVerifiedBy: state.persistenceMeta?.lastVerifiedBy ?? null,
-        migrationReady: configured
+        migrationReady: configured,
+        databaseError: lastDatabaseError
       };
     },
 
     async status(state) {
-      let database = { connected: false, schemaReady: false, error: configured ? "Not checked" : "GCOS_DATABASE_URL not configured" };
+      let database = { connected: false, schemaReady: false, error: lastDatabaseError ?? (configured ? "Not checked" : "GCOS_DATABASE_URL not configured") };
       if (configured) {
         try {
           const activePool = await getPool();
@@ -152,10 +162,12 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
             await ensureSchema(client);
             const ping = await client.query("select now() as checked_at");
             database = { connected: true, schemaReady: true, checkedAt: ping.rows[0]?.checked_at?.toISOString?.() ?? new Date().toISOString() };
+            lastDatabaseError = null;
           } finally {
             client.release();
           }
         } catch (error) {
+          lastDatabaseError = error.message;
           database = { connected: false, schemaReady: false, error: error.message };
         }
       }
