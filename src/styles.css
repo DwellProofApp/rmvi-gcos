@@ -1560,7 +1560,120 @@ h1 {
   font-weight: 850;
 }
 
+.public-software-gateway {
+  grid-template-rows: auto auto;
+  gap: 20px;
+  padding: 18px 20px 28px;
+  background:
+    linear-gradient(90deg, rgba(244, 197, 66, 0.08) 0 1px, transparent 1px 80px),
+    linear-gradient(180deg, #f7fbff 0%, #eef4fc 58%, #e7eef8 100%);
+}
+
+.public-software-gateway .public-gateway-header {
+  border-radius: 10px;
+  border-color: #d5e1f2;
+}
+
+.public-software-gateway .gateway-status-pill {
+  display: none;
+}
+
+.public-software-gateway .login-panel {
+  grid-template-columns: minmax(0, 1.08fr) minmax(390px, 460px);
+  gap: 18px;
+}
+
+.public-software-gateway .login-intro {
+  min-height: 590px;
+  border-radius: 10px;
+  padding: clamp(28px, 5vw, 56px);
+  align-content: space-between;
+  background:
+    linear-gradient(135deg, rgba(4, 29, 80, 0.99), rgba(15, 63, 146, 0.97)),
+    radial-gradient(circle at 82% 18%, rgba(244, 197, 66, 0.38), transparent 30%);
+  overflow: hidden;
+  position: relative;
+}
+
+.public-software-gateway .login-intro::after {
+  content: "";
+  position: absolute;
+  inset: auto -70px -90px auto;
+  width: 300px;
+  height: 300px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+}
+
+.public-software-gateway .download-hero-copy {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+}
+
+.public-software-gateway .download-kicker span {
+  background: rgba(255, 255, 255, 0.13);
+  color: #ffffff;
+}
+
+.public-software-gateway .download-hero-copy h1 {
+  max-width: 13ch;
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(40px, 5.4vw, 66px);
+  line-height: 1;
+  letter-spacing: 0;
+}
+
+.public-software-gateway .download-hero-copy p {
+  max-width: 58ch;
+  color: #e8f0ff;
+  font-size: 17px;
+  line-height: 1.58;
+  font-weight: 650;
+}
+
+.public-software-gateway .download-platform-panel,
+.public-software-gateway .login-stat-grid,
+.public-software-gateway .login-support {
+  display: none;
+}
+
+.public-software-gateway .login-card {
+  min-height: 590px;
+  border-radius: 10px;
+  border-color: #d4dfef;
+  background: linear-gradient(180deg, #ffffff 0%, #f9fbff 100%);
+  box-shadow: 0 26px 60px rgba(8, 31, 70, 0.15);
+}
+
+.public-software-gateway .login-form input,
+.public-software-gateway .login-form select {
+  min-height: 48px;
+  background: #ffffff;
+  font-size: 15px;
+}
+
+.public-software-gateway .public-download-footer {
+  border-radius: 10px;
+  box-shadow: 0 14px 34px rgba(8, 31, 70, 0.08);
+}
+
+.public-software-gateway .public-download-footer > div:first-child strong::before {
+  content: "Install options · ";
+  color: #d6a631;
+}
+
 @media (max-width: 1100px) {
+  .public-software-gateway .login-panel {
+    grid-template-columns: 1fr;
+  }
+
+  .public-software-gateway .login-intro,
+  .public-software-gateway .login-card {
+    min-height: auto;
+  }
+
   .login-panel {
     grid-template-columns: 1fr;
   }
@@ -1572,6 +1685,46 @@ h1 {
 
   .download-platform-panel {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .public-software-gateway {
+    padding: 12px;
+    background: #edf3fb;
+  }
+
+  .public-software-gateway .public-gateway-header {
+    padding: 12px;
+  }
+
+  .public-software-gateway .login-intro {
+    border-radius: 8px;
+    padding: 20px;
+  }
+
+  .public-software-gateway .download-hero-copy h1 {
+    max-width: 12ch;
+    font-size: 34px;
+    line-height: 1.04;
+  }
+
+  .public-software-gateway .download-hero-copy p {
+    font-size: 15px;
+  }
+
+  .public-software-gateway .download-hero-actions {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .public-software-gateway .download-hero-actions button {
+    width: 100%;
+  }
+
+  .public-software-gateway .login-card,
+  .public-software-gateway .public-download-footer {
+    border-radius: 8px;
   }
 }
 

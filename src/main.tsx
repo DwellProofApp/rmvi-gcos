@@ -7991,11 +7991,6 @@ function LoginScreen({
     icon: KeyRound
   };
   const StationIcon = resolveStationIcon(selectedStation);
-  const gatewayStats = [
-    { label: "Stations", value: String(stationDirectory.length) },
-    { label: "Access model", value: "Station based" },
-    { label: "Portal", value: "rmvi.org" }
-  ];
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -8090,7 +8085,7 @@ function LoginScreen({
   }
 
   return (
-    <main className="login-shell">
+    <main className="login-shell public-software-gateway">
       <header className="public-gateway-header" aria-label="Remedy Movement International public gateway header">
         <div className="brand login-brand">
           <div className="brand-mark">
@@ -8123,17 +8118,17 @@ function LoginScreen({
               <strong>{pwa.installed ? "Installed on this device" : pwa.canInstall ? "Install ready" : "Web app ready"}</strong>
             </div>
             <div>
-              <h1>Download RMVI GCOS for church administration.</h1>
-              <p>{CHURCH_NAME} users can install the workstation app, sign in through the secure web portal, and continue preparing reports or ChurchMail when internet service is limited.</p>
+              <h1>GCOS for secure church operations.</h1>
+              <p>{CHURCH_NAME} users can install the workstation app, sign in through the secure web portal, send ChurchMail, prepare reports, and keep work moving when internet service is limited.</p>
             </div>
             <div className="download-hero-actions">
               <button type="button" className="primary-download-action" onClick={installWindowsApp}>
                 <Download size={18} />
-                Download for Windows
+                Install app
               </button>
               <button type="button" onClick={continueInBrowser}>
                 <Globe2 size={18} />
-                Open web app
+                Use in browser
               </button>
               <button type="button" onClick={downloadInstallGuide}>
                 <FileText size={18} />
@@ -8176,14 +8171,6 @@ function LoginScreen({
             </button>
           </div>
 
-          <div className="login-stat-grid" aria-label="Gateway status">
-            {gatewayStats.map((stat) => (
-              <div key={stat.label}>
-                <strong>{stat.value}</strong>
-                <span>{stat.label}</span>
-              </div>
-            ))}
-          </div>
         </div>
 
         <div className="login-card" id="signin" aria-label="Station sign-in form">
@@ -8205,9 +8192,9 @@ function LoginScreen({
               {authMode === "create" ? <Plus size={24} /> : <StationIcon size={24} />}
             </div>
             <div>
-              <span>{authMode === "create" ? "New workstation setup" : "Selected workstation"}</span>
-              <h2>{authMode === "create" ? "Create a church office account" : selectedStation.title}</h2>
-              <p>{authMode === "create" ? "Register an RMVI office, choose its governance level, and wait for administrator approval before sign-in." : `${selectedStation.level} - ${selectedStation.authority}`}</p>
+              <span>{authMode === "create" ? "New workstation setup" : "Station access"}</span>
+              <h2>{authMode === "create" ? "Request a church office account" : "Sign in to your workstation"}</h2>
+              <p>{authMode === "create" ? "Create an RMVI office account for administrator approval." : `${selectedStation.level} - ${selectedStation.authority}`}</p>
             </div>
           </div>
 

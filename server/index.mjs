@@ -464,14 +464,14 @@ const server = createServer(async (request, response) => {
   try {
     if (request.method === "OPTIONS") return send(response, { status: 204, body: null });
     const pathname = new URL(request.url ?? "/", `http://${request.headers.host}`).pathname;
+    if (request.method === "GET" && SERVE_WEB && !pathname.startsWith("/api/") && pathname !== "/health") {
+      const webAsset = await readWebAsset(pathname);
+      if (webAsset) return sendRaw(response, webAsset);
+    }
     assertMutationRateLimit(request, pathname);
     const requestBody = await readJson(request);
     const match = matchRoute(request.method, pathname);
     if (!match) {
-      if (request.method === "GET" && SERVE_WEB && !pathname.startsWith("/api/") && pathname !== "/health") {
-        const webAsset = await readWebAsset(pathname);
-        if (webAsset) return sendRaw(response, webAsset);
-      }
       return send(response, notFound({ error: "Route not found" }));
     }
     validateRequest(match.pattern, requestBody);
