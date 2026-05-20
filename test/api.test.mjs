@@ -3046,6 +3046,8 @@ function startApi(dataPath, webDistPath, extraEnv = {}) {
       ...process.env,
       GCOS_API_PORT: String(PORT),
       GCOS_STORAGE_PROVIDER: "json",
+      GCOS_DATABASE_URL: "",
+      DATABASE_URL: "",
       GCOS_DATA_PATH: dataPath,
       GCOS_SERVE_WEB: "1",
       GCOS_WEB_DIST_PATH: webDistPath,

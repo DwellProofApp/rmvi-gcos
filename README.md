@@ -137,6 +137,7 @@ GCOS_API_PORT       API/web server port, defaults to 8787
 GCOS_HOST           Bind host, use 127.0.0.1 locally and 0.0.0.0 on Replit/hosting
 GCOS_STORAGE_PROVIDER Storage adapter, use json by default or database for Postgres JSONB
 GCOS_DATABASE_URL   Postgres connection string used when GCOS_STORAGE_PROVIDER=database
+DATABASE_URL        Optional Replit Postgres fallback when GCOS_DATABASE_URL is not set
 GCOS_DATABASE_SSL   Set to 1 when the managed Postgres host requires SSL
 GCOS_DATABASE_POOL_SIZE Max Postgres pool connections, defaults to 5
 GCOS_DATA_PATH      JSON persistence path, defaults to data/gcos-state.json

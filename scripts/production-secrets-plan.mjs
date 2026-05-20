@@ -8,8 +8,9 @@ const TEMPLATE_PATH = join(ROOT, ".env.production.example");
 const generatedAt = new Date().toISOString();
 const template = await readFile(TEMPLATE_PATH, "utf8");
 const entries = parseEnv(template).map((entry) => {
-  const actual = process.env[entry.name] ?? "";
-  const source = actual ? "environment" : "template";
+  const alternateDatabaseUrl = entry.name === "GCOS_DATABASE_URL" ? process.env.DATABASE_URL ?? "" : "";
+  const actual = process.env[entry.name] ?? alternateDatabaseUrl;
+  const source = process.env[entry.name] ? "environment" : alternateDatabaseUrl ? "DATABASE_URL" : "template";
   const value = actual || entry.value;
   const placeholder = isPlaceholder(entry.name, value);
   const sensitive = entry.name.includes("URL") || entry.name.includes("PASSWORD") || entry.name.includes("SECRET");
@@ -20,7 +21,7 @@ const entries = parseEnv(template).map((entry) => {
     sensitive,
     placeholder,
     ready: Boolean(value) && !placeholder,
-    displayValue: sensitive ? redact(value) : value
+    displayValue: sensitive ? redact(value, source) : value
   };
 });
 
@@ -69,9 +70,10 @@ function isPlaceholder(name, value) {
   return false;
 }
 
-function redact(value) {
+function redact(value, source = "") {
   if (!value) return "";
-  return value.replace(/:\/\/([^:@/]+):([^@/]+)@/, "://$1:***@");
+  const redacted = value.replace(/:\/\/([^:@/]+):([^@/]+)@/, "://$1:***@");
+  return source === "DATABASE_URL" ? `${redacted} via DATABASE_URL` : redacted;
 }
 
 function valueOf(name) {
@@ -98,7 +100,7 @@ ${rows.join("\n")}
 
 ## Next Actions
 
-${plan.missing.length ? plan.missing.map((name) => `- Set \`${name}\` in Replit Secrets.`).join("\n") : "- All required secrets are ready for live verification."}
+${plan.missing.length ? plan.missing.map((name) => name === "GCOS_DATABASE_URL" ? "- Set `GCOS_DATABASE_URL` in Replit Secrets, or connect Replit Postgres so `DATABASE_URL` is available." : `- Set \`${name}\` in Replit Secrets.`).join("\n") : "- All required secrets are ready for live verification."}
 
 After the required values are ready, run:
 

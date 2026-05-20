@@ -14,7 +14,8 @@ const SERVER_DIR = dirname(fileURLToPath(import.meta.url));
 const DEFAULT_DATA_PATH = join(SERVER_DIR, "..", "data", "gcos-state.json");
 const DATA_PATH = process.env.GCOS_DATA_PATH ?? DEFAULT_DATA_PATH;
 const STORAGE_PROVIDER = process.env.GCOS_STORAGE_PROVIDER ?? "json";
-const DATABASE_URL = process.env.GCOS_DATABASE_URL ?? "";
+const DATABASE_URL = process.env.GCOS_DATABASE_URL ?? process.env.DATABASE_URL ?? "";
+const DATABASE_URL_SOURCE = process.env.GCOS_DATABASE_URL ? "GCOS_DATABASE_URL" : process.env.DATABASE_URL ? "DATABASE_URL" : "";
 const OBJECT_VAULT_PATH = process.env.GCOS_OBJECT_VAULT_PATH ?? join(dirname(DATA_PATH), "object-vault");
 const SERVE_WEB = process.env.GCOS_SERVE_WEB === "1";
 const WEB_DIST_PATH = process.env.GCOS_WEB_DIST_PATH ?? join(SERVER_DIR, "..", "dist");
@@ -547,7 +548,7 @@ async function launchReadiness() {
     { name: "serve-web", category: "production", ok: SERVE_WEB, detail: SERVE_WEB ? "Web served by API" : "Set GCOS_SERVE_WEB=1" },
     { name: "production-reset-lock", category: "production", ok: !DEV_RESET_ENABLED, detail: DEV_RESET_ENABLED ? "Development reset enabled" : "Development reset disabled" },
     { name: "api-auth-lock", category: "production", ok: REQUIRE_API_AUTH, detail: REQUIRE_API_AUTH ? "Production API data requires station sessions" : "Set GCOS_REQUIRE_API_AUTH=1" },
-    { name: "managed-database", category: "production", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? "Database provider selected" : "JSON provider active" },
+    { name: "managed-database", category: "production", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? `Database provider selected${DATABASE_URL_SOURCE ? ` via ${DATABASE_URL_SOURCE}` : ""}` : "JSON provider active" },
     { name: "database-ssl", category: "production", ok: process.env.GCOS_DATABASE_SSL === "1" || STORAGE_PROVIDER !== "database", detail: process.env.GCOS_DATABASE_SSL === "1" ? "Database SSL enabled" : "Database SSL not required for current provider" },
     { name: "cors-origin", category: "production", ok: ALLOWED_ORIGIN !== "*", detail: ALLOWED_ORIGIN },
     { name: "healthcheck-domain", category: "production", ok: (process.env.GCOS_HEALTHCHECK_URL ?? "").includes(DOMAIN), detail: process.env.GCOS_HEALTHCHECK_URL ?? "not configured" },
@@ -979,7 +980,7 @@ function productionSecretEntries() {
     { name: "GCOS_ENABLE_DEV_RESET", value: "0", configured: !DEV_RESET_ENABLED, sensitive: false },
     { name: "GCOS_REQUIRE_API_AUTH", value: "1", configured: REQUIRE_API_AUTH, sensitive: false },
     { name: "GCOS_STORAGE_PROVIDER", value: "database", configured: STORAGE_PROVIDER === "database", sensitive: false },
-    { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? redactSecret(DATABASE_URL) : "required", configured: Boolean(DATABASE_URL), sensitive: true },
+    { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? `${redactSecret(DATABASE_URL)}${DATABASE_URL_SOURCE === "DATABASE_URL" ? " via DATABASE_URL" : ""}` : "required", configured: Boolean(DATABASE_URL), sensitive: true },
     { name: "GCOS_DATABASE_SSL", value: "1", configured: process.env.GCOS_DATABASE_SSL === "1", sensitive: false },
     { name: "GCOS_DATABASE_POOL_SIZE", value: process.env.GCOS_DATABASE_POOL_SIZE ?? "5", configured: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, sensitive: false },
     { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false },

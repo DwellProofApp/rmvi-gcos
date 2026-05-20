@@ -1,3 +1,13 @@
+import { readFile } from "node:fs/promises";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
+const defaults = loadProductionDefaults(await readOptional(join(ROOT, ".env.production.example")));
+const env = { ...defaults, ...process.env };
+const databaseUrl = env.GCOS_DATABASE_URL ?? env.DATABASE_URL ?? "";
+const databaseUrlSource = process.env.GCOS_DATABASE_URL ? "GCOS_DATABASE_URL" : process.env.DATABASE_URL ? "DATABASE_URL" : "";
+
 const required = [
   ["NODE_ENV", (value) => value === "production", "set NODE_ENV=production"],
   ["GCOS_DOMAIN", (value) => value === "rmvi.org", "set GCOS_DOMAIN=rmvi.org"],
@@ -8,7 +18,7 @@ const required = [
   ["GCOS_ENABLE_DEV_RESET", (value) => value === "0", "set GCOS_ENABLE_DEV_RESET=0"],
   ["GCOS_REQUIRE_API_AUTH", (value) => value === "1", "set GCOS_REQUIRE_API_AUTH=1"],
   ["GCOS_STORAGE_PROVIDER", (value) => value === "database", "set GCOS_STORAGE_PROVIDER=database"],
-  ["GCOS_DATABASE_URL", (value) => Boolean(value) && !/USER:PASSWORD|HOST|DATABASE/.test(value), "set a real managed Postgres URL"],
+  ["GCOS_DATABASE_URL", () => Boolean(databaseUrl) && !/USER:PASSWORD|HOST|DATABASE/.test(databaseUrl), "set a real managed Postgres URL in GCOS_DATABASE_URL or Replit DATABASE_URL"],
   ["GCOS_DATABASE_SSL", (value) => value === "1", "set GCOS_DATABASE_SSL=1"],
   ["GCOS_DATABASE_POOL_SIZE", (value) => Number(value) >= 2, "set GCOS_DATABASE_POOL_SIZE to at least 2"],
   ["GCOS_OBJECT_VAULT_PATH", Boolean, "set a persistent object vault path"],
@@ -20,7 +30,7 @@ const required = [
 ];
 
 const results = required.map(([name, verify, fix]) => {
-  const value = process.env[name] ?? "";
+  const value = name === "GCOS_DATABASE_URL" ? databaseUrl : env[name] ?? "";
   return { name, ok: Boolean(verify(value)), value: redact(name, value), fix };
 });
 
@@ -35,6 +45,30 @@ console.log(`Production readiness profile: ${score}%`);
 if (score < 90) process.exitCode = 1;
 
 function redact(name, value) {
-  if (name.includes("DATABASE_URL") && value) return value.replace(/:\/\/([^:@/]+):([^@/]+)@/, "://$1:***@");
+  if (name.includes("DATABASE_URL") && value) {
+    const redacted = value.replace(/:\/\/([^:@/]+):([^@/]+)@/, "://$1:***@");
+    return databaseUrlSource === "DATABASE_URL" ? `${redacted} via DATABASE_URL` : redacted;
+  }
   return value;
+}
+
+function loadProductionDefaults(source) {
+  const parsed = {};
+  for (const line of source.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
+    const [key, ...rest] = trimmed.split("=");
+    const value = rest.join("=");
+    if (key === "GCOS_DATABASE_URL" && (process.env.DATABASE_URL || /USER:PASSWORD|HOST|DATABASE/.test(value))) continue;
+    parsed[key] = value;
+  }
+  return parsed;
+}
+
+async function readOptional(path) {
+  try {
+    return await readFile(path, "utf8");
+  } catch {
+    return "";
+  }
 }

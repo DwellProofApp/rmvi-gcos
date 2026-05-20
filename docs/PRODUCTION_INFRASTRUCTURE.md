@@ -42,6 +42,7 @@ GCOS_ENABLE_DEV_RESET=0
 GCOS_REQUIRE_API_AUTH=1
 GCOS_STORAGE_PROVIDER=database
 GCOS_DATABASE_URL=<managed postgres connection string>
+DATABASE_URL=<optional Replit Postgres fallback if GCOS_DATABASE_URL is not set>
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
 GCOS_OBJECT_VAULT_PATH=<persistent object vault path>
@@ -58,7 +59,7 @@ Leave `VITE_GCOS_API_BASE` empty for same-origin production serving.
 ## Database Launch
 
 1. Create the managed Postgres database.
-2. Put the connection string in `GCOS_DATABASE_URL`.
+2. Put the connection string in `GCOS_DATABASE_URL`. If Replit provides `DATABASE_URL` automatically, GCOS will use that as a fallback.
 3. Keep `GCOS_STORAGE_PROVIDER=database`.
 4. Set `GCOS_DATABASE_SSL=1`.
 5. Run `npm run production:check` in Replit.

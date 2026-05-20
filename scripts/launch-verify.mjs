@@ -122,7 +122,7 @@ function loadProductionDefaults(source) {
     if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
     const [key, ...rest] = trimmed.split("=");
     const value = rest.join("=");
-    if (key === "GCOS_DATABASE_URL" && /USER:PASSWORD|HOST|DATABASE/.test(value)) continue;
+    if (key === "GCOS_DATABASE_URL" && (process.env.DATABASE_URL || /USER:PASSWORD|HOST|DATABASE/.test(value))) continue;
     env[key] = value;
   }
   return env;

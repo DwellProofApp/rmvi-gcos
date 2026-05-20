@@ -13,6 +13,7 @@ GCOS_SERVE_WEB=1
 GCOS_WEB_DIST_PATH=dist
 GCOS_STORAGE_PROVIDER=database
 GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
+# If Replit Postgres provides DATABASE_URL automatically, GCOS will use it as a fallback.
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
 GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
@@ -66,6 +67,7 @@ GCOS_SERVE_WEB=1
 GCOS_WEB_DIST_PATH=dist
 GCOS_STORAGE_PROVIDER=database
 GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
+# Or connect Replit Postgres and use the platform-provided DATABASE_URL fallback.
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
 GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
@@ -104,7 +106,7 @@ Current deployment state as of May 17, 2026:
 8. Open `https://rmvi.org`.
 9. Run `GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck`.
 10. Run `npm run domain:check` for DNS plus GCOS endpoint verification.
-11. Run `npm run production:check` in Replit after setting secrets.
+11. Run `npm run production:check` in Replit after setting secrets. `GCOS_DATABASE_URL` is preferred, but a platform-provided `DATABASE_URL` from Replit Postgres is accepted.
 
 ## Launch Checks
 
