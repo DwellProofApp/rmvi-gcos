@@ -8060,6 +8060,33 @@ function LoginScreen({
 
   function continueInBrowser() {
     setDownloadNotice("You can use RMVI GCOS directly in the browser now. After the first load, the installed web app keeps the shell available for offline work.");
+    window.location.hash = "signin";
+  }
+
+  function downloadInstallGuide() {
+    downloadTextFile(
+      "RMVI-GCOS-install-guide.txt",
+      [
+        "Remedy Movement International GCOS Install Guide",
+        "",
+        "Windows",
+        "1. Open https://rmvi.org in Chrome or Microsoft Edge.",
+        "2. Select Download or Install RMVI GCOS.",
+        "3. If the browser shows an install prompt, approve it.",
+        "4. Open RMVI GCOS from the Windows Start menu.",
+        "",
+        "iPhone or iPad",
+        "1. Open https://rmvi.org in Safari.",
+        "2. Tap Share.",
+        "3. Tap Add to Home Screen.",
+        "4. Open RMVI GCOS from the new home screen icon.",
+        "",
+        "Offline Use",
+        "After the first successful load, the installed web app keeps the application shell available offline. Users can draft reports, prepare ChurchMail, and queue work until the internet returns."
+      ].join("\n"),
+      "text/plain;charset=utf-8"
+    );
+    setDownloadNotice("The RMVI GCOS install guide has been downloaded. Use it to help Windows and iPhone/iPad users install the app from rmvi.org.");
   }
 
   return (
@@ -8086,36 +8113,69 @@ function LoginScreen({
       </header>
 
       <section className="login-panel">
-        <div className="login-intro" id="download">
-          <div className="login-emblem">
-            <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
+        <div className="login-intro software-download-hero" id="download">
+          <div className="download-hero-copy">
+            <div className="login-emblem">
+              <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
+            </div>
+            <div className="download-kicker">
+              <span>Official {CHURCH_NAME} software portal</span>
+              <strong>{pwa.installed ? "Installed on this device" : pwa.canInstall ? "Install ready" : "Web app ready"}</strong>
+            </div>
+            <div>
+              <h1>Download RMVI GCOS for church administration.</h1>
+              <p>{CHURCH_NAME} users can install the workstation app, sign in through the secure web portal, and continue preparing reports or ChurchMail when internet service is limited.</p>
+            </div>
+            <div className="download-hero-actions">
+              <button type="button" className="primary-download-action" onClick={installWindowsApp}>
+                <Download size={18} />
+                Download for Windows
+              </button>
+              <button type="button" onClick={continueInBrowser}>
+                <Globe2 size={18} />
+                Open web app
+              </button>
+              <button type="button" onClick={downloadInstallGuide}>
+                <FileText size={18} />
+                Install guide
+              </button>
+            </div>
+            {downloadNotice && <div className="download-notice">{downloadNotice}</div>}
+            <div className="login-trust-row" aria-label="Access protections">
+              <span><ShieldCheck size={15} /> Protected sign-in</span>
+              <span><GitBranch size={15} /> Office routed</span>
+              <span><CloudOff size={15} /> Offline capable</span>
+            </div>
           </div>
-          <div>
-            <span>Official {CHURCH_NAME} administrative portal</span>
-            <h1>Download RMVI GCOS or open your workstation online.</h1>
-            <p>{CHURCH_NAME} offices can install the software experience on Windows, add it to iPhone or iPad, or continue in the web browser. Returning users sign in with their official rmvi.org account.</p>
-          </div>
-          <div className="download-gateway" aria-label="Download and install options">
+
+          <div className="download-platform-panel" aria-label="Download and install options">
+            <div className="download-panel-header">
+              <span>Choose your platform</span>
+              <strong>RMVI GCOS</strong>
+            </div>
             <button type="button" className="download-card primary" onClick={installWindowsApp}>
               <Download size={22} />
               <span>Windows</span>
-              <strong>Download / install app</strong>
-              <small>Install RMVI GCOS from the browser when prompted.</small>
+              <strong>Install desktop-style app</strong>
+              <small>Use Chrome or Microsoft Edge. GCOS opens from the Start menu after install.</small>
+              <b>{pwa.canInstall ? "Install prompt available" : "Uses live rmvi.org install prompt"}</b>
             </button>
             <button type="button" className="download-card" onClick={showIosInstallHelp}>
               <Smartphone size={22} />
               <span>iPhone / iPad</span>
-              <strong>Install to Home Screen</strong>
-              <small>Use Safari Share, then Add to Home Screen.</small>
+              <strong>Add to Home Screen</strong>
+              <small>Open rmvi.org in Safari, tap Share, then add GCOS to the home screen.</small>
+              <b>Safari install path</b>
             </button>
             <button type="button" className="download-card" onClick={continueInBrowser}>
               <Globe2 size={22} />
               <span>Web</span>
-              <strong>Continue in browser</strong>
-              <small>Use the full platform at rmvi.org.</small>
+              <strong>Use in browser</strong>
+              <small>Sign in from any modern browser without installing anything first.</small>
+              <b>Fastest access</b>
             </button>
           </div>
-          {downloadNotice && <div className="download-notice">{downloadNotice}</div>}
+
           <div className="login-stat-grid" aria-label="Gateway status">
             {gatewayStats.map((stat) => (
               <div key={stat.label}>
@@ -8123,11 +8183,6 @@ function LoginScreen({
                 <span>{stat.label}</span>
               </div>
             ))}
-          </div>
-          <div className="login-trust-row" aria-label="Access protections">
-            <span><ShieldCheck size={15} /> Protected access</span>
-            <span><GitBranch size={15} /> Hierarchy routed</span>
-            <span><FileCheck2 size={15} /> Audit recorded</span>
           </div>
         </div>
 
