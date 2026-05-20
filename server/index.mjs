@@ -122,6 +122,7 @@ const routes = {
   "POST /api/sessions/:id/device": ({ params, session, body }) => ok(labelSessionDevice(params.id, session.email, body.label)),
   "POST /api/sessions/:id/note": ({ params, session, body }) => ok(noteSession(params.id, session.email, body.note)),
   "GET /api/bootstrap": () => ok(services.publicState()),
+  "GET /api/bootstrap/public": () => ok(services.publicState()),
   "GET /api/command-center/briefing": () => ok(services.commandBriefing()),
   "POST /api/command-center/briefing/archive": ({ session, body }) => createdResponse(services.archiveCommandBriefing({ ...body, actor: session.email })),
   "POST /api/command-center/directive": ({ session, body }) => createdResponse(services.issueCommandDirective({ ...body, actor: session.email })),

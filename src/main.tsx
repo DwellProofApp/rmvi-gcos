@@ -2702,7 +2702,7 @@ function App() {
         aiDrafts: AiDraft[];
         audit: AuditRow[];
         events: string[];
-      }>("/api/bootstrap");
+      }>("/api/bootstrap/public");
       setApiStations(data.stations.length ? data.stations : stations);
       setMessages(data.messages);
       setReports(data.reports);
