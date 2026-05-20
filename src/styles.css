@@ -9228,6 +9228,213 @@ h1 {
   }
 }
 
+/* Actual admin product design: suite launcher + command workspace. */
+.admin-command-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 18px;
+  border: 1px solid rgba(244, 197, 66, 0.28);
+  border-radius: 28px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.06)),
+    #0b2f6b;
+  color: #ffffff;
+  padding: 24px;
+  box-shadow: 0 24px 58px rgba(2, 12, 31, 0.24);
+}
+
+.admin-command-hero .admin-tab-heading h1 {
+  color: #ffffff !important;
+  font-size: clamp(32px, 5vw, 54px);
+  letter-spacing: 0;
+}
+
+.admin-command-hero .admin-tab-heading p {
+  max-width: 760px;
+  color: rgba(255, 255, 255, 0.86) !important;
+  font-size: 15px;
+}
+
+.admin-command-summary {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.admin-command-summary div {
+  min-height: 84px;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.11);
+  padding: 14px;
+}
+
+.admin-command-summary span {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-command-summary strong {
+  color: #ffffff;
+  font-size: 20px;
+}
+
+.admin-command-summary small {
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-app-suite {
+  margin-top: 18px;
+  border: 1px solid #dce6f5;
+  border-radius: 28px;
+  background: #ffffff;
+  padding: 18px;
+  box-shadow: 0 18px 42px rgba(16, 33, 63, 0.09);
+}
+
+.admin-suite-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid #e8eef7;
+}
+
+.admin-suite-head span {
+  display: block;
+  color: #b18310;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.admin-suite-head strong {
+  display: block;
+  margin-top: 3px;
+  color: #10213f;
+  font-size: 22px;
+}
+
+.admin-suite-head button {
+  min-height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 999px;
+  background: #0b2f6b;
+  color: #ffffff;
+  padding: 0 16px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.admin-app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(128px, 1fr));
+  gap: 12px;
+}
+
+.admin-app-tile {
+  min-height: 140px;
+  display: grid;
+  align-content: start;
+  gap: 9px;
+  border: 1px solid #dce6f5;
+  border-radius: 22px;
+  background:
+    linear-gradient(180deg, #ffffff, #f8fbff);
+  color: #10213f;
+  padding: 16px;
+  text-align: left;
+  box-shadow: 0 10px 24px rgba(16, 33, 63, 0.055);
+  transition: transform 150ms ease, border-color 150ms ease, box-shadow 150ms ease;
+}
+
+.admin-app-tile:hover {
+  transform: translateY(-2px);
+  border-color: #b7cbed;
+  box-shadow: 0 18px 34px rgba(16, 33, 63, 0.11);
+}
+
+.admin-app-tile span {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border-radius: 16px;
+  background: #eef4ff;
+  color: #0b2f6b;
+}
+
+.admin-app-tile.gold span {
+  background: #fff4d1;
+  color: #7a5a10;
+}
+
+.admin-app-tile.green span {
+  background: #e9f8ef;
+  color: #17663a;
+}
+
+.admin-app-tile strong {
+  color: #10213f;
+  font-size: 18px;
+}
+
+.admin-app-tile small {
+  color: #65758d;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.admin-focus-board.redesigned {
+  background:
+    linear-gradient(180deg, #ffffff, #fbfcff);
+}
+
+@media (min-width: 900px) {
+  .admin-command-hero {
+    grid-template-columns: minmax(0, 1fr) 380px;
+    align-items: end;
+  }
+
+  .admin-command-summary {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-command-hero {
+    padding: 18px;
+  }
+
+  .admin-command-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .admin-app-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 430px) {
+  .admin-command-summary,
+  .admin-app-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Final admin contrast and layout correction. Keep this last so older polish passes cannot dim it. */
 .admin-shell .workspace {
   background: linear-gradient(180deg, #061a3d 0%, #0b2f6b 330px, #f3f6fb 330px, #f3f6fb 100%) !important;

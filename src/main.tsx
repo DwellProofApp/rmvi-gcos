@@ -13143,6 +13143,16 @@ function AdminBoard({
     { label: "Station identities", value: officialStations.length, icon: KeyRound, section: "Offices" as Section, tone: "normal" },
     { label: "Vault documents", value: documents.length, icon: Files, section: "Archive" as Section, tone: "normal" }
   ];
+  const adminAppTiles = [
+    { label: "Users", section: "Personnel" as Section, icon: Users, detail: `${officialStations.length} station identities`, tone: "blue" },
+    { label: "Offices", section: "Offices" as Section, icon: Building2, detail: "Create nodes and workstations", tone: "gold" },
+    { label: "Mail", section: "ChurchMail" as Section, icon: Mail, detail: "Official communication", tone: "blue" },
+    { label: "Reports", section: "Reports" as Section, icon: FileCheck2, detail: `${reports.length} active packets`, tone: "green" },
+    { label: "Approvals", section: "Approvals" as Section, icon: BadgeCheck, detail: `${openApprovals} awaiting review`, tone: "gold" },
+    { label: "Audit", section: "Audit" as Section, icon: ShieldCheck, detail: `${sealedAuditRows} sealed records`, tone: "blue" },
+    { label: "Archive", section: "Archive" as Section, icon: Files, detail: `${documents.length} vault documents`, tone: "green" },
+    { label: "AI Desk", section: "AI Desk" as Section, icon: Sparkles, detail: "Drafts and summaries", tone: "gold" }
+  ];
 
   return (
     <section className="admin-portal-shell" aria-label="Remedy Movement International administrator board">
@@ -13185,13 +13195,13 @@ function AdminBoard({
         </aside>
 
         <main className="admin-portal-main">
-          <div className="admin-tab-hero">
+          <div className="admin-command-hero">
             <div className="admin-tab-heading">
               <div className="admin-tab-icon"><KeyRound size={24} /></div>
               <div>
                 <span>System Administration</span>
-                <h1>Admin Board</h1>
-                <p>One organized control room for station lifecycle, active governance queues, sessions, audit integrity, production readiness, and executive routing.</p>
+                <h1>RMVI Admin Workspace</h1>
+                <p>A clean command home for creating offices, approving users, monitoring reports, managing sessions, reviewing audit records, and routing executive work across GCOS.</p>
                 <div className="admin-hero-brief" aria-label="Administrator operating context">
                   <span><ShieldCheck size={14} /> International HQ authority</span>
                   <span><RadioTower size={14} /> {openEscalations + openApprovals + openTasks + pendingTransfers} open work items</span>
@@ -13199,14 +13209,33 @@ function AdminBoard({
                 </div>
               </div>
             </div>
-            <div className="admin-tab-status">
-              <div><span>Backend</span><strong>{apiStatus?.status?.toUpperCase() ?? "LOCAL"}</strong><small>{apiStatus ? formatUptime(apiStatus.uptimeSeconds) : "local preview"}</small></div>
-              <div><span>Web</span><strong>{apiStatus?.serveWeb ? "Live" : "Preview"}</strong><small>rmvi.org/admin</small></div>
-              <div><span>Access</span><strong>{permissions.canOverride ? "Full" : "Limited"}</strong><small>{session.email}</small></div>
+            <div className="admin-command-summary">
+              <div><span>Service</span><strong>{apiStatus?.status?.toUpperCase() ?? "LOCAL"}</strong><small>{apiStatus ? formatUptime(apiStatus.uptimeSeconds) : "local preview"}</small></div>
+              <div><span>Admin</span><strong>{permissions.canOverride ? "Full Access" : "Limited"}</strong><small>{session.email}</small></div>
+              <div><span>Ready</span><strong>{systemReadiness}</strong><small>launch checks</small></div>
             </div>
           </div>
 
-          <div className="admin-focus-board">
+          <div className="admin-app-suite" aria-label="Administrator app launcher">
+            <div className="admin-suite-head">
+              <div>
+                <span>Admin apps</span>
+                <strong>GCOS Workspace</strong>
+              </div>
+              <button onClick={() => onOpenSection("Offices")}><Plus size={14} /> New office</button>
+            </div>
+            <div className="admin-app-grid">
+              {adminAppTiles.map(({ label, section, icon: Icon, detail, tone }) => (
+                <button className={`admin-app-tile ${tone}`} key={label} onClick={() => onOpenSection(section)}>
+                  <span><Icon size={22} /></span>
+                  <strong>{label}</strong>
+                  <small>{detail}</small>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="admin-focus-board redesigned">
             <div className="admin-focus-title">
               <Zap size={17} />
               <strong>Today&apos;s Focus</strong>
