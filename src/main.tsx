@@ -38,6 +38,7 @@ import {
   Search,
   Send,
   Server,
+  Settings,
   ShieldCheck,
   Signature,
   ScrollText,
@@ -45,10 +46,12 @@ import {
   LogOut,
   SlidersHorizontal,
   Sparkles,
+  Smartphone,
   TimerReset,
   Upload,
   Users,
-  Workflow
+  Workflow,
+  Zap
 } from "lucide-react";
 import "./styles.css";
 
@@ -61,7 +64,7 @@ type StationLevel =
   | "Area HQ"
   | "Local Branch";
 
-type Section = "Control Center" | "Admin Board" | "ChurchMail" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit";
+type Section = "Control Center" | "Admin Board" | "ChurchMail" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit" | "Account Settings";
 type MessageKind = "Directive" | "Report" | "Approval" | "Notification" | "Transfer";
 type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
 type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string };
@@ -134,9 +137,13 @@ type CalendarEvent = { id: string; title: string; category: string; owner: strin
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
-type OfflineAction = AuditRow & { queuedAt: string };
+type OfflineAction = AuditRow & { queuedAt: string; syncStatus?: "Queued" | "Syncing" | "Deferred" | "Synced"; syncAttempts?: number; priority?: "Normal" | "High" | "Critical" };
+type OfflineSyncRecord = { id: string; status: "Synced" | "Deferred" | "Conflict"; count: number; detail: string; at: string };
+type OfflineConflict = { id: string; object: string; count: number; latestEvent: string; priority: "Review" | "High" };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string; authPending?: boolean };
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
+type CreateAccountInput = { fullName: string; officeName: string; email: string; password: string; level: StationLevel; department: string; autoApprove?: boolean };
+type AuthActionResult = { ok: boolean; message?: string };
 type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[]; evidence?: string; comments?: string[]; resolutionNote?: string; due?: string; linkedTask?: string; linkedReport?: string; linkedApproval?: string; impactScore?: number; impactSummary?: string; archived?: boolean; archiveReason?: string };
 type AiDraft = { id: string; kind: "Executive Summary" | "Memo" | "Report Brief"; title: string; body: string; sourceCount: number; createdAt: string; status?: string; confidence?: number; sourceNote?: string; sealed?: boolean; chainHash?: string; publishedBy?: string; watchers?: string[] };
 type FileRecord = { id: string; name: string; contentType: string; size: number; hash: string; objectKey: string; uploadedAt?: string; uploadedBy?: string; source?: string; linkedTo?: { kind: string; id: string; linkedAt: string }[] };
@@ -862,7 +869,8 @@ const navItems: { icon: React.ElementType; label: Section }[] = [
   { icon: Building2, label: "Offices" },
   { icon: Signature, label: "Transfers" },
   { icon: Files, label: "Archive" },
-  { icon: ShieldCheck, label: "Audit" }
+  { icon: ShieldCheck, label: "Audit" },
+  { icon: Settings, label: "Account Settings" }
 ];
 
 const sectionProfiles: Record<Section, { icon: React.ElementType; eyebrow: string; title: string; description: string; signal: string }> = {
@@ -977,6 +985,13 @@ const sectionProfiles: Record<Section, { icon: React.ElementType; eyebrow: strin
     title: "Audit and Session Monitor",
     description: "Inspect audit rows, event severity, session safety, evidence chain, readiness checks, incident review, and immutable records.",
     signal: "Audit locked"
+  },
+  "Account Settings": {
+    icon: Settings,
+    eyebrow: "User management",
+    title: "Account Settings",
+    description: "Reset passwords, manage station profiles, add users, delete accounts, and control account access.",
+    signal: "Account controls"
   }
 };
 
@@ -1051,7 +1066,7 @@ const stations: StationCard[] = [
 
 const demoStationPassword = (label: string) => ["gcos", label].join("-");
 
-const stationPasswords: Record<string, string> = {
+const seedStationPasswords: Record<string, string> = {
   "admin@rmvi.org": demoStationPassword("admin"),
   "international@rmvi.org": demoStationPassword("global"),
   "np@rmvi.org": demoStationPassword("national"),
@@ -1077,11 +1092,196 @@ const initialMessages: Message[] = [
   { id: "msg-005", kind: "Notification", subject: "Audit packet deadline reminder", from: "Compliance Engine", age: "3 hrs", status: "Ready", files: "Checklist" }
 ];
 
+const missionStationRoleOptions = [
+  "Church Administration",
+  "Full Time Pastor",
+  "Pastoral Assistant",
+  "Local Church Management Board",
+  "Elder Assembly",
+  "Deacon Board",
+  "Youth and Young Adult Ministry",
+  "Children and Teens Ministry",
+  "Marriage Committee",
+  "Welfare Committee - Good Samaritans",
+  "Men Fellowship",
+  "Women Fellowship",
+  "Sanitation Service Group",
+  "Kingdom Harvesters - Evangelism",
+  "Choir Service Group",
+  "Ushering Service Group",
+  "Technical Sound Service Group",
+  "Media Service Group",
+  "Kingdom Officers",
+  "Protocol Service Group",
+  "General Maintenance",
+  "Armour-Bearers Service Group",
+  "Census Service Group"
+];
+
 const initialReports: Report[] = [
   { id: "rep-001", name: "National mission activity report", owner: "National Programs", path: "Local -> Area -> District -> County -> National", due: "Today", state: "In Review", score: 86, type: "Mission", period: "May 2026", routingStage: "National review", evidenceStatus: "Evidence attached" },
   { id: "rep-002", name: "County finance summary", owner: "County Finance", path: "County -> National", due: "Tomorrow", state: "Ready", score: 94, type: "Financial", period: "Q2 2026", routingStage: "County validation", evidenceStatus: "Ledger pending" },
   { id: "rep-003", name: "Construction milestone report", owner: "District Works", path: "District -> County", due: "Overdue", state: "Escalated", score: 58, type: "Construction", period: "May 2026", routingStage: "District correction", evidenceStatus: "Photo packet incomplete", correctionReason: "Missing site photos" },
-  { id: "rep-004", name: "Education directorate update", owner: "Directorate Office", path: "National -> Regional", due: "May 20", state: "Approved", score: 100, type: "Education", period: "May 2026", routingStage: "Regional archive", evidenceStatus: "Evidence verified", verified: true, approvedBy: "Regional HQ" }
+  { id: "rep-004", name: "Education directorate update", owner: "Directorate Office", path: "National -> Regional", due: "May 20", state: "Approved", score: 100, type: "Education", period: "May 2026", routingStage: "Regional archive", evidenceStatus: "Evidence verified", verified: true, approvedBy: "Regional HQ" },
+  { id: "rep-005", name: "Kingdom Harvesters weekly evangelism report", owner: "Kingdom Harvesters", path: "Local Evangelism -> Area Office -> District Mission Desk", due: "Today", state: "Ready", score: 76, type: "Service Groups", period: "Current week", routingStage: "Evangelism review", evidenceStatus: "Outreach register pending", templateId: "tpl-service-kingdom-harvesters", templateChecklist: ["Outreach locations", "Souls reached", "Souls won", "Phone numbers collected", "Follow-up calls completed"] },
+  { id: "rep-006", name: "Census service attendance report", owner: "Census Service Group", path: "Local Census -> Assistant Resident Pastor -> Church Growth Department", due: "Today", state: "In Review", score: 82, type: "Service Groups", period: "Current service", routingStage: "Attendance validation", evidenceStatus: "Attendance count pending", templateId: "tpl-service-census", templateChecklist: ["Total attendance", "Event or service name", "Attendance register", "Trend notes", "Submitted to growth department"] }
+];
+
+const missionServiceGroupReportTemplates: ReportTemplate[] = [
+  {
+    id: "tpl-service-sanitation",
+    type: "Service Groups",
+    name: "Sanitation Service Group Report",
+    owner: "Sanitation Service Group",
+    due: "Today",
+    period: "Current week",
+    path: "Local Branch -> Pastor in Charge -> Area Office",
+    evidenceStatus: "Cleaning checklist pending",
+    routingStage: "Service group closeout",
+    approvalLimit: "Pastor in Charge acknowledgement",
+    description: "Weekly report for sanctuary, restroom, compound, waste, chair arrangement, facility damage, and stewardship prayer duties.",
+    checklist: ["Sanctuary cleaned", "Restrooms sanitized", "Trash disposed", "Damaged facilities reported", "Prayer and fasting observed"]
+  },
+  {
+    id: "tpl-service-kingdom-harvesters",
+    type: "Service Groups",
+    name: "Kingdom Harvesters Evangelism Report",
+    owner: "Kingdom Harvesters",
+    due: "This week",
+    period: "Current week",
+    path: "Local Evangelism -> Area Office -> District Mission Desk",
+    evidenceStatus: "Outreach register pending",
+    routingStage: "Evangelism review",
+    approvalLimit: "Area evangelism acknowledgement",
+    description: "Weekly evangelism record for outreach locations, souls reached, souls won, phone contacts, materials distributed, and follow-up calls.",
+    checklist: ["Outreach locations", "Souls reached", "Souls won", "Phone numbers collected", "Follow-up calls completed"]
+  },
+  {
+    id: "tpl-service-choir",
+    type: "Service Groups",
+    name: "Choir Service Group Report",
+    owner: "Choir Service Group",
+    due: "This week",
+    period: "Current week",
+    path: "Local Choir -> Music Pastor -> Area Office",
+    evidenceStatus: "Rehearsal schedule pending",
+    routingStage: "Music ministry review",
+    approvalLimit: "Music Pastor acknowledgement",
+    description: "Choir ministry report for praise and worship service, song preparation, monthly declaration alignment, rehearsal, harmony, instruments, and spiritual discipline.",
+    checklist: ["Songs prepared", "Services ministered", "Rehearsals held", "Instrument needs", "Prayer and fasting observed"]
+  },
+  {
+    id: "tpl-service-ushering",
+    type: "Service Groups",
+    name: "Ushering Service Group Report",
+    owner: "Ushering Service Group",
+    due: "Today",
+    period: "Current week",
+    path: "Local Ushering -> Pastor in Charge -> Area Office",
+    evidenceStatus: "Service coverage notes pending",
+    routingStage: "Ushering review",
+    approvalLimit: "Pastor in Charge acknowledgement",
+    description: "Operational report for seating, visitor welcome, service order, latecomer support, queues, communion flow, and sanctuary order.",
+    checklist: ["Seats arranged", "Visitors welcomed", "Latecomers assisted", "Queues managed", "Order issues reported"]
+  },
+  {
+    id: "tpl-service-technical-sound",
+    type: "Service Groups",
+    name: "Technical Sound Service Group Report",
+    owner: "Technical Sound Service Group",
+    due: "Today",
+    period: "Current week",
+    path: "Local Technical -> Media Desk -> Area Office",
+    evidenceStatus: "Equipment log pending",
+    routingStage: "Technical review",
+    approvalLimit: "Technical lead acknowledgement",
+    description: "Sound operations report for microphones, mixers, speakers, monitors, power, troubleshooting, equipment storage, and service support.",
+    checklist: ["Equipment tested", "Sound quality confirmed", "Faults reported", "Power issues noted", "Equipment stored safely"]
+  },
+  {
+    id: "tpl-service-media",
+    type: "Service Groups",
+    name: "Media Service Group Report",
+    owner: "Media Service Group",
+    due: "This week",
+    period: "Current week",
+    path: "Local Media -> National Media -> Archive",
+    evidenceStatus: "Media file links pending",
+    routingStage: "Media review",
+    approvalLimit: "Media lead approval",
+    description: "Media operations report for cameras, projectors, screens, scriptures, lyrics, announcements, recordings, livestream, editing, passwords, and archives.",
+    checklist: ["Media operated", "Announcements displayed", "Recordings archived", "Livestream status", "Password/content protection"]
+  },
+  {
+    id: "tpl-service-kingdom-officers",
+    type: "Service Groups",
+    name: "Kingdom Officers Visitor Follow-Up Report",
+    owner: "Kingdom Officers",
+    due: "Today",
+    period: "Current week",
+    path: "Local Kingdom Officers -> Discipleship Desk -> Area Office",
+    evidenceStatus: "Visitor cards pending",
+    routingStage: "Visitor follow-up review",
+    approvalLimit: "Discipleship desk acknowledgement",
+    description: "Visitor and new convert care report for welcome forms, discipleship class reminders, counseling days, hospitality, encouragement, prayer, and confidentiality.",
+    checklist: ["Visitor forms collected", "New converts called", "Discipleship reminders sent", "Counseling days shared", "Confidential records protected"]
+  },
+  {
+    id: "tpl-service-protocol",
+    type: "Service Groups",
+    name: "Protocol Service Group Report",
+    owner: "Protocol Service Group",
+    due: "Today",
+    period: "Current week",
+    path: "Local Protocol -> Pastor in Charge -> District Administration",
+    evidenceStatus: "Incident and movement log pending",
+    routingStage: "Protocol review",
+    approvalLimit: "Pastor in Charge acknowledgement",
+    description: "Protocol and safety report for welcoming environment, movement control, property safety, vehicle parking, suspicious activity, and incident reporting.",
+    checklist: ["Service movement managed", "Vehicles assisted", "Incidents reported", "Suspicious activity checked", "Order maintained"]
+  },
+  {
+    id: "tpl-service-general-maintenance",
+    type: "Service Groups",
+    name: "General Maintenance Service Report",
+    owner: "General Maintenance",
+    due: "This week",
+    period: "Current week",
+    path: "Local Maintenance -> District Works -> Finance Desk",
+    evidenceStatus: "Maintenance checklist pending",
+    routingStage: "Maintenance review",
+    approvalLimit: "Works desk acknowledgement",
+    description: "Maintenance report for electrical appliances, wiring, lights, generators, air conditioners, plumbing, carpentry, inspections, repairs, and safety.",
+    checklist: ["Electrical issues", "Generator status", "Cooling systems", "Building inspection", "Major damages reported"]
+  },
+  {
+    id: "tpl-service-armour-bearers",
+    type: "Service Groups",
+    name: "Armour-Bearers Service Group Report",
+    owner: "Armour-Bearers Service Group",
+    due: "Today",
+    period: "Current week",
+    path: "Local Armour-Bearers -> Pastor in Charge -> Protocol Desk",
+    evidenceStatus: "Leadership support log pending",
+    routingStage: "Leadership movement review",
+    approvalLimit: "Pastor in Charge acknowledgement",
+    description: "Leadership support report for order around leadership, visiting ministers, guest reception, access control, safety, and immediate service needs.",
+    checklist: ["Leadership movement supported", "Guests received", "Access controlled", "Safety measures coordinated", "Support needs logged"]
+  },
+  {
+    id: "tpl-service-census",
+    type: "Service Groups",
+    name: "Census Service Group Attendance Report",
+    owner: "Census Service Group",
+    due: "Today",
+    period: "Current service",
+    path: "Local Census -> Assistant Resident Pastor -> Church Growth Department",
+    evidenceStatus: "Attendance count pending",
+    routingStage: "Attendance validation",
+    approvalLimit: "Assistant Resident Pastor acknowledgement",
+    description: "Attendance and census report for all services, events, programs, attendance accuracy, trend notes, and planning data.",
+    checklist: ["Total attendance", "Event or service name", "Attendance register", "Trend notes", "Submitted to growth department"]
+  }
 ];
 
 const churchReportTemplates: ReportTemplate[] = [
@@ -1169,6 +1369,7 @@ const churchReportTemplates: ReportTemplate[] = [
     description: "Monthly report for ministers, workers, teachers, ushers, choir leaders, and operational service teams.",
     checklist: ["Workers present", "Training notes", "Assignments", "Discipline issues", "Support needs"]
   },
+  ...missionServiceGroupReportTemplates,
   {
     id: "tpl-board-meeting",
     type: "Meetings",
@@ -1904,6 +2105,7 @@ const initialAuditRows: AuditRow[] = [
 ];
 
 const initialOfflineQueue: OfflineAction[] = [];
+const initialOfflineSyncHistory: OfflineSyncRecord[] = [];
 
 const initialEvents = [
   "ReportSubmitted: Local Branch 017",
@@ -2013,6 +2215,29 @@ function usePwaInstallPrompt() {
   };
 }
 
+function useNetworkStatus() {
+  const [online, setOnline] = React.useState(() => navigator.onLine);
+
+  React.useEffect(() => {
+    function handleOnline() {
+      setOnline(true);
+    }
+
+    function handleOffline() {
+      setOnline(false);
+    }
+
+    window.addEventListener("online", handleOnline);
+    window.addEventListener("offline", handleOffline);
+    return () => {
+      window.removeEventListener("online", handleOnline);
+      window.removeEventListener("offline", handleOffline);
+    };
+  }, []);
+
+  return online;
+}
+
 async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   const token = getSessionToken();
   const response = await fetch(`${API_BASE}${path}`, {
@@ -2083,12 +2308,31 @@ function iconForLevel(level: StationLevel | string) {
 function resolveStationIcon(station: Pick<StationCard, "icon" | "level">) {
   const icon = station.icon as unknown;
   if (typeof icon === "function") return station.icon;
-  if (icon && typeof icon === "object" && "$$typeof" in icon) return station.icon;
   return iconForLevel(station.level);
 }
 
 function normalizeStationEmail(email: string) {
   return email.toLowerCase().replace("@rmi.org", "@rmvi.org").replace("@gcos.org", "@rmvi.org");
+}
+
+function buildOfflineConflicts(queue: OfflineAction[]): OfflineConflict[] {
+  const grouped = queue.reduce<Map<string, OfflineAction[]>>((map, action) => {
+    const key = action.object.trim().toLowerCase();
+    const existing = map.get(key) ?? [];
+    existing.push(action);
+    map.set(key, existing);
+    return map;
+  }, new Map());
+
+  return Array.from(grouped.entries())
+    .filter(([, actions]) => actions.length > 1)
+    .map(([object, actions]) => ({
+      id: object,
+      object: actions[0]?.object ?? object,
+      count: actions.length,
+      latestEvent: actions[0]?.event ?? "OfflineAction",
+      priority: actions.some((action) => action.priority === "Critical" || action.result.toLowerCase().includes("escalated")) ? "High" : "Review"
+    }));
 }
 
 function getPermissions(station: StationCard): Permissions {
@@ -2101,6 +2345,97 @@ function getPermissions(station: StationCard): Permissions {
   };
 }
 
+function stationDepartment(station: StationCard) {
+  return station.authority.split(",")[0]?.trim() || "Church Administration";
+}
+
+function isFinanceStation(station: StationCard) {
+  const value = `${station.email} ${station.title} ${station.authority}`.toLowerCase();
+  return value.includes("finance") || value.includes("budget") || value.includes("offering");
+}
+
+function isAuditStation(station: StationCard) {
+  const value = `${station.email} ${station.title} ${station.authority}`.toLowerCase();
+  return value.includes("audit") || value.includes("compliance");
+}
+
+function isMissionStation(station: StationCard) {
+  const value = `${station.email} ${station.title} ${station.authority}`.toLowerCase();
+  return value.includes("mission") || value.includes("evangelism") || value.includes("kingdom harvesters") || value.includes("church planting");
+}
+
+function isMediaStation(station: StationCard) {
+  const value = `${station.email} ${station.title} ${station.authority}`.toLowerCase();
+  return value.includes("media") || value.includes("communications");
+}
+
+function getAllowedSections(station: StationCard, permissions: Permissions): Section[] {
+  if (permissions.canOverride) return navItems.map((item) => item.label);
+
+  const allowed = new Set<Section>(["Control Center", "ChurchMail", "Reports", "Tasks", "Policies", "Calendar", "Archive", "Account Settings"]);
+  if (permissions.canApprove || isFinanceStation(station)) allowed.add("Approvals");
+  if (permissions.canExecuteTransfers || isMissionStation(station)) allowed.add("Transfers");
+  if (permissions.canCreateOffices) allowed.add("Offices");
+  if (["National HQ", "County/State HQ", "District HQ"].includes(station.level)) {
+    allowed.add("Escalations");
+    allowed.add("Hierarchy");
+  }
+  if (isMissionStation(station) || station.level !== "Local Branch") allowed.add("Personnel");
+  if (isAuditStation(station)) allowed.add("Audit");
+  if (isMediaStation(station) || station.level !== "Local Branch") allowed.add("AI Desk");
+  return navItems.map((item) => item.label).filter((section) => allowed.has(section));
+}
+
+function getWorkstationProfile(station: StationCard, permissions: Permissions) {
+  const department = stationDepartment(station);
+  if (permissions.canOverride) {
+    return {
+      label: "Executive administration",
+      title: "System administration dashboard",
+      description: "Global command, users, offices, audit, deployment, and governance control.",
+      focus: ["Admin board", "Office lifecycle", "Audit and sessions", "Deployment health"]
+    };
+  }
+  if (isFinanceStation(station)) {
+    return {
+      label: "Finance workstation",
+      title: "Finance and stewardship dashboard",
+      description: "Review finance reports, send ChurchMail, attach evidence, request approvals, and prepare audit records.",
+      focus: ["Finance inbox", "Weekly finance report", "Approval requests", "Audit evidence"]
+    };
+  }
+  if (isAuditStation(station)) {
+    return {
+      label: "Audit workstation",
+      title: "Compliance and evidence dashboard",
+      description: "Review audit packets, verify evidence, seal archive records, and track policy compliance.",
+      focus: ["Audit inbox", "Evidence vault", "Policy checks", "Exception review"]
+    };
+  }
+  if (isMissionStation(station)) {
+    return {
+      label: "Mission workstation",
+      title: "Mission and evangelism dashboard",
+      description: "Send outreach updates, complete evangelism reports, track follow-up tasks, and manage mission movement.",
+      focus: ["ChurchMail", "Evangelism report", "Follow-up tasks", "Mission transfers"]
+    };
+  }
+  if (station.level === "District HQ" || station.level === "County/State HQ" || station.level === "National HQ") {
+    return {
+      label: `${station.level} workstation`,
+      title: "Supervisory governance dashboard",
+      description: "Review lower-office reports, issue directives, approve work, monitor escalations, and route summaries upward.",
+      focus: ["Incoming reports", "Approvals", "Escalations", "Directives"]
+    };
+  }
+  return {
+    label: `${department} workstation`,
+    title: "Local church workstation",
+    description: "Read messages, send updates, complete reports, manage tasks, and archive evidence for your office.",
+    focus: ["Inbox", "Send message", "Start report", "Archive"]
+  };
+}
+
 function App() {
   const [session, setSession] = usePersistentState<Session | null>("gcos.session", null);
   const initialStation = stations.find((station) => station.email === session?.email) ?? stations[1];
@@ -2110,6 +2445,9 @@ function App() {
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
   const [offlineMode, setOfflineMode] = React.useState(false);
   const pwa = usePwaInstallPrompt();
+  const networkOnline = useNetworkStatus();
+  const syncInFlightRef = React.useRef(false);
+  const networkWasOfflineRef = React.useRef(!networkOnline);
   const [messages, setMessages] = usePersistentState("gcos.messages", initialMessages);
   const [reports, setReports] = usePersistentState("gcos.reports", initialReports);
   const [approvals, setApprovals] = usePersistentState("gcos.approvals", initialApprovals);
@@ -2120,12 +2458,14 @@ function App() {
   const [transfers, setTransfers] = usePersistentState("gcos.transfers", initialTransfers);
   const [offices, setOffices] = usePersistentState("gcos.offices", initialOffices);
   const [apiStations, setApiStations] = usePersistentState<StationCard[]>("gcos.stations", stations);
+  const [stationPasswordOverrides, setStationPasswordOverrides] = usePersistentState<Record<string, string>>("gcos.stationPasswordOverrides", {});
   const [escalations, setEscalations] = usePersistentState("gcos.escalations", initialEscalations);
   const [aiDrafts, setAiDrafts] = usePersistentState("gcos.aiDrafts", initialAiDrafts);
   const [documents, setDocuments] = usePersistentState("gcos.documents", initialDocuments);
   const [auditRows, setAuditRows] = usePersistentState("gcos.auditRows", initialAuditRows);
   const [events, setEvents] = usePersistentState("gcos.events", initialEvents);
   const [offlineQueue, setOfflineQueue] = usePersistentState("gcos.offlineQueue", initialOfflineQueue);
+  const [offlineSyncHistory, setOfflineSyncHistory] = usePersistentState("gcos.offlineSyncHistory", initialOfflineSyncHistory);
   const [apiStatus, setApiStatus] = React.useState<ApiStatus | null>(null);
   const [apiStatusError, setApiStatusError] = React.useState("");
   const [commandBriefing, setCommandBriefing] = React.useState<CommandBriefing | null>(null);
@@ -2149,15 +2489,15 @@ function App() {
   const [aiDraftDigest, setAiDraftDigest] = React.useState<AiDraftDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => {
     const directory = new Map<string, StationCard>();
-    stations.forEach((station) => {
+    stations.filter((station) => station.status !== "Deleted").forEach((station) => {
       const email = normalizeStationEmail(station.email);
       directory.set(email, { ...station, email, icon: resolveStationIcon(station) });
     });
-    apiStations.forEach((station) => {
+    apiStations.filter((station) => station.status !== "Deleted").forEach((station) => {
       const email = normalizeStationEmail(station.email);
       directory.set(email, { ...station, email, icon: resolveStationIcon(station) });
     });
-    offices.forEach((office) => {
+    offices.filter((office) => office.status !== "Deleted").forEach((office) => {
       const email = normalizeStationEmail(office.email);
       directory.set(email, {
       email,
@@ -2165,13 +2505,20 @@ function App() {
       level: office.level,
       authority: `${office.department}, supervised by ${office.supervisor}`,
       icon: Building2,
-      status: office.status
+      status: office.status,
+      verified: office.emailVerified
       });
     });
     return Array.from(directory.values());
   }, [apiStations, offices]);
-  const StationIcon = activeStation.icon ?? iconForLevel(activeStation.level);
+  const offlineConflicts = React.useMemo(() => buildOfflineConflicts(offlineQueue), [offlineQueue]);
+  const StationIcon = resolveStationIcon(activeStation);
   const permissions = getPermissions(activeStation);
+  const allowedSections = React.useMemo(() => getAllowedSections(activeStation, permissions), [activeStation, permissions]);
+  const visibleStationDirectory = React.useMemo(() => {
+    if (permissions.canOverride) return stationDirectory;
+    return stationDirectory.filter((station) => normalizeStationEmail(station.email) === normalizeStationEmail(activeStation.email));
+  }, [activeStation.email, permissions.canOverride, stationDirectory]);
   const operatingMetrics = React.useMemo(() => {
     const commandCount = messages.filter((item) => ["Directive", "Notification", "Transfer"].includes(item.kind)).length + transfers.length;
     const activeReportCount = reports.filter((item) => item.state !== "Approved").length + tasks.filter((item) => item.status !== "Complete").length;
@@ -2283,8 +2630,18 @@ function App() {
         detail: `${item.object} - ${item.result}`,
         severity: item.event === "EscalationTriggered" ? "High" as const : "Info" as const
       }))
-  ].slice(0, 10), [approvals, auditRows, calendarEvents, escalations, offlineQueue, personnel, policies, tasks, transfers]);
+  ].filter((item) => allowedSections.includes(item.section)).slice(0, 10), [allowedSections, approvals, auditRows, calendarEvents, escalations, offlineQueue, personnel, policies, tasks, transfers]);
   const criticalNotificationCount = notifications.filter((item) => ["Critical", "High"].includes(item.severity)).length;
+
+  React.useEffect(() => {
+    if (!allowedSections.includes(activeSection)) {
+      setActiveSection("Control Center");
+      window.history.replaceState({}, "", sectionPath("Control Center"));
+    }
+  }, [activeSection, allowedSections]);
+
+  const effectiveSection: Section = allowedSections.includes(activeSection) ? activeSection : "Control Center";
+
   const searchResults = React.useMemo(() => {
     const records: SearchResult[] = [
       ...messages.map((item) => ({ id: item.id, section: "ChurchMail" as Section, title: item.subject, meta: `${item.kind} - ${item.from} - ${item.files}`, status: item.status })),
@@ -2302,12 +2659,16 @@ function App() {
     ];
     const query = searchQuery.trim().toLowerCase();
     if (!query) return [];
-    return records.filter((record) => [record.title, record.meta, record.status, record.section].join(" ").toLowerCase().includes(query)).slice(0, 8);
-  }, [approvals, auditRows, calendarEvents, documents, escalations, messages, offices, personnel, policies, reports, searchQuery, tasks, transfers]);
+    return records
+      .filter((record) => allowedSections.includes(record.section))
+      .filter((record) => [record.title, record.meta, record.status, record.section].join(" ").toLowerCase().includes(query))
+      .slice(0, 8);
+  }, [allowedSections, approvals, auditRows, calendarEvents, documents, escalations, messages, offices, personnel, policies, reports, searchQuery, tasks, transfers]);
 
   function openSection(section: Section) {
-    setActiveSection(section);
-    window.history.pushState({}, "", sectionPath(section));
+    const nextSection = allowedSections.includes(section) ? section : "Control Center";
+    setActiveSection(nextSection);
+    window.history.pushState({}, "", sectionPath(nextSection));
   }
 
   function openSearchResult(result: SearchResult) {
@@ -2421,6 +2782,7 @@ function App() {
     setAuditRows(data.audit);
     setEvents(data.events);
     setOfflineQueue([]);
+    setOfflineSyncHistory([]);
       setOfflineMode(false);
       setActiveSection("Control Center");
     } catch {
@@ -2459,6 +2821,10 @@ function App() {
 
   React.useEffect(() => {
     const timer = window.setInterval(() => {
+      if (!networkOnline) {
+        setApiStatusError("Offline");
+        return;
+      }
       void apiRequest<ApiStatus>("/api/status")
         .then((status) => {
           setApiStatus(status);
@@ -2467,11 +2833,29 @@ function App() {
         .catch(() => setApiStatusError("API unavailable"));
     }, 30000);
     return () => window.clearInterval(timer);
-  }, []);
+  }, [networkOnline]);
 
   React.useEffect(() => {
-    window.history.replaceState({}, "", sectionPath(activeSection));
-  }, [activeSection]);
+    if (!networkOnline) {
+      setOfflineMode(true);
+      setApiStatusError("Offline");
+    }
+  }, [networkOnline]);
+
+  React.useEffect(() => {
+    if (!networkOnline) {
+      networkWasOfflineRef.current = true;
+      return;
+    }
+    if (networkWasOfflineRef.current && offlineQueue.length > 0 && session) {
+      void syncOfflineQueue();
+    }
+    networkWasOfflineRef.current = false;
+  }, [networkOnline, offlineQueue.length, session]);
+
+  React.useEffect(() => {
+    window.history.replaceState({}, "", sectionPath(effectiveSection));
+  }, [effectiveSection]);
 
   function recordAudit(event: string, object: string, result: string) {
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -2483,8 +2867,9 @@ function App() {
       result,
       time
     };
-    if (offlineMode) {
-      setOfflineQueue((items) => [{ ...row, queuedAt: time }, ...items]);
+    if (offlineMode || !networkOnline) {
+      const priority = result.toLowerCase().includes("escalated") || event.toLowerCase().includes("escalation") ? "Critical" : result.toLowerCase().includes("approval") ? "High" : "Normal";
+      setOfflineQueue((items) => [{ ...row, queuedAt: time, syncStatus: "Queued", syncAttempts: 0, priority }, ...items]);
       return;
     }
     setAuditRows((rows) => [row, ...rows]);
@@ -2492,31 +2877,77 @@ function App() {
   }
 
   async function syncOfflineQueue() {
-    if (offlineQueue.length === 0) return;
-    const syncedRows = offlineQueue.map((item) => ({
+    if (offlineQueue.length === 0 || syncInFlightRef.current) return;
+    if (!networkOnline) {
+      setEvents((items) => ["SyncDeferred: no internet connection", ...items].slice(0, 8));
+      setOfflineSyncHistory((items) => [{
+        id: `sync-${Date.now()}`,
+        status: "Deferred",
+        count: offlineQueue.length,
+        detail: "No internet connection. Queue remains on this device.",
+        at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }, ...items].slice(0, 12));
+      setOfflineMode(true);
+      return;
+    }
+    syncInFlightRef.current = true;
+    const queuedActions = [...offlineQueue];
+    const conflicts = buildOfflineConflicts(queuedActions);
+    if (conflicts.length > 0) {
+      setOfflineSyncHistory((items) => [{
+        id: `sync-${Date.now()}`,
+        status: "Conflict",
+        count: conflicts.length,
+        detail: `${conflicts.length} duplicate offline record groups need review before sync.`,
+        at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }, ...items].slice(0, 12));
+      setEvents((items) => ["SyncConflictDetected: review offline conflicts", ...items].slice(0, 8));
+      syncInFlightRef.current = false;
+      return;
+    }
+    setOfflineQueue((items) => items.map((item) => ({ ...item, syncStatus: "Syncing", syncAttempts: (item.syncAttempts ?? 0) + 1 })));
+    try {
+      await apiRequest("/api/offline-sync", {
+        method: "POST",
+        body: JSON.stringify({ actions: queuedActions })
+      });
+      const syncedRows = queuedActions.map((item) => ({
       id: item.id,
       event: item.event,
       actor: item.actor,
       object: item.object,
       result: `${item.result} (synced)`,
       time: item.time
-    }));
-    setAuditRows((rows) => [...syncedRows, ...rows]);
-    setEvents((items) => [
-      `SyncCompleted: ${offlineQueue.length} queued actions`,
-      ...offlineQueue.map((item) => `${item.event}: ${item.object}`),
-      ...items
-    ].slice(0, 8));
-    setOfflineQueue([]);
-    setOfflineMode(false);
-    try {
-      await apiRequest("/api/offline-sync", {
-        method: "POST",
-        body: JSON.stringify({ actions: offlineQueue })
-      });
+      }));
+      setAuditRows((rows) => [...syncedRows, ...rows]);
+      setEvents((items) => [
+        `SyncCompleted: ${queuedActions.length} queued actions`,
+        ...queuedActions.map((item) => `${item.event}: ${item.object}`),
+        ...items
+      ].slice(0, 8));
+      setOfflineSyncHistory((items) => [{
+        id: `sync-${Date.now()}`,
+        status: "Synced",
+        count: queuedActions.length,
+        detail: `${queuedActions.length} offline actions sent to the governance ledger.`,
+        at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }, ...items].slice(0, 12));
+      setOfflineQueue((items) => items.filter((item) => !queuedActions.some((synced) => synced.id === item.id)));
+      setOfflineMode(false);
       await refreshFromApi();
     } catch {
+      setOfflineQueue((items) => items.map((item) => ({ ...item, syncStatus: "Deferred" })));
+      setOfflineSyncHistory((items) => [{
+        id: `sync-${Date.now()}`,
+        status: "Deferred",
+        count: queuedActions.length,
+        detail: "Server did not accept the queue. Local queue was preserved.",
+        at: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+      }, ...items].slice(0, 12));
+      setOfflineMode(true);
       setEvents((items) => ["ApiSyncDeferred: offline queue kept locally", ...items].slice(0, 8));
+    } finally {
+      syncInFlightRef.current = false;
     }
   }
 
@@ -2524,8 +2955,11 @@ function App() {
     const normalizedEmail = normalizeStationEmail(email);
     const station = stationDirectory.find((item) => item.email === normalizedEmail);
     const officePassword = offices.find((office) => office.email === normalizedEmail)?.password;
-    const expectedPassword = stationPasswords[normalizedEmail] ?? officePassword;
+    const expectedPassword = stationPasswordOverrides[normalizedEmail] ?? seedStationPasswords[normalizedEmail] ?? officePassword;
     if (!station || expectedPassword !== password) {
+      return false;
+    }
+    if (["Pending Approval", "Suspended", "Locked", "Rejected", "Deleted"].includes(station.status ?? "")) {
       return false;
     }
     const stationPermissions = getPermissions(station);
@@ -2560,12 +2994,90 @@ function App() {
       setSession(authenticatedSession);
       return refreshFromApi();
     }).catch(() => {
+      if (!networkOnline) {
+        setOfflineMode(true);
+        setEvents((items) => ["OfflineLogin: cached station session active", ...items].slice(0, 8));
+        return;
+      }
       if (!isLocalPreview) {
         window.localStorage.removeItem("gcos.session");
         setSession(null);
       }
     });
     return true;
+  }
+
+  function createAccount(account: CreateAccountInput): AuthActionResult {
+    const normalizedEmail = normalizeStationEmail(account.email);
+    const cleanOfficeName = account.officeName.trim();
+    const cleanDepartment = account.department.trim() || "Church Administration";
+    const cleanFullName = account.fullName.trim() || "New station administrator";
+    if (!normalizedEmail.endsWith("@rmvi.org")) {
+      return { ok: false, message: "Use an official rmvi.org organizational email." };
+    }
+    if (stationDirectory.some((station) => station.email === normalizedEmail)) {
+      return { ok: false, message: "That organizational email already has a workstation." };
+    }
+    if (!cleanOfficeName) {
+      return { ok: false, message: "Enter the church office or branch name." };
+    }
+    if (account.password.length < 8) {
+      return { ok: false, message: "Use a password with at least 8 characters." };
+    }
+
+    const officeId = `ofc-${Date.now()}`;
+    const approvedAtSignup = Boolean(account.autoApprove);
+    const createdOffice: Office = {
+      id: officeId,
+      name: cleanOfficeName,
+      email: normalizedEmail,
+      level: account.level,
+      department: cleanDepartment,
+      supervisor: account.level === "Local Branch" ? "Area Office" : "International HQ",
+      password: account.password,
+      status: approvedAtSignup ? "Ready" : "Pending Approval",
+      emailVerified: approvedAtSignup,
+      notes: [`Created by ${cleanFullName} from the RMVI software sign-up portal.`, approvedAtSignup ? "Auto-approved for local preview." : "Awaiting administrator review."],
+      complianceStatus: "Onboarding"
+    };
+    const createdStation: StationCard = {
+      id: officeId,
+      email: normalizedEmail,
+      title: `${cleanOfficeName} Workstation`,
+      level: account.level,
+      authority: `${cleanDepartment}, created by ${cleanFullName}`,
+      icon: iconForLevel(account.level),
+      status: approvedAtSignup ? "Ready" : "Pending Approval",
+      verified: approvedAtSignup
+    };
+    const startedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    setOffices((items) => [createdOffice, ...items]);
+    setApiStations((items) => [createdStation, ...items.filter((station) => station.email !== normalizedEmail)]);
+    if (approvedAtSignup) {
+      setSession({ email: normalizedEmail, startedAt, authPending: true });
+      setActiveStation(createdStation);
+      setActiveSection("Control Center");
+      window.history.replaceState({}, "", sectionPath("Control Center"));
+    }
+    setAuditRows((rows) => [
+      {
+        id: `aud-${Date.now()}`,
+        event: approvedAtSignup ? "AccountCreated" : "AccountApprovalRequested",
+        actor: normalizedEmail,
+        object: createdStation.title,
+        result: approvedAtSignup ? "Workstation opened" : "Pending administrator approval",
+        time: startedAt
+      },
+      ...rows
+    ]);
+    setEvents((items) => [`${approvedAtSignup ? "AccountCreated" : "AccountApprovalRequested"}: ${normalizedEmail}`, ...items].slice(0, 8));
+    if (approvedAtSignup && !offlineMode && networkOnline) {
+      void apiRequest<Office>("/api/offices", {
+        method: "POST",
+        body: JSON.stringify({ ...createdOffice, actor: normalizedEmail })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+    return { ok: true, message: approvedAtSignup ? "Workstation opened." : "Account request submitted. An administrator must approve this station before sign-in." };
   }
 
   function handleLogout() {
@@ -2576,7 +3088,7 @@ function App() {
   }
 
   if (!session) {
-    return <LoginScreen offices={offices} stationDirectory={stationDirectory} onLogin={handleLogin} />;
+    return <LoginScreen stationDirectory={stationDirectory} pwa={pwa} onLogin={handleLogin} onCreateAccount={createAccount} />;
   }
 
   function acknowledgeMessage(id: string) {
@@ -5059,6 +5571,140 @@ function App() {
     }
   }
 
+  function approveOfficeAccount(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    setOffices((items) => items.map((item) => item.id === id || normalizeStationEmail(item.email) === email ? {
+      ...item,
+      status: "Ready",
+      emailVerified: true,
+      complianceStatus: "Approved",
+      notes: [...(item.notes ?? []), `${activeStation.email}: Account approved for workstation sign-in.`]
+    } : item));
+    patchStation(id, { status: "Ready", verified: true });
+    recordAudit("AccountApproved", office.name, `${office.email} approved for sign-in`);
+  }
+
+  function rejectOfficeAccount(id: string) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    setOffices((items) => items.map((item) => item.id === id ? {
+      ...item,
+      status: "Rejected",
+      complianceStatus: "Rejected",
+      notes: [...(item.notes ?? []), `${activeStation.email}: Account request rejected. Contact administration for correction.`]
+    } : item));
+    patchStation(id, { status: "Rejected", verified: false });
+    recordAudit("AccountRejected", office.name, `${office.email} rejected from user management`);
+  }
+
+  function resetOfficeAccess(id: string) {
+    const office = offices.find((item) => item.id === id || item.email === id);
+    const station = stationDirectory.find((item) => stationKey(item) === id || item.email === id);
+    if (!office && !station) return;
+    const email = normalizeStationEmail(office?.email ?? station?.email ?? id);
+    const label = (office?.name ?? station?.title ?? "station").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "") || "station";
+    const password = `${label}-${Date.now().toString(36).slice(-5)}`;
+    setOffices((items) => items.map((item) => item.id === id ? {
+      ...item,
+      password,
+      status: "Ready",
+      notes: [...(item.notes ?? []), `${activeStation.email}: Password reset issued.`]
+    } : item));
+    setStationPasswordOverrides((items) => ({ ...items, [email]: password }));
+    patchStation(id, { status: "Ready", verified: true });
+    recordAudit("AccountPasswordReset", office?.name ?? station?.title ?? email, "New station password issued");
+  }
+
+  function changeOwnPassword(currentPassword: string, newPassword: string): AuthActionResult {
+    const email = normalizeStationEmail(activeStation.email);
+    const office = offices.find((item) => normalizeStationEmail(item.email) === email);
+    const expectedPassword = stationPasswordOverrides[email] ?? seedStationPasswords[email] ?? office?.password;
+    if (expectedPassword && expectedPassword !== currentPassword) {
+      return { ok: false, message: "Current password does not match this account." };
+    }
+    if (newPassword.length < 8) {
+      return { ok: false, message: "Use a new password with at least 8 characters." };
+    }
+    setStationPasswordOverrides((items) => ({ ...items, [email]: newPassword }));
+    setOffices((items) => items.map((item) => normalizeStationEmail(item.email) === email ? { ...item, password: newPassword, notes: [...(item.notes ?? []), `${email}: Password changed from account settings.`] } : item));
+    recordAudit("AccountPasswordChanged", email, "Password changed by signed-in user");
+    return { ok: true, message: "Password updated. Use the new password next time you sign in." };
+  }
+
+  function createManagedStationAccount(account: CreateAccountInput): AuthActionResult {
+    const normalizedEmail = normalizeStationEmail(account.email);
+    const cleanOfficeName = account.officeName.trim();
+    const cleanDepartment = account.department.trim() || "Church Administration";
+    const cleanFullName = account.fullName.trim() || activeStation.email;
+    if (!normalizedEmail.endsWith("@rmvi.org")) {
+      return { ok: false, message: "Use an official rmvi.org organizational email." };
+    }
+    if (stationDirectory.some((station) => station.email === normalizedEmail)) {
+      return { ok: false, message: "That organizational email already has a workstation." };
+    }
+    if (!cleanOfficeName) {
+      return { ok: false, message: "Enter the office, branch, or department name." };
+    }
+    if (account.password.length < 8) {
+      return { ok: false, message: "Use a password with at least 8 characters." };
+    }
+    const officeId = `ofc-${Date.now()}`;
+    const status = permissions.canCreateOffices || permissions.canOverride ? "Ready" : "Pending Approval";
+    const createdOffice: Office = {
+      id: officeId,
+      name: cleanOfficeName,
+      email: normalizedEmail,
+      level: account.level,
+      department: cleanDepartment,
+      supervisor: account.level === "Local Branch" ? "Area Office" : String(activeStation.level),
+      password: account.password,
+      status,
+      emailVerified: status === "Ready",
+      notes: [`Created by ${cleanFullName} from Account Settings.`],
+      complianceStatus: status === "Ready" ? "Approved" : "Onboarding"
+    };
+    const createdStation: StationCard = {
+      id: officeId,
+      email: normalizedEmail,
+      title: `${cleanOfficeName} Workstation`,
+      level: account.level,
+      authority: `${cleanDepartment}, created by ${cleanFullName}`,
+      icon: iconForLevel(account.level),
+      status,
+      verified: status === "Ready"
+    };
+    setOffices((items) => [createdOffice, ...items]);
+    setApiStations((items) => [createdStation, ...items.filter((station) => station.email !== normalizedEmail)]);
+    setStationPasswordOverrides((items) => ({ ...items, [normalizedEmail]: account.password }));
+    recordAudit(status === "Ready" ? "AccountCreated" : "AccountApprovalRequested", createdOffice.name, `${normalizedEmail} created from account settings`);
+    return { ok: true, message: status === "Ready" ? "User account created and ready for sign-in." : "Account request created for administrator approval." };
+  }
+
+  function deleteStationAccount(id: string): AuthActionResult {
+    const station = stationDirectory.find((item) => stationKey(item) === id || item.email === id);
+    if (!station) return { ok: false, message: "Account not found." };
+    if (normalizeStationEmail(station.email) === "admin@rmvi.org") {
+      return { ok: false, message: "The primary administrator account cannot be deleted." };
+    }
+    const canDelete = permissions.canOverride || permissions.canCreateOffices || normalizeStationEmail(station.email) === normalizeStationEmail(activeStation.email);
+    if (!canDelete) {
+      return { ok: false, message: "This station does not have permission to delete that account." };
+    }
+    setOffices((items) => items.map((item) => item.id === id || item.email === station.email ? { ...item, status: "Deleted", notes: [...(item.notes ?? []), `${activeStation.email}: Account deleted.`] } : item));
+    patchStation(id, { status: "Deleted", verified: false });
+    setStationPasswordOverrides((items) => {
+      const next = { ...items };
+      delete next[normalizeStationEmail(station.email)];
+      return next;
+    });
+    recordAudit("AccountDeleted", station.email, `Deleted by ${activeStation.email}`);
+    if (normalizeStationEmail(station.email) === normalizeStationEmail(activeStation.email)) {
+      setSession(null);
+    }
+    return { ok: true, message: "Account deleted and removed from sign-in." };
+  }
+
   function updateOfficeDepartment(id: string) {
     const office = offices.find((item) => item.id === id);
     if (!office) return;
@@ -6708,9 +7354,9 @@ function App() {
   }
 
   return (
-    <main className="app-shell">
+    <main className={effectiveSection === "Admin Board" ? "app-shell admin-shell" : "app-shell"}>
       <aside className="sidebar">
-        <div className="brand">
+        <button className="brand brand-button" type="button" aria-label="Open workstation home" title="Open workstation home" onClick={() => openSection("Control Center")}>
           <div className="brand-mark">
             <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
           </div>
@@ -6718,14 +7364,15 @@ function App() {
             <strong>{CHURCH_NAME}</strong>
             <span>{PLATFORM_NAME} Administrative OS</span>
           </div>
-        </div>
+        </button>
 
         <nav className="nav-list" aria-label="Primary">
-          {navItems.filter((item) => item.label !== "Admin Board" || permissions.canOverride).map(({ icon: Icon, label }) => (
+          {navItems.filter((item) => allowedSections.includes(item.label)).map(({ icon: Icon, label }) => (
             <button
-              className={label === activeSection ? "nav-item active" : "nav-item"}
+              className={label === effectiveSection ? "nav-item active" : "nav-item"}
               key={label}
               aria-label={label}
+              title={label}
               onClick={() => openSection(label)}
             >
               <Icon size={18} />
@@ -6735,15 +7382,16 @@ function App() {
         </nav>
 
         <section className="station-switcher" aria-label="Station switcher">
-          <p>Station Identity</p>
-          {stationDirectory.map((station) => {
-            const Icon = station.icon ?? iconForLevel(station.level);
+          <p>{permissions.canOverride ? "Station Identity" : "Signed-in Station"}</p>
+          {visibleStationDirectory.map((station) => {
+            const Icon = resolveStationIcon(station);
             return (
               <button
                 key={station.email}
                 className={station.email === activeStation.email ? "station-option selected" : "station-option"}
                 aria-label={station.email}
-                onClick={() => setActiveStation(station)}
+                title={permissions.canOverride ? `Switch to ${station.title}` : station.title}
+                onClick={() => permissions.canOverride && setActiveStation(station)}
               >
                 <Icon size={16} />
                 <span>{station.email}</span>
@@ -6754,9 +7402,9 @@ function App() {
       </aside>
 
       <section className="workspace">
-        <header className="topbar">
+        <header className={permissions.canOverride ? "topbar" : "topbar user-topbar"}>
           <div className="station-title">
-            <button className="icon-button" aria-label="Toggle sidebar">
+            <button className="icon-button" aria-label="Open workstation home" title="Open workstation home" onClick={() => openSection("Control Center")}>
               <PanelLeft size={18} />
             </button>
             <div className="station-avatar">
@@ -6764,7 +7412,7 @@ function App() {
             </div>
             <div>
               <span className="organization-kicker">{CHURCH_NAME}</span>
-              <h1>{activeSection === "Control Center" ? activeStation.title : activeSection}</h1>
+              <h1>{effectiveSection === "Control Center" ? activeStation.title : effectiveSection}</h1>
               <p>{activeStation.level} - {activeStation.authority}</p>
             </div>
           </div>
@@ -6792,36 +7440,14 @@ function App() {
                 )}
               </div>
             )}
-            <button className={offlineMode ? "sync-toggle offline" : "sync-toggle"} onClick={() => setOfflineMode(!offlineMode)}>
-              {offlineMode ? <CloudOff size={17} /> : <RefreshCw size={17} />}
-              <span>{offlineMode ? "Offline queue" : "Live sync"}</span>
+            <button className="account-menu-button" type="button" aria-label="Open account settings" title="Open account settings" onClick={() => openSection("Account Settings")}>
+              <Settings size={17} />
+              <span>
+                Account
+                <small>{activeStation.email}</small>
+              </span>
             </button>
-            <div className={apiStatusError ? "api-status down" : "api-status"}>
-              <Server size={15} />
-              <span>{apiStatusError || (apiStatus?.serveWeb ? "API + web" : "API live")}</span>
-            </div>
-            <button className="icon-button" aria-label="Refresh from API" onClick={refreshFromApi}>
-              <RefreshCw size={18} />
-            </button>
-            <button className="icon-button" aria-label="Reset demo data" onClick={resetWorkstationData}>
-              <TimerReset size={18} />
-            </button>
-            <button className={pwa.installed ? "install-toggle installed" : "install-toggle"} onClick={pwa.install} disabled={!pwa.canInstall || pwa.installed}>
-              <Download size={17} />
-              <span>{pwa.installed ? "Installed" : pwa.canInstall ? "Install web app" : "Web ready"}</span>
-            </button>
-            <div className="session-pill">
-              <LockKeyhole size={15} />
-              <span>{session.startedAt}</span>
-            </div>
-            <div className="permission-strip" aria-label="Station permissions">
-              {permissions.canCreateOffices && <span>Office admin</span>}
-              {permissions.canApprove && <span>Approver</span>}
-              {permissions.canExecuteTransfers && <span>Transfers</span>}
-              {permissions.canOverride && <span>Override</span>}
-              {!permissions.canApprove && <span>Reporter</span>}
-            </div>
-            <button className="icon-button notification-button" aria-label="Notifications" onClick={() => setNotificationsOpen((open) => !open)}>
+            <button className="icon-button notification-button" aria-label="Notifications" title="Open notifications" onClick={() => setNotificationsOpen((open) => !open)}>
               <Bell size={18} />
               {notifications.length > 0 && <span>{criticalNotificationCount || notifications.length}</span>}
             </button>
@@ -6844,17 +7470,22 @@ function App() {
                 )}
               </div>
             )}
-            <button className="icon-button" aria-label="Logout" onClick={handleLogout}>
+            <button className="icon-button" aria-label="Logout" title="Sign out" onClick={handleLogout}>
               <LogOut size={18} />
             </button>
           </div>
         </header>
 
-        <SectionBanner section={activeSection} station={activeStation} offlineMode={offlineMode} />
-        <Metrics metrics={operatingMetrics} />
-        {activeSection === "Control Center" && (
-          <ControlCenter
+        {effectiveSection !== "Admin Board" && permissions.canOverride && (
+          <>
+            <SectionBanner section={effectiveSection} station={activeStation} offlineMode={offlineMode} />
+            <Metrics metrics={operatingMetrics} />
+          </>
+        )}
+        {effectiveSection === "Control Center" && (
+          permissions.canOverride ? <ControlCenter
             offlineMode={offlineMode}
+            networkOnline={networkOnline}
             messages={messages}
             reports={reports}
             approvals={approvals}
@@ -6867,6 +7498,9 @@ function App() {
             documents={documents}
             events={events}
             offlineQueue={offlineQueue}
+            offlineConflicts={offlineConflicts}
+            offlineSyncHistory={offlineSyncHistory}
+            installReady={pwa.installed || pwa.canInstall}
             station={activeStation}
             permissions={permissions}
             stationDirectory={stationDirectory}
@@ -6879,9 +7513,22 @@ function App() {
             onIssueCommandDirective={issueCommandDirective}
             onCreateCommandTask={createCommandTask}
             onOpenCommandEscalation={openCommandEscalation}
+          /> : <StationHome
+            station={activeStation}
+            messages={messages}
+            reports={reports}
+            tasks={tasks}
+            documents={documents}
+            offlineMode={offlineMode}
+            networkOnline={networkOnline}
+            offlineQueue={offlineQueue}
+            onOpenSection={openSection}
+            onSendMessage={sendChurchMail}
+            onCreateReport={createReportDraft}
+            onCreateTask={createTask}
           />
         )}
-        {activeSection === "ChurchMail" && (
+        {effectiveSection === "ChurchMail" && (
           <ChurchMail
             messages={messages}
             events={events}
@@ -6906,7 +7553,7 @@ function App() {
             digest={messageDigest}
           />
         )}
-        {activeSection === "Reports" && (
+        {effectiveSection === "Reports" && (
           <Reports
             reports={reports}
             station={activeStation}
@@ -6931,10 +7578,11 @@ function App() {
             onBulkSubmit={bulkSubmitReports}
             onBulkCorrection={bulkRequestReportCorrections}
             onRefreshDigest={refreshReportDigest}
+            onSendReportMessage={sendChurchMail}
             digest={reportDigest}
           />
         )}
-        {activeSection === "Approvals" && (
+        {effectiveSection === "Approvals" && (
           <Approvals
             approvals={approvals}
             station={activeStation}
@@ -6960,7 +7608,7 @@ function App() {
             digest={approvalDigest}
           />
         )}
-        {activeSection === "Tasks" && (
+        {effectiveSection === "Tasks" && (
           <Tasks
             tasks={tasks}
             station={activeStation}
@@ -7000,7 +7648,7 @@ function App() {
             onEscalateTask={triggerEscalation}
           />
         )}
-        {activeSection === "Policies" && (
+        {effectiveSection === "Policies" && (
           <Policies
             policies={policies}
             station={activeStation}
@@ -7032,7 +7680,7 @@ function App() {
             digest={policyDigest}
           />
         )}
-        {activeSection === "Calendar" && (
+        {effectiveSection === "Calendar" && (
           <GovernanceCalendar
             calendarEvents={calendarEvents}
             station={activeStation}
@@ -7063,7 +7711,7 @@ function App() {
             onEscalateCalendarEvent={triggerEscalation}
           />
         )}
-        {activeSection === "Personnel" && (
+        {effectiveSection === "Personnel" && (
           <PersonnelDirectory
             personnel={personnel}
             station={activeStation}
@@ -7091,7 +7739,7 @@ function App() {
             digest={personnelDigest}
           />
         )}
-        {activeSection === "Escalations" && (
+        {effectiveSection === "Escalations" && (
           <Escalations
             escalations={escalations}
             station={activeStation}
@@ -7120,7 +7768,7 @@ function App() {
             digest={escalationDigest}
           />
         )}
-        {activeSection === "AI Desk" && (
+        {effectiveSection === "AI Desk" && (
           <AiDesk
             drafts={aiDrafts}
             reports={reports}
@@ -7146,7 +7794,7 @@ function App() {
             digest={aiDraftDigest}
           />
         )}
-        {activeSection === "Hierarchy" && (
+        {effectiveSection === "Hierarchy" && (
           <Hierarchy
             stationDirectory={stationDirectory}
             offices={offices}
@@ -7162,8 +7810,8 @@ function App() {
             onRefreshDigest={refreshHierarchyDigest}
           />
         )}
-        {activeSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} onActivateOffice={activateOffice} onSuspendOffice={suspendOffice} onRotatePassword={rotateOfficePassword} onActivateStation={activateOfficeStation} onUpdateDepartment={updateOfficeDepartment} onUpdateLevel={updateOfficeLevel} onVerifyEmail={verifyOfficeEmail} onWatchOffice={watchOffice} onNoteOffice={noteOffice} onUpdateCapacity={updateOfficeCapacity} onReviewCompliance={reviewOfficeCompliance} onArchiveOffice={archiveOffice} onBulkActivate={bulkActivateOffices} onRefreshDigest={refreshOfficeDigest} digest={officeDigest} />}
-        {activeSection === "Transfers" && (
+        {effectiveSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} onActivateOffice={activateOffice} onSuspendOffice={suspendOffice} onRotatePassword={rotateOfficePassword} onActivateStation={activateOfficeStation} onUpdateDepartment={updateOfficeDepartment} onUpdateLevel={updateOfficeLevel} onVerifyEmail={verifyOfficeEmail} onWatchOffice={watchOffice} onNoteOffice={noteOffice} onUpdateCapacity={updateOfficeCapacity} onReviewCompliance={reviewOfficeCompliance} onArchiveOffice={archiveOffice} onBulkActivate={bulkActivateOffices} onRefreshDigest={refreshOfficeDigest} digest={officeDigest} />}
+        {effectiveSection === "Transfers" && (
           <Transfers
             transfers={transfers}
             permissions={permissions}
@@ -7190,8 +7838,31 @@ function App() {
             digest={transferDigest}
           />
         )}
-        {activeSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onVerifyDocument={verifyDocument} onAssignCustody={assignDocumentCustody} onUpdateChain={updateDocumentChain} onExtractText={extractDocumentText} onLinkReport={linkDocumentReport} onLinkApproval={linkDocumentApproval} onWatchDocument={watchDocument} onExportDocument={exportDocumentRecord} onUploadFile={uploadDocumentFile} onBulkSeal={bulkSealDocuments} onRefreshManifest={refreshArchiveManifest} />}
-        {activeSection === "Admin Board" && (
+        {effectiveSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onVerifyDocument={verifyDocument} onAssignCustody={assignDocumentCustody} onUpdateChain={updateDocumentChain} onExtractText={extractDocumentText} onLinkReport={linkDocumentReport} onLinkApproval={linkDocumentApproval} onWatchDocument={watchDocument} onExportDocument={exportDocumentRecord} onUploadFile={uploadDocumentFile} onBulkSeal={bulkSealDocuments} onRefreshManifest={refreshArchiveManifest} />}
+        {effectiveSection === "Account Settings" && (
+          <AccountSettings
+            station={activeStation}
+            offices={offices}
+            stationDirectory={stationDirectory}
+            permissions={permissions}
+            offlineMode={offlineMode}
+            apiStatus={apiStatus}
+            apiStatusError={apiStatusError}
+            pwa={pwa}
+            session={session}
+            onToggleOffline={() => setOfflineMode(!offlineMode)}
+            onRefreshApi={refreshFromApi}
+            onResetDemoData={resetWorkstationData}
+            onChangePassword={changeOwnPassword}
+            onCreateAccount={createManagedStationAccount}
+            onResetAccess={resetOfficeAccess}
+            onSuspendAccount={suspendStation}
+            onActivateAccount={activateStation}
+            onDeleteAccount={deleteStationAccount}
+            onOpenAudit={() => openSection("Audit")}
+          />
+        )}
+        {effectiveSection === "Admin Board" && (
           <AdminBoard
             stationDirectory={stationDirectory}
             offices={offices}
@@ -7224,9 +7895,12 @@ function App() {
             onCreateAuditNote={createAuditNote}
             onArchiveGovernanceSnapshot={archiveGovernanceSnapshot}
             onRefreshAuditDigest={refreshAuditDigest}
+            onApproveOfficeAccount={approveOfficeAccount}
+            onRejectOfficeAccount={rejectOfficeAccount}
+            onResetOfficeAccess={resetOfficeAccess}
           />
         )}
-        {activeSection === "Audit" && (
+        {effectiveSection === "Audit" && (
           <Audit
             auditRows={auditRows}
             events={events}
@@ -7286,21 +7960,29 @@ function App() {
 }
 
 function LoginScreen({
-  offices,
   stationDirectory,
-  onLogin
+  pwa,
+  onLogin,
+  onCreateAccount
 }: {
-  offices: Office[];
   stationDirectory: StationCard[];
+  pwa: ReturnType<typeof usePwaInstallPrompt>;
   onLogin: (email: string, password: string) => boolean;
+  onCreateAccount: (account: CreateAccountInput) => AuthActionResult;
 }) {
-  const credentialMap = React.useMemo(() => ({
-    ...stationPasswords,
-    ...Object.fromEntries(offices.map((office) => [office.email, office.password]))
-  }), [offices]);
-  const [email, setEmail] = React.useState("admin@rmvi.org");
+  const isAdminPortal = adminRouteRequested();
+  const [authMode, setAuthMode] = React.useState<"create" | "signin">("signin");
+  const [email, setEmail] = React.useState("np@rmvi.org");
   const [password, setPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [fullName, setFullName] = React.useState("");
+  const [officeName, setOfficeName] = React.useState("");
+  const [newAccountEmail, setNewAccountEmail] = React.useState("");
+  const [stationLevel, setStationLevel] = React.useState<StationLevel>("Local Branch");
+  const [department, setDepartment] = React.useState("Church Administration");
   const [error, setError] = React.useState("");
+  const [notice, setNotice] = React.useState("");
+  const [downloadNotice, setDownloadNotice] = React.useState("");
   const selectedStation = stationDirectory.find((station) => station.email === email) ?? {
     email,
     title: "Manual Station Sign-In",
@@ -7308,27 +7990,76 @@ function LoginScreen({
     authority: "Credentials will determine workstation access",
     icon: KeyRound
   };
-  const StationIcon = selectedStation.icon ?? iconForLevel(selectedStation.level);
-  const visibleCredentials = stationDirectory.filter((station, index, items) => (
-    items.findIndex((item) => item.email === station.email) === index && credentialMap[station.email]
-  ));
+  const StationIcon = resolveStationIcon(selectedStation);
   const gatewayStats = [
     { label: "Stations", value: String(stationDirectory.length) },
     { label: "Access model", value: "Station based" },
     { label: "Portal", value: "rmvi.org" }
   ];
-  const isAdminPortal = adminRouteRequested();
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const ok = onLogin(email, password);
-    setError(ok ? "" : "Station credentials were not accepted.");
+    if (authMode === "signin") {
+      const ok = onLogin(email, password);
+      setError(ok ? "" : "Station credentials were not accepted.");
+      return;
+    }
+
+    if (password !== confirmPassword) {
+      setError("Passwords must match before the workstation can be created.");
+      return;
+    }
+    const result = onCreateAccount({
+      fullName,
+      officeName,
+      email: newAccountEmail,
+      password,
+      level: stationLevel,
+      department
+    });
+    setError(result.ok ? "" : result.message ?? "The account could not be created.");
+    setNotice(result.ok ? result.message ?? "Account request submitted." : "");
   }
 
-  function chooseStation(nextEmail: string) {
-    setEmail(nextEmail);
-    setPassword("");
+  function switchMode(nextMode: "create" | "signin") {
+    setAuthMode(nextMode);
     setError("");
+    setNotice("");
+  }
+
+  function openDemoAccount() {
+    const demoSuffix = Date.now().toString().slice(-5);
+    const result = onCreateAccount({
+      fullName: "Demo Branch Administrator",
+      officeName: "Liberia Demo Mission Station",
+      email: `demo_branch_${demoSuffix}@rmvi.org`,
+      password: "demo-branch-2026",
+      level: "Local Branch",
+      department: "Kingdom Harvesters - Evangelism",
+      autoApprove: true
+    });
+    setError(result.ok ? "" : result.message ?? "The demo account could not be opened.");
+  }
+
+  async function installWindowsApp() {
+    if (pwa.installed) {
+      setDownloadNotice("RMVI GCOS is already installed on this device. Open it from the app icon, Start menu, dock, or home screen.");
+      return;
+    }
+    if (pwa.canInstall) {
+      await pwa.install();
+      setDownloadNotice("GCOS install prompt opened. After installation, launch RMVI GCOS from the Windows Start menu or desktop.");
+      return;
+    }
+    setDownloadNotice("For Windows, open rmvi.org in Chrome or Microsoft Edge, then choose the browser Install app option. The install prompt appears after the live HTTPS site is published.");
+  }
+
+  function showIosInstallHelp() {
+    setDownloadNotice("On iPhone or iPad, open rmvi.org in Safari, tap Share, then choose Add to Home Screen to install RMVI GCOS.");
+  }
+
+  function continueInBrowser() {
+    setDownloadNotice("You can use RMVI GCOS directly in the browser now. After the first load, the installed web app keeps the shell available for offline work.");
   }
 
   return (
@@ -7347,18 +8078,44 @@ function LoginScreen({
           <Globe2 size={15} />
           Official web sign-in
         </div>
+        <nav className="public-gateway-nav" aria-label="Public page navigation">
+          <a href="#download">Download</a>
+          <a href="#signin">Sign in</a>
+          <a href="/admin">Admin</a>
+        </nav>
       </header>
 
       <section className="login-panel">
-        <div className="login-intro">
+        <div className="login-intro" id="download">
           <div className="login-emblem">
             <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
           </div>
           <div>
             <span>Official {CHURCH_NAME} administrative portal</span>
-            <h1>One secure sign-in point for every church office.</h1>
-            <p>Authorized {CHURCH_NAME} users enter {PLATFORM_NAME} here with their assigned organizational email and station password. The correct workstation, permissions, reporting path, and workflow tools load after sign-in.</p>
+            <h1>Download RMVI GCOS or open your workstation online.</h1>
+            <p>{CHURCH_NAME} offices can install the software experience on Windows, add it to iPhone or iPad, or continue in the web browser. Returning users sign in with their official rmvi.org account.</p>
           </div>
+          <div className="download-gateway" aria-label="Download and install options">
+            <button type="button" className="download-card primary" onClick={installWindowsApp}>
+              <Download size={22} />
+              <span>Windows</span>
+              <strong>Download / install app</strong>
+              <small>Install RMVI GCOS from the browser when prompted.</small>
+            </button>
+            <button type="button" className="download-card" onClick={showIosInstallHelp}>
+              <Smartphone size={22} />
+              <span>iPhone / iPad</span>
+              <strong>Install to Home Screen</strong>
+              <small>Use Safari Share, then Add to Home Screen.</small>
+            </button>
+            <button type="button" className="download-card" onClick={continueInBrowser}>
+              <Globe2 size={22} />
+              <span>Web</span>
+              <strong>Continue in browser</strong>
+              <small>Use the full platform at rmvi.org.</small>
+            </button>
+          </div>
+          {downloadNotice && <div className="download-notice">{downloadNotice}</div>}
           <div className="login-stat-grid" aria-label="Gateway status">
             {gatewayStats.map((stat) => (
               <div key={stat.label}>
@@ -7374,51 +8131,174 @@ function LoginScreen({
           </div>
         </div>
 
-        <div className="login-card" aria-label="Station sign-in form">
+        <div className="login-card" id="signin" aria-label="Station sign-in form">
+          <div className="auth-mode-toggle" role="tablist" aria-label="Account access mode">
+            {!isAdminPortal && (
+              <button type="button" className={authMode === "create" ? "active" : ""} onClick={() => switchMode("create")}>
+                <Plus size={15} />
+                Create account
+              </button>
+            )}
+            <button type="button" className={authMode === "signin" ? "active" : ""} onClick={() => switchMode("signin")}>
+              <LockKeyhole size={15} />
+              Sign in
+            </button>
+          </div>
+
           <div className="login-heading">
             <div className="station-avatar">
-              <StationIcon size={24} />
+              {authMode === "create" ? <Plus size={24} /> : <StationIcon size={24} />}
             </div>
             <div>
-              <span>Selected workstation</span>
-              <h2>{selectedStation.title}</h2>
-              <p>{selectedStation.level} - {selectedStation.authority}</p>
+              <span>{authMode === "create" ? "New workstation setup" : "Selected workstation"}</span>
+              <h2>{authMode === "create" ? "Create a church office account" : selectedStation.title}</h2>
+              <p>{authMode === "create" ? "Register an RMVI office, choose its governance level, and wait for administrator approval before sign-in." : `${selectedStation.level} - ${selectedStation.authority}`}</p>
             </div>
           </div>
 
           <form className="login-form" onSubmit={submit}>
-            <label>
-              <span>Organizational email</span>
-              <input
-                aria-label="Organizational email"
-                type="email"
-                value={email}
-                onChange={(event) => {
-                  setEmail(event.target.value.toLowerCase());
-                  setError("");
-                }}
-                placeholder="admin@rmvi.org"
-                autoComplete="username"
-              />
-            </label>
+            {authMode === "create" ? (
+              <>
+                <div className="create-account-grid">
+                  <label>
+                    <span>Your name</span>
+                    <input
+                      aria-label="Your name"
+                      value={fullName}
+                      onChange={(event) => {
+                        setFullName(event.target.value);
+                        setError("");
+                      }}
+                      placeholder="Pastor, secretary, or station admin"
+                      autoComplete="name"
+                    />
+                  </label>
+                  <label>
+                    <span>Church office / branch</span>
+                    <input
+                      aria-label="Church office or branch"
+                      value={officeName}
+                      onChange={(event) => {
+                        setOfficeName(event.target.value);
+                        setError("");
+                      }}
+                      placeholder="Buchanan Local Branch"
+                    />
+                  </label>
+                  <label>
+                    <span>Official email</span>
+                    <input
+                      aria-label="New organizational email"
+                      type="email"
+                      value={newAccountEmail}
+                      onChange={(event) => {
+                        setNewAccountEmail(event.target.value.toLowerCase());
+                        setError("");
+                      }}
+                      placeholder="branch_name@rmvi.org"
+                      autoComplete="username"
+                    />
+                  </label>
+                  <label>
+                    <span>Station level</span>
+                    <select
+                      aria-label="Station level"
+                      value={stationLevel}
+                      onChange={(event) => setStationLevel(event.target.value as StationLevel)}
+                    >
+                      <option>Local Branch</option>
+                      <option>Area HQ</option>
+                      <option>District HQ</option>
+                      <option>County/State HQ</option>
+                      <option>National HQ</option>
+                    </select>
+                  </label>
+                </div>
+                <label>
+                  <span>Department or role</span>
+                  <select
+                    aria-label="Department or role"
+                    value={department}
+                    onChange={(event) => setDepartment(event.target.value)}
+                  >
+                    {missionStationRoleOptions.map((option) => <option key={option}>{option}</option>)}
+                  </select>
+                </label>
+                <div className="create-account-grid">
+                  <label>
+                    <span>Password</span>
+                    <input
+                      aria-label="Create password"
+                      type="password"
+                      value={password}
+                      onChange={(event) => {
+                        setPassword(event.target.value);
+                        setError("");
+                      }}
+                      placeholder="At least 8 characters"
+                      autoComplete="new-password"
+                    />
+                  </label>
+                  <label>
+                    <span>Confirm password</span>
+                    <input
+                      aria-label="Confirm password"
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(event) => {
+                        setConfirmPassword(event.target.value);
+                        setError("");
+                      }}
+                      placeholder="Repeat password"
+                      autoComplete="new-password"
+                    />
+                  </label>
+                </div>
+              </>
+            ) : (
+              <>
+                <label>
+                  <span>Organizational email</span>
+                  <input
+                    aria-label="Organizational email"
+                    type="email"
+                    value={email}
+                    onChange={(event) => {
+                      setEmail(event.target.value.toLowerCase());
+                      setError("");
+                    }}
+                    placeholder="np@rmvi.org"
+                    autoComplete="username"
+                  />
+                </label>
 
-            <label>
-              <span>Password</span>
-              <input
-                aria-label="Password"
-                type="password"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                placeholder="Enter station password"
-              />
-            </label>
+                <label>
+                  <span>Password</span>
+                  <input
+                    aria-label="Password"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="Enter station password"
+                    autoComplete="current-password"
+                  />
+                </label>
+              </>
+            )}
 
             {error && <div className="login-error">{error}</div>}
+            {notice && <div className="login-notice">{notice}</div>}
 
             <button type="submit">
-              <LockKeyhole size={16} />
-              Sign in to workstation
+              {authMode === "create" ? <Plus size={16} /> : <LockKeyhole size={16} />}
+              {authMode === "create" ? "Request account approval" : "Sign in to workstation"}
             </button>
+            {isLocalPreview && authMode === "create" && (
+              <button className="secondary-auth-action" type="button" onClick={openDemoAccount}>
+                <LayoutDashboard size={16} />
+                Open demo branch account
+              </button>
+            )}
           </form>
 
           <div className="login-card-footer">
@@ -7427,22 +8307,23 @@ function LoginScreen({
           </div>
         </div>
 
-        {isLocalPreview && !isAdminPortal ? (
-          <div className="credential-grid" aria-label="Demo credentials">
-            {visibleCredentials.map((station) => (
-              <button key={station.email} onClick={() => chooseStation(station.email)}>
-                <strong>{station.email}</strong>
-                <span>{credentialMap[station.email]}</span>
-              </button>
-            ))}
-          </div>
-        ) : (
-          <div className="login-support">
-            <ShieldCheck size={16} />
-            <span>{isAdminPortal ? "Admin users enter their assigned administrator email and password manually." : "Use the credentials issued to your office. Demo passwords are hidden on the public domain."}</span>
-          </div>
-        )}
+        <div className="login-support">
+          <ShieldCheck size={16} />
+          <span>{isAdminPortal ? "Admin users enter their assigned administrator email and password manually." : "Create a new RMVI office account or sign in with the email and password issued to your station."}</span>
+        </div>
       </section>
+
+      <footer className="public-download-footer" aria-label="Download footer">
+        <div>
+          <strong>{CHURCH_NAME} {PLATFORM_NAME}</strong>
+          <span>Install the software, sign in through the browser, or add it to a mobile home screen for church administration work.</span>
+        </div>
+        <div>
+          <button type="button" onClick={installWindowsApp}><Download size={14} /> Windows</button>
+          <button type="button" onClick={showIosInstallHelp}><Smartphone size={14} /> iPhone / iPad</button>
+          <button type="button" onClick={continueInBrowser}><Globe2 size={14} /> Web</button>
+        </div>
+      </footer>
     </main>
   );
 }
@@ -7771,6 +8652,7 @@ function CommandDispatchPanel({
 
 function ControlCenter({
   offlineMode,
+  networkOnline,
   messages,
   reports,
   approvals,
@@ -7783,6 +8665,9 @@ function ControlCenter({
   documents,
   events,
   offlineQueue,
+  offlineConflicts,
+  offlineSyncHistory,
+  installReady,
   station,
   permissions,
   stationDirectory,
@@ -7797,6 +8682,7 @@ function ControlCenter({
   onOpenCommandEscalation
 }: {
   offlineMode: boolean;
+  networkOnline: boolean;
   messages: Message[];
   reports: Report[];
   approvals: Approval[];
@@ -7809,6 +8695,9 @@ function ControlCenter({
   documents: DocumentRecord[];
   events: string[];
   offlineQueue: OfflineAction[];
+  offlineConflicts: OfflineConflict[];
+  offlineSyncHistory: OfflineSyncRecord[];
+  installReady: boolean;
   station: StationCard;
   permissions: Permissions;
   stationDirectory: StationCard[];
@@ -7862,7 +8751,263 @@ function ControlCenter({
       <WorkflowPanel />
       <ApprovalPanel approvals={approvals} />
       <EventBusPanel events={events} />
-      <OfflinePanel offlineMode={offlineMode} offlineQueue={offlineQueue} onSync={onSync} />
+      <OfflinePanel offlineMode={offlineMode} networkOnline={networkOnline} offlineQueue={offlineQueue} offlineConflicts={offlineConflicts} syncHistory={offlineSyncHistory} installReady={installReady} onSync={onSync} />
+    </section>
+  );
+}
+
+function StationHome({
+  station,
+  messages,
+  reports,
+  tasks,
+  documents,
+  offlineMode,
+  networkOnline,
+  offlineQueue,
+  onOpenSection,
+  onSendMessage,
+  onCreateReport,
+  onCreateTask
+}: {
+  station: StationCard;
+  messages: Message[];
+  reports: Report[];
+  tasks: GovernanceTask[];
+  documents: DocumentRecord[];
+  offlineMode: boolean;
+  networkOnline: boolean;
+  offlineQueue: OfflineAction[];
+  onOpenSection: (section: Section) => void;
+  onSendMessage: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string }) => void;
+  onCreateReport: (reportDraft: Omit<Report, "id" | "state" | "score">) => void;
+  onCreateTask: (draft: Omit<GovernanceTask, "id" | "status">) => void;
+}) {
+  const [messageTo, setMessageTo] = React.useState("Area Office");
+  const [messageSubject, setMessageSubject] = React.useState("Weekly evangelism update");
+  const [messageFiles, setMessageFiles] = React.useState("Outreach report, attendance sheet");
+  const [reportName, setReportName] = React.useState("Kingdom Harvesters weekly evangelism report");
+  const [reportType, setReportType] = React.useState("Service Groups");
+  const [taskTitle, setTaskTitle] = React.useState("Follow up with new converts");
+  const [feedback, setFeedback] = React.useState("");
+  const inbox = messages.filter((message) => !message.archived).slice(0, 5);
+  const openReports = reports.filter((report) => report.state !== "Approved").slice(0, 5);
+  const openTasks = tasks.filter((task) => task.status !== "Complete").slice(0, 5);
+  const recentDocuments = documents.slice(0, 4);
+  const stationPermissions = getPermissions(station);
+  const workstationProfile = getWorkstationProfile(station, stationPermissions);
+  const statusCards = [
+    { icon: Mail, label: "Inbox", value: String(inbox.length), detail: "Messages to read or answer", section: "ChurchMail" as Section },
+    { icon: FileCheck2, label: "Reports", value: String(openReports.length), detail: "Drafts, submissions, corrections", section: "Reports" as Section },
+    { icon: SquareCheckBig, label: "Tasks", value: String(openTasks.length), detail: "Work assigned to this station", section: "Tasks" as Section },
+    isFinanceStation(station)
+      ? { icon: Signature, label: "Approvals", value: "3", detail: "Budget and release requests", section: "Approvals" as Section }
+      : isMissionStation(station)
+        ? { icon: Users, label: "Follow-up", value: "4", detail: "People, transfers, and outreach care", section: "Personnel" as Section }
+        : { icon: ArchiveIcon, label: "Archive", value: String(recentDocuments.length), detail: "Saved files and evidence", section: "Archive" as Section }
+  ].filter((card) => getAllowedSections(station, stationPermissions).includes(card.section));
+
+  function submitMessage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onSendMessage({
+      kind: "Report",
+      to: messageTo,
+      subject: messageSubject,
+      files: messageFiles
+    });
+    setFeedback(offlineMode ? "Message saved locally and will sync when internet returns." : "Message sent through ChurchMail.");
+    setMessageSubject("Follow-up message");
+  }
+
+  function submitReport(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    onCreateReport({
+      name: reportName,
+      owner: station.title,
+      path: `${station.level} -> Area Office -> District HQ`,
+      due: "Today",
+      type: reportType,
+      period: "Current week",
+      routingStage: "Draft started from station home",
+      evidenceStatus: messageFiles || "Evidence pending",
+      templateId: reportType === "Service Groups" ? "tpl-service-kingdom-harvesters" : undefined,
+      templateChecklist: reportType === "Service Groups" ? ["Outreach locations", "Souls reached", "Souls won", "Phone numbers collected", "Follow-up calls completed"] : undefined
+    });
+    setFeedback("Report draft created. Open Reports to complete and submit it.");
+    setReportName("New station report");
+  }
+
+  function addTask() {
+    onCreateTask({
+      title: taskTitle,
+      owner: station.title,
+      assignee: station.title,
+      priority: "Medium",
+      due: "This week"
+    });
+    setFeedback("Task added to your station work list.");
+    setTaskTitle("New follow-up task");
+  }
+
+  const featuredMessage = inbox[0];
+
+  return (
+    <section className="station-home">
+      <div className="station-home-hero">
+        <div>
+          <span>{workstationProfile.label}</span>
+          <h2>{workstationProfile.title}</h2>
+          <p>{workstationProfile.description}</p>
+          <div className="station-focus-row">
+            {workstationProfile.focus.map((item) => <small key={item}>{item}</small>)}
+          </div>
+        </div>
+        <div className="station-home-state">
+          <span>{station.title}</span>
+          <strong>{station.level}</strong>
+          <small>{station.authority}</small>
+        </div>
+        <div className="station-home-state">
+          <span>{networkOnline ? "Internet available" : "Working offline"}</span>
+          <strong>{offlineMode ? "Offline queue" : "Ready to work"}</strong>
+          <small>{offlineQueue.length ? `${offlineQueue.length} action(s) waiting to sync` : "No unsynced work"}</small>
+        </div>
+      </div>
+
+      <div className="station-home-actions" aria-label="Primary station actions">
+        {statusCards.map(({ icon: Icon, label, value, detail, section }) => (
+          <button key={label} onClick={() => onOpenSection(section)}>
+            <Icon size={19} />
+            <strong>{value}</strong>
+            <span>{label}</span>
+            <small>{detail}</small>
+          </button>
+        ))}
+      </div>
+
+      {feedback && <div className="station-feedback">{feedback}</div>}
+
+      <div className="station-workspace-grid">
+        <div className="station-panel station-panel-large station-inbox-panel">
+          <PanelHeader icon={Inbox} title="ChurchMail Inbox" action={`${inbox.length} messages`} />
+          {featuredMessage && (
+            <button className="station-featured-mail" type="button" onClick={() => onOpenSection("ChurchMail")}>
+              <span className={`kind ${featuredMessage.kind.toLowerCase()}`}>{featuredMessage.kind}</span>
+              <div>
+                <strong>{featuredMessage.subject}</strong>
+                <small>{featuredMessage.from} - {featuredMessage.age}</small>
+              </div>
+              <StatusPill status={featuredMessage.status} />
+            </button>
+          )}
+          <div className="station-inbox-list">
+            {inbox.map((message) => (
+              <button key={message.id} className="station-inbox-row" type="button" onClick={() => onOpenSection("ChurchMail")}>
+                <div className="mail-kind-marker">
+                  <Mail size={15} />
+                  <span>{message.kind}</span>
+                </div>
+                <div className="mail-row-main">
+                  <strong>{message.subject}</strong>
+                  <span>{message.from} - {message.age}</span>
+                  <small>{message.files}</small>
+                </div>
+                <StatusPill status={message.status} />
+              </button>
+            ))}
+          </div>
+          <div className="station-inbox-actions">
+            <button type="button" onClick={() => onOpenSection("ChurchMail")}><Mail size={15} /> Open inbox</button>
+            <button type="button" onClick={() => onOpenSection("Reports")}><FileCheck2 size={15} /> Attach report</button>
+            <button type="button" onClick={() => onOpenSection("Archive")}><ArchiveIcon size={15} /> View archive</button>
+          </div>
+        </div>
+
+        <div className="station-panel">
+          <PanelHeader icon={Send} title="Send Message" action={offlineMode ? "Local queue" : "ChurchMail"} />
+          <form className="station-form" onSubmit={submitMessage}>
+            <label>
+              <span>Send to</span>
+              <input value={messageTo} onChange={(event) => setMessageTo(event.target.value)} />
+            </label>
+            <label>
+              <span>Subject</span>
+              <input value={messageSubject} onChange={(event) => setMessageSubject(event.target.value)} />
+            </label>
+            <label>
+              <span>Attachments / evidence</span>
+              <input value={messageFiles} onChange={(event) => setMessageFiles(event.target.value)} />
+            </label>
+            <button type="submit"><Send size={15} /> Send message</button>
+          </form>
+        </div>
+
+        <div className="station-panel">
+          <PanelHeader icon={FileCheck2} title="Start Report" action="Attach evidence" />
+          <form className="station-form" onSubmit={submitReport}>
+            <label>
+              <span>Report name</span>
+              <input value={reportName} onChange={(event) => setReportName(event.target.value)} />
+            </label>
+            <label>
+              <span>Report type</span>
+              <select value={reportType} onChange={(event) => setReportType(event.target.value)}>
+                {["Service Groups", "Meetings", "Financial", "Membership", "Mission", "Pastoral Care"].map((type) => <option key={type}>{type}</option>)}
+              </select>
+            </label>
+            <button type="submit"><FileCheck2 size={15} /> Create report draft</button>
+          </form>
+        </div>
+
+        <div className="station-panel station-panel-large">
+          <PanelHeader icon={ScrollText} title="Open Reports" action={`${openReports.length} active`} />
+          <div className="station-list">
+            {openReports.map((report) => (
+              <button key={report.id} onClick={() => onOpenSection("Reports")}>
+                <div>
+                  <strong>{report.name}</strong>
+                  <span>{report.owner} - {report.due} - {report.evidenceStatus}</span>
+                </div>
+                <StatusPill status={report.state} />
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="station-panel">
+          <PanelHeader icon={SquareCheckBig} title="My Tasks" action="Today" />
+          <div className="station-list compact">
+            {openTasks.map((task) => (
+              <button key={task.id} onClick={() => onOpenSection("Tasks")}>
+                <div>
+                  <strong>{task.title}</strong>
+                  <span>{task.assignee} - {task.due}</span>
+                </div>
+                <StatusPill status={task.status} />
+              </button>
+            ))}
+          </div>
+          <div className="station-inline-task">
+            <input value={taskTitle} onChange={(event) => setTaskTitle(event.target.value)} aria-label="New task title" />
+            <button type="button" onClick={addTask}><Plus size={14} /> Add</button>
+          </div>
+        </div>
+
+        <div className="station-panel">
+          <PanelHeader icon={Files} title="Attached Files" action="Archive" />
+          <div className="station-list compact">
+            {recentDocuments.map((document) => (
+              <button key={document.id} onClick={() => onOpenSection("Archive")}>
+                <div>
+                  <strong>{document.name}</strong>
+                  <span>{document.classification} - {document.status}</span>
+                </div>
+                <ChevronRight size={15} />
+              </button>
+            ))}
+          </div>
+        </div>
+      </div>
     </section>
   );
 }
@@ -8079,6 +9224,7 @@ function Reports({
   onBulkSubmit,
   onBulkCorrection,
   onRefreshDigest,
+  onSendReportMessage,
   digest
 }: {
   reports: Report[];
@@ -8104,6 +9250,7 @@ function Reports({
   onBulkSubmit: (ids: string[]) => void;
   onBulkCorrection: (ids: string[]) => void;
   onRefreshDigest: () => void;
+  onSendReportMessage: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string }) => void;
   digest: ReportDigest | null;
 }) {
   const [name, setName] = React.useState("Monthly branch administration report");
@@ -8125,11 +9272,13 @@ function Reports({
   const [detailAttestation, setDetailAttestation] = React.useState("");
   const [detailFields, setDetailFields] = React.useState<Record<string, string>>({});
   const [detailFeedback, setDetailFeedback] = React.useState("");
+  const [routeTo, setRouteTo] = React.useState("Area Office");
   const visibleReports = React.useMemo(() => (
     stateFilter === "All states" ? reports : reports.filter((report) => report.state === stateFilter)
   ), [reports, stateFilter]);
   const stateOptions = React.useMemo(() => ["All states", ...Array.from(new Set(reports.map((report) => report.state))).sort()], [reports]);
   const templateTypes = React.useMemo(() => Array.from(new Set(churchReportTemplates.map((template) => template.type))).sort(), []);
+  const featuredTemplateTypes = ["All templates", "Service Groups", "Meetings", "Financial", "Membership", "Mission", "Pastoral Care", "Administrative"];
   const filteredTemplates = React.useMemo(() => churchReportTemplates.filter((template) => {
     const haystack = [template.name, template.type, template.owner, template.description, template.path, ...template.checklist].join(" ").toLowerCase();
     return (templateTypeFilter === "All templates" || template.type === templateTypeFilter)
@@ -8249,272 +9398,330 @@ function Reports({
     downloadTextFile(`gcos-report-register-${new Date().toISOString().slice(0, 10)}.csv`, csv, "text/csv;charset=utf-8");
   }
 
+  function sendSelectedReport() {
+    if (!selectedReport) return;
+    onSendReportMessage({
+      kind: "Report",
+      to: routeTo,
+      subject: selectedReport.name,
+      files: selectedReport.evidenceStatus ?? selectedReport.type ?? "Report attachment"
+    });
+    setDetailFeedback(`Report sent to ${routeTo} through ChurchMail.`);
+  }
+
   return (
-    <section className="module-grid">
-      <div className="panel module-primary">
-        <PanelHeader icon={FileCheck2} title="Hierarchical Reporting Center" action={`${visibleReports.length} visible`} />
-        <div className="office-summary-grid">
-          <Insight label="Open" value={String(digest?.open ?? openCount)} />
-          <Insight label="Overdue" value={String(digest?.overdue ?? overdueCount)} />
-          <Insight label="Corrections" value={String(digest?.correction ?? correctionCount)} />
-          <Insight label="Verified" value={String(digest?.verified ?? reports.filter((report) => report.verified).length)} />
-          <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
-          <Insight label="Evidence ready" value={String(digest?.evidenceReady ?? evidenceReadyCount)} />
-          <Insight label="Approval ready" value={String(digest?.approvalReady ?? approvalReadyCount)} />
-          <Insight label="Average score" value={`${digest?.averageScore ?? 0}%`} />
-          <Insight label="Next report" value={digest?.nextReport ?? visibleReports[0]?.name ?? "None"} />
+    <section className="reports-app">
+      <div className="reports-hero">
+        <div>
+          <span>Reporting Center</span>
+          <h2>Choose a report, complete it, attach evidence, and send it upward.</h2>
+          <p>{station.title} can use prebuilt RMVI templates for service groups, meetings, finance, membership, mission, and pastoral care.</p>
         </div>
-        <div className="archive-toolbar">
-          <label>
-            <span>State</span>
-            <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)}>
-              {stateOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>
-          <button type="button" onClick={() => onBulkSubmit(visibleReports.map((report) => report.id))}><Send size={14} /> Submit visible</button>
-          <button type="button" onClick={() => onBulkCorrection(visibleReports.map((report) => report.id))}><FileClock size={14} /> Correct visible</button>
-          <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
-          <button type="button" onClick={exportReports}><Download size={14} /> Export CSV</button>
+        <div className="reports-hero-stats">
+          <strong>{churchReportTemplates.length}</strong>
+          <span>report templates</span>
+          <small>{openCount} open, {overdueCount} overdue, {evidenceReadyCount} evidence ready</small>
         </div>
-        <div className="data-table">
-          <div className="table-row table-head">
-            <span>Report</span><span>Owner</span><span>Route</span><span>Due</span><span>Status</span>
-          </div>
-          {visibleReports.map((report) => (
-            <div className={selectedReport?.id === report.id ? "table-row selected-report-row" : "table-row"} key={report.name}>
-              <strong>{report.name}<small>{report.type ?? "Administrative"} - {report.period ?? "Current period"}</small></strong>
-              <span>{report.owner}<small>{report.routingStage ?? report.state}</small></span>
-              <span>{report.path}</span>
-              <span>{report.due}<small>{report.evidenceStatus ?? "Evidence pending"}</small></span>
-              <div className="table-actions">
-                <StatusPill status={report.state} />
-                <button aria-label={`Open ${report.name}`} onClick={() => setSelectedReportId(report.id)}><PanelLeft size={14} /> Open</button>
-                <button aria-label={`Submit ${report.name}`} onClick={() => onSubmitReport(report.id)}><Send size={14} /> Submit</button>
-                <button aria-label={`Request correction for ${report.name}`} onClick={() => onRequestCorrection(report.id)}><FileClock size={14} /> Correct</button>
-                <button aria-label={`Review ${report.name}`} onClick={() => onReviewReport(report.id)}><FileCheck2 size={14} /> Review</button>
-                <button aria-label={`Verify ${report.name}`} onClick={() => onVerifyReport(report.id)}><CheckCircle2 size={14} /> Verify</button>
-                <button aria-label={`Update due status for ${report.name}`} onClick={() => onUpdateDue(report.id, report.due === "Overdue" ? "This week" : "Overdue")}><TimerReset size={14} /> Due</button>
-                <button aria-label={`Raise score for ${report.name}`} onClick={() => onUpdateScore(report.id, report.score + 15)}><CheckCircle2 size={14} /> Score</button>
-                <button aria-label={`Update owner for ${report.name}`} onClick={() => onUpdateOwner(report.id)}><Users size={14} /> Owner</button>
-                <button aria-label={`Update path for ${report.name}`} onClick={() => onUpdatePath(report.id)}><Workflow size={14} /> Path</button>
-                <button aria-label={`Mark evidence for ${report.name}`} onClick={() => onMarkEvidence(report.id)}><Files size={14} /> Evidence</button>
-                <button aria-label={`Watch ${report.name}`} onClick={() => onWatchReport(report.id)}><Bell size={14} /> Watch</button>
-                <button aria-label={`Duplicate ${report.name}`} onClick={() => onDuplicateReport(report.id)}><Files size={14} /> Duplicate</button>
-                <button aria-label={`Archive ${report.name}`} onClick={() => onArchiveReport(report.id)}><LockKeyhole size={14} /> Archive</button>
-                <button aria-label={`Vault evidence for ${report.name}`} onClick={() => onArchiveEvidence(report.id)}><Files size={14} /> Vault</button>
-                <button aria-label={`Build governance packet for ${report.name}`} onClick={() => onBuildGovernancePacket(report.id)}><Workflow size={14} /> Packet</button>
-                <label className="file-action">
-                  <Upload size={14} /> Upload
-                  <input
-                    type="file"
-                    onChange={(event) => {
-                      const file = event.currentTarget.files?.[0];
-                      if (file) void onUploadReportEvidence(report.id, file);
-                      event.currentTarget.value = "";
-                    }}
-                  />
-                </label>
-                {report.evidenceFiles?.[0] && <button onClick={() => void downloadStoredFile(report.evidenceFiles![0])}><Download size={14} /> File</button>}
+      </div>
+
+      <div className="reports-stepper" aria-label="Report workflow steps">
+        <div className="active"><span>1</span><strong>Choose template</strong><small>Select the church report form</small></div>
+        <div className="active"><span>2</span><strong>Complete report</strong><small>Fill sections and sign</small></div>
+        <div><span>3</span><strong>Send upward</strong><small>Attach, submit, or email</small></div>
+      </div>
+
+      <div className="reports-layout">
+        <aside className="reports-left-panel">
+          <div className="report-card report-library-card">
+            <div className="report-card-title">
+              <div><span>Step 1</span><h3>Report Template Library</h3></div>
+              <small>{filteredTemplates.length}/{churchReportTemplates.length} shown</small>
+            </div>
+            <div className="report-library-summary">
+              <div><strong>{churchReportTemplates.length}</strong><span>Designed reports</span></div>
+              <div><strong>{templateTypes.length}</strong><span>Categories</span></div>
+              <button type="button" onClick={() => {
+                setTemplateTypeFilter("All templates");
+                setTemplateSearch("");
+              }}>Reset</button>
+            </div>
+            <div className="report-category-pills" aria-label="Report categories">
+              {featuredTemplateTypes.map((category) => (
                 <button
-                  aria-label={`Escalate ${report.name}`}
-                  onClick={() => onEscalateReport("Report", report.name, `${report.due} report requires supervisory attention`, report.owner, report.due === "Overdue" ? "Critical" : "Medium")}
+                  type="button"
+                  key={category}
+                  className={templateTypeFilter === category ? "active" : ""}
+                  onClick={() => setTemplateTypeFilter(category)}
                 >
-                  <AlertTriangle size={14} /> Escalate
+                  {category}
                 </button>
-              </div>
-              <div className="report-detail-strip">
-                <FlowMeter label={`Readiness ${report.score}%`} value={report.score} />
-                <span>{report.reviewNote ?? report.correctionReason ?? `${completedReportFields(report.reportFields)}/${Object.keys(report.reportFields ?? {}).length || 0} report sections completed`}</span>
-                <span>{report.verified ? `Verified${report.approvedBy ? ` by ${report.approvedBy}` : ""}` : `Awaiting verification - ${report.evidenceFiles?.length ?? 0} files`}</span>
-              </div>
+              ))}
             </div>
-          ))}
-          {visibleReports.length === 0 && <div className="empty-state">No reports match the current state filter.</div>}
-        </div>
-      </div>
-      {selectedReport && (
-        <div className="panel module-primary report-workspace">
-          <PanelHeader icon={FileText} title="Report Detail Workspace" action={selectedReport.state} />
-          <div className="report-workspace-head">
-            <div>
-              <span>{selectedReport.type ?? "Administrative"} - {selectedReport.period ?? "Current period"}</span>
-              <h2>{selectedReport.name}</h2>
-              <p>{selectedReport.path}</p>
-            </div>
-            <FlowMeter label={`${selectedReportComplete}% form complete`} value={selectedReportComplete} />
-          </div>
-          <div className="office-summary-grid">
-            <Insight label="Prepared by" value={selectedReport.preparedBy ?? selectedReport.owner} />
-            <Insight label="Approval" value={selectedReport.approvalLimit ?? "Delegated review"} />
-            <Insight label="Evidence" value={selectedReport.evidenceStatus ?? "Pending"} />
-            <Insight label="Files" value={String(selectedReport.evidenceFiles?.length ?? 0)} />
-          </div>
-          <div className="report-detail-grid">
-            <div className="report-detail-card">
-              <strong>Report Sections</strong>
-              {selectedReportFieldEntries.length ? selectedReportFieldEntries.map(([section, value]) => (
-                <article key={section}>
-                  <span>{section}</span>
-                  <textarea
-                    value={value}
-                    onChange={(event) => updateDetailField(section, event.target.value)}
-                    placeholder={`Complete ${section.toLowerCase()}`}
-                  />
-                </article>
-              )) : <p>No section fields were saved for this report yet.</p>}
-            </div>
-            <div className="report-detail-card">
-              <strong>Checklist and Signoff</strong>
+            <div className="template-filter-bar report-filter-compact">
               <label>
-                <span>Prepared by</span>
-                <input value={detailPreparedBy} onChange={(event) => setDetailPreparedBy(event.target.value)} />
+                <Search size={14} />
+                <input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search templates" />
               </label>
-              <ul>
-                {(selectedReport.templateChecklist ?? []).map((item) => <li key={item}>{item}</li>)}
-              </ul>
+              <select value={templateTypeFilter} onChange={(event) => setTemplateTypeFilter(event.target.value)}>
+                <option>All templates</option>
+                {templateTypes.map((option) => <option key={option}>{option}</option>)}
+              </select>
+            </div>
+            <div className="report-template-list" aria-label="Available report templates">
+              {filteredTemplates.slice(0, 12).map((template) => (
+                <button
+                  key={template.id}
+                  type="button"
+                  className={selectedTemplate.id === template.id ? "selected" : ""}
+                  onClick={() => applyTemplate(template)}
+                >
+                  <span>{template.type}</span>
+                  <strong>{template.name}</strong>
+                  <small>{template.description}</small>
+                </button>
+              ))}
+              {filteredTemplates.length === 0 && <div className="empty-state">No templates match this search. Reset the filter to view all reports.</div>}
+            </div>
+            <div className="report-template-preview">
+              <div className="template-preview-head">
+                <div>
+                  <span>{selectedTemplate.type}</span>
+                  <strong>{selectedTemplate.name}</strong>
+                </div>
+                <FileCheck2 size={22} />
+              </div>
+              <p>{selectedTemplate.description}</p>
+              <div className="template-route-line">
+                <GitBranch size={15} />
+                <div>
+                  <small>Routing path</small>
+                  <span>{selectedTemplate.path}</span>
+                </div>
+              </div>
+              <div className="template-checklist-block">
+                <div>
+                  <ClipboardCheck size={15} />
+                  <strong>Required sections</strong>
+                </div>
+                <div className="template-checklist-preview">
+                  {selectedTemplate.checklist.slice(0, 6).map((item) => (
+                    <span key={item}><CheckCircle2 size={13} /> {item}</span>
+                  ))}
+                </div>
+              </div>
+              <div className="template-requirement-grid">
+                <div>
+                  <BadgeCheck size={15} />
+                  <span>Approval</span>
+                  <strong>{selectedTemplate.approvalLimit}</strong>
+                </div>
+                <div>
+                  <Files size={15} />
+                  <span>Evidence</span>
+                  <strong>{selectedTemplate.evidenceStatus}</strong>
+                </div>
+              </div>
+            </div>
+          </div>
+        </aside>
+
+        <main className="reports-main-panel">
+          <div className="report-card report-editor-card">
+            <div className="report-card-title">
+              <div><span>Step 2</span><h3>Complete Report Form</h3></div>
+              <small>{reportCompletion}% draft complete</small>
+            </div>
+            <form className="report-form" onSubmit={submit}>
+              <div className="report-document-head">
+                <div className="report-document-seal">
+                  <img src={CHURCH_LOGO_SRC} alt="Remedy Movement International logo" />
+                </div>
+                <div>
+                  <span>{selectedTemplate.type} report</span>
+                  <h3>{name}</h3>
+                  <p>{selectedTemplate.description}</p>
+                </div>
+              </div>
+
+              <div className="report-meta-strip">
+                <label>
+                  <span>Reporting period</span>
+                  <input value={period} onChange={(event) => setPeriod(event.target.value)} />
+                </label>
+                <label>
+                  <span>Prepared by</span>
+                  <input value={preparedBy} onChange={(event) => setPreparedBy(event.target.value)} />
+                </label>
+                <label>
+                  <span>Route</span>
+                  <input value={path} onChange={(event) => setPath(event.target.value)} />
+                </label>
+              </div>
+
+              <label className="report-name-field">
+                <span>Report title</span>
+                <input value={name} onChange={(event) => setName(event.target.value)} />
+              </label>
+
+              <div className="report-section-editor">
+                {selectedSections.map((section, index) => (
+                  <label className="report-section-card" key={section}>
+                    <span><small>{String(index + 1).padStart(2, "0")}</small>{section}</span>
+                    <textarea
+                      value={reportFields[section] ?? ""}
+                      onChange={(event) => updateReportField(section, event.target.value)}
+                      placeholder={`Enter ${section.toLowerCase()}`}
+                    />
+                  </label>
+                ))}
+              </div>
               <label>
-                <span>Attestation</span>
-                <textarea value={detailAttestation} onChange={(event) => setDetailAttestation(event.target.value)} />
+                <span>Attestation / signature line</span>
+                <textarea value={attestation} onChange={(event) => setAttestation(event.target.value)} />
               </label>
+              {feedback && <div className="compose-feedback">{feedback}</div>}
+              <div className="report-actions-row report-sticky-actions">
+                <div>
+                  <strong>{reportCompletion}% complete</strong>
+                  <span>{completedReportFields(reportFields)}/{selectedSections.length} sections filled</span>
+                </div>
+                <button type="submit"><Plus size={15} /> Save draft</button>
+                <button type="button" onClick={() => {
+                  setRouteTo("Area Office");
+                  setFeedback("Draft is ready to send after saving.");
+                }}><Mail size={15} /> Prepare email</button>
+              </div>
+            </form>
+          </div>
+        </main>
+
+        <aside className="reports-right-panel">
+          {selectedReport && (
+            <div className="report-card report-submit-card">
+              <div className="report-card-title">
+                <div><span>Step 3</span><h3>Send / Submit Report</h3></div>
+                <StatusPill status={selectedReport.state} />
+              </div>
+              <div className="report-submit-steps" aria-label="Report submission readiness">
+                <div className={selectedReportComplete >= 60 ? "done" : ""}><CheckCircle2 size={15} /><span>Form</span><strong>{selectedReportComplete}%</strong></div>
+                <div className={(selectedReport.evidenceStatus ?? "").toLowerCase().includes("attached") || (selectedReport.evidenceStatus ?? "").toLowerCase().includes("verified") ? "done" : ""}><Files size={15} /><span>Evidence</span><strong>{selectedReport.evidenceStatus ?? "Pending"}</strong></div>
+                <div className={selectedReport.state !== "Ready" ? "done" : ""}><Send size={15} /><span>Routing</span><strong>{selectedReport.routingStage ?? selectedReport.state}</strong></div>
+              </div>
+              <div className="selected-report-summary">
+                <div>
+                  <span>{selectedReport.type ?? "Administrative"} - {selectedReport.period ?? "Current period"}</span>
+                  <h3>{selectedReport.name}</h3>
+                  <p>{selectedReport.path}</p>
+                </div>
+                <FlowMeter label={`${selectedReportComplete}% complete`} value={selectedReportComplete} />
+              </div>
+              <div className="report-preview-box">
+                <strong>Finalize selected report</strong>
+                {selectedReportFieldEntries.slice(0, 5).map(([section, value]) => (
+                  <label key={section}>
+                    <span>{section}</span>
+                    <textarea value={detailFields[section] ?? value} onChange={(event) => updateDetailField(section, event.target.value)} placeholder={`Complete ${section.toLowerCase()}`} />
+                  </label>
+                ))}
+                <label>
+                  <span>Attestation</span>
+                  <textarea value={detailAttestation} onChange={(event) => setDetailAttestation(event.target.value)} />
+                </label>
+              </div>
+              <div className="report-route-box">
+                <div className="report-command-head">
+                  <div>
+                    <span>Submission command</span>
+                    <strong>Route this report</strong>
+                  </div>
+                  <small>{routeTo}</small>
+                </div>
+                <label className="report-route-input">
+                  <span>Send to inbox / office</span>
+                  <input value={routeTo} onChange={(event) => setRouteTo(event.target.value)} />
+                </label>
+                <div className="report-command-grid">
+                  <button type="button" className="primary" onClick={saveSelectedReportDetails}><FileCheck2 size={16} /><span>Save details<small>Store the final form fields</small></span></button>
+                  <button type="button" className="primary" onClick={sendSelectedReport}><Send size={16} /><span>Send to inbox<small>Route by ChurchMail</small></span></button>
+                  <button type="button" className="success" onClick={() => {
+                    onSubmitReport(selectedReport.id);
+                    setDetailFeedback("Report submitted upward for supervisory review.");
+                  }}><CheckCircle2 size={16} /><span>Submit upward<small>Move to next office</small></span></button>
+                  <label className="file-action report-file-command">
+                    <Upload size={16} />
+                    <span>Attach file<small>Add evidence packet</small></span>
+                    <input
+                      type="file"
+                      onChange={(event) => {
+                        const file = event.currentTarget.files?.[0];
+                        if (file) {
+                          void onUploadReportEvidence(selectedReport.id, file);
+                          setDetailFeedback(`${file.name} attached to ${selectedReport.name}.`);
+                        }
+                        event.currentTarget.value = "";
+                      }}
+                    />
+                  </label>
+                  <button type="button" onClick={() => {
+                    onBuildGovernancePacket(selectedReport.id);
+                    setDetailFeedback("Governance packet built for this report.");
+                  }}><Workflow size={16} /><span>Build packet<small>Prepare approval bundle</small></span></button>
+                </div>
+              </div>
+              <div className="report-selected-actions">
+                <button type="button" onClick={() => {
+                  onReviewReport(selectedReport.id);
+                  setDetailFeedback("Report moved into review.");
+                }}><FileClock size={14} /> Review</button>
+                <button type="button" onClick={() => {
+                  onVerifyReport(selectedReport.id);
+                  setDetailFeedback("Report verification marked complete.");
+                }}><ShieldCheck size={14} /> Verify</button>
+                <button type="button" onClick={() => {
+                  onRequestCorrection(selectedReport.id);
+                  setDetailFeedback("Correction request sent for this report.");
+                }}><AlertTriangle size={14} /> Request correction</button>
+                <button type="button" onClick={() => {
+                  onArchiveEvidence(selectedReport.id);
+                  setDetailFeedback("Report evidence moved to the archive vault.");
+                }}><ArchiveIcon size={14} /> Vault evidence</button>
+                <button type="button" onClick={() => {
+                  onDuplicateReport(selectedReport.id);
+                  setDetailFeedback("Report duplicated as a follow-up draft.");
+                }}><Files size={14} /> Duplicate</button>
+                <button type="button" className="danger" onClick={() => {
+                  setDetailFeedback("Report escalated for supervisory attention.");
+                  onEscalateReport("Report", selectedReport.name, `${selectedReport.due} report requires supervisory attention`, selectedReport.owner, selectedReport.due === "Overdue" ? "Critical" : "Medium");
+                }}><AlertTriangle size={14} /> Escalate</button>
+              </div>
               {detailFeedback && <div className="compose-feedback">{detailFeedback}</div>}
-              <div className="compact-actions">
-                <button onClick={saveSelectedReportDetails}><CheckCircle2 size={14} /> Save</button>
-                <button onClick={() => onReviewReport(selectedReport.id)}><FileCheck2 size={14} /> Review</button>
-                <button onClick={() => onBuildGovernancePacket(selectedReport.id)}><Workflow size={14} /> Packet</button>
-                <button onClick={() => onVerifyReport(selectedReport.id)}><CheckCircle2 size={14} /> Verify</button>
-                <button onClick={() => onSubmitReport(selectedReport.id)}><Send size={14} /> Submit</button>
-              </div>
+            </div>
+          )}
+
+          <div className="report-card">
+            <div className="report-card-title">
+              <div><span>Work queue</span><h3>Report Inbox</h3></div>
+              <small>{visibleReports.length} reports</small>
+            </div>
+            <label className="report-template-select">
+              <span>Status</span>
+              <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)}>
+                {stateOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <div className="report-inbox-list">
+              {visibleReports.map((report) => (
+                <button key={report.id} className={selectedReport?.id === report.id ? "active" : ""} onClick={() => setSelectedReportId(report.id)}>
+                  <div>
+                    <strong>{report.name}</strong>
+                    <span>{report.type ?? "Administrative"} - {report.due}</span>
+                  </div>
+                  <StatusPill status={report.state} />
+                </button>
+              ))}
             </div>
           </div>
-        </div>
-      )}
-      <div className="panel module-side">
-        <PanelHeader icon={Plus} title="Draft Report" action="Create" />
-        <form className="office-form" onSubmit={submit}>
-          <label>
-            <span>Report name</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label>
-            <span>Report type</span>
-            <select value={type} onChange={(event) => setType(event.target.value)}>
-              {templateTypes.map((option) => <option key={option}>{option}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Reporting period</span>
-            <input value={period} onChange={(event) => setPeriod(event.target.value)} />
-          </label>
-          <label>
-            <span>Owner</span>
-            <input value={owner} onChange={(event) => setOwner(event.target.value)} />
-          </label>
-          <label>
-            <span>Routing path</span>
-            <input value={path} onChange={(event) => setPath(event.target.value)} />
-          </label>
-          <label>
-            <span>Due status</span>
-            <select value={due} onChange={(event) => setDue(event.target.value)}>
-              <option>Draft</option>
-              <option>Today</option>
-              <option>Tomorrow</option>
-              <option>This week</option>
-              <option>Overdue</option>
-            </select>
-          </label>
-          <label>
-            <span>Prepared by</span>
-            <input value={preparedBy} onChange={(event) => setPreparedBy(event.target.value)} />
-          </label>
-          <label>
-            <span>Attestation / signature line</span>
-            <textarea value={attestation} onChange={(event) => setAttestation(event.target.value)} />
-          </label>
-          <div className="report-builder">
-            <div className="report-builder-head">
-              <strong>Full report builder</strong>
-              <span>{reportCompletion}% complete</span>
-            </div>
-            {selectedSections.map((section) => (
-              <label key={section}>
-                <span>{section}</span>
-                <textarea
-                  value={reportFields[section] ?? ""}
-                  onChange={(event) => updateReportField(section, event.target.value)}
-                  placeholder={`Enter ${section.toLowerCase()} for ${selectedTemplate.name}`}
-                />
-              </label>
-            ))}
-          </div>
-          {feedback && <div className="compose-feedback">{feedback}</div>}
-          <button type="submit"><Plus size={15} /> Create report</button>
-        </form>
-      </div>
-      <div className="panel module-side">
-        <PanelHeader icon={ClipboardCheck} title="Build 1-7 Completion" action="Bundle" />
-        <div className="completion-track-list">
-          {completionTracks.map((track) => (
-            <div className={track.done ? "completion-track done" : "completion-track"} key={track.label}>
-              {track.done ? <CheckCircle2 size={15} /> : <CircleDot size={15} />}
-              <div>
-                <strong>{track.label}</strong>
-                <span>{track.detail}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      <div className="panel module-side">
-        <PanelHeader icon={ScrollText} title="Preloaded Church Reports" action={`${filteredTemplates.length}/${churchReportTemplates.length}`} />
-        <div className="template-filter-bar">
-          <label>
-            <Search size={14} />
-            <input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search reports" />
-          </label>
-          <select value={templateTypeFilter} onChange={(event) => setTemplateTypeFilter(event.target.value)}>
-            <option>All templates</option>
-            {templateTypes.map((option) => <option key={option}>{option}</option>)}
-          </select>
-        </div>
-        <div className="template-list">
-          {filteredTemplates.map((template) => (
-            <button
-              type="button"
-              key={template.id}
-              className={selectedTemplate.id === template.id ? "is-selected" : ""}
-              onClick={() => applyTemplate(template)}
-            >
-              <strong>{template.type}</strong>
-              <span>{template.name}</span>
-              <small>{template.description}</small>
-            </button>
-          ))}
-          {filteredTemplates.length === 0 && <div className="empty-state">No report templates match this search.</div>}
-        </div>
-        <div className="template-preview">
-          <div>
-            <strong>{selectedTemplate.name}</strong>
-            <span>{selectedTemplate.path}</span>
-          </div>
-          <div className="template-chip-row">
-            <span>{selectedTemplate.approvalLimit}</span>
-            <span>{selectedTemplate.evidenceStatus}</span>
-          </div>
-          <ul className="template-checklist">
-            {selectedTemplate.checklist.map((item) => <li key={item}>{item}</li>)}
-          </ul>
-        </div>
-      </div>
-      <div className="panel module-side">
-        <PanelHeader icon={Sparkles} title="Report Intelligence" action="Status" />
-        {reports.map((report) => (
-          <div className="score-row" key={report.name}>
-            <span>{report.name}</span>
-            <FlowMeter label={`${report.score}% complete`} value={report.score} />
-            <small>{report.evidenceStatus ?? "Evidence pending"} - {report.routingStage ?? report.state}</small>
-          </div>
-        ))}
+        </aside>
       </div>
     </section>
   );
@@ -9505,7 +10712,7 @@ function PersonnelDirectory({
   digest: PersonnelDigest | null;
 }) {
   const [name, setName] = React.useState("Rev. Grace Walker");
-  const [role, setRole] = React.useState("Area Coordinator");
+  const [role, setRole] = React.useState("Pastoral Assistant");
   const [currentStation, setCurrentStation] = React.useState(String(station.level));
   const [assignedStation, setAssignedStation] = React.useState("Riverbend Area Office");
   const [status, setStatus] = React.useState<PersonRecord["status"]>("Active");
@@ -9636,7 +10843,9 @@ function PersonnelDirectory({
           </label>
           <label>
             <span>Role</span>
-            <input value={role} onChange={(event) => setRole(event.target.value)} />
+            <select value={role} onChange={(event) => setRole(event.target.value)}>
+              {missionStationRoleOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
           </label>
           <label>
             <span>Current station</span>
@@ -9655,6 +10864,12 @@ function PersonnelDirectory({
           {feedback && <div className="compose-feedback">{feedback}</div>}
           <button disabled={!permissions.canExecuteTransfers} type="submit"><Plus size={15} /> Register person</button>
         </form>
+        <div className="role-library" aria-label="Mission station role library">
+          <strong>Mission station roles</strong>
+          <div>
+            {missionStationRoleOptions.map((option) => <span key={option}>{option}</span>)}
+          </div>
+        </div>
       </div>
       <div className="panel module-side">
         <PanelHeader icon={Signature} title="Personnel Controls" action="Identity" />
@@ -10266,7 +11481,7 @@ function Hierarchy({
         <div className="hierarchy-list">
           {stationRows.map((station) => {
             const key = station.id ?? station.email;
-            const StationRowIcon = station.icon ?? iconForLevel(station.level);
+            const StationRowIcon = resolveStationIcon(station);
             const credential = credentialFor(station.email);
             return (
               <article className="hierarchy-row" key={key}>
@@ -10775,7 +11990,7 @@ function Transfers({
           <button disabled={!permissions.canExecuteTransfers} type="submit"><Plus size={15} /> Create transfer</button>
         </form>
       </div>
-      <OfflinePanel offlineMode offlineQueue={offlineQueue} onSync={onSync} />
+      <OfflinePanel offlineMode networkOnline={navigator.onLine} offlineQueue={offlineQueue} offlineConflicts={buildOfflineConflicts(offlineQueue)} syncHistory={[]} installReady onSync={onSync} />
     </section>
   );
 }
@@ -11018,6 +12233,192 @@ function Archive({
   );
 }
 
+function AccountSettings({
+  station,
+  offices,
+  stationDirectory,
+  permissions,
+  offlineMode,
+  apiStatus,
+  apiStatusError,
+  pwa,
+  session,
+  onToggleOffline,
+  onRefreshApi,
+  onResetDemoData,
+  onChangePassword,
+  onCreateAccount,
+  onResetAccess,
+  onSuspendAccount,
+  onActivateAccount,
+  onDeleteAccount,
+  onOpenAudit
+}: {
+  station: StationCard;
+  offices: Office[];
+  stationDirectory: StationCard[];
+  permissions: Permissions;
+  offlineMode: boolean;
+  apiStatus: ApiStatus | null;
+  apiStatusError: string;
+  pwa: ReturnType<typeof usePwaInstallPrompt>;
+  session: Session;
+  onToggleOffline: () => void;
+  onRefreshApi: () => void;
+  onResetDemoData: () => void;
+  onChangePassword: (currentPassword: string, newPassword: string) => AuthActionResult;
+  onCreateAccount: (account: CreateAccountInput) => AuthActionResult;
+  onResetAccess: (id: string) => void;
+  onSuspendAccount: (id: string) => void;
+  onActivateAccount: (id: string) => void;
+  onDeleteAccount: (id: string) => AuthActionResult;
+  onOpenAudit: () => void;
+}) {
+  const [currentPassword, setCurrentPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  const [confirmPassword, setConfirmPassword] = React.useState("");
+  const [accountFeedback, setAccountFeedback] = React.useState("");
+  const [fullName, setFullName] = React.useState("");
+  const [officeName, setOfficeName] = React.useState("");
+  const [email, setEmail] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [level, setLevel] = React.useState<StationLevel>("Local Branch");
+  const [department, setDepartment] = React.useState("Church Administration");
+  const manageableStations = stationDirectory.filter((item) => item.status !== "Deleted");
+  const currentOffice = offices.find((office) => normalizeStationEmail(office.email) === normalizeStationEmail(station.email));
+  const canManageUsers = permissions.canOverride || permissions.canCreateOffices;
+  const accountStationKey = (item: StationCard) => item.id ?? item.email;
+
+  function submitPassword(event: React.FormEvent) {
+    event.preventDefault();
+    if (newPassword !== confirmPassword) {
+      setAccountFeedback("New password and confirmation do not match.");
+      return;
+    }
+    const result = onChangePassword(currentPassword, newPassword);
+    setAccountFeedback(result.message ?? (result.ok ? "Password updated." : "Password could not be updated."));
+    if (result.ok) {
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    }
+  }
+
+  function submitCreateAccount(event: React.FormEvent) {
+    event.preventDefault();
+    const result = onCreateAccount({ fullName, officeName, email, password, level, department, autoApprove: canManageUsers });
+    setAccountFeedback(result.message ?? (result.ok ? "Account created." : "Account could not be created."));
+    if (result.ok) {
+      setFullName("");
+      setOfficeName("");
+      setEmail("");
+      setPassword("");
+      setDepartment("Church Administration");
+      setLevel("Local Branch");
+    }
+  }
+
+  function deleteAccount(id: string) {
+    const result = onDeleteAccount(id);
+    setAccountFeedback(result.message ?? (result.ok ? "Account deleted." : "Account could not be deleted."));
+  }
+
+  return (
+    <section className="account-settings-page">
+      <div className="account-settings-hero">
+        <div>
+          <span>Account and User Management</span>
+          <h2>Account Settings</h2>
+          <p>Manage your sign-in, station profile, account status, web app install, sync controls, and user lifecycle from one clean workspace.</p>
+        </div>
+        <div className="account-health-card">
+          <span>Signed in as</span>
+          <strong>{station.email}</strong>
+          <small>{station.level} / {station.authority}</small>
+        </div>
+      </div>
+
+      {accountFeedback && <div className="compose-feedback">{accountFeedback}</div>}
+
+      <div className="account-settings-grid">
+        <form className="account-card" onSubmit={submitPassword}>
+          <PanelHeader icon={LockKeyhole} title="Password" action="self service" />
+          <label><span>Current password</span><input type="password" value={currentPassword} onChange={(event) => setCurrentPassword(event.target.value)} autoComplete="current-password" /></label>
+          <label><span>New password</span><input type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} autoComplete="new-password" /></label>
+          <label><span>Confirm new password</span><input type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} autoComplete="new-password" /></label>
+          <button type="submit"><KeyRound size={15} /> Reset my password</button>
+        </form>
+
+        <div className="account-card">
+          <PanelHeader icon={Settings} title="System Access" action="moved from header" />
+          <div className="account-status-list">
+            <div><span>Sync mode</span><strong>{offlineMode ? "Offline queue" : "Live sync"}</strong></div>
+            <div><span>API</span><strong>{apiStatusError || (apiStatus?.serveWeb ? "API + web" : "API live")}</strong></div>
+            <div><span>Web app</span><strong>{pwa.installed ? "Installed" : pwa.canInstall ? "Install available" : "Web ready"}</strong></div>
+            <div><span>Session</span><strong>{session.startedAt}</strong></div>
+          </div>
+          <div className="account-action-row">
+            <button type="button" onClick={onToggleOffline}>{offlineMode ? <RefreshCw size={15} /> : <CloudOff size={15} />}{offlineMode ? "Return live" : "Work offline"}</button>
+            <button type="button" onClick={onRefreshApi}><Server size={15} /> Refresh API</button>
+            <button type="button" disabled={!pwa.canInstall || pwa.installed} onClick={pwa.install}><Download size={15} /> Install app</button>
+            <button type="button" onClick={onOpenAudit}><ShieldCheck size={15} /> Audit trail</button>
+            {permissions.canOverride && <button type="button" onClick={onResetDemoData}><TimerReset size={15} /> Reset demo</button>}
+          </div>
+        </div>
+
+        <div className="account-card account-profile-card">
+          <PanelHeader icon={BadgeCheck} title="Station Profile" action={station.status ?? "Active"} />
+          <div className="account-profile-grid">
+            <div><span>Office</span><strong>{station.title}</strong></div>
+            <div><span>Email</span><strong>{station.email}</strong></div>
+            <div><span>Level</span><strong>{station.level}</strong></div>
+            <div><span>Department</span><strong>{currentOffice?.department ?? stationDepartment(station)}</strong></div>
+            <div><span>Supervisor</span><strong>{currentOffice?.supervisor ?? "Assigned hierarchy"}</strong></div>
+            <div><span>Verification</span><strong>{station.verified || currentOffice?.emailVerified ? "Verified" : "Needs review"}</strong></div>
+          </div>
+        </div>
+
+        <form className="account-card" onSubmit={submitCreateAccount}>
+          <PanelHeader icon={Plus} title="Add User" action={canManageUsers ? "admin create" : "approval request"} />
+          <label><span>Full name</span><input value={fullName} onChange={(event) => setFullName(event.target.value)} placeholder="User full name" /></label>
+          <label><span>Office / station name</span><input value={officeName} onChange={(event) => setOfficeName(event.target.value)} placeholder="Example: Monrovia Area Office" /></label>
+          <label><span>Organizational email</span><input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="name@rmvi.org" /></label>
+          <label><span>Temporary password</span><input type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="At least 8 characters" /></label>
+          <label><span>Level</span><select value={level} onChange={(event) => setLevel(event.target.value as StationLevel)}>{hierarchy.map((item) => <option key={item.level}>{item.level}</option>)}</select></label>
+          <label><span>Department / role</span><input value={department} onChange={(event) => setDepartment(event.target.value)} /></label>
+          <button type="submit"><Plus size={15} /> {canManageUsers ? "Create user account" : "Request account"}</button>
+        </form>
+
+        <div className="account-card account-users-card">
+          <PanelHeader icon={Users} title="Users and Stations" action={`${manageableStations.length} accounts`} />
+          <div className="account-user-list">
+            {manageableStations.map((item) => {
+              const id = accountStationKey(item);
+              const isCurrent = normalizeStationEmail(item.email) === normalizeStationEmail(station.email);
+              const canDeleteAccount = item.email !== "admin@rmvi.org" && (canManageUsers || isCurrent);
+              return (
+                <article key={item.email}>
+                  <div>
+                    <strong>{item.title}</strong>
+                    <span>{item.email}</span>
+                    <small>{item.level} / {item.status ?? "Ready"}</small>
+                  </div>
+                  <div className="account-user-actions">
+                    <button type="button" disabled={!canManageUsers && !isCurrent} onClick={() => onResetAccess(id)}><TimerReset size={14} /> Reset</button>
+                    <button type="button" disabled={!canManageUsers} onClick={() => onSuspendAccount(id)}><LockKeyhole size={14} /> Suspend</button>
+                    <button type="button" disabled={!canManageUsers} onClick={() => onActivateAccount(id)}><CheckCircle2 size={14} /> Activate</button>
+                    <button type="button" className="danger" disabled={!canDeleteAccount} onClick={() => deleteAccount(id)}><ArchiveIcon size={14} /> Delete</button>
+                  </div>
+                </article>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function AdminBoard({
   stationDirectory,
   offices,
@@ -11049,7 +12450,10 @@ function AdminBoard({
   onRequireSessionMfa,
   onCreateAuditNote,
   onArchiveGovernanceSnapshot,
-  onRefreshAuditDigest
+  onRefreshAuditDigest,
+  onApproveOfficeAccount,
+  onRejectOfficeAccount,
+  onResetOfficeAccess
 }: {
   stationDirectory: StationCard[];
   offices: Office[];
@@ -11082,6 +12486,9 @@ function AdminBoard({
   onCreateAuditNote: () => void;
   onArchiveGovernanceSnapshot: () => void;
   onRefreshAuditDigest: () => void;
+  onApproveOfficeAccount: (id: string) => void;
+  onRejectOfficeAccount: (id: string) => void;
+  onResetOfficeAccess: (id: string) => void;
 }) {
   const officialStations = stationDirectory.filter((station, index, items) => (
     items.findIndex((item) => item.email === station.email) === index
@@ -11098,6 +12505,7 @@ function AdminBoard({
   const openTasks = tasks.filter((task) => task.status !== "Complete").length;
   const openEscalations = escalations.filter((item) => item.status !== "Resolved").length;
   const pendingTransfers = transfers.filter((transfer) => transfer.step !== "New station login ready").length;
+  const pendingAccounts = offices.filter((office) => office.status === "Pending Approval" || office.status === "Rejected");
   const readyStations = officialStations.filter((station) => station.verified || !["Suspended", "Locked"].includes(station.status ?? "")).length;
   const sealedAuditRows = auditDigest?.sealed ?? auditRows.filter((row) => row.sealed || row.result.startsWith("Sealed:")).length;
   const apiConnected = apiStatus?.status?.toLowerCase() === "ok";
@@ -11137,6 +12545,280 @@ function AdminBoard({
     ...events.slice(0, 3).map((event) => ({ label: event.includes(":") ? event.split(":")[0] : "Event", detail: event })),
     ...auditRows.slice(0, 3).map((row) => ({ label: row.event, detail: `${row.actor} - ${row.object}` }))
   ].slice(0, 5);
+  const adminGroups: { label: string; items: { label: Section; icon: React.ElementType; detail: string }[] }[] = [
+    {
+      label: "Command",
+      items: [
+        { label: "Admin Board", icon: KeyRound, detail: "Administrator home" },
+        { label: "Control Center", icon: LayoutDashboard, detail: "Global operating picture" },
+        { label: "ChurchMail", icon: Mail, detail: "Governance communications" },
+        { label: "Reports", icon: FileCheck2, detail: "Templates and submissions" }
+      ]
+    },
+    {
+      label: "Governance Work",
+      items: [
+        { label: "Approvals", icon: BadgeCheck, detail: "Delegated authorization" },
+        { label: "Tasks", icon: SquareCheckBig, detail: "Station assignments" },
+        { label: "Escalations", icon: AlertTriangle, detail: "Executive attention" },
+        { label: "Transfers", icon: Signature, detail: "Identity migration" }
+      ]
+    },
+    {
+      label: "System Controls",
+      items: [
+        { label: "Offices", icon: Building2, detail: "Station provisioning" },
+        { label: "Hierarchy", icon: GitBranch, detail: "Authority graph" },
+        { label: "Personnel", icon: Users, detail: "Access and people" },
+        { label: "Archive", icon: Files, detail: "Vault and evidence" },
+        { label: "Audit", icon: ShieldCheck, detail: "Security ledger" }
+      ]
+    }
+  ];
+  const focusCards = [
+    { label: "Account requests", value: pendingAccounts.filter((office) => office.status === "Pending Approval").length, icon: KeyRound, section: "Offices" as Section, tone: "urgent" },
+    { label: "Open escalations", value: openEscalations, icon: AlertTriangle, section: "Escalations" as Section, tone: "urgent" },
+    { label: "Pending approvals", value: openApprovals, icon: Workflow, section: "Approvals" as Section, tone: "warning" },
+    { label: "Open tasks", value: openTasks, icon: SquareCheckBig, section: "Tasks" as Section, tone: "normal" },
+    { label: "Transfers pending", value: pendingTransfers, icon: Signature, section: "Transfers" as Section, tone: "normal" },
+    { label: "Station identities", value: officialStations.length, icon: KeyRound, section: "Offices" as Section, tone: "normal" },
+    { label: "Vault documents", value: documents.length, icon: Files, section: "Archive" as Section, tone: "normal" }
+  ];
+
+  return (
+    <section className="admin-portal-shell" aria-label="Remedy Movement International administrator board">
+      <div className="admin-portal-topbar">
+        <div className="admin-portal-brand">
+          <div className="admin-portal-logo">
+            <img src={CHURCH_LOGO_SRC} alt="Remedy Movement International logo" />
+          </div>
+          <div>
+            <strong>Remedy Movement International</strong>
+            <span>GCOS administrator board</span>
+          </div>
+        </div>
+        <div className="admin-portal-state">
+          <span><CircleDot size={10} /> {operatingStatus} admin</span>
+          <span>{session.email}</span>
+          <button onClick={onRefreshApi}><RefreshCw size={14} /> Refresh</button>
+        </div>
+      </div>
+
+      <div className="admin-portal-layout">
+        <aside className="admin-portal-rail" aria-label="Admin board navigation">
+          <div className="admin-workspace-card">
+            <span>Admin workspace</span>
+            <strong>International HQ</strong>
+            <p>Organized command access for users, stations, reports, audit, and live governance operations.</p>
+          </div>
+          {adminGroups.map((group) => (
+            <div className="admin-nav-group" key={group.label}>
+              <p>{group.label}</p>
+              {group.items.map(({ label, icon: Icon, detail }) => (
+                <button key={label} onClick={() => onOpenSection(label)} className={label === "Admin Board" ? "active" : ""}>
+                  <Icon size={16} />
+                  <span>{label}<small>{detail}</small></span>
+                  <ChevronRight size={14} />
+                </button>
+              ))}
+            </div>
+          ))}
+        </aside>
+
+        <main className="admin-portal-main">
+          <div className="admin-tab-hero">
+            <div className="admin-tab-heading">
+              <div className="admin-tab-icon"><KeyRound size={24} /></div>
+              <div>
+                <span>System Administration</span>
+                <h1>Admin Board</h1>
+                <p>One organized control room for station lifecycle, active governance queues, sessions, audit integrity, production readiness, and executive routing.</p>
+                <div className="admin-hero-brief" aria-label="Administrator operating context">
+                  <span><ShieldCheck size={14} /> International HQ authority</span>
+                  <span><RadioTower size={14} /> {openEscalations + openApprovals + openTasks + pendingTransfers} open work items</span>
+                  <span><Database size={14} /> {productionGate}</span>
+                </div>
+              </div>
+            </div>
+            <div className="admin-tab-status">
+              <div><span>Backend</span><strong>{apiStatus?.status?.toUpperCase() ?? "LOCAL"}</strong><small>{apiStatus ? formatUptime(apiStatus.uptimeSeconds) : "local preview"}</small></div>
+              <div><span>Web</span><strong>{apiStatus?.serveWeb ? "Live" : "Preview"}</strong><small>rmvi.org/admin</small></div>
+              <div><span>Access</span><strong>{permissions.canOverride ? "Full" : "Limited"}</strong><small>{session.email}</small></div>
+            </div>
+          </div>
+
+          <div className="admin-focus-board">
+            <div className="admin-focus-title">
+              <Zap size={17} />
+              <strong>Today&apos;s Focus</strong>
+              <span>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</span>
+            </div>
+            <div className="admin-focus-grid">
+              {focusCards.map(({ label, value, icon: Icon, section, tone }) => (
+                <button className={`admin-focus-card ${tone}`} key={label} onClick={() => onOpenSection(section)}>
+                  <span><Icon size={16} /></span>
+                  <strong>{value}</strong>
+                  <small>{label}</small>
+                  <ChevronRight size={14} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="admin-console-grid">
+            <div className="admin-console-panel admin-console-wide">
+              <PanelHeader icon={SlidersHorizontal} title="Command Center" action="system console" />
+              <div className="admin-system-grid">
+                {systemCards.map(({ icon: Icon, label, value, detail }) => (
+                  <article className="admin-system-card" key={label}>
+                    <div><Icon size={17} /></div>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                    <small>{detail}</small>
+                  </article>
+                ))}
+              </div>
+              <div className="admin-action-list">
+                <button onClick={() => onOpenSection("Offices")}><Building2 size={16} /><span>Manage offices<small>Create stations, verify emails, and rotate access.</small></span><ChevronRight size={14} /></button>
+                <button onClick={() => onOpenSection("Audit")}><ShieldCheck size={16} /><span>Security and audit<small>Review sessions, seal records, and refresh launch checks.</small></span><ChevronRight size={14} /></button>
+                <button onClick={() => onOpenSection("Reports")}><FileCheck2 size={16} /><span>Reporting operations<small>Review templates, evidence, corrections, and approvals.</small></span><ChevronRight size={14} /></button>
+                <button onClick={() => onOpenSection("Escalations")}><AlertTriangle size={16} /><span>Executive queue<small>Watch bottlenecks and route urgent matters.</small></span><ChevronRight size={14} /></button>
+              </div>
+            </div>
+
+            <div className="admin-console-panel">
+              <PanelHeader icon={RadioTower} title="Live Queue" action={`${openEscalations + openApprovals + openTasks + pendingTransfers} open`} />
+              <div className="admin-queue-list">
+                {queueItems.map(({ icon: Icon, label, value, detail, section }) => (
+                  <button key={label} onClick={() => onOpenSection(section)}>
+                    <Icon size={16} />
+                    <span>{label}<small>{detail}</small></span>
+                    <strong>{value}</strong>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="admin-console-panel">
+              <PanelHeader icon={Activity} title="Platform Health" action={apiStatus?.status ?? "local"} />
+              <div className="admin-health-list">
+                <div><span>Service</span><strong>{apiStatus?.service ?? "GCOS API"}</strong></div>
+                <div><span>Uptime</span><strong>{apiStatus ? formatUptime(apiStatus.uptimeSeconds) : "Local"}</strong></div>
+                <div><span>Storage</span><strong>{storageMode}</strong></div>
+                <div><span>Production gate</span><strong>{productionGate}</strong></div>
+                <div><span>Audit rows</span><strong>{auditRows.length}</strong></div>
+                <div><span>Documents</span><strong>{documents.length}</strong></div>
+              </div>
+              <button className="wide-action" onClick={onRefreshApi}><RefreshCw size={15} /> Refresh health</button>
+            </div>
+
+            <div className="admin-console-panel admin-console-wide">
+              <PanelHeader icon={KeyRound} title="Account Approval Queue" action={`${pendingAccounts.filter((office) => office.status === "Pending Approval").length} pending`} />
+              <div className="admin-approval-queue">
+                {pendingAccounts.length ? pendingAccounts.map((office) => (
+                  <article key={office.id} className={office.status === "Rejected" ? "rejected" : ""}>
+                    <div>
+                      <span>{office.level} - {office.department}</span>
+                      <strong>{office.name}</strong>
+                      <small>{office.email} / Supervisor: {office.supervisor}</small>
+                      <p>{office.notes?.at(-1) ?? "Account is waiting for administrator review."}</p>
+                    </div>
+                    <div className="admin-approval-actions">
+                      <StatusPill status={office.status} />
+                      <button disabled={office.status !== "Pending Approval"} onClick={() => onApproveOfficeAccount(office.id)}><CheckCircle2 size={14} /> Approve</button>
+                      <button disabled={office.status !== "Pending Approval"} onClick={() => onRejectOfficeAccount(office.id)}><AlertTriangle size={14} /> Reject</button>
+                      <button onClick={() => onResetOfficeAccess(office.id)}><LockKeyhole size={14} /> Reset access</button>
+                    </div>
+                  </article>
+                )) : (
+                  <div className="empty-state">No new account requests are waiting for approval.</div>
+                )}
+              </div>
+            </div>
+
+            <div className="admin-console-panel admin-console-wide">
+              <PanelHeader icon={KeyRound} title="Station Registry" action={`${officialStations.length} identities`} />
+              <div className="admin-station-summary">
+                {stationGroups.map((group) => (
+                  <div key={group.label}>
+                    <strong>{group.value}</strong>
+                    <span>{group.label}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="admin-station-table">
+                <div className="admin-station-row head"><span>Station</span><span>Level</span><span>Status</span><span>Actions</span></div>
+                {officialStations.map((station) => {
+                  const stationId = station.id ?? station.email;
+                  return (
+                    <div className="admin-station-row" key={station.email}>
+                      <strong>{station.title}<small>{station.email}</small></strong>
+                      <span>{station.level}<small>{station.authority}</small></span>
+                      <span className="admin-station-state">{station.status ?? (station.verified ? "Verified" : "Ready")}</span>
+                      <div className="admin-station-actions">
+                        <button disabled={(station.status ?? "") !== "Pending Approval"} onClick={() => onApproveOfficeAccount(stationId)}><CheckCircle2 size={14} /> Approve</button>
+                        <button onClick={() => onVerifyStation(stationId)}><ShieldCheck size={14} /> Verify</button>
+                        <button onClick={() => onSuspendStation(stationId)}><LockKeyhole size={14} /> Suspend</button>
+                        <button onClick={() => onActivateStation(stationId)}><CheckCircle2 size={14} /> Activate</button>
+                        <button onClick={() => onResetOfficeAccess(stationId)}><TimerReset size={14} /> Reset</button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="action-row">
+                <button onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Plus size={15} /> Create office</button>
+                <button onClick={onBulkVerifyStations}><ShieldCheck size={15} /> Bulk verify stations</button>
+              </div>
+            </div>
+
+            <div className="admin-console-panel">
+              <PanelHeader icon={LockKeyhole} title="Sessions" action={`${activeSessions.length} records`} />
+              <div className="admin-session-list">
+                {activeSessions.slice(0, 5).map((item) => (
+                  <article key={`${item.email}-${item.startedAt}`}>
+                    <strong>{item.email}</strong>
+                    <span>{item.status ?? "Active"} - {item.minutesRemaining} minutes remaining</span>
+                    <div className="compact-actions">
+                      <button disabled={!item.id} onClick={() => item.id && onTrustSession(item.id)}>Trust</button>
+                      <button disabled={!item.id} onClick={() => item.id && onRequireSessionMfa(item.id)}>MFA</button>
+                      <button disabled={!item.id || item.id === session.token} onClick={() => item.id && onRevokeSession(item.id)}>Revoke</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="action-row">
+                <button onClick={onRenewSession}><RefreshCw size={15} /> Renew current</button>
+                <button onClick={() => onRevokeStationSessions(session.email)}><LockKeyhole size={15} /> Revoke station</button>
+              </div>
+            </div>
+
+            <div className="admin-console-panel">
+              <PanelHeader icon={ShieldCheck} title="Audit Stream" action={`${sealedAuditRows} sealed`} />
+              <div className="admin-event-list">
+                {recentAdminEvents.length ? recentAdminEvents.map((event, index) => (
+                  <article key={`${event.label}-${index}`}>
+                    <span>{event.label}</span>
+                    <strong>{event.detail}</strong>
+                  </article>
+                )) : (
+                  <article>
+                    <span>No events</span>
+                    <strong>Audit stream is waiting for activity.</strong>
+                  </article>
+                )}
+              </div>
+              <div className="action-row">
+                <button onClick={onCreateAuditNote}><FileText size={15} /> Admin note</button>
+                <button onClick={onArchiveGovernanceSnapshot}><Files size={15} /> Archive snapshot</button>
+                <button onClick={onRefreshAuditDigest}><RefreshCw size={15} /> Refresh digest</button>
+              </div>
+            </div>
+          </div>
+        </main>
+      </div>
+    </section>
+  );
 
   return (
     <section className="admin-board-shell" aria-label="Remedy Movement International administrator board">
@@ -13067,50 +14749,98 @@ function EventBusPanel({ events }: { events: string[] }) {
 
 function OfflinePanel({
   offlineMode,
+  networkOnline,
   offlineQueue,
+  offlineConflicts,
+  syncHistory,
+  installReady,
   onSync
 }: {
   offlineMode: boolean;
+  networkOnline: boolean;
   offlineQueue: OfflineAction[];
+  offlineConflicts: OfflineConflict[];
+  syncHistory: OfflineSyncRecord[];
+  installReady: boolean;
   onSync: () => void;
 }) {
+  const readyChecks = [
+    { label: "Installed shell", ok: installReady },
+    { label: "Station cache", ok: true },
+    { label: "Local queue", ok: true },
+    { label: "Conflict review", ok: offlineConflicts.length === 0 },
+    { label: "Network", ok: networkOnline }
+  ];
+  const readyCount = readyChecks.filter((item) => item.ok).length;
+
   return (
     <div className="panel span-6 module-side">
-      <PanelHeader icon={Files} title="Offline Sync Queue" action={offlineMode ? "Offline active" : "Ready"} />
+      <PanelHeader icon={Files} title="Offline Sync Queue" action={`${readyCount}/${readyChecks.length} ready`} />
+      <div className="offline-readiness">
+        {readyChecks.map((check) => (
+          <span className={check.ok ? "ready" : "pending"} key={check.label}>
+            {check.ok ? <CheckCircle2 size={13} /> : <AlertTriangle size={13} />}
+            {check.label}
+          </span>
+        ))}
+      </div>
       <div className="sync-layout">
         <div className="sync-stage queued">
           <strong>Local Queue</strong>
-          <span>{offlineQueue.length} actions cached</span>
+          <span>{offlineQueue.length} actions cached on this device</span>
         </div>
         <ChevronRight size={18} />
         <div className="sync-stage">
           <strong>Conflict Resolver</strong>
-          <span>{offlineQueue.length > 0 ? "Priority order ready" : "No conflicts detected"}</span>
+          <span>{offlineConflicts.length ? `${offlineConflicts.length} records need review` : "No conflicts detected"}</span>
         </div>
         <ChevronRight size={18} />
         <div className="sync-stage synced">
-          <strong>Cloud Event Bus</strong>
-          <span>Redis + RabbitMQ</span>
+          <strong>{networkOnline ? "Cloud Event Bus" : "Waiting for internet"}</strong>
+          <span>{networkOnline ? "Ready to sync upstream" : "Data remains on this device"}</span>
         </div>
       </div>
       <div className="security-strip">
         <ShieldCheck size={18} />
-        <span>RBAC, ABAC, zero-trust sessions, immutable audit ledger, transfer-triggered session invalidation.</span>
+        <span>Offline-first station cache, local audit queue, conflict review, and server sync when the connection returns.</span>
       </div>
       {offlineQueue.length > 0 && (
         <div className="queued-actions">
           {offlineQueue.slice(0, 4).map((item) => (
             <div className="event-line" key={item.id}>
               <span />
-              <code>{item.event}: {item.object}</code>
+              <code>{item.event}: {item.object} - {item.syncStatus ?? "Queued"}</code>
+            </div>
+          ))}
+        </div>
+      )}
+      {offlineConflicts.length > 0 && (
+        <div className="offline-conflicts">
+          <strong>Conflict Review</strong>
+          {offlineConflicts.slice(0, 3).map((conflict) => (
+            <div className="conflict-row" key={conflict.id}>
+              <AlertTriangle size={14} />
+              <span>{conflict.object}</span>
+              <small>{conflict.count} queued edits - {conflict.priority}</small>
+            </div>
+          ))}
+        </div>
+      )}
+      {syncHistory.length > 0 && (
+        <div className="sync-history">
+          <strong>Sync History</strong>
+          {syncHistory.slice(0, 3).map((record) => (
+            <div className={`history-row ${record.status.toLowerCase()}`} key={record.id}>
+              <span>{record.status}</span>
+              <small>{record.at} - {record.detail}</small>
             </div>
           ))}
         </div>
       )}
       <div className="action-row sync-actions">
-        <button disabled={offlineQueue.length === 0} onClick={onSync}>
+        <button disabled={offlineQueue.length === 0 || !networkOnline || offlineConflicts.length > 0} onClick={onSync}>
           <RefreshCw size={15} />
-          Sync queued actions
+          {!networkOnline ? "Waiting for internet" : offlineConflicts.length ? "Review conflicts first" : "Sync queued actions"}
         </button>
       </div>
     </div>
@@ -13154,7 +14884,7 @@ function PanelHeader({ icon: Icon, title, action }: { icon: React.ElementType; t
         <Icon size={18} />
         <h2>{title}</h2>
       </div>
-      <button>
+      <button type="button" aria-label={`${title}: ${action}`}>
         <SlidersHorizontal size={15} />
         <span>{action}</span>
       </button>
@@ -13196,7 +14926,9 @@ function Insight({ label, value }: { label: string; value: string }) {
 
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", () => {
-    navigator.serviceWorker.register("/sw.js").catch(() => undefined);
+    navigator.serviceWorker.register("/sw.js").then((registration) => {
+      registration.update().catch(() => undefined);
+    }).catch(() => undefined);
   });
 }
 

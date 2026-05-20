@@ -1,14 +1,18 @@
 {
+  "id": "/",
   "name": "Remedy Movement International GCOS",
   "short_name": "RMVI GCOS",
-  "description": "Station-based governance operating system for church administration.",
+  "description": "Installable station-based governance operating system for Remedy Movement International church administration.",
   "start_url": "/",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
-  "background_color": "#f4f6f2",
-  "theme_color": "#173d32",
-  "categories": ["business", "productivity"],
+  "background_color": "#0b2f6b",
+  "theme_color": "#0b2f6b",
+  "lang": "en-US",
+  "dir": "ltr",
+  "categories": ["business", "productivity", "utilities"],
   "icons": [
     {
       "src": "/icons/gcos-icon.svg",
@@ -30,6 +34,12 @@
     }
   ],
   "shortcuts": [
+    {
+      "name": "Sign in",
+      "short_name": "Sign in",
+      "description": "Open the RMVI GCOS sign-in portal.",
+      "url": "/"
+    },
     {
       "name": "ChurchMail",
       "short_name": "Mail",
