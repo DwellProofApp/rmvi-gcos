@@ -5,4 +5,5 @@ run = "npm run replit:run"
 channel = "stable-24_05"
 
 [deployment]
-run = "npm run replit:run"
+build = "npm run build"
+run = "npm run start:replit"
