@@ -11,7 +11,7 @@ rmvi.org
   -> Built React web app served from dist
   -> GCOS API under same origin
   -> Managed Postgres persistence
-  -> Persistent object vault for uploaded files
+  -> Object vault for uploaded files and evidence
 ```
 
 GCOS remains web-first. Users enter through `https://rmvi.org`, then the sign-in portal loads the correct station workstation.
@@ -20,8 +20,8 @@ GCOS remains web-first. Users enter through `https://rmvi.org`, then the sign-in
 
 1. Replit production deployment for `rmvi-gcos`.
 2. Custom domain `rmvi.org` attached to that deployment.
-3. Managed Postgres database.
-4. Persistent object vault path or mounted storage location.
+3. Managed Postgres database for users, reports, messages, workflows, approvals, audit rows, office hierarchy, and sessions.
+4. Object vault storage for PDFs, photos, videos, voice notes, signed documents, and report evidence.
 5. Production secrets configured from `.env.production.example`.
 6. Backup and restore drill recorded from the GCOS Audit workspace.
 
@@ -45,6 +45,7 @@ GCOS_DATABASE_URL=<managed postgres connection string>
 DATABASE_URL=<optional Replit Postgres fallback if GCOS_DATABASE_URL is not set>
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
+GCOS_OBJECT_STORAGE_PROVIDER=filesystem
 GCOS_OBJECT_VAULT_PATH=<persistent object vault path>
 GCOS_MAX_BODY_BYTES=1048576
 GCOS_LOGIN_RATE_LIMIT=8
@@ -69,9 +70,22 @@ Leave `VITE_GCOS_API_BASE` empty for same-origin production serving.
    - import dry run
    - cutover checklist
 
+## Storage Architecture
+
+Use two storage systems:
+
+1. `Managed Postgres`
+   - Stores all GCOS records: users, station accounts, permissions, ChurchMail metadata, reports, approvals, tasks, policies, transfers, offices, audit rows, and workflow state.
+   - Use Replit Postgres first. GCOS accepts either `GCOS_DATABASE_URL` or Replit's standard `DATABASE_URL`.
+
+2. `Object Vault`
+   - Stores uploaded files: report packets, PDFs, images, voice reports, videos, signed transfer letters, receipts, and evidence files.
+   - For the Replit launch, set `GCOS_OBJECT_STORAGE_PROVIDER=filesystem` and `GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault`.
+   - For larger production scale, move the vault to S3-compatible storage such as Cloudflare R2, AWS S3, Supabase Storage, or another managed object store.
+
 ## Object Vault Launch
 
-Set `GCOS_OBJECT_VAULT_PATH` to a persistent path supported by the host. Uploaded documents, report evidence, and archive files depend on this setting.
+Set `GCOS_OBJECT_STORAGE_PROVIDER=filesystem` and `GCOS_OBJECT_VAULT_PATH` to a persistent path supported by the host. Uploaded documents, report evidence, and archive files depend on this setting.
 
 ## Verification Commands
 

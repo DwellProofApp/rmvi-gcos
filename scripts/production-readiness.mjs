@@ -21,6 +21,7 @@ const required = [
   ["GCOS_DATABASE_URL", () => Boolean(databaseUrl) && !/USER:PASSWORD|HOST|DATABASE/.test(databaseUrl), "set a real managed Postgres URL in GCOS_DATABASE_URL or Replit DATABASE_URL"],
   ["GCOS_DATABASE_SSL", (value) => value === "1", "set GCOS_DATABASE_SSL=1"],
   ["GCOS_DATABASE_POOL_SIZE", (value) => Number(value) >= 2, "set GCOS_DATABASE_POOL_SIZE to at least 2"],
+  ["GCOS_OBJECT_STORAGE_PROVIDER", (value) => Boolean(value), "set GCOS_OBJECT_STORAGE_PROVIDER=filesystem for Replit launch"],
   ["GCOS_OBJECT_VAULT_PATH", Boolean, "set a persistent object vault path"],
   ["GCOS_LOGIN_RATE_LIMIT", (value) => Number(value) >= 5, "set GCOS_LOGIN_RATE_LIMIT to at least 5"],
   ["GCOS_LOGIN_RATE_WINDOW_MS", (value) => Number(value) >= 60000, "set GCOS_LOGIN_RATE_WINDOW_MS to at least 60000"],

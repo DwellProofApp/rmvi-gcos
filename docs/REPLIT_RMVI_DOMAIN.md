@@ -16,6 +16,7 @@ GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
 # If Replit Postgres provides DATABASE_URL automatically, GCOS will use it as a fallback.
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
+GCOS_OBJECT_STORAGE_PROVIDER=filesystem
 GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
 GCOS_ALLOWED_ORIGIN=https://rmvi.org
 GCOS_HEALTHCHECK_URL=https://rmvi.org
@@ -70,6 +71,7 @@ GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
 # Or connect Replit Postgres and use the platform-provided DATABASE_URL fallback.
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
+GCOS_OBJECT_STORAGE_PROVIDER=filesystem
 GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
 GCOS_ALLOWED_ORIGIN=https://rmvi.org
 GCOS_HEALTHCHECK_URL=https://rmvi.org

@@ -140,6 +140,7 @@ GCOS_DATABASE_URL   Postgres connection string used when GCOS_STORAGE_PROVIDER=d
 DATABASE_URL        Optional Replit Postgres fallback when GCOS_DATABASE_URL is not set
 GCOS_DATABASE_SSL   Set to 1 when the managed Postgres host requires SSL
 GCOS_DATABASE_POOL_SIZE Max Postgres pool connections, defaults to 5
+GCOS_OBJECT_STORAGE_PROVIDER Object vault backend; use filesystem for the Replit launch
 GCOS_DATA_PATH      JSON persistence path, defaults to data/gcos-state.json
 GCOS_OBJECT_VAULT_PATH Local file vault directory, defaults beside GCOS_DATA_PATH
 GCOS_SERVE_WEB      Set to 1 to serve the built web app from the API server
@@ -333,5 +334,5 @@ The current API test suite covers:
 
 1. Add production session storage and token rotation.
 2. Add frontend component tests for the workstation modules.
-3. Add specialized MongoDB, Neo4j, Redis, and object storage adapters.
-4. Add binary file upload adapters for ChurchMail/report attachments.
+3. Add specialized MongoDB, Neo4j, Redis, and external object storage adapters.
+4. Add S3/R2/Supabase upload adapters for ChurchMail/report attachments at larger scale.
