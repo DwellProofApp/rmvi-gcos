@@ -140,9 +140,13 @@ GCOS_DATABASE_URL   Postgres connection string used when GCOS_STORAGE_PROVIDER=d
 DATABASE_URL        Optional Replit Postgres fallback when GCOS_DATABASE_URL is not set
 GCOS_DATABASE_SSL   Set to 1 when the managed Postgres host requires SSL
 GCOS_DATABASE_POOL_SIZE Max Postgres pool connections, defaults to 5
-GCOS_OBJECT_STORAGE_PROVIDER Object vault backend; use filesystem for the Replit launch
+GCOS_OBJECT_STORAGE_PROVIDER Object vault backend; use cloudflare-r2 for production files
+GCOS_R2_ACCOUNT_ID Cloudflare account ID for R2 object storage
+GCOS_R2_BUCKET Cloudflare R2 bucket name, for example rmvi-gcos-vault
+GCOS_R2_ACCESS_KEY_ID Cloudflare R2 access key ID
+GCOS_R2_SECRET_ACCESS_KEY Cloudflare R2 secret access key
 GCOS_DATA_PATH      JSON persistence path, defaults to data/gcos-state.json
-GCOS_OBJECT_VAULT_PATH Local file vault directory, defaults beside GCOS_DATA_PATH
+GCOS_OBJECT_VAULT_PATH Local fallback file vault directory, defaults beside GCOS_DATA_PATH
 GCOS_SERVE_WEB      Set to 1 to serve the built web app from the API server
 GCOS_WEB_DIST_PATH  Built web app directory, defaults to dist
 GCOS_HEALTHCHECK_URL Base URL used by npm run healthcheck

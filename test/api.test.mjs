@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
 import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 import { tmpdir } from "node:os";
 
 const PORT = 8797;
@@ -3046,6 +3046,12 @@ function startApi(dataPath, webDistPath, extraEnv = {}) {
       ...process.env,
       GCOS_API_PORT: String(PORT),
       GCOS_STORAGE_PROVIDER: "json",
+      GCOS_OBJECT_STORAGE_PROVIDER: "filesystem",
+      GCOS_OBJECT_VAULT_PATH: join(dirname(dataPath), "object-vault"),
+      GCOS_R2_ACCOUNT_ID: "",
+      GCOS_R2_BUCKET: "",
+      GCOS_R2_ACCESS_KEY_ID: "",
+      GCOS_R2_SECRET_ACCESS_KEY: "",
       GCOS_DATABASE_URL: "",
       DATABASE_URL: "",
       GCOS_DATA_PATH: dataPath,

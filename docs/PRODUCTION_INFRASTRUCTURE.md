@@ -11,7 +11,7 @@ rmvi.org
   -> Built React web app served from dist
   -> GCOS API under same origin
   -> Managed Postgres persistence
-  -> Object vault for uploaded files and evidence
+  -> Cloudflare R2 object vault for uploaded files and evidence
 ```
 
 GCOS remains web-first. Users enter through `https://rmvi.org`, then the sign-in portal loads the correct station workstation.
@@ -45,8 +45,12 @@ GCOS_DATABASE_URL=<managed postgres connection string>
 DATABASE_URL=<optional Replit Postgres fallback if GCOS_DATABASE_URL is not set>
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
-GCOS_OBJECT_STORAGE_PROVIDER=filesystem
-GCOS_OBJECT_VAULT_PATH=<persistent object vault path>
+GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2
+GCOS_R2_ACCOUNT_ID=<cloudflare account id>
+GCOS_R2_BUCKET=rmvi-gcos-vault
+GCOS_R2_ACCESS_KEY_ID=<r2 access key id>
+GCOS_R2_SECRET_ACCESS_KEY=<r2 secret access key>
+GCOS_OBJECT_VAULT_PATH=<local fallback path>
 GCOS_MAX_BODY_BYTES=1048576
 GCOS_LOGIN_RATE_LIMIT=8
 GCOS_LOGIN_RATE_WINDOW_MS=300000
@@ -78,14 +82,26 @@ Use two storage systems:
    - Stores all GCOS records: users, station accounts, permissions, ChurchMail metadata, reports, approvals, tasks, policies, transfers, offices, audit rows, and workflow state.
    - Use Replit Postgres first. GCOS accepts either `GCOS_DATABASE_URL` or Replit's standard `DATABASE_URL`.
 
-2. `Object Vault`
+2. `Cloudflare R2 Object Vault`
    - Stores uploaded files: report packets, PDFs, images, voice reports, videos, signed transfer letters, receipts, and evidence files.
-   - For the Replit launch, set `GCOS_OBJECT_STORAGE_PROVIDER=filesystem` and `GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault`.
-   - For larger production scale, move the vault to S3-compatible storage such as Cloudflare R2, AWS S3, Supabase Storage, or another managed object store.
+   - For the Replit launch, set `GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2` and add the R2 account ID, bucket, access key ID, and secret access key.
+   - Keep `GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault` as the local fallback for development.
 
 ## Object Vault Launch
 
-Set `GCOS_OBJECT_STORAGE_PROVIDER=filesystem` and `GCOS_OBJECT_VAULT_PATH` to a persistent path supported by the host. Uploaded documents, report evidence, and archive files depend on this setting.
+Create a Cloudflare R2 bucket named `rmvi-gcos-vault`, then create an R2 API token with object read/write access for that bucket.
+
+Set these Replit Secrets:
+
+```text
+GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2
+GCOS_R2_ACCOUNT_ID=<cloudflare account id>
+GCOS_R2_BUCKET=rmvi-gcos-vault
+GCOS_R2_ACCESS_KEY_ID=<r2 access key id>
+GCOS_R2_SECRET_ACCESS_KEY=<r2 secret access key>
+```
+
+Uploaded documents, report evidence, and archive files will be stored in R2. GCOS stores file metadata, hashes, ownership, and audit links in Postgres.
 
 ## Verification Commands
 

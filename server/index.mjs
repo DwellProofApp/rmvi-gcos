@@ -1,10 +1,11 @@
 import { createServer } from "node:http";
 import { createHash, randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { audit, createSeedState, getPermissions, normalizeStationEmail } from "./domain.mjs";
 import { createServices } from "./services.mjs";
+import { createObjectStorageAdapter } from "./object-storage.mjs";
 import { createStorageAdapter } from "./storage/index.mjs";
 import { validateRequest } from "./validation.mjs";
 
@@ -18,6 +19,14 @@ const DATABASE_URL = process.env.GCOS_DATABASE_URL ?? process.env.DATABASE_URL ?
 const DATABASE_URL_SOURCE = process.env.GCOS_DATABASE_URL ? "GCOS_DATABASE_URL" : process.env.DATABASE_URL ? "DATABASE_URL" : "";
 const OBJECT_STORAGE_PROVIDER = process.env.GCOS_OBJECT_STORAGE_PROVIDER ?? "filesystem";
 const OBJECT_VAULT_PATH = process.env.GCOS_OBJECT_VAULT_PATH ?? join(dirname(DATA_PATH), "object-vault");
+const objectStorage = createObjectStorageAdapter({
+  provider: OBJECT_STORAGE_PROVIDER,
+  vaultPath: OBJECT_VAULT_PATH,
+  r2AccountId: process.env.GCOS_R2_ACCOUNT_ID,
+  r2Bucket: process.env.GCOS_R2_BUCKET,
+  r2AccessKeyId: process.env.GCOS_R2_ACCESS_KEY_ID,
+  r2SecretAccessKey: process.env.GCOS_R2_SECRET_ACCESS_KEY
+});
 const SERVE_WEB = process.env.GCOS_SERVE_WEB === "1";
 const WEB_DIST_PATH = process.env.GCOS_WEB_DIST_PATH ?? join(SERVER_DIR, "..", "dist");
 const DOMAIN = process.env.GCOS_DOMAIN ?? "rmvi.org";
@@ -541,7 +550,7 @@ async function launchReadiness() {
     { name: "workflow-data", category: "mvp", ok: counts.stations > 0 && counts.messages > 0 && counts.reports > 0 && counts.approvals > 0 && counts.tasks > 0, detail: `${counts.stations} stations, ${counts.tasks} tasks, ${counts.approvals} approvals` },
     { name: "auth-sessions", category: "mvp", ok: state.authCredentials && Object.keys(state.authCredentials).length > 0, detail: `${Object.keys(state.authCredentials ?? {}).length} station credentials` },
     { name: "audit-ledger", category: "mvp", ok: counts.audit > 0, detail: `${counts.audit} audit rows` },
-    { name: "object-vault", category: "mvp", ok: Boolean(OBJECT_VAULT_PATH), detail: `${OBJECT_STORAGE_PROVIDER}: ${OBJECT_VAULT_PATH}` },
+    { name: "object-vault", category: "mvp", ok: objectStorage.configured, detail: `${objectStorage.provider}: ${objectStorage.location}` },
     { name: "persistence", category: "mvp", ok: Boolean(persistence.hash), detail: `${persistence.provider}/${persistence.mode}` },
     { name: "migration-cockpit", category: "mvp", ok: persistenceCutoverChecklist().checks.length >= 3, detail: cutover.nextAction },
     { name: "production-profile", category: "production", ok: process.env.NODE_ENV === "production", detail: process.env.NODE_ENV ?? "not set" },
@@ -554,7 +563,7 @@ async function launchReadiness() {
     { name: "database-ssl", category: "production", ok: process.env.GCOS_DATABASE_SSL === "1" || STORAGE_PROVIDER !== "database", detail: process.env.GCOS_DATABASE_SSL === "1" ? "Database SSL enabled" : "Database SSL not required for current provider" },
     { name: "cors-origin", category: "production", ok: ALLOWED_ORIGIN !== "*", detail: ALLOWED_ORIGIN },
     { name: "healthcheck-domain", category: "production", ok: (process.env.GCOS_HEALTHCHECK_URL ?? "").includes(DOMAIN), detail: process.env.GCOS_HEALTHCHECK_URL ?? "not configured" },
-    { name: "object-vault-path", category: "production", ok: !OBJECT_VAULT_PATH.includes("/data/object-vault") || process.env.GCOS_OBJECT_VAULT_PATH !== undefined, detail: `${OBJECT_STORAGE_PROVIDER}: ${OBJECT_VAULT_PATH}` },
+    { name: "object-vault-path", category: "production", ok: objectStorage.configured && (!OBJECT_VAULT_PATH.includes("/data/object-vault") || process.env.GCOS_OBJECT_VAULT_PATH !== undefined || objectStorage.provider === "cloudflare-r2"), detail: `${objectStorage.provider}: ${objectStorage.location}` },
     { name: "body-limit", category: "production", ok: MAX_BODY_BYTES >= 1048576, detail: `${MAX_BODY_BYTES} bytes` },
     { name: "rate-limit-protection", category: "production", ok: LOGIN_RATE_LIMIT > 0 && MUTATION_RATE_LIMIT > 0, detail: `${LOGIN_RATE_LIMIT} login attempts / ${Math.round(LOGIN_RATE_WINDOW_MS / 1000)}s` },
     { name: "backup-manifest", category: "production", ok: backupManifest.status === "protected", detail: `${backupManifest.total} backups, ${backupManifest.totalBytes} bytes` },
@@ -720,7 +729,7 @@ async function enterpriseCompletionReport() {
     ]),
     enterpriseTrack("database-storage", "Real database and file storage", [
       { name: "postgres-adapter", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? "Database provider selected" : "JSON provider active" },
-      { name: "object-vault", ok: Boolean(process.env.GCOS_OBJECT_VAULT_PATH), detail: `${OBJECT_STORAGE_PROVIDER}: ${OBJECT_VAULT_PATH}` },
+      { name: "object-vault", ok: objectStorage.configured, detail: `${objectStorage.provider}: ${objectStorage.location}` },
       { name: "file-upload-api", ok: Boolean(routes["POST /api/files/upload"]) && Boolean(routes["POST /api/reports/:id/file"]), detail: "File upload and report evidence routes available" }
     ]),
     enterpriseTrack("role-templates", "Role templates and permissions", [
@@ -985,8 +994,12 @@ function productionSecretEntries() {
     { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? `${redactSecret(DATABASE_URL)}${DATABASE_URL_SOURCE === "DATABASE_URL" ? " via DATABASE_URL" : ""}` : "required", configured: Boolean(DATABASE_URL), sensitive: true },
     { name: "GCOS_DATABASE_SSL", value: "1", configured: process.env.GCOS_DATABASE_SSL === "1", sensitive: false },
     { name: "GCOS_DATABASE_POOL_SIZE", value: process.env.GCOS_DATABASE_POOL_SIZE ?? "5", configured: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, sensitive: false },
-    { name: "GCOS_OBJECT_STORAGE_PROVIDER", value: OBJECT_STORAGE_PROVIDER, configured: Boolean(OBJECT_STORAGE_PROVIDER), sensitive: false },
-    { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false },
+    { name: "GCOS_OBJECT_STORAGE_PROVIDER", value: OBJECT_STORAGE_PROVIDER, configured: objectStorage.configured, sensitive: false },
+    { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: objectStorage.provider === "cloudflare-r2" || Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false },
+    { name: "GCOS_R2_ACCOUNT_ID", value: process.env.GCOS_R2_ACCOUNT_ID ? "configured" : "required for R2", configured: objectStorage.provider !== "cloudflare-r2" || Boolean(process.env.GCOS_R2_ACCOUNT_ID), sensitive: true },
+    { name: "GCOS_R2_BUCKET", value: process.env.GCOS_R2_BUCKET ?? "required for R2", configured: objectStorage.provider !== "cloudflare-r2" || Boolean(process.env.GCOS_R2_BUCKET), sensitive: false },
+    { name: "GCOS_R2_ACCESS_KEY_ID", value: process.env.GCOS_R2_ACCESS_KEY_ID ? "configured" : "required for R2", configured: objectStorage.provider !== "cloudflare-r2" || Boolean(process.env.GCOS_R2_ACCESS_KEY_ID), sensitive: true },
+    { name: "GCOS_R2_SECRET_ACCESS_KEY", value: process.env.GCOS_R2_SECRET_ACCESS_KEY ? "configured" : "required for R2", configured: objectStorage.provider !== "cloudflare-r2" || Boolean(process.env.GCOS_R2_SECRET_ACCESS_KEY), sensitive: true },
     { name: "GCOS_LOGIN_RATE_LIMIT", value: String(LOGIN_RATE_LIMIT), configured: LOGIN_RATE_LIMIT >= 5, sensitive: false },
     { name: "GCOS_LOGIN_RATE_WINDOW_MS", value: String(LOGIN_RATE_WINDOW_MS), configured: LOGIN_RATE_WINDOW_MS >= 60000, sensitive: false },
     { name: "GCOS_MUTATION_RATE_LIMIT", value: String(MUTATION_RATE_LIMIT), configured: MUTATION_RATE_LIMIT >= 100, sensitive: false },
@@ -1021,8 +1034,9 @@ function productionSecretsPlan() {
 
 function productionSecretAction(name) {
   if (name === "GCOS_DATABASE_URL") return "Create/connect managed Postgres and set GCOS_DATABASE_URL in Replit Secrets.";
-  if (name === "GCOS_OBJECT_STORAGE_PROVIDER") return "Set GCOS_OBJECT_STORAGE_PROVIDER=filesystem for Replit, or use s3/r2/supabase when an external object vault is connected.";
+  if (name === "GCOS_OBJECT_STORAGE_PROVIDER") return "Set GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2 after the Cloudflare R2 bucket and API token are ready.";
   if (name === "GCOS_OBJECT_VAULT_PATH") return "Set GCOS_OBJECT_VAULT_PATH to a persistent upload vault path.";
+  if (name.startsWith("GCOS_R2_")) return "Create a Cloudflare R2 bucket and API token, then add this R2 value in Replit Secrets.";
   if (name === "NODE_ENV") return "Set NODE_ENV=production in Replit Secrets.";
   if (name === "GCOS_ALLOWED_ORIGIN") return "Set GCOS_ALLOWED_ORIGIN=https://rmvi.org.";
   if (name === "GCOS_HEALTHCHECK_URL") return "Set GCOS_HEALTHCHECK_URL=https://rmvi.org.";
@@ -1344,10 +1358,7 @@ async function uploadFile(body, actor) {
   const safeName = String(body.name).toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/(^-|-$)/g, "") || `upload${extension}`;
   const id = randomUUID();
   const objectKey = `${id}/${safeName}`;
-  const diskPath = resolve(OBJECT_VAULT_PATH, objectKey);
-  if (!diskPath.startsWith(resolve(OBJECT_VAULT_PATH))) throw new HttpError(400, "Invalid object key");
-  await mkdir(dirname(diskPath), { recursive: true });
-  await writeFile(diskPath, bytes);
+  const stored = await objectStorage.putObject({ key: objectKey, body: bytes, contentType: body.contentType });
   state.files ??= [];
   const file = {
     id,
@@ -1356,8 +1367,8 @@ async function uploadFile(body, actor) {
     size: bytes.length,
     hash,
     objectKey,
-    storageProvider: OBJECT_STORAGE_PROVIDER,
-    storagePath: diskPath,
+    storageProvider: objectStorage.provider,
+    storagePath: stored.storagePath,
     uploadedAt: now,
     uploadedBy: actor,
     source: body.source ?? "Object Vault",
@@ -1377,15 +1388,15 @@ function storageProfile() {
       secret: STORAGE_PROVIDER === "database" ? DATABASE_URL_SOURCE || "GCOS_DATABASE_URL" : "GCOS_DATA_PATH"
     },
     files: {
-      provider: OBJECT_STORAGE_PROVIDER,
-      mode: OBJECT_STORAGE_PROVIDER === "filesystem" ? "Server object vault" : "External object storage",
-      path: OBJECT_VAULT_PATH,
-      configured: Boolean(OBJECT_STORAGE_PROVIDER && OBJECT_VAULT_PATH)
+      provider: objectStorage.provider,
+      mode: objectStorage.mode,
+      path: objectStorage.location,
+      configured: objectStorage.configured
     },
     recommendedProduction: {
       database: "Managed Postgres",
       fileVault: "Durable object storage for PDFs, photos, videos, voice notes, and signed documents",
-      currentLaunch: "Replit Postgres plus configured object vault path"
+      currentLaunch: objectStorage.provider === "cloudflare-r2" ? "Replit Postgres plus Cloudflare R2" : "Replit Postgres plus configured object vault path"
     }
   };
 }
@@ -1437,7 +1448,7 @@ function linkEvidenceFile(id, body, actor) {
 
 async function readStoredFile(id, actor) {
   const file = getFile(id);
-  const body = await readFile(file.storagePath);
+  const body = await objectStorage.getObject({ key: file.objectKey, storagePath: file.storagePath });
   file.downloadedAt = new Date().toISOString();
   file.downloadedBy = actor;
   record("FileDownloaded", actor, file.name, file.hash);

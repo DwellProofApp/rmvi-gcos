@@ -25,7 +25,11 @@ GCOS_STORAGE_PROVIDER=database
 GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
-GCOS_OBJECT_STORAGE_PROVIDER=filesystem
+GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2
+GCOS_R2_ACCOUNT_ID=<cloudflare account id>
+GCOS_R2_BUCKET=rmvi-gcos-vault
+GCOS_R2_ACCESS_KEY_ID=<r2 access key id>
+GCOS_R2_SECRET_ACCESS_KEY=<r2 secret access key>
 GCOS_DATA_PATH=/var/lib/gcos/gcos-state.json
 GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
 GCOS_SERVE_WEB=1
@@ -99,7 +103,7 @@ MVP persistence can run from the live Postgres JSONB adapter.
 - Set `GCOS_STORAGE_PROVIDER=database`.
 - Set `GCOS_DATABASE_URL` to the managed Postgres connection string.
 - Set `GCOS_DATABASE_SSL=1` for managed providers that require TLS.
-- Set `GCOS_OBJECT_STORAGE_PROVIDER=filesystem` and `GCOS_OBJECT_VAULT_PATH` to a durable path for uploaded files.
+- Set `GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2` and add the R2 account ID, bucket, access key ID, and secret access key for uploaded files.
 - Keep JSON backup/export artifacts until the database cutover checklist is clean.
 - Record `/api/persistence/backup-manifest` after creating a backup so launch readiness can verify the backup set.
 - Run and record `/api/persistence/restore-drill` before cutover to prove the latest backup can be read.

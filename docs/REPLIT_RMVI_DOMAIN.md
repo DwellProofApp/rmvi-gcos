@@ -16,7 +16,11 @@ GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
 # If Replit Postgres provides DATABASE_URL automatically, GCOS will use it as a fallback.
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
-GCOS_OBJECT_STORAGE_PROVIDER=filesystem
+GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2
+GCOS_R2_ACCOUNT_ID=<cloudflare account id>
+GCOS_R2_BUCKET=rmvi-gcos-vault
+GCOS_R2_ACCESS_KEY_ID=<r2 access key id>
+GCOS_R2_SECRET_ACCESS_KEY=<r2 secret access key>
 GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
 GCOS_ALLOWED_ORIGIN=https://rmvi.org
 GCOS_HEALTHCHECK_URL=https://rmvi.org
@@ -71,7 +75,11 @@ GCOS_DATABASE_URL=postgres://USER:PASSWORD@HOST:5432/DATABASE
 # Or connect Replit Postgres and use the platform-provided DATABASE_URL fallback.
 GCOS_DATABASE_SSL=1
 GCOS_DATABASE_POOL_SIZE=5
-GCOS_OBJECT_STORAGE_PROVIDER=filesystem
+GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2
+GCOS_R2_ACCOUNT_ID=<cloudflare account id>
+GCOS_R2_BUCKET=rmvi-gcos-vault
+GCOS_R2_ACCESS_KEY_ID=<r2 access key id>
+GCOS_R2_SECRET_ACCESS_KEY=<r2 secret access key>
 GCOS_OBJECT_VAULT_PATH=/var/lib/gcos/object-vault
 GCOS_ALLOWED_ORIGIN=https://rmvi.org
 GCOS_HEALTHCHECK_URL=https://rmvi.org
