@@ -2361,24 +2361,74 @@ function stationDepartment(station: StationCard) {
   return station.authority.split(",")[0]?.trim() || "Church Administration";
 }
 
+type WorkstationProfile = {
+  key: string;
+  label: string;
+  title: string;
+  description: string;
+  focus: string[];
+  defaultMessageTo: string;
+  defaultMessageSubject: string;
+  defaultFiles: string;
+  defaultReportName: string;
+  defaultReportType: string;
+  reportTypes: string[];
+  defaultTaskTitle: string;
+  primaryTools: Array<{ icon: React.ElementType; label: string; detail: string; section: Section }>;
+  queueLabel: string;
+};
+
+function stationSearchValue(station: StationCard) {
+  return `${station.email} ${station.title} ${station.authority} ${station.level}`.toLowerCase();
+}
+
+function hasStationTerm(station: StationCard, terms: string[]) {
+  const value = stationSearchValue(station);
+  return terms.some((term) => value.includes(term));
+}
+
 function isFinanceStation(station: StationCard) {
-  const value = `${station.email} ${station.title} ${station.authority}`.toLowerCase();
-  return value.includes("finance") || value.includes("budget") || value.includes("offering");
+  return hasStationTerm(station, ["finance", "budget", "offering", "tithe", "stewardship"]);
 }
 
 function isAuditStation(station: StationCard) {
-  const value = `${station.email} ${station.title} ${station.authority}`.toLowerCase();
-  return value.includes("audit") || value.includes("compliance");
+  return hasStationTerm(station, ["audit", "compliance", "evidence", "control"]);
 }
 
 function isMissionStation(station: StationCard) {
-  const value = `${station.email} ${station.title} ${station.authority}`.toLowerCase();
-  return value.includes("mission") || value.includes("evangelism") || value.includes("kingdom harvesters") || value.includes("church planting");
+  return hasStationTerm(station, ["mission", "evangelism", "kingdom harvesters", "church planting", "outreach"]);
 }
 
 function isMediaStation(station: StationCard) {
-  const value = `${station.email} ${station.title} ${station.authority}`.toLowerCase();
-  return value.includes("media") || value.includes("communications");
+  return hasStationTerm(station, ["media", "communications", "technical sound"]);
+}
+
+function isPersonnelStation(station: StationCard) {
+  return hasStationTerm(station, ["personnel", "transfer", "assignment", "secretariat"]);
+}
+
+function isPastoralCareStation(station: StationCard) {
+  return hasStationTerm(station, ["pastoral care", "pastor", "counseling", "visitation", "bereavement"]);
+}
+
+function isEducationStation(station: StationCard) {
+  return hasStationTerm(station, ["education", "sunday school", "discipleship", "children", "teens", "youth"]);
+}
+
+function isFacilitiesStation(station: StationCard) {
+  return hasStationTerm(station, ["construction", "facilities", "maintenance", "sanitation"]);
+}
+
+function isSafetyStation(station: StationCard) {
+  return hasStationTerm(station, ["security", "safety", "protocol"]);
+}
+
+function isWelfareStation(station: StationCard) {
+  return hasStationTerm(station, ["welfare", "social development", "good samaritans"]);
+}
+
+function isWorshipStation(station: StationCard) {
+  return hasStationTerm(station, ["choir", "worship", "music", "ushering"]);
 }
 
 function getAllowedSections(station: StationCard, permissions: Permissions): Section[] {
@@ -2386,66 +2436,321 @@ function getAllowedSections(station: StationCard, permissions: Permissions): Sec
 
   const allowed = new Set<Section>(["Control Center", "ChurchMail", "Reports", "Tasks", "Policies", "Calendar", "Archive", "Account Settings"]);
   if (permissions.canApprove || isFinanceStation(station)) allowed.add("Approvals");
-  if (permissions.canExecuteTransfers || isMissionStation(station)) allowed.add("Transfers");
+  if (permissions.canExecuteTransfers || isMissionStation(station) || isPersonnelStation(station)) allowed.add("Transfers");
   if (permissions.canCreateOffices) allowed.add("Offices");
   if (["National HQ", "County/State HQ", "District HQ"].includes(station.level)) {
     allowed.add("Escalations");
     allowed.add("Hierarchy");
   }
-  if (isMissionStation(station) || station.level !== "Local Branch") allowed.add("Personnel");
+  if (isMissionStation(station) || isPersonnelStation(station) || isPastoralCareStation(station) || station.level !== "Local Branch") allowed.add("Personnel");
   if (isAuditStation(station)) allowed.add("Audit");
-  if (isMediaStation(station) || station.level !== "Local Branch") allowed.add("AI Desk");
+  if (isMediaStation(station) || isEducationStation(station) || station.level !== "Local Branch") allowed.add("AI Desk");
   return navItems.map((item) => item.label).filter((section) => allowed.has(section));
 }
 
-function getWorkstationProfile(station: StationCard, permissions: Permissions) {
+function makeProfile(profile: WorkstationProfile): WorkstationProfile {
+  return profile;
+}
+
+function getWorkstationProfile(station: StationCard, permissions: Permissions): WorkstationProfile {
   const department = stationDepartment(station);
   if (permissions.canOverride) {
-    return {
+    return makeProfile({
+      key: "admin",
       label: "Executive administration",
       title: "System administration dashboard",
       description: "Global command, users, offices, audit, deployment, and governance control.",
-      focus: ["Admin board", "Office lifecycle", "Audit and sessions", "Deployment health"]
-    };
+      focus: ["Admin board", "Office lifecycle", "Audit and sessions", "Deployment health"],
+      defaultMessageTo: "All National and Regional Offices",
+      defaultMessageSubject: "Executive governance directive",
+      defaultFiles: "Directive memo, policy attachment",
+      defaultReportName: "Executive governance summary",
+      defaultReportType: "Executive",
+      reportTypes: ["Executive", "Governance", "Audit", "Administrative"],
+      defaultTaskTitle: "Review governance readiness queue",
+      primaryTools: [
+        { icon: SlidersHorizontal, label: "Admin Board", detail: "Users, offices, sessions", section: "Admin Board" },
+        { icon: Building2, label: "Offices", detail: "Create and approve stations", section: "Offices" },
+        { icon: ShieldCheck, label: "Audit", detail: "Seal records and sessions", section: "Audit" },
+        { icon: AlertTriangle, label: "Escalations", detail: "Executive attention queue", section: "Escalations" }
+      ],
+      queueLabel: "Executive queue"
+    });
   }
   if (isFinanceStation(station)) {
-    return {
+    return makeProfile({
+      key: "finance",
       label: "Finance workstation",
       title: "Finance and stewardship dashboard",
       description: "Review finance reports, send ChurchMail, attach evidence, request approvals, and prepare audit records.",
-      focus: ["Finance inbox", "Weekly finance report", "Approval requests", "Audit evidence"]
-    };
+      focus: ["Finance inbox", "Weekly finance report", "Approval requests", "Audit evidence"],
+      defaultMessageTo: "District Finance Desk",
+      defaultMessageSubject: "Weekly tithe and offering finance report",
+      defaultFiles: "Deposit slip, ledger, receipt packet",
+      defaultReportName: "Weekly financial report",
+      defaultReportType: "Financial",
+      reportTypes: ["Financial", "Audit", "Planning", "Administrative"],
+      defaultTaskTitle: "Reconcile weekly offering deposit",
+      primaryTools: [
+        { icon: FileBarChart2, label: "Finance Reports", detail: "Tithe, offering, budgets", section: "Reports" },
+        { icon: Signature, label: "Approvals", detail: "Release and budget chains", section: "Approvals" },
+        { icon: Files, label: "Evidence", detail: "Receipts and deposits", section: "Archive" },
+        { icon: Mail, label: "Finance Mail", detail: "Send to treasury", section: "ChurchMail" }
+      ],
+      queueLabel: "Finance queue"
+    });
   }
   if (isAuditStation(station)) {
-    return {
+    return makeProfile({
+      key: "audit",
       label: "Audit workstation",
       title: "Compliance and evidence dashboard",
       description: "Review audit packets, verify evidence, seal archive records, and track policy compliance.",
-      focus: ["Audit inbox", "Evidence vault", "Policy checks", "Exception review"]
-    };
+      focus: ["Audit inbox", "Evidence vault", "Policy checks", "Exception review"],
+      defaultMessageTo: "National Audit Desk",
+      defaultMessageSubject: "Audit compliance packet review",
+      defaultFiles: "Evidence packet, signed checklist",
+      defaultReportName: "Audit compliance packet",
+      defaultReportType: "Audit",
+      reportTypes: ["Audit", "Financial", "Governance", "Administrative"],
+      defaultTaskTitle: "Verify evidence chain for submitted packet",
+      primaryTools: [
+        { icon: ShieldCheck, label: "Audit Desk", detail: "Controls and exceptions", section: "Audit" },
+        { icon: ArchiveIcon, label: "Evidence Vault", detail: "Seal and verify files", section: "Archive" },
+        { icon: ClipboardCheck, label: "Policies", detail: "Compliance checklist", section: "Policies" },
+        { icon: AlertTriangle, label: "Escalations", detail: "Late and failed controls", section: "Escalations" }
+      ],
+      queueLabel: "Compliance queue"
+    });
   }
   if (isMissionStation(station)) {
-    return {
+    return makeProfile({
+      key: "mission",
       label: "Mission workstation",
       title: "Mission and evangelism dashboard",
       description: "Send outreach updates, complete evangelism reports, track follow-up tasks, and manage mission movement.",
-      focus: ["ChurchMail", "Evangelism report", "Follow-up tasks", "Mission transfers"]
-    };
+      focus: ["ChurchMail", "Evangelism report", "Follow-up tasks", "Mission transfers"],
+      defaultMessageTo: "Area Mission Office",
+      defaultMessageSubject: "Weekly evangelism and souls won update",
+      defaultFiles: "Outreach report, attendance sheet, contact list",
+      defaultReportName: "Kingdom Harvesters weekly evangelism report",
+      defaultReportType: "Service Groups",
+      reportTypes: ["Service Groups", "Mission", "Membership", "Pastoral Care"],
+      defaultTaskTitle: "Follow up with new converts",
+      primaryTools: [
+        { icon: Send, label: "Send Update", detail: "Outreach and testimony mail", section: "ChurchMail" },
+        { icon: FileCheck2, label: "Evangelism Report", detail: "Souls reached and won", section: "Reports" },
+        { icon: Users, label: "Follow-up", detail: "Contacts and converts", section: "Personnel" },
+        { icon: GitBranch, label: "Transfers", detail: "Mission movement", section: "Transfers" }
+      ],
+      queueLabel: "Mission queue"
+    });
+  }
+  if (isEducationStation(station)) {
+    return makeProfile({
+      key: "education",
+      label: "Education workstation",
+      title: "Education and discipleship dashboard",
+      description: "Manage Sunday School reports, class attendance, teacher assignments, youth activity, and discipleship progress.",
+      focus: ["Class reports", "Teacher tasks", "Attendance", "Training notes"],
+      defaultMessageTo: "Education Directorate",
+      defaultMessageSubject: "Sunday School and discipleship update",
+      defaultFiles: "Class roster, lesson notes, attendance sheet",
+      defaultReportName: "Education and Sunday School Report",
+      defaultReportType: "Education",
+      reportTypes: ["Education", "Youth", "Children", "Membership", "Executive"],
+      defaultTaskTitle: "Confirm teacher attendance and lesson completion",
+      primaryTools: [
+        { icon: ScrollText, label: "Class Reports", detail: "Lessons and attendance", section: "Reports" },
+        { icon: Users, label: "Students", detail: "Children, youth, converts", section: "Personnel" },
+        { icon: CalendarDays, label: "Schedule", detail: "Classes and training", section: "Calendar" },
+        { icon: Sparkles, label: "AI Drafts", detail: "Summaries and memos", section: "AI Desk" }
+      ],
+      queueLabel: "Education queue"
+    });
+  }
+  if (isPastoralCareStation(station)) {
+    return makeProfile({
+      key: "pastoral-care",
+      label: "Pastoral care workstation",
+      title: "Care, visitation, and counseling dashboard",
+      description: "Track confidential care summaries, prayer needs, hospital visits, bereavement support, and pastoral follow-up tasks.",
+      focus: ["Care inbox", "Visitation", "Prayer reports", "Sensitive archive"],
+      defaultMessageTo: "Pastoral Supervisor",
+      defaultMessageSubject: "Pastoral visitation and care update",
+      defaultFiles: "Care summary, visitation notes",
+      defaultReportName: "Pastoral Visitation Report",
+      defaultReportType: "Pastoral Care",
+      reportTypes: ["Pastoral Care", "Membership", "Social Development", "Administrative"],
+      defaultTaskTitle: "Schedule care follow-up for member family",
+      primaryTools: [
+        { icon: Users, label: "Care List", detail: "Members needing follow-up", section: "Personnel" },
+        { icon: FileText, label: "Care Reports", detail: "Prayer and visitation", section: "Reports" },
+        { icon: ArchiveIcon, label: "Confidential Archive", detail: "Sensitive records", section: "Archive" },
+        { icon: Mail, label: "Care Mail", detail: "Route updates securely", section: "ChurchMail" }
+      ],
+      queueLabel: "Care queue"
+    });
+  }
+  if (isFacilitiesStation(station)) {
+    return makeProfile({
+      key: "facilities",
+      label: "Facilities workstation",
+      title: "Facilities, construction, and maintenance dashboard",
+      description: "Track construction milestones, repairs, building needs, equipment condition, safety blockers, and photo evidence.",
+      focus: ["Maintenance", "Construction", "Photos", "Budget requests"],
+      defaultMessageTo: "District Works Desk",
+      defaultMessageSubject: "Facilities and maintenance status update",
+      defaultFiles: "Site photos, repair estimate, materials list",
+      defaultReportName: "Construction and Facilities Progress Report",
+      defaultReportType: "Construction",
+      reportTypes: ["Construction", "Asset", "Operations", "Financial"],
+      defaultTaskTitle: "Upload construction or repair evidence",
+      primaryTools: [
+        { icon: Building2, label: "Facilities", detail: "Projects and repairs", section: "Reports" },
+        { icon: Upload, label: "Photo Evidence", detail: "Attach files", section: "Archive" },
+        { icon: Signature, label: "Budget Approval", detail: "Funds and releases", section: "Approvals" },
+        { icon: SquareCheckBig, label: "Work Orders", detail: "Maintenance tasks", section: "Tasks" }
+      ],
+      queueLabel: "Facilities queue"
+    });
+  }
+  if (isSafetyStation(station)) {
+    return makeProfile({
+      key: "safety",
+      label: "Safety workstation",
+      title: "Security, protocol, and safety dashboard",
+      description: "Record service coverage, incidents, protocol duties, movement control, emergency readiness, and escalation needs.",
+      focus: ["Incident reports", "Protocol tasks", "Safety coverage", "Escalations"],
+      defaultMessageTo: "District Administration",
+      defaultMessageSubject: "Security and protocol service report",
+      defaultFiles: "Incident note, coverage sheet",
+      defaultReportName: "Security and Safety Report",
+      defaultReportType: "Operations",
+      reportTypes: ["Operations", "Event", "Governance", "Administrative"],
+      defaultTaskTitle: "Review next service safety coverage",
+      primaryTools: [
+        { icon: AlertTriangle, label: "Incidents", detail: "Safety and protocol reports", section: "Reports" },
+        { icon: SquareCheckBig, label: "Coverage Tasks", detail: "Service assignments", section: "Tasks" },
+        { icon: Mail, label: "Notify", detail: "Route alerts", section: "ChurchMail" },
+        { icon: ArchiveIcon, label: "Incident Archive", detail: "Evidence records", section: "Archive" }
+      ],
+      queueLabel: "Safety queue"
+    });
+  }
+  if (isWelfareStation(station)) {
+    return makeProfile({
+      key: "welfare",
+      label: "Welfare workstation",
+      title: "Welfare and social development dashboard",
+      description: "Organize benevolence requests, community impact, vulnerable member support, assistance records, and follow-up work.",
+      focus: ["Member assistance", "Community impact", "Requests", "Follow-up"],
+      defaultMessageTo: "Social Development Desk",
+      defaultMessageSubject: "Welfare and social development update",
+      defaultFiles: "Assistance register, beneficiary notes",
+      defaultReportName: "Welfare and Social Development Report",
+      defaultReportType: "Social Development",
+      reportTypes: ["Social Development", "Pastoral Care", "Membership", "Financial"],
+      defaultTaskTitle: "Confirm welfare follow-up and assistance record",
+      primaryTools: [
+        { icon: Users, label: "Beneficiaries", detail: "Member support", section: "Personnel" },
+        { icon: FileText, label: "Welfare Reports", detail: "Assistance and impact", section: "Reports" },
+        { icon: Signature, label: "Release Requests", detail: "Aid approvals", section: "Approvals" },
+        { icon: ArchiveIcon, label: "Records", detail: "Evidence and privacy", section: "Archive" }
+      ],
+      queueLabel: "Welfare queue"
+    });
+  }
+  if (isMediaStation(station)) {
+    return makeProfile({
+      key: "media",
+      label: "Media workstation",
+      title: "Media and communications dashboard",
+      description: "Manage service media, announcements, recordings, livestream notes, equipment status, and communication archives.",
+      focus: ["Announcements", "Recordings", "Equipment", "Media archive"],
+      defaultMessageTo: "Media and Communications Desk",
+      defaultMessageSubject: "Media service and communications report",
+      defaultFiles: "Recording log, announcement file, equipment note",
+      defaultReportName: "Media and Communications Report",
+      defaultReportType: "Media",
+      reportTypes: ["Media", "Worship", "Operations", "Event"],
+      defaultTaskTitle: "Archive service recording and media notes",
+      primaryTools: [
+        { icon: RadioTower, label: "Broadcast", detail: "Livestream and media", section: "Reports" },
+        { icon: Files, label: "Media Archive", detail: "Recordings and files", section: "Archive" },
+        { icon: Sparkles, label: "Draft Memo", detail: "AI announcements", section: "AI Desk" },
+        { icon: Mail, label: "Communications", detail: "Official notices", section: "ChurchMail" }
+      ],
+      queueLabel: "Media queue"
+    });
+  }
+  if (isWorshipStation(station)) {
+    return makeProfile({
+      key: "worship",
+      label: "Worship service workstation",
+      title: "Choir, worship, and service order dashboard",
+      description: "Coordinate choir, music, ushering, worship preparation, service participation, and order-of-service records.",
+      focus: ["Rehearsal", "Service report", "Attendance", "Needs"],
+      defaultMessageTo: "Worship and Service Coordination",
+      defaultMessageSubject: "Worship service group report",
+      defaultFiles: "Choir roster, service notes, attendance sheet",
+      defaultReportName: "Choir Service Group Report",
+      defaultReportType: "Worship",
+      reportTypes: ["Worship", "Service Groups", "Meetings", "Operations"],
+      defaultTaskTitle: "Confirm rehearsal and service assignments",
+      primaryTools: [
+        { icon: FileCheck2, label: "Service Report", detail: "Choir and worship record", section: "Reports" },
+        { icon: CalendarDays, label: "Rehearsal", detail: "Schedule and attendance", section: "Calendar" },
+        { icon: SquareCheckBig, label: "Assignments", detail: "Service duties", section: "Tasks" },
+        { icon: Mail, label: "Notify Teams", detail: "Route service updates", section: "ChurchMail" }
+      ],
+      queueLabel: "Service queue"
+    });
   }
   if (station.level === "District HQ" || station.level === "County/State HQ" || station.level === "National HQ") {
-    return {
+    return makeProfile({
+      key: "supervisory",
       label: `${station.level} workstation`,
       title: "Supervisory governance dashboard",
       description: "Review lower-office reports, issue directives, approve work, monitor escalations, and route summaries upward.",
-      focus: ["Incoming reports", "Approvals", "Escalations", "Directives"]
-    };
+      focus: ["Incoming reports", "Approvals", "Escalations", "Directives"],
+      defaultMessageTo: "Supervised Offices",
+      defaultMessageSubject: "Governance reporting directive",
+      defaultFiles: "Directive memo, report checklist",
+      defaultReportName: "District Consolidated Summary Report",
+      defaultReportType: "Executive",
+      reportTypes: ["Executive", "Administrative", "Governance", "Financial", "Mission"],
+      defaultTaskTitle: "Review lower-office report packet",
+      primaryTools: [
+        { icon: Inbox, label: "Incoming Reports", detail: "Review submissions", section: "Reports" },
+        { icon: Signature, label: "Approvals", detail: "Delegated chains", section: "Approvals" },
+        { icon: AlertTriangle, label: "Escalations", detail: "Bottleneck watch", section: "Escalations" },
+        { icon: GitBranch, label: "Hierarchy", detail: "Reporting structure", section: "Hierarchy" }
+      ],
+      queueLabel: "Supervisory queue"
+    });
   }
-  return {
+  return makeProfile({
+    key: "local",
     label: `${department} workstation`,
     title: "Local church workstation",
     description: "Read messages, send updates, complete reports, manage tasks, and archive evidence for your office.",
-    focus: ["Inbox", "Send message", "Start report", "Archive"]
-  };
+    focus: ["Inbox", "Send message", "Start report", "Archive"],
+    defaultMessageTo: "Area Office",
+    defaultMessageSubject: "Weekly branch administration update",
+    defaultFiles: "Meeting notes, attendance sheet",
+    defaultReportName: "Monthly branch administration report",
+    defaultReportType: "Administrative",
+    reportTypes: ["Administrative", "Meetings", "Membership", "Service Groups", "Financial"],
+    defaultTaskTitle: "Prepare weekly branch update",
+    primaryTools: [
+      { icon: Mail, label: "Inbox", detail: "Read and reply", section: "ChurchMail" },
+      { icon: FileCheck2, label: "Reports", detail: "Prepare submission", section: "Reports" },
+      { icon: SquareCheckBig, label: "Tasks", detail: "Assigned work", section: "Tasks" },
+      { icon: ArchiveIcon, label: "Archive", detail: "Files and evidence", section: "Archive" }
+    ],
+    queueLabel: "Station queue"
+  });
 }
 
 function App() {
@@ -8864,29 +9169,44 @@ function StationHome({
   onCreateReport: (reportDraft: Omit<Report, "id" | "state" | "score">) => void;
   onCreateTask: (draft: Omit<GovernanceTask, "id" | "status">) => void;
 }) {
-  const [messageTo, setMessageTo] = React.useState("Area Office");
-  const [messageSubject, setMessageSubject] = React.useState("Weekly evangelism update");
-  const [messageFiles, setMessageFiles] = React.useState("Outreach report, attendance sheet");
-  const [reportName, setReportName] = React.useState("Kingdom Harvesters weekly evangelism report");
-  const [reportType, setReportType] = React.useState("Service Groups");
-  const [taskTitle, setTaskTitle] = React.useState("Follow up with new converts");
+  const stationPermissions = getPermissions(station);
+  const workstationProfile = getWorkstationProfile(station, stationPermissions);
+  const [messageTo, setMessageTo] = React.useState(workstationProfile.defaultMessageTo);
+  const [messageSubject, setMessageSubject] = React.useState(workstationProfile.defaultMessageSubject);
+  const [messageFiles, setMessageFiles] = React.useState(workstationProfile.defaultFiles);
+  const [reportName, setReportName] = React.useState(workstationProfile.defaultReportName);
+  const [reportType, setReportType] = React.useState(workstationProfile.defaultReportType);
+  const [taskTitle, setTaskTitle] = React.useState(workstationProfile.defaultTaskTitle);
   const [feedback, setFeedback] = React.useState("");
   const inbox = messages.filter((message) => !message.archived).slice(0, 5);
   const openReports = reports.filter((report) => report.state !== "Approved").slice(0, 5);
   const openTasks = tasks.filter((task) => task.status !== "Complete").slice(0, 5);
   const recentDocuments = documents.slice(0, 4);
-  const stationPermissions = getPermissions(station);
-  const workstationProfile = getWorkstationProfile(station, stationPermissions);
+  const allowedSections = getAllowedSections(station, stationPermissions);
+  React.useEffect(() => {
+    setMessageTo(workstationProfile.defaultMessageTo);
+    setMessageSubject(workstationProfile.defaultMessageSubject);
+    setMessageFiles(workstationProfile.defaultFiles);
+    setReportName(workstationProfile.defaultReportName);
+    setReportType(workstationProfile.defaultReportType);
+    setTaskTitle(workstationProfile.defaultTaskTitle);
+    setFeedback("");
+  }, [
+    workstationProfile.key,
+    workstationProfile.defaultFiles,
+    workstationProfile.defaultMessageSubject,
+    workstationProfile.defaultMessageTo,
+    workstationProfile.defaultReportName,
+    workstationProfile.defaultReportType,
+    workstationProfile.defaultTaskTitle
+  ]);
   const statusCards = [
-    { icon: Mail, label: "Inbox", value: String(inbox.length), detail: "Messages to read or answer", section: "ChurchMail" as Section },
-    { icon: FileCheck2, label: "Reports", value: String(openReports.length), detail: "Drafts, submissions, corrections", section: "Reports" as Section },
-    { icon: SquareCheckBig, label: "Tasks", value: String(openTasks.length), detail: "Work assigned to this station", section: "Tasks" as Section },
-    isFinanceStation(station)
-      ? { icon: Signature, label: "Approvals", value: "3", detail: "Budget and release requests", section: "Approvals" as Section }
-      : isMissionStation(station)
-        ? { icon: Users, label: "Follow-up", value: "4", detail: "People, transfers, and outreach care", section: "Personnel" as Section }
-        : { icon: ArchiveIcon, label: "Archive", value: String(recentDocuments.length), detail: "Saved files and evidence", section: "Archive" as Section }
-  ].filter((card) => getAllowedSections(station, stationPermissions).includes(card.section));
+    ...workstationProfile.primaryTools.map((tool, index) => ({
+      ...tool,
+      value: index === 0 ? String(inbox.length) : index === 1 ? String(openReports.length) : index === 2 ? String(openTasks.length) : String(recentDocuments.length)
+    })),
+    { icon: ArchiveIcon, label: "Archive", value: String(recentDocuments.length), detail: "Saved files and evidence", section: "Archive" as Section }
+  ].filter((card, index, cards) => allowedSections.includes(card.section) && cards.findIndex((item) => item.label === card.label) === index).slice(0, 4);
 
   function submitMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -8911,11 +9231,11 @@ function StationHome({
       period: "Current week",
       routingStage: "Draft started from station home",
       evidenceStatus: messageFiles || "Evidence pending",
-      templateId: reportType === "Service Groups" ? "tpl-service-kingdom-harvesters" : undefined,
-      templateChecklist: reportType === "Service Groups" ? ["Outreach locations", "Souls reached", "Souls won", "Phone numbers collected", "Follow-up calls completed"] : undefined
+      templateId: workstationProfile.key === "mission" ? "tpl-service-kingdom-harvesters" : undefined,
+      templateChecklist: workstationProfile.key === "mission" ? ["Outreach locations", "Souls reached", "Souls won", "Phone numbers collected", "Follow-up calls completed"] : undefined
     });
     setFeedback("Report draft created. Open Reports to complete and submit it.");
-    setReportName("New station report");
+    setReportName(workstationProfile.defaultReportName);
   }
 
   function addTask() {
@@ -8952,6 +9272,23 @@ function StationHome({
           <span>{networkOnline ? "Internet available" : "Working offline"}</span>
           <strong>{offlineMode ? "Offline queue" : "Ready to work"}</strong>
           <small>{offlineQueue.length ? `${offlineQueue.length} action(s) waiting to sync` : "No unsynced work"}</small>
+        </div>
+      </div>
+
+      <div className="role-system-panel" aria-label={`${workstationProfile.label} system modules`}>
+        <div>
+          <span>Role system</span>
+          <strong>{workstationProfile.label}</strong>
+          <p>GCOS loaded the tools, report defaults, inbox route, and work queue for this station.</p>
+        </div>
+        <div className="role-tool-grid">
+          {workstationProfile.primaryTools.filter((tool) => allowedSections.includes(tool.section)).map(({ icon: Icon, label, detail, section }) => (
+            <button key={label} type="button" onClick={() => onOpenSection(section)}>
+              <Icon size={18} />
+              <span>{label}</span>
+              <small>{detail}</small>
+            </button>
+          ))}
         </div>
       </div>
 
@@ -9033,7 +9370,7 @@ function StationHome({
             <label>
               <span>Report type</span>
               <select value={reportType} onChange={(event) => setReportType(event.target.value)}>
-                {["Service Groups", "Meetings", "Financial", "Membership", "Mission", "Pastoral Care"].map((type) => <option key={type}>{type}</option>)}
+                {workstationProfile.reportTypes.map((type) => <option key={type}>{type}</option>)}
               </select>
             </label>
             <button type="submit"><FileCheck2 size={15} /> Create report draft</button>
