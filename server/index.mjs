@@ -2522,6 +2522,11 @@ function baseHeaders() {
     "access-control-allow-headers": "content-type,authorization",
     "x-content-type-options": "nosniff",
     "x-frame-options": "DENY",
+    "x-dns-prefetch-control": "off",
+    "x-download-options": "noopen",
+    "origin-agent-cluster": "?1",
+    "cross-origin-opener-policy": "same-origin",
+    "cross-origin-resource-policy": "same-origin",
     "referrer-policy": "no-referrer",
     "permissions-policy": "camera=(), microphone=(), geolocation=(), payment=()",
     "content-security-policy": "default-src 'self'; img-src 'self' data: blob:; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"

@@ -21,6 +21,11 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
   try {
     const healthResponse = await fetch(`${BASE_URL}/health`);
     assert.equal(healthResponse.headers.get("access-control-allow-origin"), "https://admin.gcos.test");
+    assert.equal(healthResponse.headers.get("cross-origin-opener-policy"), "same-origin");
+    assert.equal(healthResponse.headers.get("cross-origin-resource-policy"), "same-origin");
+    assert.equal(healthResponse.headers.get("origin-agent-cluster"), "?1");
+    assert.equal(healthResponse.headers.get("x-dns-prefetch-control"), "off");
+    assert.equal(healthResponse.headers.get("x-download-options"), "noopen");
     const health = await healthResponse.json();
     assert.equal(health.status, "ok");
 

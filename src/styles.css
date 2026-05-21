@@ -9228,6 +9228,581 @@ h1 {
   }
 }
 
+/* Pre-AWS internal design hardening: one calm RMVI workstation system across every module. */
+:root {
+  --rmvi-blue-950: #061b42;
+  --rmvi-blue-900: #08265a;
+  --rmvi-blue-800: #0b2f6b;
+  --rmvi-blue-700: #123f89;
+  --rmvi-blue-100: #eaf2ff;
+  --rmvi-gold-500: #f4c542;
+  --rmvi-gold-600: #d6a631;
+  --rmvi-ink: #10213f;
+  --rmvi-muted: #5f6f8b;
+  --rmvi-border: #d8e2f2;
+  --rmvi-panel: #ffffff;
+  --rmvi-soft: #f7faff;
+  --rmvi-shadow: 0 18px 42px rgba(6, 27, 66, 0.10);
+}
+
+body {
+  color: var(--rmvi-ink);
+  background: linear-gradient(180deg, #f5f8fd 0%, #edf3fb 48%, #e8eff8 100%);
+}
+
+.workspace {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.76), rgba(240, 246, 255, 0.9));
+}
+
+.sidebar,
+.user-topbar,
+.section-banner,
+.station-home-hero,
+.reports-hero,
+.admin-portal-topbar,
+.admin-hero,
+.role-system-panel > div:first-child,
+.report-editor-card .report-card-title {
+  background: linear-gradient(135deg, var(--rmvi-blue-950), var(--rmvi-blue-800) 58%, var(--rmvi-blue-700)) !important;
+  color: #ffffff !important;
+}
+
+.panel,
+.station-panel,
+.report-card,
+.admin-console-panel,
+.admin-primary-panel,
+.admin-side-panel,
+.account-card,
+.login-card,
+.report-detail-card,
+.role-system-panel,
+.selected-report-summary,
+.report-route-box,
+.report-template-list button,
+.report-inbox-list button,
+.message-button,
+.workflow-item,
+.approval-item,
+.hierarchy-row,
+.station-inbox-row,
+.admin-station-row,
+.admin-system-card,
+.admin-focus-card,
+.admin-app-tile,
+.admin-route-list button,
+.admin-queue-list button,
+.admin-station-list article,
+.admin-session-list article,
+.admin-event-list article {
+  border: 1px solid var(--rmvi-border) !important;
+  border-radius: 8px !important;
+  background: var(--rmvi-panel) !important;
+  box-shadow: var(--rmvi-shadow) !important;
+}
+
+.panel,
+.station-panel,
+.report-card,
+.admin-console-panel,
+.admin-primary-panel,
+.admin-side-panel {
+  padding: 18px !important;
+}
+
+.panel-header {
+  min-height: 44px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #e8eef8;
+}
+
+.panel-header h2,
+.report-card-title h3,
+.selected-report-summary h3,
+.mail-preview h2,
+.station-list strong,
+.report-template-list strong,
+.report-inbox-list strong,
+.admin-station-list strong,
+.admin-health-list strong,
+.admin-event-list strong {
+  color: var(--rmvi-blue-900) !important;
+  letter-spacing: 0;
+}
+
+.panel-header div:first-child svg,
+.section-banner-icon,
+.station-home-actions button svg,
+.role-tool-grid svg,
+.template-preview-head > svg,
+.report-section-card > span small,
+.reports-stepper span,
+.metric-icon,
+.admin-app-tile svg,
+.admin-focus-card svg {
+  border-radius: 8px !important;
+  background: linear-gradient(180deg, #ffe58a, var(--rmvi-gold-500)) !important;
+  color: var(--rmvi-blue-950) !important;
+  box-shadow: 0 8px 18px rgba(214, 166, 49, 0.22);
+}
+
+.module-grid {
+  grid-template-columns: minmax(0, 1fr) minmax(300px, 0.36fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.module-primary,
+.side-stack,
+.module-side {
+  min-width: 0;
+}
+
+.section-banner {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px !important;
+  padding: clamp(18px, 2.6vw, 28px);
+  box-shadow: 0 20px 48px rgba(6, 27, 66, 0.16) !important;
+}
+
+.section-banner h2 {
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.08;
+  max-width: 860px;
+  color: #ffffff !important;
+}
+
+.section-banner p {
+  color: #dce8ff !important;
+  max-width: 860px;
+}
+
+.section-banner-status {
+  grid-template-columns: repeat(3, minmax(140px, 1fr));
+}
+
+.section-banner-status div,
+.station-home-state,
+.reports-hero-stats {
+  background: rgba(255, 255, 255, 0.10) !important;
+  border-color: rgba(244, 197, 66, 0.36) !important;
+  backdrop-filter: blur(10px);
+}
+
+.metric-grid,
+.office-summary-grid,
+.admin-system-grid,
+.report-stats-grid {
+  gap: 12px;
+}
+
+.metric-card,
+.office-summary-grid > div,
+.insight,
+.admin-health-list div,
+.admin-station-summary div,
+.report-meta-strip,
+.report-library-summary div {
+  border: 1px solid #dfe8f6 !important;
+  border-radius: 8px !important;
+  background: linear-gradient(180deg, #ffffff, var(--rmvi-soft)) !important;
+}
+
+.action-row button,
+.compact-actions button,
+.panel-header button,
+.report-actions-row button,
+.report-selected-actions button,
+.report-command-grid button,
+.report-command-grid .report-file-command,
+.station-inbox-actions button,
+.archive-toolbar button,
+.churchmail-form button,
+.admin-station-actions button,
+.admin-approval-actions button,
+.wide-action,
+.login-form button {
+  border-radius: 7px !important;
+  font-weight: 850;
+  letter-spacing: 0;
+}
+
+.action-row button:hover,
+.compact-actions button:hover,
+.panel-header button:hover,
+.report-actions-row button:hover,
+.report-selected-actions button:hover,
+.report-command-grid button:hover,
+.station-inbox-actions button:hover,
+.archive-toolbar button:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 12px 24px rgba(6, 27, 66, 0.12);
+}
+
+.reports-app {
+  gap: 20px;
+}
+
+.reports-layout {
+  grid-template-columns: minmax(270px, 0.32fr) minmax(0, 1fr) minmax(300px, 0.34fr);
+  gap: 18px;
+}
+
+.reports-stepper div,
+.report-template-list button,
+.report-inbox-list button,
+.report-section-card,
+.report-command-grid button,
+.report-command-grid .report-file-command {
+  box-shadow: 0 10px 24px rgba(6, 27, 66, 0.07) !important;
+}
+
+.report-template-list,
+.report-inbox-list {
+  scrollbar-width: thin;
+}
+
+.report-template-list button,
+.report-inbox-list button,
+.message-button {
+  min-height: 76px;
+}
+
+.report-template-list button.selected,
+.report-template-list button:hover,
+.report-inbox-list button.active,
+.report-inbox-list button:hover,
+.message-button.selected,
+.message-button:hover {
+  border-color: var(--rmvi-gold-500) !important;
+  background: linear-gradient(180deg, #fffdf3, #ffffff) !important;
+}
+
+.report-template-preview,
+.mail-preview,
+.station-featured-mail {
+  background: linear-gradient(135deg, var(--rmvi-blue-950), var(--rmvi-blue-800)) !important;
+  color: #ffffff !important;
+}
+
+.report-template-preview p,
+.report-template-preview span,
+.mail-preview p,
+.route-box span,
+.approval-meta small {
+  color: #dce8ff !important;
+}
+
+.report-form-grid,
+.report-section-editor,
+.report-command-grid,
+.admin-board-grid {
+  align-items: stretch;
+}
+
+.report-section-card textarea,
+.report-form textarea,
+.report-detail-card textarea,
+.churchmail-form input,
+.churchmail-form select,
+.report-form input,
+.report-form select,
+.report-template-select select,
+.report-route-box input,
+.login-form input,
+.login-form select,
+.account-card input,
+.account-card select {
+  background: #fbfdff !important;
+  border-color: #d5e0f0 !important;
+}
+
+.report-section-card textarea:focus,
+.report-form input:focus,
+.report-form select:focus,
+.report-form textarea:focus,
+.churchmail-form input:focus,
+.churchmail-form select:focus,
+.login-form input:focus,
+.login-form select:focus {
+  outline: 3px solid rgba(244, 197, 66, 0.28);
+  border-color: var(--rmvi-gold-600) !important;
+}
+
+.admin-portal-shell,
+.admin-board-shell {
+  background: linear-gradient(180deg, #eef4ff, #f8fbff) !important;
+  color: var(--rmvi-ink) !important;
+}
+
+.admin-portal-main,
+.admin-board-grid {
+  gap: 18px;
+}
+
+.admin-console-panel {
+  overflow: hidden;
+}
+
+.admin-console-panel::before {
+  background: linear-gradient(90deg, var(--rmvi-gold-500), #ffffff 55%, var(--rmvi-blue-700)) !important;
+  opacity: 0.85;
+}
+
+.admin-route-list button,
+.admin-queue-list button,
+.admin-station-list article,
+.admin-session-list article,
+.admin-event-list article {
+  box-shadow: none !important;
+}
+
+.admin-route-list button,
+.admin-queue-list button {
+  min-height: 58px;
+  padding: 11px 12px;
+}
+
+.admin-station-list article {
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  padding: 14px;
+}
+
+.admin-station-actions {
+  justify-content: flex-end;
+}
+
+.public-software-gateway .download-hero-copy h1,
+.login-intro h1 {
+  font-size: clamp(32px, 4.6vw, 56px) !important;
+  line-height: 1.02;
+  max-width: 14ch;
+}
+
+.public-software-gateway .download-hero-copy p,
+.login-intro p {
+  font-size: clamp(14px, 1.35vw, 17px);
+}
+
+.public-software-gateway .login-panel,
+.login-panel {
+  align-items: start;
+}
+
+.public-gateway-header,
+.public-download-footer {
+  border-radius: 8px !important;
+}
+
+@media (max-width: 1180px) {
+  .reports-layout,
+  .station-workspace-grid,
+  .account-settings-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .reports-left-panel,
+  .reports-right-panel {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .module-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 980px) {
+  .app-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    height: auto;
+    padding: 10px;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 10px;
+  }
+
+  .sidebar .brand {
+    padding: 0;
+  }
+
+  .sidebar .brand strong,
+  .sidebar .brand span,
+  .station-switcher {
+    display: none;
+  }
+
+  .nav-list {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 8px;
+    padding-bottom: 2px;
+  }
+
+  .nav-item {
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .nav-item span {
+    display: none;
+  }
+
+  .workspace {
+    padding: 14px;
+  }
+
+  .user-topbar {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  h1 {
+    font-size: 20px;
+  }
+
+  .topbar,
+  .user-topbar {
+    gap: 10px;
+  }
+
+  .user-topbar .station-title p {
+    white-space: normal;
+  }
+
+  .user-topbar .topbar-actions {
+    display: grid;
+    grid-template-columns: 1fr repeat(4, 42px);
+    width: 100%;
+  }
+
+  .user-topbar .search-box {
+    min-width: 0;
+    width: 100%;
+  }
+
+  .section-banner,
+  .section-banner-main,
+  .section-banner-status,
+  .station-home-hero,
+  .reports-hero,
+  .selected-report-summary,
+  .admin-station-list article,
+  .account-user-list article {
+    grid-template-columns: 1fr !important;
+  }
+
+  .section-banner h2,
+  .station-home-hero h2,
+  .reports-hero h2,
+  .report-document-head h3 {
+    font-size: clamp(24px, 8vw, 32px) !important;
+  }
+
+  .station-home-actions,
+  .role-tool-grid,
+  .reports-stepper,
+  .reports-left-panel,
+  .reports-right-panel,
+  .report-form-grid,
+  .report-section-editor,
+  .report-command-grid,
+  .template-checklist-preview,
+  .template-requirement-grid,
+  .admin-system-grid,
+  .admin-station-summary,
+  .office-summary-grid,
+  .login-stat-grid,
+  .download-gateway,
+  .gateway-flow-steps {
+    grid-template-columns: 1fr !important;
+  }
+
+  .station-inbox-row,
+  .station-featured-mail,
+  .report-document-head,
+  .mail-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .station-home-actions button,
+  .role-tool-grid button,
+  .report-command-grid button,
+  .report-command-grid .report-file-command {
+    min-height: 74px;
+  }
+
+  .report-actions-row,
+  .report-selected-actions,
+  .action-row,
+  .archive-toolbar {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .report-actions-row button,
+  .report-selected-actions button,
+  .action-row button,
+  .archive-toolbar button,
+  .report-command-grid button,
+  .report-command-grid .report-file-command {
+    width: 100%;
+  }
+
+  .public-software-gateway .download-hero-copy h1,
+  .login-intro h1 {
+    font-size: clamp(30px, 10vw, 40px) !important;
+    max-width: 12ch;
+  }
+
+  .login-shell,
+  .public-software-gateway {
+    padding: 10px;
+  }
+
+  .public-gateway-header,
+  .public-download-footer {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 430px) {
+  .workspace {
+    padding: 10px;
+  }
+
+  .panel,
+  .station-panel,
+  .report-card,
+  .admin-console-panel,
+  .admin-primary-panel,
+  .admin-side-panel,
+  .login-card {
+    padding: 14px !important;
+  }
+
+  .user-topbar .topbar-actions {
+    grid-template-columns: 1fr repeat(3, 42px);
+  }
+
+  .user-topbar .install-toggle {
+    display: none;
+  }
+}
+
 /* Actual admin product design: suite launcher + command workspace. */
 .admin-command-hero {
   display: grid;

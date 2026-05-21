@@ -46,6 +46,7 @@ Production domain target: `rmvi.org`
 - Production readiness profile checker for the `rmvi.org` Replit launch
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Authenticated runtime smoke test for station login, protected APIs, object storage, and session renewal
+- Pre-AWS hardening check for UI consistency, browser security headers, and launch verification coverage
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
 - Final release handoff and project completion report
@@ -86,6 +87,7 @@ npm run production:check
 npm run database:smoke
 npm run object:smoke
 npm run runtime:smoke
+npm run preaws:check
 npm run release:check
 npm run secrets:plan
 npm run launch:verify
