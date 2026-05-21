@@ -287,6 +287,63 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    sendLiveSessionSummary(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const summary = message(
+        "Notification",
+        body.subject ?? `Live summary: ${item.title}`,
+        body.actor ?? item.host,
+        "Ready",
+        item.files?.length ? item.files.join(", ") : item.linkedRecord
+      );
+      summary.route = body.route ?? item.route;
+      summary.priority = item.status === "Priority" ? "High" : "Medium";
+      state.messages.unshift(summary);
+      item.summaryMessageId = summary.id;
+      item.summarySentAt = new Date().toISOString();
+      item.updatedAt = item.summarySentAt;
+      record("LiveSessionSummarySent", body.actor, item.title, summary.subject);
+      return { session: item, message: summary };
+    },
+
+    createLiveSessionFollowUpTask(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const created = task(
+        body.title ?? `Follow up: ${item.title}`,
+        item.host ?? "Live Comms",
+        body.assignee ?? body.actor ?? "Assigned office",
+        body.priority ?? (item.status === "Priority" ? "High" : "Medium"),
+        body.due ?? "Tomorrow",
+        "Queued"
+      );
+      created.linkedReport = item.linkedRecord;
+      created.comments = [`Created from live session ${item.title}`];
+      state.tasks.unshift(created);
+      item.followUpTaskId = created.id;
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionFollowUpTaskCreated", body.actor, item.title, created.title);
+      return { session: item, task: created };
+    },
+
+    scheduleLiveSession(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const created = calendarEvent(
+        body.title ?? `Scheduled: ${item.title}`,
+        "Meeting",
+        item.host ?? body.actor ?? "Live Comms",
+        body.date ?? new Date(Date.now() + 86400000).toISOString().slice(0, 10),
+        body.priority ?? (item.status === "Priority" ? "High" : "Medium"),
+        "Scheduled"
+      );
+      created.linkedReport = item.linkedRecord;
+      created.agenda = body.agenda ?? item.purpose;
+      state.calendarEvents.unshift(created);
+      item.calendarEventId = created.id;
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionScheduled", body.actor, item.title, created.date);
+      return { session: item, calendarEvent: created };
+    },
+
     archiveLiveSession(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       item.archived = true;

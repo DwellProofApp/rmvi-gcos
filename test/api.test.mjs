@@ -1643,6 +1643,34 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(liveSessionWithNote.notes.includes("District packet reviewed during automated test"), true);
 
+    const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
+      subject: "Automated live session summary",
+      route: "National HQ -> District HQ"
+    }, nationalToken);
+    assert.equal(liveSessionSummary.message.subject, "Automated live session summary");
+    assert.equal(liveSessionSummary.message.kind, "Notification");
+    assert.equal(liveSessionSummary.session.summaryMessageId, liveSessionSummary.message.id);
+
+    const liveSessionTask = await postJson(`/api/live-sessions/${createdLiveSession.id}/follow-up-task`, {
+      title: "Automated live session follow-up",
+      assignee: "district_admin@rmvi.org",
+      priority: "High",
+      due: "Tomorrow"
+    }, nationalToken);
+    assert.equal(liveSessionTask.task.title, "Automated live session follow-up");
+    assert.equal(liveSessionTask.task.status, "Queued");
+    assert.equal(liveSessionTask.session.followUpTaskId, liveSessionTask.task.id);
+
+    const liveSessionCalendar = await postJson(`/api/live-sessions/${createdLiveSession.id}/calendar-event`, {
+      title: "Automated live session calendar event",
+      date: "2026-06-15",
+      priority: "High",
+      agenda: "Review live session decisions"
+    }, nationalToken);
+    assert.equal(liveSessionCalendar.calendarEvent.title, "Automated live session calendar event");
+    assert.equal(liveSessionCalendar.calendarEvent.date, "2026-06-15");
+    assert.equal(liveSessionCalendar.session.calendarEventId, liveSessionCalendar.calendarEvent.id);
+
     const archivedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/archive`, {
       reason: "Automated live session archive"
     }, nationalToken);

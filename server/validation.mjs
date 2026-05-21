@@ -887,6 +887,25 @@ const validators = {
     if (body.note !== undefined) requireString(body.note, "note");
   },
 
+  "POST /api/live-sessions/:id/summary-message": (body) => {
+    if (body.subject !== undefined) requireString(body.subject, "subject");
+    if (body.route !== undefined) requireString(body.route, "route");
+  },
+
+  "POST /api/live-sessions/:id/follow-up-task": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
+    if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/live-sessions/:id/calendar-event": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.date !== undefined) requireString(body.date, "date");
+    if (body.priority !== undefined) requireEnum(body.priority, calendarPriorities, "priority");
+    if (body.agenda !== undefined) requireString(body.agenda, "agenda");
+  },
+
   "POST /api/live-sessions/:id/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
