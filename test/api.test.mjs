@@ -1766,6 +1766,24 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(passedResolutionLiveSession.resolutions[0].status, "Passed");
     assert.equal(passedResolutionLiveSession.resolutions[0].votesFor, 2);
 
+    const dispatchedMinutes = await postJson(`/api/live-sessions/${createdLiveSession.id}/minutes/dispatch`, {
+      subject: "Automated official minutes dispatch",
+      route: "National HQ -> District HQ"
+    }, nationalToken);
+    assert.equal(dispatchedMinutes.message.subject, "Automated official minutes dispatch");
+    assert.equal(dispatchedMinutes.message.kind, "Report");
+    assert.equal(dispatchedMinutes.session.minutesMessageId, dispatchedMinutes.message.id);
+
+    const resolutionApproval = await postJson(`/api/live-sessions/${createdLiveSession.id}/resolution/approval`, {
+      request: "Approve district review resolution",
+      route: "National HQ -> District HQ",
+      limit: "Resolution authority review",
+      delegate: "National Presidency Workstation"
+    }, nationalToken);
+    assert.equal(resolutionApproval.approval.request, "Approve district review resolution");
+    assert.equal(resolutionApproval.approval.state, "Validation");
+    assert.equal(resolutionApproval.session.resolutionApprovalId, resolutionApproval.approval.id);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"

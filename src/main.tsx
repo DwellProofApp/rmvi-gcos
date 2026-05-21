@@ -137,7 +137,7 @@ type Approval = {
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
-type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; polls?: { id: string; question: string; options: string[]; votes: Record<string, string[]>; status: string; createdBy: string; createdAt: string; updatedAt?: string }[]; resolutions?: { id: string; title: string; status: string; movedBy: string; secondedBy?: string; votesFor: number; votesAgainst: number; createdAt: string; passedAt?: string }[]; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
+type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; polls?: { id: string; question: string; options: string[]; votes: Record<string, string[]>; status: string; createdBy: string; createdAt: string; updatedAt?: string }[]; resolutions?: { id: string; title: string; status: string; movedBy: string; secondedBy?: string; votesFor: number; votesAgainst: number; createdAt: string; passedAt?: string; linkedApprovalId?: string }[]; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; minutesMessageId?: string; minutesSentAt?: string; resolutionApprovalId?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
@@ -3789,6 +3789,75 @@ function App() {
     void apiRequest<LiveSession>(`/api/live-sessions/${id}/resolution/pass`, {
       method: "POST",
       body: JSON.stringify({ status: "Passed", secondedBy: activeStation.email })
+    }).catch(() => undefined);
+  }
+
+  function dispatchLiveSessionMinutes(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const minutesMessage: Message = {
+      id: `msg-minutes-${Date.now()}`,
+      kind: "Report",
+      subject: `Official minutes: ${target.title}`,
+      from: activeStation.email,
+      age: "now",
+      status: "Ready",
+      files: target.minutesDocumentId ?? target.linkedRecord,
+      route: target.route,
+      priority: target.status === "Priority" ? "High" : "Medium"
+    };
+    setMessages((items) => [minutesMessage, ...items]);
+    setLiveSessions((items) => items.map((item) => item.id === id ? {
+      ...item,
+      minutesMessageId: minutesMessage.id,
+      minutesSentAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    } : item));
+    recordAudit("LiveSessionMinutesDispatched", target.title, minutesMessage.subject);
+    void apiRequest<{ session: LiveSession; message: Message }>(`/api/live-sessions/${id}/minutes/dispatch`, {
+      method: "POST",
+      body: JSON.stringify({ subject: minutesMessage.subject, route: minutesMessage.route })
+    }).catch(() => undefined);
+  }
+
+  function createLiveSessionResolutionApproval(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const resolution = target.resolutions?.[0] ?? {
+      id: `resolution-${Date.now()}`,
+      title: `Resolution for ${target.linkedRecord}`,
+      status: "Draft",
+      movedBy: activeStation.email,
+      secondedBy: "",
+      votesFor: 0,
+      votesAgainst: 0,
+      createdAt: new Date().toISOString()
+    };
+    const created: Approval = {
+      id: `apr-live-${Date.now()}`,
+      request: resolution.title,
+      route: target.route,
+      limit: "Resolution authority review",
+      state: "Validation",
+      signatures: "0/3",
+      linkedReport: target.linkedRecord,
+      delegate: target.host
+    };
+    setApprovals((items) => [created, ...items]);
+    setLiveSessions((items) => items.map((item) => {
+      if (item.id !== id) return item;
+      const resolutions = item.resolutions?.length ? item.resolutions : [resolution];
+      return {
+        ...item,
+        resolutions: resolutions.map((entry, index) => index === 0 ? { ...entry, linkedApprovalId: created.id } : entry),
+        resolutionApprovalId: created.id,
+        updatedAt: new Date().toISOString()
+      };
+    }));
+    recordAudit("LiveSessionResolutionApprovalCreated", target.title, created.request);
+    void apiRequest<{ session: LiveSession; approval: Approval }>(`/api/live-sessions/${id}/resolution/approval`, {
+      method: "POST",
+      body: JSON.stringify({ request: created.request, route: created.route, limit: created.limit, delegate: created.delegate })
     }).catch(() => undefined);
   }
 
@@ -8906,6 +8975,8 @@ function App() {
             onCastLiveSessionVote={castLiveSessionVote}
             onCreateLiveSessionResolution={createLiveSessionResolution}
             onPassLiveSessionResolution={passLiveSessionResolution}
+            onDispatchLiveSessionMinutes={dispatchLiveSessionMinutes}
+            onCreateLiveSessionResolutionApproval={createLiveSessionResolutionApproval}
             onSendLiveSessionSummary={sendLiveSessionSummary}
             onCreateLiveSessionFollowUpTask={createLiveSessionFollowUpTask}
             onScheduleLiveSession={scheduleLiveSession}
@@ -13085,6 +13156,8 @@ function LiveComms({
   onCastLiveSessionVote,
   onCreateLiveSessionResolution,
   onPassLiveSessionResolution,
+  onDispatchLiveSessionMinutes,
+  onCreateLiveSessionResolutionApproval,
   onSendLiveSessionSummary,
   onCreateLiveSessionFollowUpTask,
   onScheduleLiveSession,
@@ -13123,6 +13196,8 @@ function LiveComms({
   onCastLiveSessionVote: (id: string) => void;
   onCreateLiveSessionResolution: (id: string) => void;
   onPassLiveSessionResolution: (id: string) => void;
+  onDispatchLiveSessionMinutes: (id: string) => void;
+  onCreateLiveSessionResolutionApproval: (id: string) => void;
   onSendLiveSessionSummary: (id: string) => void;
   onCreateLiveSessionFollowUpTask: (id: string) => void;
   onScheduleLiveSession: (id: string) => void;
@@ -13252,7 +13327,8 @@ function LiveComms({
               <small>{sessionItem.recordingStatus ?? "Not recorded"} - {sessionItem.transcriptStatus ?? "No voice transcript"}</small>
               <small>{sessionItem.agendaItems?.length ?? 0} agenda - {sessionItem.screenShareStatus ?? "No screen share"} - {sessionItem.sharedDocuments?.length ?? 0} shared docs</small>
               <small>{Object.keys(sessionItem.participantRoles ?? {}).length} roles - {sessionItem.mutedParticipants?.length ?? 0} muted - {sessionItem.actionItems?.length ?? 0} action items</small>
-              <small>{sessionItem.polls?.length ?? 0} polls - {sessionItem.resolutions?.length ?? 0} resolutions - {sessionItem.resolutions?.[0]?.status ?? "no resolution"}</small>
+              <small>{sessionItem.polls?.length ?? 0} polls - {sessionItem.resolutions?.length ?? 0} resolutions - {sessionItem.resolutions?.[0]?.status ?? "no resolution"} - {sessionItem.resolutionApprovalId ? "approval linked" : "approval pending"}</small>
+              <small>{sessionItem.minutesDocumentId ? "minutes built" : "minutes pending"} - {sessionItem.minutesMessageId ? "minutes sent" : "not dispatched"}</small>
               <small>{sessionItem.files?.length ?? 0} files - {sessionItem.participants?.length ?? 0} invited - {sessionItem.checkedInParticipants?.length ?? 0} checked in - {sessionItem.quorum?.met ? "quorum met" : "quorum pending"}</small>
               <div className="compact-actions">
                 <button type="button" onClick={() => onUpdateLiveSessionStatus(sessionItem.id, "Live")}>Join</button>
@@ -13271,6 +13347,8 @@ function LiveComms({
                 <button type="button" onClick={() => onCastLiveSessionVote(sessionItem.id)}>Vote</button>
                 <button type="button" onClick={() => onCreateLiveSessionResolution(sessionItem.id)}>Resolution</button>
                 <button type="button" onClick={() => onPassLiveSessionResolution(sessionItem.id)}>Pass</button>
+                <button type="button" onClick={() => onDispatchLiveSessionMinutes(sessionItem.id)}>Send minutes</button>
+                <button type="button" onClick={() => onCreateLiveSessionResolutionApproval(sessionItem.id)}>Approval</button>
                 <button type="button" onClick={() => onInviteLiveSessionParticipant(sessionItem.id, inviteTarget)}>Invite</button>
                 <button type="button" onClick={() => onCheckInLiveSessionParticipant(sessionItem.id, station.email)}>Check in</button>
                 <button type="button" onClick={() => onAddLiveSessionChat(sessionItem.id)}>Chat</button>
@@ -13315,6 +13393,8 @@ function LiveComms({
             <button type="button" onClick={() => onCreateLiveSessionMinutes(primarySession.id)}><ScrollText size={14} /> Build minutes</button>
             <button type="button" onClick={() => onCreateLiveSessionPoll(primarySession.id)}><CircleDot size={14} /> Open poll</button>
             <button type="button" onClick={() => onCreateLiveSessionResolution(primarySession.id)}><Signature size={14} /> Draft resolution</button>
+            <button type="button" onClick={() => onDispatchLiveSessionMinutes(primarySession.id)}><Send size={14} /> Send minutes</button>
+            <button type="button" onClick={() => onCreateLiveSessionResolutionApproval(primarySession.id)}><Workflow size={14} /> Approval request</button>
             <button type="button" onClick={() => onCloseLiveSession(primarySession.id)}><CheckCircle2 size={14} /> Close meeting</button>
             <button type="button" onClick={() => onCreateLiveSessionFollowUpTask(primarySession.id)}><SquareCheckBig size={14} /> Create follow-up</button>
             <button type="button" onClick={() => onBuildLiveSessionPacket(primarySession.id)}><ArchiveIcon size={14} /> Build packet</button>

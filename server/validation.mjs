@@ -988,6 +988,19 @@ const validators = {
     if (body.votesAgainst !== undefined) requireNumber(body.votesAgainst, "votesAgainst");
   },
 
+  "POST /api/live-sessions/:id/minutes/dispatch": (body) => {
+    if (body.subject !== undefined) requireString(body.subject, "subject");
+    if (body.route !== undefined) requireString(body.route, "route");
+  },
+
+  "POST /api/live-sessions/:id/resolution/approval": (body) => {
+    if (body.resolutionId !== undefined) requireString(body.resolutionId, "resolutionId");
+    if (body.request !== undefined) requireString(body.request, "request");
+    if (body.route !== undefined) requireString(body.route, "route");
+    if (body.limit !== undefined) requireString(body.limit, "limit");
+    if (body.delegate !== undefined) requireString(body.delegate, "delegate");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

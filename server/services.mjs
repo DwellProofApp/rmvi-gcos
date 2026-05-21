@@ -627,6 +627,51 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    dispatchLiveSessionMinutes(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const minutesMessage = message(
+        "Report",
+        body.subject ?? `Official minutes: ${item.title}`,
+        body.actor ?? item.host,
+        "Ready",
+        item.minutesDocumentId ?? item.linkedRecord
+      );
+      minutesMessage.route = body.route ?? item.route;
+      minutesMessage.priority = item.status === "Priority" ? "High" : "Medium";
+      minutesMessage.linkedDocument = item.minutesDocumentId;
+      minutesMessage.linkedLiveSession = item.id;
+      state.messages.unshift(minutesMessage);
+      item.minutesMessageId = minutesMessage.id;
+      item.minutesSentAt = new Date().toISOString();
+      item.updatedAt = item.minutesSentAt;
+      record("LiveSessionMinutesDispatched", body.actor, item.title, minutesMessage.subject);
+      return { session: item, message: minutesMessage };
+    },
+
+    createLiveSessionResolutionApproval(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.resolutions ??= [];
+      const resolution = item.resolutions.find((candidate) => candidate.id === body.resolutionId) ?? item.resolutions[0];
+      if (!resolution) throw new Error("No live session resolution is available");
+      const created = approval(
+        body.request ?? resolution.title,
+        body.route ?? item.route,
+        body.limit ?? "Resolution authority review",
+        "Validation",
+        "0/3"
+      );
+      created.linkedLiveSession = item.id;
+      created.linkedResolutionId = resolution.id;
+      created.linkedReport = item.linkedRecord;
+      created.delegate = body.delegate ?? item.host;
+      state.approvals.unshift(created);
+      resolution.linkedApprovalId = created.id;
+      item.resolutionApprovalId = created.id;
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionResolutionApprovalCreated", body.actor, item.title, created.request);
+      return { session: item, approval: created };
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
