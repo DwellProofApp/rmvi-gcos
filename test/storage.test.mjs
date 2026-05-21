@@ -14,14 +14,26 @@ test("database adapter reports an unconfigured provider without connecting", asy
   assert.equal(status.mode, "database-unconfigured");
   assert.equal(status.records.stations > 0, true);
   assert.equal(status.records.persistenceMeta >= 0, true);
+  assert.equal(status.schemaVersion >= 2, true);
+  assert.equal(status.projections.organizationNodes > 0, true);
+  assert.equal(status.projectionTables.includes("organization_nodes"), true);
 
   const plan = adapter.migrationPlan(seed);
   assert.equal(plan.collections.some((item) => item.collection === "stations" && item.targetTable === "gcos_stations"), true);
+  assert.equal(plan.projections.some((item) => item.name === "organization_nodes" && item.records > 0), true);
+  assert.equal(plan.projections.some((item) => item.name === "realtime_sessions" && item.records > 0), true);
   assert.equal(plan.blockers.includes("Set GCOS_DATABASE_URL before using database provider"), true);
+
+  const schema = adapter.schemaPlan(seed);
+  assert.equal(schema.projectionTables.some((table) => table.name === "organization_nodes"), true);
+  assert.equal(schema.projectionTables.some((table) => table.name === "churchmail_messages"), true);
+  assert.equal(schema.sql.includes("create table if not exists gcos_core.organization_nodes"), true);
+  assert.equal(schema.sql.includes("create table if not exists gcos_core.realtime_sessions"), true);
 
   const dryRun = adapter.importDryRun(seed);
   assert.equal(dryRun.valid, false);
   assert.equal(dryRun.batches.some((batch) => batch.table === "gcos_stations" && batch.status === "blocked"), true);
+  assert.equal(dryRun.projectionBatches.some((batch) => batch.table === "organization_nodes" && batch.status === "blocked"), true);
 });
 
 test("database restore drill can be confirmed after managed restore", async () => {
