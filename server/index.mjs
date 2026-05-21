@@ -2498,6 +2498,7 @@ function authenticateRequest(request, pathname) {
 function isPublicApiPath(pathname) {
   return pathname === "/api/auth/login"
     || pathname === "/api/status"
+    || pathname === "/api/deployment/build-info"
     || pathname === "/api/bootstrap/public";
 }
 

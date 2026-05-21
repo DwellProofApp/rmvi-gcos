@@ -10,8 +10,8 @@ const info = {
   name: "Remedy Movement International GCOS",
   version: packageJson.version,
   generatedAt: new Date().toISOString(),
-  gitCommit: readGit(["rev-parse", "--short", "HEAD"]),
-  gitBranch: readGit(["rev-parse", "--abbrev-ref", "HEAD"]),
+  gitCommit: process.env.GCOS_BUILD_COMMIT || readGit(["rev-parse", "--short", "HEAD"]),
+  gitBranch: process.env.GCOS_BUILD_BRANCH || readGit(["rev-parse", "--abbrev-ref", "HEAD"]),
   deploymentTarget: process.env.GCOS_DEPLOYMENT_TARGET || "firebase",
   domain: process.env.GCOS_DOMAIN || "rmvi.org"
 };
