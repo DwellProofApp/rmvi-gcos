@@ -1001,6 +1001,17 @@ const validators = {
     if (body.delegate !== undefined) requireString(body.delegate, "delegate");
   },
 
+  "POST /api/live-sessions/:id/minutes/sign": (body) => {
+    if (body.signer !== undefined) requireString(body.signer, "signer");
+    if (body.role !== undefined) requireString(body.role, "role");
+    if (body.attestation !== undefined) requireString(body.attestation, "attestation");
+  },
+
+  "POST /api/live-sessions/:id/seal": (body) => {
+    if (body.name !== undefined) requireString(body.name, "name");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

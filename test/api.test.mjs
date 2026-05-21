@@ -1784,6 +1784,23 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(resolutionApproval.approval.state, "Validation");
     assert.equal(resolutionApproval.session.resolutionApprovalId, resolutionApproval.approval.id);
 
+    const signedMinutes = await postJson(`/api/live-sessions/${createdLiveSession.id}/minutes/sign`, {
+      signer: "np@rmvi.org",
+      role: "National Secretary",
+      attestation: "I certify these minutes are accurate."
+    }, nationalToken);
+    assert.equal(signedMinutes.minutesSignatures[0].signer, "np@rmvi.org");
+    assert.equal(signedMinutes.minutesSignatureStatus, "1 signed");
+
+    const sealedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/seal`, {
+      name: "Automated sealed live governance record.pdf",
+      reason: "Automated seal test"
+    }, nationalToken);
+    assert.equal(sealedLiveSession.document.name, "Automated sealed live governance record.pdf");
+    assert.equal(sealedLiveSession.document.classification, "Sealed live session governance record");
+    assert.equal(sealedLiveSession.document.verified, true);
+    assert.equal(sealedLiveSession.session.sealedDocumentId, sealedLiveSession.document.id);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"

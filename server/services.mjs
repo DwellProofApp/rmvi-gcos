@@ -672,6 +672,59 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { session: item, approval: created };
     },
 
+    signLiveSessionMinutes(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.minutesSignatures ??= [];
+      const signature = {
+        signer: body.signer ?? body.actor,
+        role: body.role ?? "Meeting authority",
+        signedAt: new Date().toISOString(),
+        attestation: body.attestation ?? "I certify these minutes are accurate."
+      };
+      item.minutesSignatures = [
+        signature,
+        ...item.minutesSignatures.filter((entry) => entry.signer !== signature.signer)
+      ];
+      item.minutesSignatureStatus = `${item.minutesSignatures.length} signed`;
+      item.updatedAt = signature.signedAt;
+      record("LiveSessionMinutesSigned", body.actor, item.title, signature.signer);
+      return item;
+    },
+
+    sealLiveSessionRecord(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const sealed = documentRecord(
+        body.name ?? `${item.title} sealed governance record.pdf`,
+        "Sealed live session governance record",
+        "Live Comms",
+        item.host ?? body.actor ?? "Live Comms",
+        "PDF",
+        "Archived"
+      );
+      sealed.linkedReport = item.linkedRecord;
+      sealed.linkedDocument = item.minutesDocumentId;
+      sealed.extractedText = [
+        `Sealed meeting record: ${item.title}`,
+        `Minutes document: ${item.minutesDocumentId ?? "Not built"}`,
+        `Minutes sent: ${item.minutesMessageId ?? "Not dispatched"}`,
+        `Resolution approval: ${item.resolutionApprovalId ?? "Not requested"}`,
+        `Signatures: ${(item.minutesSignatures ?? []).map((signature) => `${signature.signer} (${signature.role})`).join("; ") || "No signatures"}`,
+        `Quorum: ${item.quorum?.met ? "Met" : "Not met"}`,
+        `Archive reason: ${body.reason ?? "Meeting record sealed"}`
+      ].join("\n");
+      sealed.custodian = body.actor;
+      sealed.chainHash = `sealed-live-${item.id}-${Date.now()}`;
+      sealed.verified = true;
+      state.documents.unshift(sealed);
+      item.sealedDocumentId = sealed.id;
+      item.sealedAt = new Date().toISOString();
+      item.sealedBy = body.actor;
+      item.sealReason = body.reason ?? "Meeting record sealed";
+      item.updatedAt = item.sealedAt;
+      record("LiveSessionRecordSealed", body.actor, item.title, sealed.name);
+      return { session: item, document: sealed };
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -760,7 +813,9 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Participant roles: ${Object.entries(item.participantRoles ?? {}).map(([participant, role]) => `${participant}: ${role}`).join(", ") || "No roles assigned"}`,
         `Muted participants: ${(item.mutedParticipants ?? []).join(", ") || "None"}`,
         `Shared documents: ${(item.sharedDocuments ?? []).map((document) => `${document.name} (${document.source})`).join(", ") || "No live documents shared"}`,
-        `Files: ${(item.files ?? []).join(", ") || "No files attached"}`
+        `Files: ${(item.files ?? []).join(", ") || "No files attached"}`,
+        `Minutes signatures: ${(item.minutesSignatures ?? []).map((signature) => `${signature.signer} (${signature.role})`).join("; ") || "No signatures"}`,
+        `Sealed record: ${item.sealedDocumentId ?? "Not sealed"}`
       ].join("\n");
       packet.custodian = body.actor;
       packet.chainHash = `live-${item.id}-${Date.now()}`;
