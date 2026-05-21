@@ -309,6 +309,39 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    addLiveSessionChat(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.transcript ??= [];
+      const chat = {
+        id: `chat-${Date.now()}`,
+        author: body.actor,
+        body: body.message ?? "Live message recorded",
+        createdAt: new Date().toISOString()
+      };
+      item.transcript.unshift(chat);
+      item.updatedAt = chat.createdAt;
+      record("LiveSessionChatAdded", body.actor, item.title, chat.body);
+      return item;
+    },
+
+    recordLiveSessionDecision(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.decisions ??= [];
+      const decision = {
+        id: `decision-${Date.now()}`,
+        text: body.decision ?? "Decision recorded",
+        owner: body.owner ?? body.actor,
+        due: body.due ?? "Next meeting",
+        createdAt: new Date().toISOString()
+      };
+      item.decisions.unshift(decision);
+      item.notes ??= [];
+      item.notes.unshift(`Decision: ${decision.text}`);
+      item.updatedAt = decision.createdAt;
+      record("LiveSessionDecisionRecorded", body.actor, item.title, decision.text);
+      return item;
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -383,6 +416,8 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Route: ${item.route}`,
         `Purpose: ${item.purpose}`,
         `Notes: ${(item.notes ?? []).join("; ") || "No notes recorded"}`,
+        `Decisions: ${(item.decisions ?? []).map((decision) => decision.text ?? decision).join("; ") || "No decisions recorded"}`,
+        `Transcript: ${(item.transcript ?? []).map((entry) => `${entry.author}: ${entry.body}`).join("; ") || "No transcript messages"}`,
         `Files: ${(item.files ?? []).join(", ") || "No files attached"}`
       ].join("\n");
       packet.custodian = body.actor;

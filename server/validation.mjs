@@ -897,6 +897,16 @@ const validators = {
     if (body.email !== undefined) requireEmail(body.email, "email");
   },
 
+  "POST /api/live-sessions/:id/chat": (body) => {
+    requireString(body.message, "message");
+  },
+
+  "POST /api/live-sessions/:id/decision": (body) => {
+    requireString(body.decision, "decision");
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");
