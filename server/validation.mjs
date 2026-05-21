@@ -1049,6 +1049,10 @@ const validators = {
     if (body.bandwidthMode !== undefined) requireString(body.bandwidthMode, "bandwidthMode");
   },
 
+  "POST /api/live-sessions/:id/ai-brief": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

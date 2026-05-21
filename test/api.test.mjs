@@ -1854,6 +1854,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(recoveredLiveSession.recoverySummary.status, "Recovered");
     assert.equal(recoveredLiveSession.connectivity.status, "Recovered");
 
+    const aiBriefLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/ai-brief`, {
+      title: "Automated AI live session brief"
+    }, nationalToken);
+    assert.equal(aiBriefLiveSession.document.name, "Automated AI live session brief.pdf");
+    assert.equal(aiBriefLiveSession.document.classification, "AI live session brief");
+    assert.equal(aiBriefLiveSession.session.aiBriefDocumentId, aiBriefLiveSession.document.id);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"

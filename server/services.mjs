@@ -846,6 +846,52 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    generateLiveSessionAiBrief(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const risks = item.riskReview?.issues?.length ? item.riskReview.issues.join("; ") : "No open risk issues";
+      const nextActions = [
+        ...(item.actionItems ?? []).map((action) => `${action.title} -> ${action.assignee}`),
+        item.resolutionApprovalId ? "" : "Confirm whether passed resolutions require approval routing",
+        item.sealedDocumentId ? "" : "Seal meeting record after signatures"
+      ].filter(Boolean);
+      const brief = {
+        id: `ai-brief-${Date.now()}`,
+        title: body.title ?? `AI meeting brief: ${item.title}`,
+        summary: [
+          `${item.title} covered ${item.linkedRecord} through ${item.route}.`,
+          `Attendance ${item.attendanceCount ?? item.checkedInParticipants?.length ?? 0}/${item.participants?.length ?? 0}; quorum ${item.quorum?.met ? "met" : "not confirmed"}.`,
+          `Connectivity ${item.connectivity?.status ?? "unchecked"}${item.fallbackChannel ? ` with fallback via ${item.fallbackChannel.channel}` : ""}.`
+        ].join(" "),
+        risks,
+        nextActions,
+        generatedAt: new Date().toISOString(),
+        generatedBy: body.actor
+      };
+      const briefDocument = documentRecord(
+        `${brief.title}.pdf`,
+        "AI live session brief",
+        "AI Desk",
+        item.host ?? body.actor ?? "Live Comms",
+        "PDF",
+        "Archived"
+      );
+      briefDocument.linkedReport = item.linkedRecord;
+      briefDocument.linkedLiveSession = item.id;
+      briefDocument.extractedText = [
+        brief.summary,
+        `Risks: ${brief.risks}`,
+        `Next actions: ${brief.nextActions.join("; ") || "No next actions"}`
+      ].join("\n");
+      briefDocument.custodian = body.actor;
+      briefDocument.chainHash = `ai-live-brief-${item.id}-${Date.now()}`;
+      state.documents.unshift(briefDocument);
+      item.aiBrief = brief;
+      item.aiBriefDocumentId = briefDocument.id;
+      item.updatedAt = brief.generatedAt;
+      record("LiveSessionAiBriefGenerated", body.actor, item.title, brief.title);
+      return { session: item, document: briefDocument };
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -943,7 +989,8 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Fallback channel: ${item.fallbackChannel ? `${item.fallbackChannel.channel} - ${item.fallbackChannel.reason}` : "Not activated"}`,
         `Continuity alert: ${item.continuityAlertId ?? "Not sent"}`,
         `Offline notes: ${(item.offlineNotes ?? []).map((note) => `${note.author}: ${note.body}`).join("; ") || "None"}`,
-        `Recovery summary: ${item.recoverySummary ? `${item.recoverySummary.status} - ${item.recoverySummary.summary}` : "Not synced"}`
+        `Recovery summary: ${item.recoverySummary ? `${item.recoverySummary.status} - ${item.recoverySummary.summary}` : "Not synced"}`,
+        `AI brief: ${item.aiBriefDocumentId ?? "Not generated"}`
       ].join("\n");
       packet.custodian = body.actor;
       packet.chainHash = `live-${item.id}-${Date.now()}`;
