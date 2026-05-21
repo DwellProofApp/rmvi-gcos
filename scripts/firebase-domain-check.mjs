@@ -88,10 +88,27 @@ function getCertificate(hostname) {
 }
 
 function requestPath(path) {
+  return retryRequest(path, 3);
+}
+
+async function retryRequest(path, attempts) {
+  let lastError;
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await rawRequestPath(path);
+    } catch (error) {
+      lastError = error;
+      if (attempt < attempts) await wait(750 * attempt);
+    }
+  }
+  throw lastError;
+}
+
+function rawRequestPath(path) {
   return new Promise((resolve, reject) => {
     const req = request(new URL(path, baseUrl), {
       method: "GET",
-      timeout: 10000,
+      timeout: 20000,
       headers: {
         "cache-control": "no-cache"
       }
@@ -107,4 +124,8 @@ function requestPath(path) {
     req.on("error", reject);
     req.end();
   });
+}
+
+function wait(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }

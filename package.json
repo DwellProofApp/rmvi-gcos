@@ -19,6 +19,7 @@
     "object:smoke": "node scripts/object-storage-smoke-check.mjs",
     "runtime:smoke": "node scripts/runtime-smoke.mjs",
     "firebase:domain-check": "node scripts/firebase-domain-check.mjs",
+    "hosting:security-check": "node scripts/hosting-security-check.mjs",
     "preaws:check": "node scripts/pre-aws-hardening-check.mjs",
     "internal:audit": "node scripts/internal-page-audit.mjs",
     "release:check": "node scripts/final-release-check.mjs",

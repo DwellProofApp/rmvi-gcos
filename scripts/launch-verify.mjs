@@ -32,6 +32,7 @@ if (live) {
   await runStep("healthcheck", "npm", ["run", "healthcheck"], { required: true, env });
   await runStep("runtime-smoke", "npm", ["run", "runtime:smoke"], { required: true, env });
   await runStep("domain-check", "npm", ["run", "domain:check"], { required: true, env });
+  await runStep("hosting-security-check", "npm", ["run", "hosting:security-check"], { required: true, env });
   if (firebase) {
     await runStep("firebase-domain-check", "npm", ["run", "firebase:domain-check"], { required: true, env });
   }
@@ -117,6 +118,7 @@ function fixFor(name, result) {
   if (name === "healthcheck") return `Confirm the ${firebase ? "Firebase/Cloud Run" : "Replit"} deployment is running GCOS and GCOS_HEALTHCHECK_URL points to https://rmvi.org.`;
   if (name === "runtime-smoke") return "Set GCOS_SMOKE_EMAIL and GCOS_SMOKE_PASSWORD for a valid admin station and confirm protected APIs pass runtime smoke.";
   if (name === "domain-check") return `Confirm rmvi.org DNS points to the rmvi-gcos ${firebase ? "Firebase Hosting" : "Replit"} deployment and is no longer attached to another app.`;
+  if (name === "hosting-security-check") return "Confirm hosting headers, app-shell cache policy, service worker cache policy, PWA manifest, and immutable asset caching are active.";
   if (name === "firebase-domain-check") return "Confirm Firebase Hosting DNS, ownership TXT, TLS certificate, web rewrites, and Cloud Run API rewrites are active for rmvi.org.";
   if (name === "build") return "Fix the frontend production build error.";
   if (name === "test") return "Fix failing API or storage tests before launch.";
