@@ -1,6 +1,7 @@
 node_modules
 dist
 .npm-cache
+.firebase/
 .DS_Store
 data/*.json
 data/object-vault/

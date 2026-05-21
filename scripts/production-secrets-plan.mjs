@@ -4,7 +4,8 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const OUT_DIR = join(ROOT, "launch-reports");
-const TEMPLATE_PATH = join(ROOT, ".env.production.example");
+const deploymentTarget = String(process.env.GCOS_DEPLOYMENT_TARGET ?? "").toLowerCase();
+const TEMPLATE_PATH = join(ROOT, deploymentTarget === "firebase" ? ".env.firebase.example" : ".env.production.example");
 const generatedAt = new Date().toISOString();
 const template = await readFile(TEMPLATE_PATH, "utf8");
 const entries = parseEnv(template).map((entry) => {
@@ -17,7 +18,7 @@ const entries = parseEnv(template).map((entry) => {
   return {
     ...entry,
     source,
-    required: entry.name !== "VITE_GCOS_API_BASE" && entry.name !== "GCOS_API_PORT" && entry.name !== "GCOS_DATA_PATH",
+    required: isRequired(entry.name),
     sensitive,
     placeholder,
     ready: Boolean(value) && !placeholder,
@@ -29,6 +30,9 @@ const required = entries.filter((entry) => entry.required);
 const missing = required.filter((entry) => !entry.ready);
 const report = {
   generatedAt,
+  deploymentTarget: valueOf("GCOS_DEPLOYMENT_TARGET") || deploymentTarget || "replit",
+  storageProvider: valueOf("GCOS_STORAGE_PROVIDER") || "json",
+  objectStorageProvider: valueOf("GCOS_OBJECT_STORAGE_PROVIDER") || "filesystem",
   targetDomain: valueOf("GCOS_DOMAIN") || "rmvi.org",
   status: missing.length ? "secrets-pending" : "secrets-ready",
   required: required.length,
@@ -51,7 +55,7 @@ for (const entry of entries) {
 console.log(`Production secrets plan: ${mdPath}`);
 console.log(`Production secrets status: ${report.status} (${report.ready}/${report.required} required ready)`);
 if (missing.length) {
-  console.log(`Next: set ${missing.slice(0, 5).map((entry) => entry.name).join(", ")} in Replit Secrets.`);
+  console.log(`Next: set ${missing.slice(0, 5).map((entry) => entry.name).join(", ")} in ${report.deploymentTarget === "firebase" ? "Cloud Run/Firebase environment variables" : "Replit Secrets"}.`);
 }
 
 function parseEnv(source) {
@@ -70,6 +74,28 @@ function isPlaceholder(name, value) {
   return false;
 }
 
+function isRequired(name) {
+  if (["VITE_GCOS_API_BASE", "GCOS_API_PORT", "GCOS_DATA_PATH", "GCOS_OBJECT_VAULT_PATH"].includes(name)) return false;
+  const recordStorageProvider = String(process.env.GCOS_STORAGE_PROVIDER ?? valueFromTemplate("GCOS_STORAGE_PROVIDER") ?? "json").toLowerCase();
+  const objectStorageProvider = String(process.env.GCOS_OBJECT_STORAGE_PROVIDER ?? valueFromTemplate("GCOS_OBJECT_STORAGE_PROVIDER") ?? "filesystem").toLowerCase();
+  if (["GCOS_DATABASE_URL", "GCOS_DATABASE_SSL", "GCOS_DATABASE_POOL_SIZE"].includes(name)) return recordStorageProvider === "database";
+  if (["GCOS_FIREBASE_PROJECT_ID", "GCOS_FIREBASE_NAMESPACE"].includes(name)) return ["firestore", "firebase"].includes(recordStorageProvider);
+  if (name.startsWith("GCOS_R2_")) return objectStorageProvider.includes("r2");
+  if (["GCOS_S3_BUCKET", "GCOS_AWS_REGION"].includes(name)) return objectStorageProvider.includes("s3");
+  if (name === "GCOS_FIREBASE_STORAGE_BUCKET") return objectStorageProvider.includes("firebase") || objectStorageProvider.includes("google") || objectStorageProvider === "gcs";
+  return true;
+}
+
+function valueFromTemplate(name) {
+  for (const line of template.split("\n")) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith("#") || !trimmed.includes("=")) continue;
+    const [key, ...rest] = trimmed.split("=");
+    if (key === name) return rest.join("=");
+  }
+  return "";
+}
+
 function redact(value, source = "") {
   if (!value) return "";
   const redacted = value.replace(/:\/\/([^:@/]+):([^@/]+)@/, "://$1:***@");
@@ -86,6 +112,12 @@ function renderMarkdown(plan) {
 
 Generated: ${plan.generatedAt}
 
+Deployment target: \`${plan.deploymentTarget}\`
+
+Record storage: \`${plan.storageProvider}\`
+
+Object storage: \`${plan.objectStorageProvider}\`
+
 Target domain: \`${plan.targetDomain}\`
 
 Status: \`${plan.status}\`
@@ -100,7 +132,7 @@ ${rows.join("\n")}
 
 ## Next Actions
 
-${plan.missing.length ? plan.missing.map((name) => name === "GCOS_DATABASE_URL" ? "- Set `GCOS_DATABASE_URL` in Replit Secrets, or connect Replit Postgres so `DATABASE_URL` is available." : `- Set \`${name}\` in Replit Secrets.`).join("\n") : "- All required secrets are ready for live verification."}
+${plan.missing.length ? plan.missing.map((name) => `- Set \`${name}\` in ${plan.deploymentTarget === "firebase" ? "Cloud Run/Firebase environment variables" : "Replit Secrets"}.`).join("\n") : "- All required secrets are ready for live verification."}
 
 After the required values are ready, run:
 
