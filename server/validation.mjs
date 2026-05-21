@@ -1012,6 +1012,15 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/live-sessions/:id/risk-review": () => {},
+
+  "POST /api/live-sessions/:id/escalate": (body) => {
+    if (body.item !== undefined) requireString(body.item, "item");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

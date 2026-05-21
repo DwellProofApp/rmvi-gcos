@@ -725,6 +725,46 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { session: item, document: sealed };
     },
 
+    reviewLiveSessionRisk(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const issues = [
+        item.quorum?.met ? "" : "Quorum missing or unchecked",
+        item.minutesDocumentId ? "" : "Minutes not built",
+        item.minutesSignatures?.length ? "" : "Minutes unsigned",
+        item.sealedDocumentId ? "" : "Meeting record not sealed",
+        item.resolutions?.some((resolution) => resolution.status === "Passed") && !item.resolutionApprovalId ? "Passed resolution has no approval request" : ""
+      ].filter(Boolean);
+      item.riskReview = {
+        score: Math.min(100, issues.length * 20),
+        status: issues.length >= 3 ? "High" : issues.length ? "Watch" : "Clear",
+        issues,
+        reviewedAt: new Date().toISOString(),
+        reviewedBy: body.actor
+      };
+      item.updatedAt = item.riskReview.reviewedAt;
+      record("LiveSessionRiskReviewed", body.actor, item.title, `${item.riskReview.status}: ${item.riskReview.score}%`);
+      return item;
+    },
+
+    escalateLiveSessionRisk(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const issues = item.riskReview?.issues?.length ? item.riskReview.issues : ["Live session requires executive review"];
+      const created = escalation(
+        "Live Comms",
+        body.item ?? item.title,
+        body.reason ?? issues.join("; "),
+        body.severity ?? (item.riskReview?.status === "High" ? "High" : "Medium"),
+        body.owner ?? item.host ?? body.actor
+      );
+      created.linkedLiveSession = item.id;
+      created.linkedReport = item.linkedRecord;
+      state.escalations.unshift(created);
+      item.riskEscalationId = created.id;
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionRiskEscalated", body.actor, item.title, created.reason);
+      return { session: item, escalation: created };
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -815,7 +855,9 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Shared documents: ${(item.sharedDocuments ?? []).map((document) => `${document.name} (${document.source})`).join(", ") || "No live documents shared"}`,
         `Files: ${(item.files ?? []).join(", ") || "No files attached"}`,
         `Minutes signatures: ${(item.minutesSignatures ?? []).map((signature) => `${signature.signer} (${signature.role})`).join("; ") || "No signatures"}`,
-        `Sealed record: ${item.sealedDocumentId ?? "Not sealed"}`
+        `Sealed record: ${item.sealedDocumentId ?? "Not sealed"}`,
+        `Risk review: ${item.riskReview ? `${item.riskReview.status} (${item.riskReview.score}%) - ${item.riskReview.issues.join("; ")}` : "Not reviewed"}`,
+        `Risk escalation: ${item.riskEscalationId ?? "Not escalated"}`
       ].join("\n");
       packet.custodian = body.actor;
       packet.chainHash = `live-${item.id}-${Date.now()}`;

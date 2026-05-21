@@ -1801,6 +1801,20 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(sealedLiveSession.document.verified, true);
     assert.equal(sealedLiveSession.session.sealedDocumentId, sealedLiveSession.document.id);
 
+    const riskReviewedSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/risk-review`, {}, nationalToken);
+    assert.equal(Boolean(riskReviewedSession.riskReview), true);
+    assert.equal(riskReviewedSession.riskReview.reviewedBy, "np@rmvi.org");
+
+    const riskEscalation = await postJson(`/api/live-sessions/${createdLiveSession.id}/escalate`, {
+      item: "Automated live governance risk",
+      reason: "Automated risk escalation",
+      severity: "High",
+      owner: "National Presidency Workstation"
+    }, nationalToken);
+    assert.equal(riskEscalation.escalation.item, "Automated live governance risk");
+    assert.equal(riskEscalation.escalation.source, "Live Comms");
+    assert.equal(riskEscalation.session.riskEscalationId, riskEscalation.escalation.id);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"
