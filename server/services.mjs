@@ -765,6 +765,54 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { session: item, escalation: created };
     },
 
+    updateLiveSessionConnectivity(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.connectivity = {
+        status: body.status ?? "Stable",
+        bandwidthMode: body.bandwidthMode ?? "Standard",
+        lastCheckedAt: new Date().toISOString(),
+        checkedBy: body.actor
+      };
+      item.updatedAt = item.connectivity.lastCheckedAt;
+      record("LiveSessionConnectivityUpdated", body.actor, item.title, `${item.connectivity.status} - ${item.connectivity.bandwidthMode}`);
+      return item;
+    },
+
+    activateLiveSessionFallback(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.fallbackChannel = {
+        channel: body.channel ?? "ChurchMail + offline notes",
+        reason: body.reason ?? "Network continuity required",
+        activatedAt: new Date().toISOString(),
+        activatedBy: body.actor
+      };
+      item.connectivity ??= {};
+      item.connectivity.status = "Fallback";
+      item.connectivity.bandwidthMode = body.bandwidthMode ?? "Low bandwidth";
+      item.updatedAt = item.fallbackChannel.activatedAt;
+      record("LiveSessionFallbackActivated", body.actor, item.title, item.fallbackChannel.channel);
+      return item;
+    },
+
+    broadcastLiveSessionAlert(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const alert = message(
+        "Notification",
+        body.subject ?? `Live session continuity alert: ${item.title}`,
+        body.actor ?? item.host,
+        "Ready",
+        item.fallbackChannel?.channel ?? item.linkedRecord
+      );
+      alert.route = body.route ?? item.route;
+      alert.priority = body.priority ?? "High";
+      alert.linkedLiveSession = item.id;
+      state.messages.unshift(alert);
+      item.continuityAlertId = alert.id;
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionContinuityAlertSent", body.actor, item.title, alert.subject);
+      return { session: item, message: alert };
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -857,7 +905,10 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Minutes signatures: ${(item.minutesSignatures ?? []).map((signature) => `${signature.signer} (${signature.role})`).join("; ") || "No signatures"}`,
         `Sealed record: ${item.sealedDocumentId ?? "Not sealed"}`,
         `Risk review: ${item.riskReview ? `${item.riskReview.status} (${item.riskReview.score}%) - ${item.riskReview.issues.join("; ")}` : "Not reviewed"}`,
-        `Risk escalation: ${item.riskEscalationId ?? "Not escalated"}`
+        `Risk escalation: ${item.riskEscalationId ?? "Not escalated"}`,
+        `Connectivity: ${item.connectivity ? `${item.connectivity.status} - ${item.connectivity.bandwidthMode}` : "Not checked"}`,
+        `Fallback channel: ${item.fallbackChannel ? `${item.fallbackChannel.channel} - ${item.fallbackChannel.reason}` : "Not activated"}`,
+        `Continuity alert: ${item.continuityAlertId ?? "Not sent"}`
       ].join("\n");
       packet.custodian = body.actor;
       packet.chainHash = `live-${item.id}-${Date.now()}`;

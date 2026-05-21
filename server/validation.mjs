@@ -1021,6 +1021,23 @@ const validators = {
     if (body.owner !== undefined) requireString(body.owner, "owner");
   },
 
+  "POST /api/live-sessions/:id/connectivity": (body) => {
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.bandwidthMode !== undefined) requireString(body.bandwidthMode, "bandwidthMode");
+  },
+
+  "POST /api/live-sessions/:id/fallback": (body) => {
+    if (body.channel !== undefined) requireString(body.channel, "channel");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.bandwidthMode !== undefined) requireString(body.bandwidthMode, "bandwidthMode");
+  },
+
+  "POST /api/live-sessions/:id/continuity-alert": (body) => {
+    if (body.subject !== undefined) requireString(body.subject, "subject");
+    if (body.route !== undefined) requireString(body.route, "route");
+    if (body.priority !== undefined) requireString(body.priority, "priority");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

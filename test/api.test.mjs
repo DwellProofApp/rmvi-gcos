@@ -1815,6 +1815,30 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(riskEscalation.escalation.source, "Live Comms");
     assert.equal(riskEscalation.session.riskEscalationId, riskEscalation.escalation.id);
 
+    const connectivityLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/connectivity`, {
+      status: "Weak",
+      bandwidthMode: "Low bandwidth"
+    }, nationalToken);
+    assert.equal(connectivityLiveSession.connectivity.status, "Weak");
+    assert.equal(connectivityLiveSession.connectivity.bandwidthMode, "Low bandwidth");
+
+    const fallbackLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/fallback`, {
+      channel: "ChurchMail + SMS relay",
+      reason: "Low bandwidth in county office",
+      bandwidthMode: "Low bandwidth"
+    }, nationalToken);
+    assert.equal(fallbackLiveSession.fallbackChannel.channel, "ChurchMail + SMS relay");
+    assert.equal(fallbackLiveSession.connectivity.status, "Fallback");
+
+    const continuityAlert = await postJson(`/api/live-sessions/${createdLiveSession.id}/continuity-alert`, {
+      subject: "Automated continuity alert",
+      route: "National HQ -> District HQ",
+      priority: "High"
+    }, nationalToken);
+    assert.equal(continuityAlert.message.subject, "Automated continuity alert");
+    assert.equal(continuityAlert.message.kind, "Notification");
+    assert.equal(continuityAlert.session.continuityAlertId, continuityAlert.message.id);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"
