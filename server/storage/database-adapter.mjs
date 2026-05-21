@@ -460,6 +460,98 @@ export function createDatabaseStorageAdapter({ databaseUrl }) {
       };
     },
 
+    async databaseSmoke(state, { actor } = {}) {
+      const generatedAt = new Date().toISOString();
+      if (!configured) {
+        return {
+          generatedAt,
+          generatedBy: actor ?? "system",
+          provider: "database",
+          mode: this.mode,
+          connected: false,
+          schemaReady: false,
+          readWrite: false,
+          projectionTablesReady: false,
+          status: "blocked",
+          checks: [
+            { name: "database-url", ok: false, detail: "GCOS_DATABASE_URL not configured" }
+          ],
+          records: recordCounts(state),
+          nextAction: "Set GCOS_DATABASE_URL before running the database smoke check"
+        };
+      }
+      let client = null;
+      const smokeId = `smoke-${Date.now()}`;
+      const checks = [];
+      try {
+        const activePool = await getPool();
+        client = await activePool.connect();
+        checks.push({ name: "connection", ok: true, detail: "Postgres connection opened" });
+        await ensureSchema(client);
+        checks.push({ name: "schema", ok: true, detail: `gcos_core schema version ${SCHEMA_VERSION}` });
+        await client.query(`
+          create table if not exists gcos_core.database_smoke_checks (
+            id text primary key,
+            actor text,
+            payload jsonb not null,
+            created_at timestamptz not null default now()
+          )
+        `);
+        await client.query(
+          `insert into gcos_core.database_smoke_checks (id, actor, payload)
+           values ($1, $2, $3::jsonb)
+           on conflict (id) do update set payload = excluded.payload`,
+          [smokeId, actor ?? "system", JSON.stringify({ generatedAt, hash: hashState(state), records: recordCounts(state) })]
+        );
+        const readBack = await client.query("select payload from gcos_core.database_smoke_checks where id = $1", [smokeId]);
+        const readWrite = readBack.rowCount === 1 && readBack.rows[0]?.payload?.hash === hashState(state);
+        checks.push({ name: "read-write", ok: readWrite, detail: readWrite ? "Smoke row inserted and read back" : "Smoke row mismatch" });
+        await client.query("delete from gcos_core.database_smoke_checks where id = $1", [smokeId]);
+        const projectionStatus = await readProjectionStatus(client);
+        const projectionTablesReady = projectionStatus.tables.every((table) => table.ready);
+        checks.push({ name: "projection-tables", ok: projectionTablesReady, detail: `${projectionStatus.tables.filter((table) => table.ready).length}/${projectionStatus.tables.length} projection tables ready` });
+        const ok = checks.every((check) => check.ok);
+        lastDatabaseError = ok ? null : "Database smoke check failed";
+        return {
+          generatedAt,
+          generatedBy: actor ?? "system",
+          provider: "database",
+          mode: this.mode,
+          connected: true,
+          schemaReady: true,
+          readWrite,
+          projectionTablesReady,
+          status: ok ? "passed" : "failed",
+          checks,
+          projectionStatus,
+          records: recordCounts(state),
+          nextAction: ok ? "Database smoke check passed; continue staging launch verification" : "Review failed database smoke checks"
+        };
+      } catch (error) {
+        lastDatabaseError = error.message;
+        return {
+          generatedAt,
+          generatedBy: actor ?? "system",
+          provider: "database",
+          mode: this.mode,
+          connected: false,
+          schemaReady: false,
+          readWrite: false,
+          projectionTablesReady: false,
+          status: "failed",
+          error: error.message,
+          checks: [
+            ...checks,
+            { name: "database-smoke", ok: false, detail: error.message }
+          ],
+          records: recordCounts(state),
+          nextAction: "Fix database connectivity or credentials and rerun smoke check"
+        };
+      } finally {
+        client?.release();
+      }
+    },
+
     async exportMigrationBundle() {
       throw new Error("Database migration export is only available from the JSON provider");
     },

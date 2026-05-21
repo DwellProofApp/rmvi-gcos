@@ -150,6 +150,8 @@ const validators = {
 
   "POST /api/persistence/cutover-checklist": () => {},
 
+  "POST /api/persistence/database-smoke": () => {},
+
   "POST /api/launch/readiness": () => {},
 
   "POST /api/launch/deployment-plan": () => {},

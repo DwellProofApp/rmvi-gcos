@@ -195,6 +195,27 @@ export function createJsonStorageAdapter({ dataPath }) {
       return buildCutoverChecklist(state, this.importDryRun(state));
     },
 
+    async databaseSmoke(state, { actor } = {}) {
+      return {
+        generatedAt: new Date().toISOString(),
+        generatedBy: actor ?? "system",
+        provider: "json",
+        mode: "json-file",
+        connected: false,
+        schemaReady: false,
+        readWrite: false,
+        projectionTablesReady: false,
+        status: "skipped",
+        checks: [
+          { name: "database-provider", ok: false, detail: "JSON provider is active" },
+          { name: "connection", ok: false, detail: "Set GCOS_STORAGE_PROVIDER=database and GCOS_DATABASE_URL" },
+          { name: "read-write", ok: false, detail: "Database smoke test requires Postgres" }
+        ],
+        records: recordCounts(state),
+        nextAction: "Configure managed Postgres before running a production database smoke check"
+      };
+    },
+
     async exportMigrationBundle(state, { actor, label }) {
       const migrationDir = join(dirname(dataPath), "migrations");
       await mkdir(migrationDir, { recursive: true });

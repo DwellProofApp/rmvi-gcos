@@ -40,6 +40,7 @@ Production domain target: `rmvi.org`
 - Database import dry-run validation with ordered batches
 - Database cutover checklist with go/no-go provider switch gates
 - Live Postgres JSONB storage adapter for database-backed persistence
+- Database smoke-check endpoint and CLI for managed Postgres launch verification
 - Launch readiness scoring for MVP and production rollout gates
 - Production readiness profile checker for the `rmvi.org` Replit launch
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
@@ -222,6 +223,7 @@ GET  /api/persistence/import-dry-run
 POST /api/persistence/import-dry-run
 GET  /api/persistence/cutover-checklist
 POST /api/persistence/cutover-checklist
+POST /api/persistence/database-smoke
 GET  /api/files
 POST /api/files/upload
 GET  /api/files/:id/download

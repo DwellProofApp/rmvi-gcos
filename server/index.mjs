@@ -107,6 +107,7 @@ const routes = {
   "POST /api/persistence/import-dry-run": ({ session }) => ok(recordPersistenceImportDryRun(session.email)),
   "GET /api/persistence/cutover-checklist": () => ok(persistenceCutoverChecklist()),
   "POST /api/persistence/cutover-checklist": ({ session }) => ok(recordPersistenceCutoverChecklist(session.email)),
+  "POST /api/persistence/database-smoke": async ({ session }) => ok(await recordPersistenceDatabaseSmoke(session.email)),
   "GET /api/sessions": () => ok(sessionSummary({ includeIds: true })),
   "GET /api/sessions/digest": () => ok(sessionDigest()),
   "POST /api/sessions/renew": ({ session }) => ok(renewSession(session.token, session.email)),
@@ -1369,6 +1370,23 @@ function recordPersistenceCutoverChecklist(actor) {
   };
   record("PersistenceCutoverChecked", actor, "Database cutover", checklist.nextAction);
   return { checklist, status: persistenceStatusSync() };
+}
+
+async function recordPersistenceDatabaseSmoke(actor) {
+  requirePermission(actor, "canApprove");
+  const smoke = await storage.databaseSmoke(state, { actor });
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastDatabaseSmoke = {
+    generatedAt: smoke.generatedAt,
+    actor,
+    status: smoke.status,
+    connected: smoke.connected,
+    schemaReady: smoke.schemaReady,
+    readWrite: smoke.readWrite,
+    projectionTablesReady: smoke.projectionTablesReady
+  };
+  record("PersistenceDatabaseSmokeChecked", actor, "Managed database", smoke.status);
+  return { smoke, status: await persistenceStatus() };
 }
 
 async function createPersistenceMigrationExport(body, actor) {

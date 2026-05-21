@@ -267,6 +267,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(recordedCutoverChecklist.checklist.requiredSwitches.some((item) => item.name === "GCOS_DATABASE_URL"), true);
     assert.equal(recordedCutoverChecklist.status.records.stations > 0, true);
 
+    const databaseSmoke = await postJson("/api/persistence/database-smoke", {}, nationalToken);
+    assert.equal(databaseSmoke.smoke.provider, "json");
+    assert.equal(databaseSmoke.smoke.status, "skipped");
+    assert.equal(databaseSmoke.smoke.checks.some((check) => check.name === "database-provider" && !check.ok), true);
+    assert.equal(databaseSmoke.status.records.stations > 0, true);
+
     const recordedLaunchReadiness = await postJson("/api/launch/readiness", {}, nationalToken);
     assert.equal(recordedLaunchReadiness.launch.status, "mvp-launch-ready");
     assert.equal(recordedLaunchReadiness.launch.mvpScore >= 95, true);
