@@ -5,4 +5,5 @@ dist
 .DS_Store
 data/*.json
 data/object-vault/
+public/build-info.json
 launch-reports/

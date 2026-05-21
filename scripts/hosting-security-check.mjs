@@ -37,6 +37,17 @@ await run("Manifest is install-ready", async () => {
   return `${manifest.short_name}, ${manifest.icons.length} icons`;
 });
 
+await run("Build manifest is published", async () => {
+  const response = await get("/build-info.json");
+  expectStatus(response, 200);
+  const build = JSON.parse(response.body);
+  assert(build.app === "rmvi-gcos", "build app id mismatch");
+  assert(build.domain === domain, `build domain is ${build.domain || "missing"}`);
+  assert(/^[a-f0-9]{7,}$|^unknown$/.test(build.gitCommit), `invalid git commit ${build.gitCommit || "missing"}`);
+  assert(Boolean(build.generatedAt), "generatedAt missing");
+  return `${build.gitCommit} generated ${build.generatedAt}`;
+});
+
 await run("Security headers are active", async () => {
   const response = await head("/");
   const csp = header(response, "content-security-policy");
