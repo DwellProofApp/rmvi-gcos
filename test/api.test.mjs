@@ -1940,6 +1940,22 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(liveSessionPacket.document.retainedUntil, "Permanent");
     assert.equal(liveSessionPacket.session.packetDocumentId, liveSessionPacket.document.id);
 
+    const outcomeReport = await postJson(`/api/live-sessions/${createdLiveSession.id}/outcome-report`, {
+      name: "Automated live session outcome report",
+      owner: "National Presidency Workstation",
+      path: "National HQ -> District HQ",
+      due: "Today",
+      state: "Ready",
+      score: 91,
+      type: "Live Comms",
+      period: "Current meeting"
+    }, nationalToken);
+    assert.equal(outcomeReport.report.name, "Automated live session outcome report");
+    assert.equal(outcomeReport.report.type, "Live Comms");
+    assert.equal(outcomeReport.report.linkedLiveSession, createdLiveSession.id);
+    assert.equal(outcomeReport.session.outcomeReportId, outcomeReport.report.id);
+    assert.ok(outcomeReport.report.reportFields["Session title"]);
+
     const archivedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/archive`, {
       reason: "Automated live session archive"
     }, nationalToken);

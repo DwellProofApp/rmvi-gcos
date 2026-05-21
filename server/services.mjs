@@ -1147,6 +1147,58 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { session: item, document: packet };
     },
 
+    createLiveSessionOutcomeReport(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const created = report(
+        body.name ?? `${item.title} outcome report`,
+        body.owner ?? item.host ?? body.actor,
+        body.path ?? item.route,
+        body.due ?? "Today",
+        body.state ?? "Ready",
+        body.score ?? 88,
+        {
+          type: body.type ?? "Live Comms",
+          period: body.period ?? "Current meeting",
+          routingStage: body.routingStage ?? "Meeting outcome routing",
+          evidenceStatus: body.evidenceStatus ?? (item.packetDocumentId ? "Meeting packet attached" : "Meeting record pending packet"),
+          templateId: "tpl-live-session-outcome",
+          preparedBy: body.actor,
+          attestation: "I certify this live meeting outcome report reflects the recorded decisions, attendance, and follow-up actions.",
+          approvalLimit: body.approvalLimit ?? "Supervising office review",
+          templateChecklist: [
+            "Attendance and quorum reviewed",
+            "Agenda and decisions summarized",
+            "Action items assigned",
+            "Follow-up ledger checked",
+            "Archive packet linked"
+          ],
+          reportFields: {
+            "Session title": item.title,
+            "Session type": item.sessionType,
+            "Host office": item.host,
+            "Linked record": item.linkedRecord,
+            "Purpose": item.purpose,
+            "Attendance": `${item.attendanceCount ?? item.checkedInParticipants?.length ?? 0}/${item.participants?.length ?? 0}`,
+            "Quorum": item.quorum?.met ? "Met" : "Not confirmed",
+            "Agenda": (item.agendaItems ?? []).join("; ") || "No agenda recorded",
+            "Decisions": (item.decisions ?? []).map((decision) => decision.text).join("; ") || "No decisions recorded",
+            "Resolutions": (item.resolutions ?? []).map((resolution) => `${resolution.title} - ${resolution.status}`).join("; ") || "No resolutions recorded",
+            "Action items": (item.actionItems ?? []).map((action) => `${action.title} -> ${action.assignee}`).join("; ") || "No action items recorded",
+            "Follow-up ledger": item.followUpLedger ? `${item.followUpLedger.status}; missing: ${item.followUpLedger.missingParticipants.join(", ") || "none"}` : "Not built",
+            "Packet document": item.packetDocumentId ?? "No packet built",
+            "AI brief": item.aiBriefDocumentId ?? "No AI brief generated"
+          }
+        }
+      );
+      created.linkedLiveSession = item.id;
+      state.reports.unshift(created);
+      item.outcomeReportId = created.id;
+      item.outcomeReportCreatedAt = new Date().toISOString();
+      item.updatedAt = item.outcomeReportCreatedAt;
+      record("LiveSessionOutcomeReportCreated", body.actor, item.title, created.name);
+      return { session: item, report: created };
+    },
+
     archiveLiveSession(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       item.archived = true;

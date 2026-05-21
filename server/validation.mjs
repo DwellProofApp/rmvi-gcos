@@ -1099,6 +1099,17 @@ const validators = {
     if (body.name !== undefined) requireString(body.name, "name");
   },
 
+  "POST /api/live-sessions/:id/outcome-report": (body) => {
+    if (body.name !== undefined) requireString(body.name, "name");
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+    if (body.path !== undefined) requireString(body.path, "path");
+    if (body.due !== undefined) requireString(body.due, "due");
+    if (body.state !== undefined) requireEnum(body.state, statuses, "state");
+    if (body.score !== undefined) requireNumber(body.score, "score");
+    if (body.type !== undefined) requireString(body.type, "type");
+    if (body.period !== undefined) requireString(body.period, "period");
+  },
+
   "POST /api/live-sessions/:id/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },

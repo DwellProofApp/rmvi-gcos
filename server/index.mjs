@@ -327,6 +327,7 @@ const routes = {
   "POST /api/live-sessions/:id/follow-up-task": ({ params, body, session }) => createdResponse(services.createLiveSessionFollowUpTask(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/calendar-event": ({ params, body, session }) => createdResponse(services.scheduleLiveSession(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/packet": ({ params, body, session }) => createdResponse(services.buildLiveSessionPacket(params.id, { ...body, actor: session.email })),
+  "POST /api/live-sessions/:id/outcome-report": ({ params, body, session }) => createdResponse(services.createLiveSessionOutcomeReport(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/archive": ({ params, body, session }) => ok(services.archiveLiveSession(params.id, { ...body, actor: session.email })),
   "GET /api/personnel": () => ok(state.personnel),
   "POST /api/personnel": ({ body }) => createdResponse(services.createPerson(body)),
