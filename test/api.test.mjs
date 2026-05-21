@@ -3413,6 +3413,9 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const protectedBootstrap = await fetch(`${BASE_URL}/api/bootstrap`);
     assert.equal(protectedBootstrap.status, 401);
 
+    const publicBootstrap = await getJson("/api/bootstrap/public");
+    assert.equal(Array.isArray(publicBootstrap.stations), true);
+
     const productionLogin = await postJson("/api/auth/login", {
       email: "mission@rmvi.org",
       password: demoPassword("mission")

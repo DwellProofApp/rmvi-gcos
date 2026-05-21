@@ -27,7 +27,7 @@ const checks = [
   },
   {
     name: "Bootstrap state",
-    path: "/api/bootstrap",
+    path: "/api/bootstrap/public",
     verify: async (response) => {
       const body = await response.json();
       return Array.isArray(body.stations)

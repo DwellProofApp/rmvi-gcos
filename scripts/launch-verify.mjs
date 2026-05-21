@@ -27,9 +27,10 @@ await runStep("production-profile", "npm", ["run", "production:check"], { requir
 
 if (live) {
   await runStep("healthcheck", "npm", ["run", "healthcheck"], { required: true, env });
+  await runStep("runtime-smoke", "npm", ["run", "runtime:smoke"], { required: true, env });
   await runStep("domain-check", "npm", ["run", "domain:check"], { required: true, env });
 } else {
-  report.nextActions.push("Run npm run launch:verify:live from Replit after production secrets and rmvi.org DNS are active.");
+  report.nextActions.push("Run npm run runtime:smoke against the deployed service, then run npm run launch:verify:live from Replit after production secrets and rmvi.org DNS are active.");
 }
 
 const failed = report.checks.filter((check) => !check.ok && check.required);
@@ -104,6 +105,7 @@ function summarize(result) {
 function fixFor(name, result) {
   if (name === "production-profile") return "Set the missing Replit secrets from .env.production.example, especially GCOS_DATABASE_URL and object vault settings.";
   if (name === "healthcheck") return "Confirm the Replit deployment is running GCOS and GCOS_HEALTHCHECK_URL points to https://rmvi.org.";
+  if (name === "runtime-smoke") return "Set GCOS_SMOKE_EMAIL and GCOS_SMOKE_PASSWORD for a valid admin station and confirm protected APIs pass runtime smoke.";
   if (name === "domain-check") return "Confirm rmvi.org DNS points to the rmvi-gcos Replit deployment and is no longer attached to another app.";
   if (name === "build") return "Fix the frontend production build error.";
   if (name === "test") return "Fix failing API or storage tests before launch.";

@@ -130,6 +130,7 @@ The live command runs:
 - API/storage tests
 - production environment profile
 - `https://rmvi.org` healthcheck
+- authenticated runtime smoke for station login, protected APIs, object storage, and session renewal
 - DNS and domain ownership check
 
 Every run writes a JSON report into `launch-reports/`. The folder is ignored by git because each launch report is environment-specific evidence.
@@ -153,6 +154,7 @@ After `npm run launch:verify:live` passes:
 Do not invite production users if any of these are true:
 
 - `npm run launch:verify:live` fails.
+- `npm run runtime:smoke` fails against the live deployment.
 - `https://rmvi.org/health` does not return `gcos-api`.
 - `https://rmvi.org/api/status` does not report GCOS workflow counts.
 - `rmvi.org` serves another app.

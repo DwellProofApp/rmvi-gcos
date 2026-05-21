@@ -45,6 +45,7 @@ Production domain target: `rmvi.org`
 - Launch readiness scoring for MVP and production rollout gates
 - Production readiness profile checker for the `rmvi.org` Replit launch
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
+- Authenticated runtime smoke test for station login, protected APIs, object storage, and session renewal
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
 - Final release handoff and project completion report
@@ -84,6 +85,7 @@ npm run domain:check
 npm run production:check
 npm run database:smoke
 npm run object:smoke
+npm run runtime:smoke
 npm run release:check
 npm run secrets:plan
 npm run launch:verify
@@ -234,6 +236,7 @@ GET  /api/files/:id/download
 POST /api/documents/:id/file
 POST /api/evidence-vault/:id/file
 GET  /api/bootstrap
+GET  /api/bootstrap/public
 POST /api/dev/reset
 POST /api/auth/login
 GET  /api/station-auth

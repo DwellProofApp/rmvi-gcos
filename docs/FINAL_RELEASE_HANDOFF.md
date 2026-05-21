@@ -65,6 +65,7 @@ Run in the production environment after secrets are configured:
 npm run production:check
 npm run replit:run
 GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck
+GCOS_SMOKE_URL=https://rmvi.org GCOS_SMOKE_EMAIL=<admin-station> GCOS_SMOKE_PASSWORD=<password> npm run runtime:smoke
 npm run domain:check
 npm run launch:verify:live
 ```
@@ -76,6 +77,7 @@ npm run launch:verify:live
 - `npm run release:check` returns 100%.
 - `npm run launch:verify` passes locally before deployment.
 - `npm run production:check` returns at least 90%.
+- `npm run runtime:smoke` passes against the live deployment with a valid admin or approver station.
 - `npm run launch:verify:live` passes from Replit after domain activation.
 - `https://rmvi.org/health` returns `gcos-api`.
 - `https://rmvi.org/api/status` reports workflow counts and production limits.
