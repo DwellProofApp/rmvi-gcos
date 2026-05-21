@@ -907,6 +907,15 @@ const validators = {
     if (body.due !== undefined) requireString(body.due, "due");
   },
 
+  "POST /api/live-sessions/:id/recording": (body) => {
+    requireString(body.status, "status");
+  },
+
+  "POST /api/live-sessions/:id/transcript": (body) => {
+    requireString(body.transcript, "transcript");
+    if (body.status !== undefined) requireString(body.status, "status");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

@@ -342,6 +342,27 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateLiveSessionRecording(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.recordingStatus = body.status ?? "Recording";
+      item.recordingStartedAt ??= new Date().toISOString();
+      if (item.recordingStatus === "Stopped" || item.recordingStatus === "Complete") {
+        item.recordingStoppedAt = new Date().toISOString();
+      }
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionRecordingUpdated", body.actor, item.title, item.recordingStatus);
+      return item;
+    },
+
+    attachLiveSessionTranscript(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.voiceTranscript = body.transcript ?? "Voice transcript pending";
+      item.transcriptStatus = body.status ?? "Transcribed";
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionTranscriptAttached", body.actor, item.title, item.transcriptStatus);
+      return item;
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -418,6 +439,8 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Notes: ${(item.notes ?? []).join("; ") || "No notes recorded"}`,
         `Decisions: ${(item.decisions ?? []).map((decision) => decision.text ?? decision).join("; ") || "No decisions recorded"}`,
         `Transcript: ${(item.transcript ?? []).map((entry) => `${entry.author}: ${entry.body}`).join("; ") || "No transcript messages"}`,
+        `Voice transcript: ${item.voiceTranscript ?? "No voice transcript attached"}`,
+        `Recording: ${item.recordingStatus ?? "Not recorded"}`,
         `Files: ${(item.files ?? []).join(", ") || "No files attached"}`
       ].join("\n");
       packet.custodian = body.actor;

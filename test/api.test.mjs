@@ -1668,6 +1668,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(decisionLiveSession.decisions[0].text, "Approve district follow-up after review");
     assert.equal(decisionLiveSession.decisions[0].owner, "district_admin@rmvi.org");
 
+    const recordingLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/recording`, {
+      status: "Recording"
+    }, nationalToken);
+    assert.equal(recordingLiveSession.recordingStatus, "Recording");
+    assert.equal(Boolean(recordingLiveSession.recordingStartedAt), true);
+
+    const transcriptLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/transcript`, {
+      transcript: "Automated voice transcript for the live session.",
+      status: "Transcribed"
+    }, nationalToken);
+    assert.equal(transcriptLiveSession.voiceTranscript, "Automated voice transcript for the live session.");
+    assert.equal(transcriptLiveSession.transcriptStatus, "Transcribed");
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"
