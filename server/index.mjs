@@ -324,6 +324,7 @@ const routes = {
   "POST /api/live-sessions/:id/reminder": ({ params, body, session }) => createdResponse(services.sendLiveSessionReminder(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/follow-up-ledger": ({ params, body, session }) => ok(services.buildLiveSessionFollowUpLedger(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/summary-message": ({ params, body, session }) => createdResponse(services.sendLiveSessionSummary(params.id, { ...body, actor: session.email })),
+  "POST /api/live-sessions/:id/handoff": ({ params, body, session }) => createdResponse(services.handoffLiveSessionOutcome(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/follow-up-task": ({ params, body, session }) => createdResponse(services.createLiveSessionFollowUpTask(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/calendar-event": ({ params, body, session }) => createdResponse(services.scheduleLiveSession(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/packet": ({ params, body, session }) => createdResponse(services.buildLiveSessionPacket(params.id, { ...body, actor: session.email })),

@@ -1056,6 +1056,41 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { session: item, message: summary };
     },
 
+    handoffLiveSessionOutcome(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const sentAt = new Date().toISOString();
+      const handoff = message(
+        "Report",
+        body.subject ?? `Live session handoff: ${item.title}`,
+        body.actor ?? item.host,
+        "Ready",
+        [
+          item.outcomeReportId ? `Outcome report ${item.outcomeReportId}` : "Outcome report pending",
+          item.packetDocumentId ? `Packet ${item.packetDocumentId}` : "Packet pending",
+          item.followUpLedger ? `Follow-up ledger ${item.followUpLedger.status}` : "Follow-up ledger pending"
+        ].join(", ")
+      );
+      handoff.route = body.route ?? item.route;
+      handoff.priority = body.priority ?? (item.status === "Priority" ? "High" : "Medium");
+      handoff.linkedLiveSession = item.id;
+      handoff.linkedReport = item.outcomeReportId ?? item.linkedRecord;
+      handoff.body = [
+        `Session: ${item.title}`,
+        `Outcome report: ${item.outcomeReportId ?? "Not created"}`,
+        `Meeting packet: ${item.packetDocumentId ?? "Not built"}`,
+        `Follow-up status: ${item.followUpLedger?.status ?? "Not built"}`,
+        `Open actions: ${(item.followUpLedger?.openActionItems ?? []).join("; ") || "None recorded"}`,
+        `Missing participants: ${(item.followUpLedger?.missingParticipants ?? []).join(", ") || "None recorded"}`
+      ].join("\n");
+      state.messages.unshift(handoff);
+      item.handoffMessageId = handoff.id;
+      item.handoffSentAt = sentAt;
+      item.handoffRoute = handoff.route;
+      item.updatedAt = sentAt;
+      record("LiveSessionOutcomeHandedOff", body.actor, item.title, handoff.route);
+      return { session: item, message: handoff };
+    },
+
     createLiveSessionFollowUpTask(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const created = task(

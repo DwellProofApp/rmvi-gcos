@@ -1905,6 +1905,17 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(liveSessionSummary.message.kind, "Notification");
     assert.equal(liveSessionSummary.session.summaryMessageId, liveSessionSummary.message.id);
 
+    const handoffMessage = await postJson(`/api/live-sessions/${createdLiveSession.id}/handoff`, {
+      subject: "Automated live session handoff",
+      route: "National HQ -> District HQ",
+      priority: "High"
+    }, nationalToken);
+    assert.equal(handoffMessage.message.kind, "Report");
+    assert.equal(handoffMessage.message.subject, "Automated live session handoff");
+    assert.equal(handoffMessage.message.linkedLiveSession, createdLiveSession.id);
+    assert.equal(handoffMessage.session.handoffMessageId, handoffMessage.message.id);
+    assert.equal(handoffMessage.session.handoffRoute, "National HQ -> District HQ");
+
     const liveSessionTask = await postJson(`/api/live-sessions/${createdLiveSession.id}/follow-up-task`, {
       title: "Automated live session follow-up",
       assignee: "district_admin@rmvi.org",

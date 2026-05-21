@@ -74,7 +74,7 @@ type PermissionPreset = "Reporter" | "Department Lead" | "Approver" | "Office Ad
 type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string; nodeKind?: OrgNodeKind; parentId?: string; parentName?: string; permissionPreset?: PermissionPreset; reportingRoute?: string; workflowAccess?: string[] };
 type StationAuth = { email: string; status: string; failedAttempts: number; lockedUntil?: string; mfaRequired?: boolean; forceReset?: boolean; updatedAt?: string; updatedBy?: string; lastLoginAt?: string; lastFailedAt?: string };
 type StationAuthDigest = { generatedAt: string; total: number; locked: number; mfaRequired: number; resetRequired: number; failedAttempts: number; nextCredential: string };
-type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[]; recipients?: string[]; body?: string; linkedLiveSession?: string };
+type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[]; recipients?: string[]; body?: string; linkedLiveSession?: string; linkedReport?: string };
 type Report = {
   id: string;
   name: string;
@@ -139,7 +139,7 @@ type Approval = {
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
-type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; polls?: { id: string; question: string; options: string[]; votes: Record<string, string[]>; status: string; createdBy: string; createdAt: string; updatedAt?: string }[]; resolutions?: { id: string; title: string; status: string; movedBy: string; secondedBy?: string; votesFor: number; votesAgainst: number; createdAt: string; passedAt?: string; linkedApprovalId?: string }[]; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; reminderMessageId?: string; reminderSentAt?: string; followUpTaskId?: string; followUpLedger?: { status: string; missingParticipants: string[]; openActionItems: string[]; owner: string; builtAt: string }; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; outcomeReportId?: string; outcomeReportCreatedAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; minutesMessageId?: string; minutesSentAt?: string; minutesSignatures?: { signer: string; role: string; signedAt: string; attestation: string }[]; minutesSignatureStatus?: string; sealedDocumentId?: string; sealedAt?: string; sealedBy?: string; sealReason?: string; resolutionApprovalId?: string; riskReview?: { score: number; status: string; issues: string[]; reviewedAt: string; reviewedBy: string }; riskEscalationId?: string; connectivity?: { status: string; bandwidthMode: string; lastCheckedAt: string; checkedBy: string }; fallbackChannel?: { channel: string; reason: string; activatedAt: string; activatedBy: string }; continuityAlertId?: string; offlineNotes?: { id: string; author: string; body: string; station: string; createdAt: string }[]; recoverySummary?: { status: string; summary: string; syncedAt: string; syncedBy: string }; aiBrief?: { id: string; title: string; summary: string; risks: string; nextActions: string[]; generatedAt: string; generatedBy: string }; aiBriefDocumentId?: string; playbook?: { name: string; checklist: string[]; appliedAt: string; appliedBy: string; roles?: Record<string, string> }; recurringSchedule?: { frequency: string; nextRun: string; owner: string; createdAt: string }; recurringCalendarEventId?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
+type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; polls?: { id: string; question: string; options: string[]; votes: Record<string, string[]>; status: string; createdBy: string; createdAt: string; updatedAt?: string }[]; resolutions?: { id: string; title: string; status: string; movedBy: string; secondedBy?: string; votesFor: number; votesAgainst: number; createdAt: string; passedAt?: string; linkedApprovalId?: string }[]; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; reminderMessageId?: string; reminderSentAt?: string; handoffMessageId?: string; handoffSentAt?: string; handoffRoute?: string; followUpTaskId?: string; followUpLedger?: { status: string; missingParticipants: string[]; openActionItems: string[]; owner: string; builtAt: string }; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; outcomeReportId?: string; outcomeReportCreatedAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; minutesMessageId?: string; minutesSentAt?: string; minutesSignatures?: { signer: string; role: string; signedAt: string; attestation: string }[]; minutesSignatureStatus?: string; sealedDocumentId?: string; sealedAt?: string; sealedBy?: string; sealReason?: string; resolutionApprovalId?: string; riskReview?: { score: number; status: string; issues: string[]; reviewedAt: string; reviewedBy: string }; riskEscalationId?: string; connectivity?: { status: string; bandwidthMode: string; lastCheckedAt: string; checkedBy: string }; fallbackChannel?: { channel: string; reason: string; activatedAt: string; activatedBy: string }; continuityAlertId?: string; offlineNotes?: { id: string; author: string; body: string; station: string; createdAt: string }[]; recoverySummary?: { status: string; summary: string; syncedAt: string; syncedBy: string }; aiBrief?: { id: string; title: string; summary: string; risks: string; nextActions: string[]; generatedAt: string; generatedBy: string }; aiBriefDocumentId?: string; playbook?: { name: string; checklist: string[]; appliedAt: string; appliedBy: string; roles?: Record<string, string> }; recurringSchedule?: { frequency: string; nextRun: string; owner: string; createdAt: string }; recurringCalendarEventId?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
@@ -4293,6 +4293,42 @@ function App() {
     void apiRequest<{ session: LiveSession; message: Message }>(`/api/live-sessions/${id}/summary-message`, {
       method: "POST",
       body: JSON.stringify({ subject: summary.subject, route: summary.route })
+    }).catch(() => undefined);
+  }
+
+  function handoffLiveSessionOutcome(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const handoff: Message = {
+      id: `msg-live-handoff-${Date.now()}`,
+      kind: "Report",
+      subject: `Live session handoff: ${target.title}`,
+      from: activeStation.email,
+      age: "now",
+      status: "Ready",
+      files: [
+        target.outcomeReportId ? `Outcome report ${target.outcomeReportId}` : "Outcome report pending",
+        target.packetDocumentId ? `Packet ${target.packetDocumentId}` : "Packet pending",
+        target.followUpLedger ? `Follow-up ledger ${target.followUpLedger.status}` : "Follow-up ledger pending"
+      ].join(", "),
+      route: target.route,
+      priority: target.status === "Priority" ? "High" : "Medium",
+      linkedLiveSession: target.id,
+      linkedReport: target.outcomeReportId ?? target.linkedRecord,
+      body: `Open actions: ${(target.followUpLedger?.openActionItems ?? []).join("; ") || "None recorded"}`
+    };
+    setMessages((items) => [handoff, ...items]);
+    setLiveSessions((items) => items.map((item) => item.id === id ? {
+      ...item,
+      handoffMessageId: handoff.id,
+      handoffSentAt: new Date().toISOString(),
+      handoffRoute: handoff.route,
+      updatedAt: new Date().toISOString()
+    } : item));
+    recordAudit("LiveSessionOutcomeHandedOff", target.title, handoff.route ?? "No route");
+    void apiRequest<{ session: LiveSession; message: Message }>(`/api/live-sessions/${id}/handoff`, {
+      method: "POST",
+      body: JSON.stringify({ subject: handoff.subject, route: handoff.route, priority: handoff.priority })
     }).catch(() => undefined);
   }
 
@@ -9453,6 +9489,7 @@ function App() {
             onSendLiveSessionReminder={sendLiveSessionReminder}
             onBuildLiveSessionFollowUpLedger={buildLiveSessionFollowUpLedger}
             onSendLiveSessionSummary={sendLiveSessionSummary}
+            onHandoffLiveSessionOutcome={handoffLiveSessionOutcome}
             onCreateLiveSessionFollowUpTask={createLiveSessionFollowUpTask}
             onScheduleLiveSession={scheduleLiveSession}
             onBuildLiveSessionPacket={buildLiveSessionPacket}
@@ -13649,6 +13686,7 @@ function LiveComms({
   onSendLiveSessionReminder,
   onBuildLiveSessionFollowUpLedger,
   onSendLiveSessionSummary,
+  onHandoffLiveSessionOutcome,
   onCreateLiveSessionFollowUpTask,
   onScheduleLiveSession,
   onBuildLiveSessionPacket,
@@ -13704,6 +13742,7 @@ function LiveComms({
   onSendLiveSessionReminder: (id: string) => void;
   onBuildLiveSessionFollowUpLedger: (id: string) => void;
   onSendLiveSessionSummary: (id: string) => void;
+  onHandoffLiveSessionOutcome: (id: string) => void;
   onCreateLiveSessionFollowUpTask: (id: string) => void;
   onScheduleLiveSession: (id: string) => void;
   onBuildLiveSessionPacket: (id: string) => void;
@@ -13843,6 +13882,7 @@ function LiveComms({
               <small>{sessionItem.playbook ? `${sessionItem.playbook.name} playbook` : "no playbook"} - {sessionItem.recurringSchedule ? `${sessionItem.recurringSchedule.frequency} series starts ${sessionItem.recurringSchedule.nextRun}` : "one-time session"}</small>
               <small>{sessionItem.reminderMessageId ? "reminder sent" : "reminder pending"} - {sessionItem.followUpLedger ? `${sessionItem.followUpLedger.status} follow-up ledger` : "follow-up not built"}</small>
               <small>{sessionItem.outcomeReportId ? "outcome report ready" : "outcome report pending"}</small>
+              <small>{sessionItem.handoffMessageId ? `handoff sent through ${sessionItem.handoffRoute ?? sessionItem.route}` : "handoff pending"}</small>
               <small>{sessionItem.files?.length ?? 0} files - {sessionItem.participants?.length ?? 0} invited - {sessionItem.checkedInParticipants?.length ?? 0} checked in - {sessionItem.quorum?.met ? "quorum met" : "quorum pending"}</small>
               <div className="compact-actions">
                 <button type="button" onClick={() => onUpdateLiveSessionStatus(sessionItem.id, "Live")}>Join</button>
@@ -13885,6 +13925,7 @@ function LiveComms({
                 <button type="button" onClick={() => onAttachLiveSessionFile(sessionItem.id)}>Attach file</button>
                 <button type="button" onClick={() => onAddLiveSessionNote(sessionItem.id)}>Decision note</button>
                 <button type="button" onClick={() => onSendLiveSessionSummary(sessionItem.id)}>Send summary</button>
+                <button type="button" onClick={() => onHandoffLiveSessionOutcome(sessionItem.id)}>Handoff</button>
                 <button type="button" onClick={() => onCreateLiveSessionFollowUpTask(sessionItem.id)}>Task</button>
                 <button type="button" onClick={() => onBuildLiveSessionPacket(sessionItem.id)}>Build packet</button>
                 <button type="button" onClick={() => onCreateLiveSessionOutcomeReport(sessionItem.id)}>Outcome report</button>
@@ -13914,6 +13955,7 @@ function LiveComms({
             <span>{primarySession.title}</span>
             <small>{primarySession.purpose}</small>
             <button type="button" onClick={() => onSendLiveSessionSummary(primarySession.id)}><Mail size={14} /> Send summary</button>
+            <button type="button" onClick={() => onHandoffLiveSessionOutcome(primarySession.id)}><Send size={14} /> Handoff outcome</button>
             <button type="button" onClick={() => onUpdateLiveSessionAgenda(primarySession.id)}><ClipboardCheck size={14} /> Set agenda</button>
             <button type="button" onClick={() => onShareLiveSessionDocument(primarySession.id)}><FileCheck2 size={14} /> Share document</button>
             <button type="button" onClick={() => onExtractLiveSessionActionItems(primarySession.id)}><SquareCheckBig size={14} /> Extract tasks</button>

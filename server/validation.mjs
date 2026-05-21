@@ -1081,6 +1081,12 @@ const validators = {
     if (body.route !== undefined) requireString(body.route, "route");
   },
 
+  "POST /api/live-sessions/:id/handoff": (body) => {
+    if (body.subject !== undefined) requireString(body.subject, "subject");
+    if (body.route !== undefined) requireString(body.route, "route");
+    if (body.priority !== undefined) requireEnum(body.priority, calendarPriorities, "priority");
+  },
+
   "POST /api/live-sessions/:id/follow-up-task": (body) => {
     if (body.title !== undefined) requireString(body.title, "title");
     if (body.assignee !== undefined) requireString(body.assignee, "assignee");
