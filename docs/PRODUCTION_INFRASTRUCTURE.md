@@ -18,7 +18,7 @@ GCOS remains web-first. Users enter through `https://rmvi.org`, then the sign-in
 
 ## AWS Path
 
-The AWS launch path is documented in `docs/AWS_DEPLOYMENT.md`. Use AWS App Runner, Amazon RDS PostgreSQL, and Amazon S3 for the first AWS production deployment.
+The AWS launch path is documented in `docs/AWS_DEPLOYMENT.md`. Use AWS Elastic Beanstalk, Amazon RDS PostgreSQL, and Amazon S3 for the first AWS production deployment. App Runner is only an option if the AWS account already has access.
 
 ```bash
 npm run aws:run

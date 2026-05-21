@@ -79,7 +79,7 @@ Replit deployment for `rmvi.org`:
 npm run replit:run
 ```
 
-AWS App Runner deployment for `rmvi.org`:
+AWS Elastic Beanstalk deployment for `rmvi.org`:
 
 ```bash
 npm run aws:run

@@ -7,35 +7,36 @@ This is the AWS launch path for `rmvi.org` when moving GCOS from local/Replit ho
 ```text
 rmvi.org
   -> Route 53 / external DNS
-  -> AWS App Runner service
+  -> AWS Elastic Beanstalk Node.js environment
   -> Node GCOS single-process server
   -> Built React web app served from dist
   -> Amazon RDS PostgreSQL
   -> Amazon S3 object vault
 ```
 
-GCOS is already built as a single Node service that serves both the web app and API. For AWS, use App Runner first. It is simpler than ECS for the first production launch and still supports automatic deploys from GitHub.
+GCOS is already built as a single Node service that serves both the web app and API. Use Elastic Beanstalk first because it supports Node.js web applications, reads `package.json`, forwards traffic through the `PORT` environment variable, and remains available to new AWS customers.
 
 ## Required AWS Services
 
-- App Runner service connected to `DwellProofApp/rmvi-gcos`
+- Elastic Beanstalk application and Node.js environment
 - RDS PostgreSQL instance
 - S3 bucket named `rmvi-gcos-vault`
 - IAM role or access keys with read/write/delete permissions for that S3 bucket
-- TLS certificate for `rmvi.org` through App Runner custom domain verification
+- TLS certificate for `rmvi.org`
 
-## App Runner Settings
+## Elastic Beanstalk Settings
 
-Source:
+Create a Node.js Elastic Beanstalk environment, then deploy the repository source bundle from `main`.
 
 ```text
 GitHub repository: DwellProofApp/rmvi-gcos
 Branch: main
-Runtime: Node.js
-Build command: npm install && npm run build
-Start command: npm run start:aws
+Platform: Node.js on Amazon Linux 2023
+Start command: Procfile -> web: npm run aws:run
 Port: 8080
 ```
+
+Elastic Beanstalk sets `PORT`; `npm run start:aws` reads it and binds GCOS to `0.0.0.0`.
 
 Environment variables should be copied from `.env.aws.example`, with real values for:
 
@@ -45,12 +46,25 @@ GCOS_AWS_REGION
 GCOS_S3_BUCKET
 ```
 
-If App Runner uses an instance role for S3 access, do not set AWS access keys. If using access keys, set them as App Runner secrets:
+If the Elastic Beanstalk instance profile has S3 access, do not set AWS access keys. If using access keys, store them as environment properties or AWS Secrets Manager values:
 
 ```text
 AWS_ACCESS_KEY_ID
 AWS_SECRET_ACCESS_KEY
 ```
+
+## App Runner Note
+
+AWS documentation now states that App Runner is no longer open to new customers. If your AWS account already has App Runner access, the repo can still run with:
+
+```text
+Build command: npm install && npm run build
+Start command: npm run start:aws
+Port: 8080
+Runtime: nodejs22
+```
+
+Otherwise use Elastic Beanstalk.
 
 ## RDS PostgreSQL
 
@@ -102,5 +116,5 @@ The code now includes:
 - `npm run start:aws`
 - `npm run aws:run`
 - `.env.aws.example`
+- `Procfile`
 - S3 object vault support through `GCOS_OBJECT_STORAGE_PROVIDER=aws-s3`
-
