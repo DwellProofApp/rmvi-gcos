@@ -157,6 +157,7 @@ type FileReference = Pick<FileRecord, "id" | "name" | "contentType" | "size" | "
 type DocumentRecord = { id: string; name: string; classification: string; source: string; owner: string; fileType: string; status: string; storageKey: string; retainedUntil: string; createdAt: string; files?: FileReference[]; fileHash?: string; fileSize?: number; contentType?: string; verified?: boolean; verificationNote?: string; custodian?: string; custodyAt?: string; chainHash?: string; extractedText?: string; extractedAt?: string; linkedReport?: string; linkedApproval?: string; watchers?: string[]; exportedAt?: string; exportReason?: string };
 type SearchResult = { id: string; section: Section; title: string; meta: string; status: string };
 type NotificationItem = { id: string; section: Section; title: string; detail: string; severity: "Critical" | "High" | "Medium" | "Info" };
+type BuildInfo = { app: string; name: string; version: string; generatedAt: string; gitCommit: string; gitBranch: string; deploymentTarget: string; domain: string };
 type ApiStatus = {
   status: string;
   service: string;
@@ -2323,6 +2324,16 @@ async function apiRequest<T>(path: string, init?: RequestInit): Promise<T> {
   return response.json() as Promise<T>;
 }
 
+async function fetchBuildInfo(): Promise<BuildInfo> {
+  const response = await fetch("/build-info.json", {
+    headers: {
+      "cache-control": "no-cache"
+    }
+  });
+  if (!response.ok) throw new Error(`Build info unavailable: ${response.status}`);
+  return response.json();
+}
+
 function readFileAsDataUrl(file: File) {
   return new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -2857,6 +2868,7 @@ function App() {
   const [offlineSyncHistory, setOfflineSyncHistory] = usePersistentState("gcos.offlineSyncHistory", initialOfflineSyncHistory);
   const [apiStatus, setApiStatus] = React.useState<ApiStatus | null>(null);
   const [apiStatusError, setApiStatusError] = React.useState("");
+  const [buildInfo, setBuildInfo] = React.useState<BuildInfo | null>(null);
   const [commandBriefing, setCommandBriefing] = React.useState<CommandBriefing | null>(null);
   const [archiveManifest, setArchiveManifest] = React.useState<ArchiveManifest | null>(null);
   const [workflowDigest, setWorkflowDigest] = React.useState<WorkflowDigest | null>(null);
@@ -3136,6 +3148,7 @@ function App() {
       void apiRequest<ReportDigest>("/api/reports/digest").then(setReportDigest).catch(() => undefined);
       void apiRequest<ApprovalDigest>("/api/approvals/digest").then(setApprovalDigest).catch(() => undefined);
       void apiRequest<AiDraftDigest>("/api/ai-drafts/digest").then(setAiDraftDigest).catch(() => undefined);
+      void fetchBuildInfo().then(setBuildInfo).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
         setActiveStation((current) => ({ ...current, title: serverStation.title, level: serverStation.level, authority: serverStation.authority, icon: resolveStationIcon({ ...current, level: serverStation.level }) }));
@@ -9582,6 +9595,7 @@ function App() {
             stationDirectory={stationDirectory}
             offices={offices}
             apiStatus={apiStatus}
+            buildInfo={buildInfo}
             session={session}
             permissions={permissions}
             auditRows={auditRows}
@@ -14657,6 +14671,7 @@ function AdminBoard({
   stationDirectory,
   offices,
   apiStatus,
+  buildInfo,
   session,
   permissions,
   auditRows,
@@ -14692,6 +14707,7 @@ function AdminBoard({
   stationDirectory: StationCard[];
   offices: Office[];
   apiStatus: ApiStatus | null;
+  buildInfo: BuildInfo | null;
   session: Session;
   permissions: Permissions;
   auditRows: AuditRow[];
@@ -14984,6 +15000,9 @@ function AdminBoard({
                 <div><span>Service</span><strong>{apiStatus?.service ?? "GCOS API"}</strong></div>
                 <div><span>Uptime</span><strong>{apiStatus ? formatUptime(apiStatus.uptimeSeconds) : "Local"}</strong></div>
                 <div><span>Storage</span><strong>{storageMode}</strong></div>
+                <div><span>Live build</span><strong>{buildInfo?.gitCommit ?? "checking"}</strong></div>
+                <div><span>Deployed</span><strong>{buildInfo ? new Date(buildInfo.generatedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "checking"}</strong></div>
+                <div><span>Target</span><strong>{buildInfo?.deploymentTarget ?? "firebase"}</strong></div>
                 <div><span>Production gate</span><strong>{productionGate}</strong></div>
                 <div><span>Audit rows</span><strong>{auditRows.length}</strong></div>
                 <div><span>Documents</span><strong>{documents.length}</strong></div>
