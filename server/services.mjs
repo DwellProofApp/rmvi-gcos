@@ -409,6 +409,81 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    assignLiveSessionParticipantRole(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const participant = body.participant ?? body.email ?? body.actor;
+      item.participants = Array.from(new Set([participant, ...(item.participants ?? [])].filter(Boolean)));
+      item.participantRoles ??= {};
+      item.participantRoles[participant] = body.role ?? "Contributor";
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionParticipantRoleAssigned", body.actor, item.title, `${participant}: ${item.participantRoles[participant]}`);
+      return item;
+    },
+
+    moderateLiveSessionParticipant(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const participant = body.participant ?? body.email ?? body.actor;
+      item.mutedParticipants ??= [];
+      if (body.muted === false) {
+        item.mutedParticipants = item.mutedParticipants.filter((email) => email !== participant);
+      } else {
+        item.mutedParticipants = Array.from(new Set([participant, ...item.mutedParticipants]));
+      }
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionParticipantModerated", body.actor, item.title, `${participant} ${body.muted === false ? "unmuted" : "muted"}`);
+      return item;
+    },
+
+    extractLiveSessionActionItems(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.actionItems ??= [];
+      item.extractedTaskIds ??= [];
+      const sourceItems = item.decisions?.length
+        ? item.decisions.map((decision) => decision.text)
+        : [
+          `Follow up on ${item.linkedRecord}`,
+          `Confirm route ${item.route}`
+        ];
+      const createdTasks = sourceItems.map((title, index) => {
+        const created = task(
+          body.prefix ? `${body.prefix}: ${title}` : title,
+          item.host ?? "Live Comms",
+          body.assignee ?? item.participants?.[index] ?? body.actor,
+          body.priority ?? (item.status === "Priority" ? "High" : "Medium"),
+          body.due ?? "Tomorrow",
+          "Queued"
+        );
+        created.linkedReport = item.linkedRecord;
+        created.comments = [`Extracted from live session ${item.title}`];
+        state.tasks.unshift(created);
+        item.actionItems.unshift({
+          id: `action-${Date.now()}-${index}`,
+          title: created.title,
+          assignee: created.assignee,
+          taskId: created.id,
+          createdAt: new Date().toISOString()
+        });
+        item.extractedTaskIds.unshift(created.id);
+        return created;
+      });
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionActionsExtracted", body.actor, item.title, `${createdTasks.length} tasks created`);
+      return { session: item, tasks: createdTasks };
+    },
+
+    closeLiveSession(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.status = "Complete";
+      item.closedAt = new Date().toISOString();
+      item.closedBy = body.actor;
+      item.closeReason = body.reason ?? "Meeting completed";
+      item.recordingStatus = item.recordingStatus === "Recording" ? "Stopped" : item.recordingStatus;
+      item.screenShareStatus = item.screenShareStatus === "Sharing" ? "Stopped" : item.screenShareStatus;
+      item.updatedAt = item.closedAt;
+      record("LiveSessionClosed", body.actor, item.title, item.closeReason);
+      return item;
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -483,12 +558,15 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Route: ${item.route}`,
         `Purpose: ${item.purpose}`,
         `Agenda: ${(item.agendaItems ?? []).join("; ") || "No agenda recorded"}`,
+        `Action items: ${(item.actionItems ?? []).map((action) => `${action.title} -> ${action.assignee}`).join("; ") || "No action items extracted"}`,
         `Notes: ${(item.notes ?? []).join("; ") || "No notes recorded"}`,
         `Decisions: ${(item.decisions ?? []).map((decision) => decision.text ?? decision).join("; ") || "No decisions recorded"}`,
         `Transcript: ${(item.transcript ?? []).map((entry) => `${entry.author}: ${entry.body}`).join("; ") || "No transcript messages"}`,
         `Voice transcript: ${item.voiceTranscript ?? "No voice transcript attached"}`,
         `Recording: ${item.recordingStatus ?? "Not recorded"}`,
         `Screen share: ${item.screenShareStatus ?? "Not shared"}${item.screenSharedBy ? ` by ${item.screenSharedBy}` : ""}`,
+        `Participant roles: ${Object.entries(item.participantRoles ?? {}).map(([participant, role]) => `${participant}: ${role}`).join(", ") || "No roles assigned"}`,
+        `Muted participants: ${(item.mutedParticipants ?? []).join(", ") || "None"}`,
         `Shared documents: ${(item.sharedDocuments ?? []).map((document) => `${document.name} (${document.source})`).join(", ") || "No live documents shared"}`,
         `Files: ${(item.files ?? []).join(", ") || "No files attached"}`
       ].join("\n");

@@ -1700,6 +1700,27 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(sharedDocLiveSession.sharedDocuments[0].name, "district-agenda.pdf");
     assert.equal(sharedDocLiveSession.files.includes("district-agenda.pdf"), true);
 
+    const participantRoleLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/participant-role`, {
+      participant: "finance@rmvi.org",
+      role: "Decision owner"
+    }, nationalToken);
+    assert.equal(participantRoleLiveSession.participantRoles["finance@rmvi.org"], "Decision owner");
+
+    const moderatedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/moderate`, {
+      participant: "finance@rmvi.org",
+      muted: true
+    }, nationalToken);
+    assert.equal(moderatedLiveSession.mutedParticipants.includes("finance@rmvi.org"), true);
+
+    const liveSessionActions = await postJson(`/api/live-sessions/${createdLiveSession.id}/action-items`, {
+      assignee: "district_admin@rmvi.org",
+      priority: "High",
+      due: "Tomorrow"
+    }, nationalToken);
+    assert.equal(liveSessionActions.tasks.length >= 1, true);
+    assert.equal(liveSessionActions.session.actionItems.length >= 1, true);
+    assert.equal(liveSessionActions.session.extractedTaskIds.includes(liveSessionActions.tasks[0].id), true);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"
@@ -1727,6 +1748,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(liveSessionCalendar.calendarEvent.title, "Automated live session calendar event");
     assert.equal(liveSessionCalendar.calendarEvent.date, "2026-06-15");
     assert.equal(liveSessionCalendar.session.calendarEventId, liveSessionCalendar.calendarEvent.id);
+
+    const closedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/close`, {
+      reason: "Automated meeting completed"
+    }, nationalToken);
+    assert.equal(closedLiveSession.status, "Complete");
+    assert.equal(closedLiveSession.closedBy, "np@rmvi.org");
+    assert.equal(closedLiveSession.closeReason, "Automated meeting completed");
 
     const liveSessionPacket = await postJson(`/api/live-sessions/${createdLiveSession.id}/packet`, {
       name: "Automated live session packet.pdf"

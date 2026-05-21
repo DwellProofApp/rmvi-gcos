@@ -930,6 +930,29 @@ const validators = {
     if (body.source !== undefined) requireString(body.source, "source");
   },
 
+  "POST /api/live-sessions/:id/participant-role": (body) => {
+    if (body.participant !== undefined) requireString(body.participant, "participant");
+    if (body.email !== undefined) requireEmail(body.email, "email");
+    requireString(body.role, "role");
+  },
+
+  "POST /api/live-sessions/:id/moderate": (body) => {
+    if (body.participant !== undefined) requireString(body.participant, "participant");
+    if (body.email !== undefined) requireEmail(body.email, "email");
+    if (body.muted !== undefined && typeof body.muted !== "boolean") throw new ValidationError("muted must be boolean");
+  },
+
+  "POST /api/live-sessions/:id/action-items": (body) => {
+    if (body.prefix !== undefined) requireString(body.prefix, "prefix");
+    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
+    if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/live-sessions/:id/close": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");
