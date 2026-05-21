@@ -9567,7 +9567,7 @@ h1 {
 
 .live-comms-console {
   display: grid;
-  grid-template-columns: 180px minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  grid-template-columns: 160px minmax(190px, 1fr) minmax(190px, 1fr) minmax(180px, 0.8fr) auto;
   gap: 12px;
   align-items: end;
   margin-top: 16px;

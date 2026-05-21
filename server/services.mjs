@@ -287,6 +287,28 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    inviteLiveSessionParticipant(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.participants ??= [];
+      const participant = body.participant ?? body.email ?? body.actor;
+      item.participants = Array.from(new Set([participant, ...item.participants].filter(Boolean)));
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionParticipantInvited", body.actor, item.title, participant);
+      return item;
+    },
+
+    checkInLiveSessionParticipant(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.checkedInParticipants ??= [];
+      const participant = body.participant ?? body.email ?? body.actor;
+      item.participants = Array.from(new Set([participant, ...(item.participants ?? [])].filter(Boolean)));
+      item.checkedInParticipants = Array.from(new Set([participant, ...item.checkedInParticipants].filter(Boolean)));
+      item.attendanceCount = item.checkedInParticipants.length;
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionParticipantCheckedIn", body.actor, item.title, participant);
+      return item;
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(

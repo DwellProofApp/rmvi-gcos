@@ -137,7 +137,7 @@ type Approval = {
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
-type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; notes?: string[]; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; archived?: boolean; archiveReason?: string };
+type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; notes?: string[]; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; archived?: boolean; archiveReason?: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
@@ -3310,6 +3310,38 @@ function App() {
     void apiRequest<LiveSession>(`/api/live-sessions/${id}/note`, {
       method: "POST",
       body: JSON.stringify({ note })
+    }).catch(() => undefined);
+  }
+
+  function inviteLiveSessionParticipant(id: string, participant: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    setLiveSessions((items) => items.map((item) => item.id === id ? { ...item, participants: Array.from(new Set([participant, ...(item.participants ?? [])])), updatedAt: new Date().toISOString() } : item));
+    recordAudit("LiveSessionParticipantInvited", target.title, participant);
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/invite`, {
+      method: "POST",
+      body: JSON.stringify({ participant })
+    }).catch(() => undefined);
+  }
+
+  function checkInLiveSessionParticipant(id: string, participant: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    setLiveSessions((items) => items.map((item) => {
+      if (item.id !== id) return item;
+      const checkedInParticipants = Array.from(new Set([participant, ...(item.checkedInParticipants ?? [])]));
+      return {
+        ...item,
+        participants: Array.from(new Set([participant, ...(item.participants ?? [])])),
+        checkedInParticipants,
+        attendanceCount: checkedInParticipants.length,
+        updatedAt: new Date().toISOString()
+      };
+    }));
+    recordAudit("LiveSessionParticipantCheckedIn", target.title, participant);
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/check-in`, {
+      method: "POST",
+      body: JSON.stringify({ participant })
     }).catch(() => undefined);
   }
 
@@ -8393,6 +8425,8 @@ function App() {
             onUpdateLiveSessionStatus={updateLiveSessionStatus}
             onAttachLiveSessionFile={attachLiveSessionFile}
             onAddLiveSessionNote={addLiveSessionNote}
+            onInviteLiveSessionParticipant={inviteLiveSessionParticipant}
+            onCheckInLiveSessionParticipant={checkInLiveSessionParticipant}
             onSendLiveSessionSummary={sendLiveSessionSummary}
             onCreateLiveSessionFollowUpTask={createLiveSessionFollowUpTask}
             onScheduleLiveSession={scheduleLiveSession}
@@ -12552,6 +12586,8 @@ function LiveComms({
   onUpdateLiveSessionStatus,
   onAttachLiveSessionFile,
   onAddLiveSessionNote,
+  onInviteLiveSessionParticipant,
+  onCheckInLiveSessionParticipant,
   onSendLiveSessionSummary,
   onCreateLiveSessionFollowUpTask,
   onScheduleLiveSession,
@@ -12570,6 +12606,8 @@ function LiveComms({
   onUpdateLiveSessionStatus: (id: string, status: LiveSession["status"]) => void;
   onAttachLiveSessionFile: (id: string) => void;
   onAddLiveSessionNote: (id: string) => void;
+  onInviteLiveSessionParticipant: (id: string, participant: string) => void;
+  onCheckInLiveSessionParticipant: (id: string, participant: string) => void;
   onSendLiveSessionSummary: (id: string) => void;
   onCreateLiveSessionFollowUpTask: (id: string) => void;
   onScheduleLiveSession: (id: string) => void;
@@ -12580,6 +12618,7 @@ function LiveComms({
   const [sessionType, setSessionType] = React.useState<LiveSession["sessionType"]>("Video Meeting");
   const [linkedRecord, setLinkedRecord] = React.useState(reports[0]?.name ?? approvals[0]?.request ?? "General office briefing");
   const [route, setRoute] = React.useState(station.reportingRoute ?? `${station.level} -> Supervising office`);
+  const [inviteTarget, setInviteTarget] = React.useState(station.email);
   const [feedback, setFeedback] = React.useState("");
   const activeOffices = offices.filter((office) => !office.archived);
   const openApprovals = approvals.filter((approval) => approval.state !== "Approved");
@@ -12598,6 +12637,13 @@ function LiveComms({
     { name: "Approval room", detail: `${openApprovals.length} approval chains open`, icon: Workflow, type: "Approval Room" },
     { name: "Report co-editing", detail: `${reports.length} report packets available`, icon: FileCheck2, type: "Report Review" }
   ];
+  const participantOptions = Array.from(new Set([
+    station.email,
+    ...activeOffices.map((office) => office.email),
+    "district_admin@rmvi.org",
+    "finance@rmvi.org",
+    "mission@rmvi.org"
+  ].filter(Boolean)));
 
   function startSession(type = sessionType) {
     const title = type === "Broadcast"
@@ -12660,6 +12706,12 @@ function LiveComms({
             <span>Route</span>
             <input value={route} onChange={(event) => setRoute(event.target.value)} />
           </label>
+          <label>
+            <span>Invite</span>
+            <select value={inviteTarget} onChange={(event) => setInviteTarget(event.target.value)}>
+              {participantOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
           <button type="button" onClick={() => startSession()}><Plus size={15} /> Create session</button>
         </div>
         {feedback && <div className="live-comms-feedback">{feedback}</div>}
@@ -12681,9 +12733,11 @@ function LiveComms({
               <h3>{sessionItem.title}</h3>
               <p>{sessionItem.route}</p>
               <small>Linked record: {sessionItem.linkedRecord}</small>
-              <small>{sessionItem.notes?.length ?? 0} notes - {sessionItem.files?.length ?? 0} files - {sessionItem.participants?.length ?? 0} participants</small>
+              <small>{sessionItem.notes?.length ?? 0} notes - {sessionItem.files?.length ?? 0} files - {sessionItem.participants?.length ?? 0} invited - {sessionItem.checkedInParticipants?.length ?? 0} checked in</small>
               <div className="compact-actions">
                 <button type="button" onClick={() => onUpdateLiveSessionStatus(sessionItem.id, "Live")}>Join</button>
+                <button type="button" onClick={() => onInviteLiveSessionParticipant(sessionItem.id, inviteTarget)}>Invite</button>
+                <button type="button" onClick={() => onCheckInLiveSessionParticipant(sessionItem.id, station.email)}>Check in</button>
                 <button type="button" onClick={() => onScheduleLiveSession(sessionItem.id)}>Schedule</button>
                 <button type="button" onClick={() => onAttachLiveSessionFile(sessionItem.id)}>Attach file</button>
                 <button type="button" onClick={() => onAddLiveSessionNote(sessionItem.id)}>Decision note</button>

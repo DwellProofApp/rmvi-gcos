@@ -1643,6 +1643,17 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(liveSessionWithNote.notes.includes("District packet reviewed during automated test"), true);
 
+    const invitedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/invite`, {
+      participant: "finance@rmvi.org"
+    }, nationalToken);
+    assert.equal(invitedLiveSession.participants.includes("finance@rmvi.org"), true);
+
+    const checkedInLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/check-in`, {
+      participant: "finance@rmvi.org"
+    }, nationalToken);
+    assert.equal(checkedInLiveSession.checkedInParticipants.includes("finance@rmvi.org"), true);
+    assert.equal(checkedInLiveSession.attendanceCount >= 1, true);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"
