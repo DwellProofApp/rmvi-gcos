@@ -14,6 +14,7 @@
     "object:smoke": "node scripts/object-storage-smoke-check.mjs",
     "runtime:smoke": "node scripts/runtime-smoke.mjs",
     "preaws:check": "node scripts/pre-aws-hardening-check.mjs",
+    "internal:audit": "node scripts/internal-page-audit.mjs",
     "release:check": "node scripts/final-release-check.mjs",
     "secrets:plan": "node scripts/production-secrets-plan.mjs",
     "launch:verify": "node scripts/launch-verify.mjs",

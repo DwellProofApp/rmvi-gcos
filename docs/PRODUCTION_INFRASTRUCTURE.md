@@ -116,6 +116,7 @@ Local release gate:
 ```bash
 npm run launch:verify
 npm run preaws:check
+npm run internal:audit
 ```
 
 Live Replit/domain gate:

@@ -63,6 +63,7 @@ Run in the production environment after secrets are configured:
 
 ```bash
 npm run preaws:check
+npm run internal:audit
 npm run production:check
 npm run replit:run
 GCOS_HEALTHCHECK_URL=https://rmvi.org npm run healthcheck
@@ -77,6 +78,7 @@ npm run launch:verify:live
 - `npm run build` passes.
 - `npm run release:check` returns 100%.
 - `npm run preaws:check` returns 100%.
+- `npm run internal:audit` returns `pre-aws-ready`.
 - `npm run launch:verify` passes locally before deployment.
 - `npm run production:check` returns at least 90%.
 - `npm run runtime:smoke` passes against the live deployment with a valid admin or approver station.

@@ -47,6 +47,7 @@ Production domain target: `rmvi.org`
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
 - Authenticated runtime smoke test for station login, protected APIs, object storage, and session renewal
 - Pre-AWS hardening check for UI consistency, browser security headers, and launch verification coverage
+- Internal page audit for every GCOS module before AWS planning
 - Configurable CORS, request body limits, and production reset protection
 - Deployment checklist for hosting readiness
 - Final release handoff and project completion report
@@ -88,6 +89,7 @@ npm run database:smoke
 npm run object:smoke
 npm run runtime:smoke
 npm run preaws:check
+npm run internal:audit
 npm run release:check
 npm run secrets:plan
 npm run launch:verify

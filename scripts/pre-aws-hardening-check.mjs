@@ -52,7 +52,7 @@ check(
 );
 check(
   "Verification scripts",
-  ["production:check", "database:smoke", "object:smoke", "runtime:smoke", "preaws:check", "launch:verify:live"].every((script) => packageJson.scripts?.[script]),
+  ["production:check", "database:smoke", "object:smoke", "runtime:smoke", "preaws:check", "internal:audit", "launch:verify:live"].every((script) => packageJson.scripts?.[script]),
   "Pre-AWS, production, storage, runtime, and live launch scripts are registered"
 );
 check(
