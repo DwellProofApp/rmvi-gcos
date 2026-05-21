@@ -194,7 +194,7 @@ export function office(name, email, level, department, supervisor, metadata = {}
     parentName,
     permissionPreset,
     reportingRoute: metadata.reportingRoute ?? [level, parentName || "Parent office", "Supervising authority", "Archive vault"].join(" -> "),
-    workflowAccess: metadata.workflowAccess ?? ["ChurchMail", "Reports", "Tasks", "Archive"],
+    workflowAccess: metadata.workflowAccess ?? ["ChurchMail", "Reports", "Tasks", "Archive", "Live Comms"],
     password: `gcos-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`,
     status: "Provisioned"
   };

@@ -50,6 +50,7 @@ import {
   TimerReset,
   Upload,
   Users,
+  Video,
   Workflow,
   Zap
 } from "lucide-react";
@@ -64,7 +65,7 @@ type StationLevel =
   | "Area HQ"
   | "Local Branch";
 
-type Section = "Control Center" | "Admin Board" | "ChurchMail" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit" | "Account Settings";
+type Section = "Control Center" | "Admin Board" | "ChurchMail" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Live Comms" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit" | "Account Settings";
 type MessageKind = "Directive" | "Report" | "Approval" | "Notification" | "Transfer";
 type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
 type OrgNodeKind = "Office" | "Directorate" | "Department" | "Unit" | "Staff Structure";
@@ -867,6 +868,7 @@ const navItems: { icon: React.ElementType; label: Section }[] = [
   { icon: Users, label: "Personnel" },
   { icon: AlertTriangle, label: "Escalations" },
   { icon: Sparkles, label: "AI Desk" },
+  { icon: Video, label: "Live Comms" },
   { icon: GitBranch, label: "Hierarchy" },
   { icon: Building2, label: "Offices" },
   { icon: Signature, label: "Transfers" },
@@ -952,6 +954,13 @@ const sectionProfiles: Record<Section, { icon: React.ElementType; eyebrow: strin
     title: "AI Administrative Desk",
     description: "Generate briefs, memos, report summaries, delay insights, source-bound drafts, readiness checks, and administrative recommendations.",
     signal: "Assist ready"
+  },
+  "Live Comms": {
+    icon: Video,
+    eyebrow: "Real-time communication",
+    title: "Live Communication Center",
+    description: "Run office-to-office video meetings, department chats, broadcasts, screen sharing, document collaboration, and approval discussions tied to office nodes.",
+    signal: "Meetings ready"
   },
   Hierarchy: {
     icon: GitBranch,
@@ -1144,7 +1153,7 @@ function buildReportingRoute(level: StationLevel, parentName: string) {
 }
 
 function workflowAccessForPreset(permissionPreset: PermissionPreset) {
-  const access = new Set(["ChurchMail", "Reports", "Tasks", "Archive"]);
+  const access = new Set(["ChurchMail", "Reports", "Tasks", "Archive", "Live Comms"]);
   if (["Department Lead", "Approver", "Office Admin", "Executive Override"].includes(permissionPreset)) {
     access.add("Approvals");
   }
@@ -2082,7 +2091,7 @@ const initialOffices: Office[] = [
     parentName: "Buchanan District",
     permissionPreset: "Reporter",
     reportingRoute: "Area HQ -> Buchanan District -> Supervising authority -> Archive vault",
-    workflowAccess: ["ChurchMail", "Reports", "Tasks", "Archive"],
+    workflowAccess: ["ChurchMail", "Reports", "Tasks", "Archive", "Live Comms"],
     password: demoStationPassword("riverbend"),
     status: "Provisioned"
   }
@@ -2474,7 +2483,7 @@ function isWorshipStation(station: StationCard) {
 function getAllowedSections(station: StationCard, permissions: Permissions): Section[] {
   if (permissions.canOverride) return navItems.map((item) => item.label);
 
-  const allowed = new Set<Section>(["Control Center", "ChurchMail", "Reports", "Tasks", "Policies", "Calendar", "Archive", "Account Settings"]);
+  const allowed = new Set<Section>(["Control Center", "ChurchMail", "Reports", "Tasks", "Policies", "Calendar", "Archive", "Live Comms", "Account Settings"]);
   if (permissions.canApprove || isFinanceStation(station)) allowed.add("Approvals");
   if (permissions.canExecuteTransfers || isMissionStation(station) || isPersonnelStation(station)) allowed.add("Transfers");
   if (permissions.canCreateOffices) allowed.add("Offices");
@@ -8193,6 +8202,17 @@ function App() {
             digest={aiDraftDigest}
           />
         )}
+        {effectiveSection === "Live Comms" && (
+          <LiveComms
+            station={activeStation}
+            offices={offices}
+            reports={reports}
+            approvals={approvals}
+            tasks={tasks}
+            messages={messages}
+            onOpenSection={openSection}
+          />
+        )}
         {effectiveSection === "Hierarchy" && (
           <Hierarchy
             stationDirectory={stationDirectory}
@@ -12332,6 +12352,95 @@ function Offices({
   );
 }
 
+function LiveComms({
+  station,
+  offices,
+  reports,
+  approvals,
+  tasks,
+  messages,
+  onOpenSection
+}: {
+  station: StationCard;
+  offices: Office[];
+  reports: Report[];
+  approvals: Approval[];
+  tasks: GovernanceTask[];
+  messages: Message[];
+  onOpenSection: (section: Section) => void;
+}) {
+  const activeOffices = offices.filter((office) => !office.archived);
+  const openApprovals = approvals.filter((approval) => approval.state !== "Approved");
+  const openTasks = tasks.filter((task) => task.status !== "Complete");
+  const sessions = [
+    { title: "District reporting review", host: station.title, route: station.reportingRoute ?? "Local Branch -> District HQ", status: "Ready", linked: reports[0]?.name ?? "Monthly branch administration report" },
+    { title: "Finance approval discussion", host: "Finance Desk", route: "Finance Office -> District -> County", status: "Approval linked", linked: openApprovals[0]?.title ?? "Budget request" },
+    { title: "Executive emergency briefing", host: "International HQ", route: "HQ broadcast channel", status: "Priority", linked: openTasks[0]?.title ?? "Open governance task" }
+  ];
+  const channels = [
+    { name: "Office chat", detail: `${activeOffices.length} office nodes available`, icon: MessageSquareText },
+    { name: "HQ broadcast", detail: `${messages.length} ChurchMail records can be referenced`, icon: RadioTower },
+    { name: "Approval room", detail: `${openApprovals.length} approval chains open`, icon: Workflow },
+    { name: "Report co-editing", detail: `${reports.length} report packets available`, icon: FileCheck2 }
+  ];
+
+  return (
+    <section className="module-grid live-comms-workspace">
+      <div className="panel module-primary">
+        <PanelHeader icon={Video} title="Real-Time Communication Hub" action="Node linked" />
+        <div className="live-comms-hero">
+          <div>
+            <span>{station.level}</span>
+            <h2>{station.title}</h2>
+            <p>Meet, chat, review reports, discuss approvals, share documents, and broadcast instructions while every conversation stays tied to an official office node.</p>
+          </div>
+          <div className="live-call-controls">
+            <button type="button"><Video size={16} /> Start video meeting</button>
+            <button type="button"><MessageSquareText size={16} /> Open office chat</button>
+            <button type="button"><RadioTower size={16} /> Broadcast directive</button>
+          </div>
+        </div>
+
+        <div className="live-session-grid">
+          {sessions.map((sessionItem) => (
+            <article className="live-session-card" key={sessionItem.title}>
+              <div>
+                <Video size={18} />
+                <span>{sessionItem.status}</span>
+              </div>
+              <h3>{sessionItem.title}</h3>
+              <p>{sessionItem.route}</p>
+              <small>Linked record: {sessionItem.linked}</small>
+              <div className="compact-actions">
+                <button type="button">Join</button>
+                <button type="button" onClick={() => onOpenSection("Calendar")}>Schedule</button>
+                <button type="button" onClick={() => onOpenSection("Archive")}>Attach file</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div className="panel module-side">
+        <PanelHeader icon={MessageSquareText} title="Live Channels" action="Office nodes" />
+        <div className="live-channel-list">
+          {channels.map(({ name, detail, icon: Icon }) => (
+            <button type="button" key={name}>
+              <Icon size={17} />
+              <span>{name}<small>{detail}</small></span>
+              <ChevronRight size={14} />
+            </button>
+          ))}
+        </div>
+        <div className="provision-summary">
+          <strong>Audit behavior</strong>
+          <span>Calls, chats, broadcasts, shared documents, and approval discussions can be linked to meetings, reports, approvals, or archive records.</span>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 function Transfers({
   transfers,
   permissions,
@@ -13151,7 +13260,8 @@ function AdminBoard({
     { label: "Approvals", section: "Approvals" as Section, icon: BadgeCheck, detail: `${openApprovals} awaiting review`, tone: "gold" },
     { label: "Audit", section: "Audit" as Section, icon: ShieldCheck, detail: `${sealedAuditRows} sealed records`, tone: "blue" },
     { label: "Archive", section: "Archive" as Section, icon: Files, detail: `${documents.length} vault documents`, tone: "green" },
-    { label: "AI Desk", section: "AI Desk" as Section, icon: Sparkles, detail: "Drafts and summaries", tone: "gold" }
+    { label: "AI Desk", section: "AI Desk" as Section, icon: Sparkles, detail: "Drafts and summaries", tone: "gold" },
+    { label: "Live Comms", section: "Live Comms" as Section, icon: Video, detail: "Meetings, chat, broadcasts", tone: "blue" }
   ];
 
   return (
@@ -13232,6 +13342,21 @@ function AdminBoard({
                   <small>{detail}</small>
                 </button>
               ))}
+            </div>
+          </div>
+
+          <div className="admin-node-model" aria-label="GCOS node operating model">
+            <div>
+              <span>Core architecture</span>
+              <strong>Every office is a node</strong>
+              <p>Each RMVI office, department, unit, branch, or directorate is stored as one expandable organization node with a parent, level, workstation, permissions, reporting route, and communication tools.</p>
+            </div>
+            <div className="admin-node-flow">
+              <article><GitBranch size={18} /><strong>parent_id</strong><small>Routes reports upward and directives downward.</small></article>
+              <article><Building2 size={18} /><strong>Create node</strong><small>Admin assigns type, level, parent, and permission preset.</small></article>
+              <article><Mail size={18} /><strong>Generated tools</strong><small>Dashboard, ChurchMail, reports, approvals, archive, and live comms.</small></article>
+              <article><Video size={18} /><strong>Real-time work</strong><small>Video calls, chat, screen sharing, and meeting-linked decisions.</small></article>
+              <article><Sparkles size={18} /><strong>AI layer</strong><small>Summaries, bottlenecks, draft memos, missing data, and forecasts.</small></article>
             </div>
           </div>
 
