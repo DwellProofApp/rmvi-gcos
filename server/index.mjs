@@ -49,6 +49,7 @@ const LOGIN_RATE_WINDOW_MS = positiveNumber(process.env.GCOS_LOGIN_RATE_WINDOW_M
 const MUTATION_RATE_LIMIT = positiveNumber(process.env.GCOS_MUTATION_RATE_LIMIT, 2000);
 const MUTATION_RATE_WINDOW_MS = positiveNumber(process.env.GCOS_MUTATION_RATE_WINDOW_MS, 60 * 1000);
 const storage = createStorageAdapter({ provider: STORAGE_PROVIDER, dataPath: DATA_PATH, databaseUrl: DATABASE_URL });
+const BUILD_INFO = await loadBuildInfo();
 
 const state = await loadState();
 const services = createServices({ state, record, requirePermission, findById });
@@ -56,7 +57,8 @@ const sessions = new Map();
 const rateLimitBuckets = new Map();
 
 const routes = {
-  "GET /health": () => ok({ status: "ok", service: "gcos-api", time: new Date().toISOString() }),
+  "GET /health": () => ok({ status: "ok", service: "gcos-api", time: new Date().toISOString(), build: publicBuildInfo() }),
+  "GET /api/deployment/build-info": () => ok(deploymentBuildInfo()),
   "GET /api/readiness": () => ok(readinessReport()),
   "GET /api/readiness/digest": () => ok(readinessDigest()),
   "POST /api/readiness/bulk/acknowledge": ({ body, session }) => ok(bulkAcknowledgeReadiness(body, session.email)),
@@ -560,6 +562,7 @@ function operationalStatus({ includeSessions = true } = {}) {
     status: "ok",
     service: "gcos-api",
     time: new Date().toISOString(),
+    deployment: deploymentBuildInfo(),
     startedAt: STARTED_AT.toISOString(),
     uptimeSeconds: Math.round(process.uptime()),
     serveWeb: SERVE_WEB,
@@ -594,6 +597,29 @@ function operationalStatus({ includeSessions = true } = {}) {
   };
   if (includeSessions) status.sessions = sessionSummary();
   return status;
+}
+
+function deploymentBuildInfo() {
+  return {
+    ...publicBuildInfo(),
+    runtimeTarget: DEPLOYMENT_TARGET || "local",
+    domain: DOMAIN,
+    storageProvider: storage.provider,
+    objectStorageProvider: objectStorage.provider,
+    startedAt: STARTED_AT.toISOString()
+  };
+}
+
+function publicBuildInfo() {
+  return {
+    app: BUILD_INFO.app ?? "rmvi-gcos",
+    name: BUILD_INFO.name ?? "Remedy Movement International GCOS",
+    version: BUILD_INFO.version ?? "0.1.0",
+    generatedAt: BUILD_INFO.generatedAt ?? STARTED_AT.toISOString(),
+    gitCommit: BUILD_INFO.gitCommit ?? "unknown",
+    gitBranch: BUILD_INFO.gitBranch ?? "unknown",
+    deploymentTarget: BUILD_INFO.deploymentTarget ?? DEPLOYMENT_TARGET ?? "unknown"
+  };
 }
 
 async function launchReadiness() {
@@ -1271,6 +1297,17 @@ function persistenceStatusSync() {
 
 async function persistenceStatus() {
   return storage.status(state);
+}
+
+async function loadBuildInfo() {
+  for (const file of [join(WEB_DIST_PATH, "build-info.json"), join(SERVER_DIR, "..", "public", "build-info.json")]) {
+    try {
+      return JSON.parse(await readFile(file, "utf8"));
+    } catch {
+      // Build info is generated during production builds; local API-only runs can continue without it.
+    }
+  }
+  return {};
 }
 
 async function createPersistenceBackup(body, actor) {

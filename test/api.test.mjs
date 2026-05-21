@@ -28,10 +28,17 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(healthResponse.headers.get("x-download-options"), "noopen");
     const health = await healthResponse.json();
     assert.equal(health.status, "ok");
+    assert.equal(health.build.app, "rmvi-gcos");
+
+    const deploymentBuild = await getJson("/api/deployment/build-info");
+    assert.equal(deploymentBuild.app, "rmvi-gcos");
+    assert.equal(deploymentBuild.runtimeTarget, "local");
+    assert.equal(deploymentBuild.storageProvider, "json");
 
     const status = await getJson("/api/status");
     assert.equal(status.status, "ok");
     assert.equal(status.serveWeb, true);
+    assert.equal(status.deployment.app, "rmvi-gcos");
     assert.equal(status.limits.maxBodyBytes, 4096);
     assert.equal(status.limits.devResetEnabled, true);
     assert.equal(status.limits.rateLimits.login.limit, 8);

@@ -18,7 +18,12 @@ let token = "";
 
 await check("health", "GET", "/health", undefined, async (response) => {
   const body = await response.json();
-  return body.status === "ok" && body.service === "gcos-api";
+  return body.status === "ok" && body.service === "gcos-api" && Boolean(body.build?.app);
+});
+
+await check("deployment-build", "GET", "/api/deployment/build-info", undefined, async (response) => {
+  const body = await response.json();
+  return body.app === "rmvi-gcos" && body.service !== "missing" && Boolean(body.generatedAt);
 });
 
 await check("public-bootstrap", "GET", "/api/bootstrap/public", undefined, async (response) => {
@@ -29,7 +34,7 @@ await check("public-bootstrap", "GET", "/api/bootstrap/public", undefined, async
 await check("status-public-safe", "GET", "/api/status", undefined, async (response) => {
   const body = await response.json();
   const productionAuth = body.limits?.requireApiAuth === true;
-  return body.status === "ok" && body.service === "gcos-api" && (!productionAuth || !("sessions" in body));
+  return body.status === "ok" && body.service === "gcos-api" && body.deployment?.app === "rmvi-gcos" && (!productionAuth || !("sessions" in body));
 });
 
 await check("station-login", "POST", "/api/auth/login", {
