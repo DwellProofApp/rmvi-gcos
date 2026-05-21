@@ -953,6 +953,16 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/live-sessions/:id/attendance": () => {},
+
+  "POST /api/live-sessions/:id/quorum": (body) => {
+    if (body.required !== undefined) requireNumber(body.required, "required");
+  },
+
+  "POST /api/live-sessions/:id/minutes": (body) => {
+    if (body.name !== undefined) requireString(body.name, "name");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

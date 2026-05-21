@@ -484,6 +484,73 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    buildLiveSessionAttendance(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const invited = item.participants ?? [];
+      const checkedIn = item.checkedInParticipants ?? [];
+      item.attendanceLedger = invited.map((participant) => ({
+        participant,
+        role: item.participantRoles?.[participant] ?? "Participant",
+        present: checkedIn.includes(participant),
+        muted: (item.mutedParticipants ?? []).includes(participant),
+        recordedAt: new Date().toISOString()
+      }));
+      item.attendanceCount = checkedIn.length;
+      item.attendanceBuiltAt = new Date().toISOString();
+      item.updatedAt = item.attendanceBuiltAt;
+      record("LiveSessionAttendanceBuilt", body.actor, item.title, `${checkedIn.length}/${invited.length} present`);
+      return item;
+    },
+
+    checkLiveSessionQuorum(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const required = body.required ?? Math.max(1, Math.ceil(((item.participants ?? []).length || 1) / 2));
+      const present = item.checkedInParticipants?.length ?? 0;
+      item.quorum = {
+        required,
+        present,
+        met: present >= required,
+        checkedAt: new Date().toISOString(),
+        checkedBy: body.actor
+      };
+      item.updatedAt = item.quorum.checkedAt;
+      record("LiveSessionQuorumChecked", body.actor, item.title, item.quorum.met ? "Quorum met" : "Quorum missing");
+      return item;
+    },
+
+    createLiveSessionMinutes(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const minutes = documentRecord(
+        body.name ?? `${item.title} official minutes.pdf`,
+        "Official meeting minutes",
+        "Live Comms",
+        item.host ?? body.actor ?? "Live Comms",
+        "PDF",
+        "Archived"
+      );
+      minutes.linkedReport = item.linkedRecord;
+      minutes.extractedText = [
+        `Official minutes: ${item.title}`,
+        `Host: ${item.host}`,
+        `Route: ${item.route}`,
+        `Purpose: ${item.purpose}`,
+        `Attendance: ${item.attendanceCount ?? item.checkedInParticipants?.length ?? 0}/${item.participants?.length ?? 0}`,
+        `Quorum: ${item.quorum?.met ? "Met" : "Not met"} (${item.quorum?.present ?? 0}/${item.quorum?.required ?? 0})`,
+        `Agenda: ${(item.agendaItems ?? []).join("; ") || "No agenda recorded"}`,
+        `Decisions: ${(item.decisions ?? []).map((decision) => decision.text ?? decision).join("; ") || "No decisions recorded"}`,
+        `Action items: ${(item.actionItems ?? []).map((action) => `${action.title} -> ${action.assignee}`).join("; ") || "No action items extracted"}`,
+        `Attendance ledger: ${(item.attendanceLedger ?? []).map((row) => `${row.participant} (${row.role}) ${row.present ? "present" : "absent"}`).join("; ") || "No attendance ledger built"}`
+      ].join("\n");
+      minutes.custodian = body.actor;
+      minutes.chainHash = `minutes-${item.id}-${Date.now()}`;
+      state.documents.unshift(minutes);
+      item.minutesDocumentId = minutes.id;
+      item.minutesBuiltAt = new Date().toISOString();
+      item.updatedAt = item.minutesBuiltAt;
+      record("LiveSessionMinutesCreated", body.actor, item.title, minutes.name);
+      return { session: item, document: minutes };
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -557,6 +624,8 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Type: ${item.sessionType}`,
         `Route: ${item.route}`,
         `Purpose: ${item.purpose}`,
+        `Attendance: ${item.attendanceCount ?? item.checkedInParticipants?.length ?? 0}/${item.participants?.length ?? 0}`,
+        `Quorum: ${item.quorum?.met ? "Met" : "Not met"} (${item.quorum?.present ?? 0}/${item.quorum?.required ?? 0})`,
         `Agenda: ${(item.agendaItems ?? []).join("; ") || "No agenda recorded"}`,
         `Action items: ${(item.actionItems ?? []).map((action) => `${action.title} -> ${action.assignee}`).join("; ") || "No action items extracted"}`,
         `Notes: ${(item.notes ?? []).join("; ") || "No notes recorded"}`,

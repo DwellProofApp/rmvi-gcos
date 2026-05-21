@@ -1721,6 +1721,23 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(liveSessionActions.session.actionItems.length >= 1, true);
     assert.equal(liveSessionActions.session.extractedTaskIds.includes(liveSessionActions.tasks[0].id), true);
 
+    const attendanceLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/attendance`, {}, nationalToken);
+    assert.equal(attendanceLiveSession.attendanceLedger.length >= 1, true);
+    assert.equal(attendanceLiveSession.attendanceCount >= 1, true);
+
+    const quorumLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/quorum`, {
+      required: 1
+    }, nationalToken);
+    assert.equal(quorumLiveSession.quorum.met, true);
+    assert.equal(quorumLiveSession.quorum.checkedBy, "np@rmvi.org");
+
+    const minutesLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/minutes`, {
+      name: "Automated live session official minutes.pdf"
+    }, nationalToken);
+    assert.equal(minutesLiveSession.document.name, "Automated live session official minutes.pdf");
+    assert.equal(minutesLiveSession.document.classification, "Official meeting minutes");
+    assert.equal(minutesLiveSession.session.minutesDocumentId, minutesLiveSession.document.id);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"
