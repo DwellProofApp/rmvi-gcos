@@ -9,6 +9,7 @@ import {
   person,
   policy,
   report,
+  liveSession,
   normalizeStationEmail,
   station,
   stationPasswords,
@@ -48,6 +49,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       tasks: state.tasks,
       policies: state.policies,
       calendarEvents: state.calendarEvents,
+      liveSessions: state.liveSessions ?? [],
       personnel: state.personnel,
       escalations: state.escalations,
       transfers: state.transfers,
@@ -224,6 +226,75 @@ export function createServices({ state, record, requirePermission, findById }) {
       state.escalations.unshift(created);
       record("CommandEscalationOpened", body.actor, created.item, created.reason);
       return created;
+    },
+
+    liveCommsDigest() {
+      const sessions = state.liveSessions ?? [];
+      return {
+        generatedAt: new Date().toISOString(),
+        total: sessions.length,
+        live: sessions.filter((item) => item.status === "Live").length,
+        priority: sessions.filter((item) => item.status === "Priority").length,
+        queued: sessions.filter((item) => item.status === "Queued").length,
+        archived: sessions.filter((item) => item.archived).length,
+        notes: sessions.reduce((sum, item) => sum + (item.notes?.length ?? 0), 0),
+        files: sessions.reduce((sum, item) => sum + (item.files?.length ?? 0), 0),
+        nextSession: sessions.find((item) => !item.archived)?.title ?? "No live sessions"
+      };
+    },
+
+    createLiveSession(body) {
+      state.liveSessions ??= [];
+      const created = liveSession(
+        body.title ?? "GCOS live session",
+        body.host ?? body.actor ?? "Live Comms",
+        body.sessionType ?? "Video Meeting",
+        body.status ?? "Live",
+        body.linkedRecord ?? "Unlinked record",
+        body.route ?? "Current station -> invited offices",
+        body.purpose ?? "Live administrative collaboration"
+      );
+      created.participants = body.participants ?? [body.actor].filter(Boolean);
+      state.liveSessions.unshift(created);
+      record("LiveSessionCreated", body.actor, created.title, `${created.sessionType} linked to ${created.linkedRecord}`);
+      return created;
+    },
+
+    updateLiveSessionStatus(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.status = body.status ?? "Live";
+      item.lastActionBy = body.actor;
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionStatusUpdated", body.actor, item.title, item.status);
+      return item;
+    },
+
+    attachLiveSessionFile(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.files ??= [];
+      item.files.unshift(body.file ?? body.fileName ?? "Shared document");
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionFileShared", body.actor, item.title, item.files[0]);
+      return item;
+    },
+
+    addLiveSessionNote(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.notes ??= [];
+      item.notes.unshift(body.note ?? "Decision note recorded");
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionNoteAdded", body.actor, item.title, item.notes[0]);
+      return item;
+    },
+
+    archiveLiveSession(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.archived = true;
+      item.archiveReason = body.reason ?? "Session closed and archived";
+      item.status = "Archived";
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionArchived", body.actor, item.title, item.archiveReason);
+      return item;
     },
 
     createMessage(body) {

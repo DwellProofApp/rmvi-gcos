@@ -75,6 +75,11 @@ export function createSeedState() {
       calendarEvent("Regional mission briefing", "Meeting", "Regional HQ - West Africa", "2026-05-20", "Medium", "Scheduled"),
       calendarEvent("Construction evidence review", "Review", "District Works", "2026-05-17", "Critical", "At Risk")
     ],
+    liveSessions: [
+      liveSession("District reporting review", "National Presidency Workstation", "Video Meeting", "Live", "National mission activity report", "National HQ -> District HQ", "Report review"),
+      liveSession("Finance approval discussion", "Finance Desk Workstation", "Approval Room", "Queued", "County youth program budget", "Finance Office -> District -> County", "Approval discussion"),
+      liveSession("Executive emergency briefing", "International Executive Workstation", "Broadcast", "Priority", "Construction milestone report", "HQ broadcast channel", "Executive directive")
+    ],
     personnel: [
       person("Rev. Daniel Moore", "District Coordinator", "Buchanan District", "Riverbend Area Office", "Transfer Pending"),
       person("Sis. Amelia Hart", "Education Desk Officer", "Local Branch 017", "County Education Desk", "Active"),
@@ -165,6 +170,23 @@ export function policy(title, category, owner, status, summary, acknowledgements
 
 export function calendarEvent(title, category, owner, date, priority, status = "Scheduled") {
   return { id: randomUUID(), title, category, owner, date, priority, status };
+}
+
+export function liveSession(title, host, sessionType, status, linkedRecord, route, purpose) {
+  return {
+    id: randomUUID(),
+    title,
+    host,
+    sessionType,
+    status,
+    linkedRecord,
+    route,
+    purpose,
+    participants: [],
+    notes: [],
+    files: [],
+    createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+  };
 }
 
 export function person(name, role, currentStation, assignedStation, status = "Active") {

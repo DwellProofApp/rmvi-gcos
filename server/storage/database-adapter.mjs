@@ -10,6 +10,7 @@ const COLLECTIONS = [
   { name: "tasks", type: "array", key: "id" },
   { name: "policies", type: "array", key: "id" },
   { name: "calendarEvents", type: "array", key: "id" },
+  { name: "liveSessions", type: "array", key: "id" },
   { name: "personnel", type: "array", key: "id" },
   { name: "escalations", type: "array", key: "id" },
   { name: "transfers", type: "array", key: "id" },
@@ -912,6 +913,18 @@ on conflict (version) do nothing;
 }
 
 function buildRealtimeSessions(state) {
+  if (Array.isArray(state.liveSessions) && state.liveSessions.length > 0) {
+    return state.liveSessions.map((session, index) => ({
+      id: session.id ?? `live-session-${index}`,
+      hostNodeId: session.host ?? session.hostNodeId ?? "Live Comms",
+      sessionType: session.sessionType ?? "live-session",
+      linkedRecord: session.linkedRecord ?? session.linkedRecordId ?? session.title ?? `session-${index}`,
+      status: session.status ?? "Open",
+      title: session.title ?? "Live communication session",
+      source: "liveSessions",
+      payload: session
+    }));
+  }
   const calendarSessions = (state.calendarEvents ?? []).slice(0, 4).map((event, index) => ({
     id: `calendar-live-${event.id ?? index}`,
     hostNodeId: event.owner ?? event.level ?? "Calendar",

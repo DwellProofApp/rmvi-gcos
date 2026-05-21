@@ -9565,6 +9565,73 @@ h1 {
   color: #061a3d;
 }
 
+.live-comms-console {
+  display: grid;
+  grid-template-columns: 180px minmax(220px, 1fr) minmax(220px, 1fr) auto;
+  gap: 12px;
+  align-items: end;
+  margin-top: 16px;
+  padding: 14px;
+  border: 1px solid #dce6f5;
+  border-radius: 20px;
+  background: #f8fbff;
+}
+
+.live-comms-console label {
+  display: grid;
+  gap: 6px;
+}
+
+.live-comms-console span {
+  color: #65758d;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.live-comms-console input,
+.live-comms-console select {
+  min-height: 42px;
+  border: 1px solid #cddbf0;
+  border-radius: 12px;
+  background: #ffffff;
+  color: #10213f;
+  padding: 0 12px;
+  font-weight: 800;
+}
+
+.live-comms-console button,
+.live-current-room button {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: #0b2f6b;
+  color: #ffffff;
+  padding: 0 14px;
+  font-weight: 900;
+}
+
+.live-comms-feedback {
+  margin-top: 12px;
+  border: 1px solid #f4c542;
+  border-radius: 14px;
+  background: #fff8d7;
+  color: #735c00;
+  padding: 10px 12px;
+  font-weight: 850;
+}
+
+.live-status-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
 .live-session-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
@@ -9655,6 +9722,33 @@ h1 {
   font-size: 12px;
 }
 
+.live-current-room {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+  border: 1px solid #dce6f5;
+  border-radius: 18px;
+  background: #ffffff;
+  padding: 14px;
+}
+
+.live-current-room strong {
+  color: #0b2f6b;
+  font-size: 12px;
+  text-transform: uppercase;
+}
+
+.live-current-room span {
+  color: #10213f;
+  font-size: 18px;
+  font-weight: 950;
+}
+
+.live-current-room small {
+  color: #65758d;
+  line-height: 1.4;
+}
+
 @media (max-width: 760px) {
   .admin-node-model,
   .live-comms-hero {
@@ -9663,6 +9757,11 @@ h1 {
 
   .live-call-controls {
     min-width: 0;
+  }
+
+  .live-comms-console,
+  .live-status-strip {
+    grid-template-columns: 1fr;
   }
 }
 
