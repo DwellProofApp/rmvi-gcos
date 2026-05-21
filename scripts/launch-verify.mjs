@@ -7,12 +7,15 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT_DIR = join(ROOT, "launch-reports");
 const args = new Set(process.argv.slice(2));
 const live = args.has("--live");
+const firebase = args.has("--firebase") || String(process.env.GCOS_DEPLOYMENT_TARGET ?? "").toLowerCase() === "firebase";
 const strict = args.has("--strict") || live;
-const baseEnv = loadProductionDefaults(await readOptional(join(ROOT, ".env.production.example")));
+const defaultsFile = firebase ? ".env.firebase.example" : ".env.production.example";
+const baseEnv = loadProductionDefaults(await readOptional(join(ROOT, defaultsFile)));
 const env = { ...baseEnv, ...process.env };
 const report = {
   generatedAt: new Date().toISOString(),
   mode: live ? "live" : "local-gate",
+  deploymentTarget: firebase ? "firebase" : env.GCOS_DEPLOYMENT_TARGET || "replit",
   targetDomain: env.GCOS_DOMAIN || "rmvi.org",
   strict,
   checks: [],
@@ -103,10 +106,14 @@ function summarize(result) {
 }
 
 function fixFor(name, result) {
-  if (name === "production-profile") return "Set the missing Replit secrets from .env.production.example, especially GCOS_DATABASE_URL and object vault settings.";
-  if (name === "healthcheck") return "Confirm the Replit deployment is running GCOS and GCOS_HEALTHCHECK_URL points to https://rmvi.org.";
+  if (name === "production-profile") {
+    return firebase
+      ? "Confirm Firebase production env matches .env.firebase.example, especially Firestore namespace and Firebase Storage bucket."
+      : "Set the missing Replit secrets from .env.production.example, especially GCOS_DATABASE_URL and object vault settings.";
+  }
+  if (name === "healthcheck") return `Confirm the ${firebase ? "Firebase/Cloud Run" : "Replit"} deployment is running GCOS and GCOS_HEALTHCHECK_URL points to https://rmvi.org.`;
   if (name === "runtime-smoke") return "Set GCOS_SMOKE_EMAIL and GCOS_SMOKE_PASSWORD for a valid admin station and confirm protected APIs pass runtime smoke.";
-  if (name === "domain-check") return "Confirm rmvi.org DNS points to the rmvi-gcos Replit deployment and is no longer attached to another app.";
+  if (name === "domain-check") return `Confirm rmvi.org DNS points to the rmvi-gcos ${firebase ? "Firebase Hosting" : "Replit"} deployment and is no longer attached to another app.`;
   if (name === "build") return "Fix the frontend production build error.";
   if (name === "test") return "Fix failing API or storage tests before launch.";
   if (name === "release-check") return "Fix missing release artifacts before launch.";

@@ -24,6 +24,7 @@
     "secrets:plan": "node scripts/production-secrets-plan.mjs",
     "launch:verify": "node scripts/launch-verify.mjs",
     "launch:verify:live": "node scripts/launch-verify.mjs --live",
+    "launch:verify:firebase": "node scripts/launch-verify.mjs --live --firebase",
     "build": "vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test",
