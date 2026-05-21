@@ -344,6 +344,35 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { session: item, calendarEvent: created };
     },
 
+    buildLiveSessionPacket(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const packet = documentRecord(
+        body.name ?? `${item.title} meeting packet.pdf`,
+        "Live communication packet",
+        "Live Comms",
+        item.host ?? body.actor ?? "Live Comms",
+        "PDF",
+        "Archived"
+      );
+      packet.linkedReport = item.linkedRecord;
+      packet.extractedText = [
+        `Session: ${item.title}`,
+        `Type: ${item.sessionType}`,
+        `Route: ${item.route}`,
+        `Purpose: ${item.purpose}`,
+        `Notes: ${(item.notes ?? []).join("; ") || "No notes recorded"}`,
+        `Files: ${(item.files ?? []).join(", ") || "No files attached"}`
+      ].join("\n");
+      packet.custodian = body.actor;
+      packet.chainHash = `live-${item.id}-${Date.now()}`;
+      state.documents.unshift(packet);
+      item.packetDocumentId = packet.id;
+      item.packetBuiltAt = new Date().toISOString();
+      item.updatedAt = item.packetBuiltAt;
+      record("LiveSessionPacketBuilt", body.actor, item.title, packet.name);
+      return { session: item, document: packet };
+    },
+
     archiveLiveSession(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       item.archived = true;

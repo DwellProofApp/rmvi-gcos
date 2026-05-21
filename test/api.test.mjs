@@ -1671,6 +1671,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(liveSessionCalendar.calendarEvent.date, "2026-06-15");
     assert.equal(liveSessionCalendar.session.calendarEventId, liveSessionCalendar.calendarEvent.id);
 
+    const liveSessionPacket = await postJson(`/api/live-sessions/${createdLiveSession.id}/packet`, {
+      name: "Automated live session packet.pdf"
+    }, nationalToken);
+    assert.equal(liveSessionPacket.document.name, "Automated live session packet.pdf");
+    assert.equal(liveSessionPacket.document.source, "Live Comms");
+    assert.equal(liveSessionPacket.document.retainedUntil, "Permanent");
+    assert.equal(liveSessionPacket.session.packetDocumentId, liveSessionPacket.document.id);
+
     const archivedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/archive`, {
       reason: "Automated live session archive"
     }, nationalToken);

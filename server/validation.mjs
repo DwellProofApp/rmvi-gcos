@@ -906,6 +906,10 @@ const validators = {
     if (body.agenda !== undefined) requireString(body.agenda, "agenda");
   },
 
+  "POST /api/live-sessions/:id/packet": (body) => {
+    if (body.name !== undefined) requireString(body.name, "name");
+  },
+
   "POST /api/live-sessions/:id/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
