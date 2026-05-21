@@ -1861,6 +1861,25 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(aiBriefLiveSession.document.classification, "AI live session brief");
     assert.equal(aiBriefLiveSession.session.aiBriefDocumentId, aiBriefLiveSession.document.id);
 
+    const playbookLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/playbook`, {
+      playbook: "District Review"
+    }, nationalToken);
+    assert.equal(playbookLiveSession.playbook.name, "District Review");
+    assert.ok(playbookLiveSession.playbook.checklist.length >= 4);
+    assert.ok(playbookLiveSession.agendaItems.length >= 4);
+
+    const seriesLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/series`, {
+      title: "Recurring district report review",
+      frequency: "Weekly",
+      nextRun: "2026-06-22",
+      owner: "np@rmvi.org",
+      priority: "High"
+    }, nationalToken);
+    assert.equal(seriesLiveSession.calendarEvent.title, "Recurring district report review");
+    assert.equal(seriesLiveSession.calendarEvent.recurrence, "Weekly");
+    assert.equal(seriesLiveSession.session.recurringSchedule.nextRun, "2026-06-22");
+    assert.equal(seriesLiveSession.session.recurringCalendarEventId, seriesLiveSession.calendarEvent.id);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"

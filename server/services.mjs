@@ -892,6 +892,103 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { session: item, document: briefDocument };
     },
 
+    applyLiveSessionPlaybook(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const appliedAt = new Date().toISOString();
+      const playbooks = {
+        "District Review": {
+          agenda: [
+            "Open attendance and confirm quorum",
+            "Review branch reports and correction requests",
+            "Assign evidence follow-up owners",
+            "Prepare upward district summary"
+          ],
+          checklist: ["Attendance captured", "Reports reviewed", "Corrections assigned", "Summary route confirmed"],
+          roles: { Chair: "District supervisor", Secretary: "Station recorder", Reviewer: "Area report lead" }
+        },
+        "Finance Approval": {
+          agenda: [
+            "Confirm budget request and authority limit",
+            "Review receipts, signatures, and supporting files",
+            "Record approval decision and conditions",
+            "Route execution notice to finance desk"
+          ],
+          checklist: ["Amount verified", "Evidence attached", "Signatures checked", "Execution route approved"],
+          roles: { Chair: "Finance approver", Secretary: "Audit recorder", Reviewer: "Budget owner" }
+        },
+        "Emergency Briefing": {
+          agenda: [
+            "Confirm incident facts and affected offices",
+            "Assign response owners and communication path",
+            "Issue urgent directive or welfare support request",
+            "Schedule status check and archive decision record"
+          ],
+          checklist: ["Incident logged", "Owners assigned", "Directive routed", "Follow-up scheduled"],
+          roles: { Chair: "Command lead", Secretary: "Incident recorder", Reviewer: "Response coordinator" }
+        },
+        "Report Review": {
+          agenda: [
+            "Open report packet and evidence list",
+            "Check missing fields and late submissions",
+            "Request corrections or approve for routing",
+            "Build summary for supervising office"
+          ],
+          checklist: ["Packet opened", "Evidence checked", "Corrections routed", "Summary prepared"],
+          roles: { Chair: "Report supervisor", Secretary: "Review recorder", Reviewer: "Evidence lead" }
+        }
+      };
+      const requested = body.playbook ?? "District Review";
+      const selected = playbooks[requested] ?? playbooks["District Review"];
+      item.playbook = {
+        name: requested in playbooks ? requested : "District Review",
+        checklist: selected.checklist,
+        appliedAt,
+        appliedBy: body.actor,
+        roles: selected.roles
+      };
+      item.agendaItems = selected.agenda;
+      item.agendaUpdatedAt = appliedAt;
+      item.participantRoles ??= {};
+      const participants = item.participants?.length ? item.participants : [body.actor, item.host].filter(Boolean);
+      participants.forEach((participant, index) => {
+        const role = Object.values(selected.roles)[index] ?? "Participant";
+        item.participantRoles[participant] ??= role;
+      });
+      item.updatedAt = appliedAt;
+      record("LiveSessionPlaybookApplied", body.actor, item.title, item.playbook.name);
+      return item;
+    },
+
+    scheduleLiveSessionSeries(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const createdAt = new Date().toISOString();
+      const nextRun = body.nextRun ?? new Date(Date.now() + 86400000 * 7).toISOString().slice(0, 10);
+      const frequency = body.frequency ?? "Weekly";
+      const created = calendarEvent(
+        body.title ?? `Recurring: ${item.title}`,
+        "Meeting",
+        item.host ?? body.actor ?? "Live Comms",
+        nextRun,
+        body.priority ?? (item.status === "Priority" ? "High" : "Medium"),
+        "Scheduled"
+      );
+      created.linkedReport = item.linkedRecord;
+      created.agenda = item.agendaItems?.length ? item.agendaItems.join("; ") : item.purpose;
+      created.recurrence = frequency;
+      created.linkedLiveSession = item.id;
+      state.calendarEvents.unshift(created);
+      item.recurringSchedule = {
+        frequency,
+        nextRun,
+        owner: body.owner ?? body.actor,
+        createdAt
+      };
+      item.recurringCalendarEventId = created.id;
+      item.updatedAt = createdAt;
+      record("LiveSessionSeriesScheduled", body.actor, item.title, `${frequency} from ${nextRun}`);
+      return { session: item, calendarEvent: created };
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(

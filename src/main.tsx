@@ -137,7 +137,7 @@ type Approval = {
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
-type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; polls?: { id: string; question: string; options: string[]; votes: Record<string, string[]>; status: string; createdBy: string; createdAt: string; updatedAt?: string }[]; resolutions?: { id: string; title: string; status: string; movedBy: string; secondedBy?: string; votesFor: number; votesAgainst: number; createdAt: string; passedAt?: string; linkedApprovalId?: string }[]; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; minutesMessageId?: string; minutesSentAt?: string; minutesSignatures?: { signer: string; role: string; signedAt: string; attestation: string }[]; minutesSignatureStatus?: string; sealedDocumentId?: string; sealedAt?: string; sealedBy?: string; sealReason?: string; resolutionApprovalId?: string; riskReview?: { score: number; status: string; issues: string[]; reviewedAt: string; reviewedBy: string }; riskEscalationId?: string; connectivity?: { status: string; bandwidthMode: string; lastCheckedAt: string; checkedBy: string }; fallbackChannel?: { channel: string; reason: string; activatedAt: string; activatedBy: string }; continuityAlertId?: string; offlineNotes?: { id: string; author: string; body: string; station: string; createdAt: string }[]; recoverySummary?: { status: string; summary: string; syncedAt: string; syncedBy: string }; aiBrief?: { id: string; title: string; summary: string; risks: string; nextActions: string[]; generatedAt: string; generatedBy: string }; aiBriefDocumentId?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
+type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; polls?: { id: string; question: string; options: string[]; votes: Record<string, string[]>; status: string; createdBy: string; createdAt: string; updatedAt?: string }[]; resolutions?: { id: string; title: string; status: string; movedBy: string; secondedBy?: string; votesFor: number; votesAgainst: number; createdAt: string; passedAt?: string; linkedApprovalId?: string }[]; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; minutesMessageId?: string; minutesSentAt?: string; minutesSignatures?: { signer: string; role: string; signedAt: string; attestation: string }[]; minutesSignatureStatus?: string; sealedDocumentId?: string; sealedAt?: string; sealedBy?: string; sealReason?: string; resolutionApprovalId?: string; riskReview?: { score: number; status: string; issues: string[]; reviewedAt: string; reviewedBy: string }; riskEscalationId?: string; connectivity?: { status: string; bandwidthMode: string; lastCheckedAt: string; checkedBy: string }; fallbackChannel?: { channel: string; reason: string; activatedAt: string; activatedBy: string }; continuityAlertId?: string; offlineNotes?: { id: string; author: string; body: string; station: string; createdAt: string }[]; recoverySummary?: { status: string; summary: string; syncedAt: string; syncedBy: string }; aiBrief?: { id: string; title: string; summary: string; risks: string; nextActions: string[]; generatedAt: string; generatedBy: string }; aiBriefDocumentId?: string; playbook?: { name: string; checklist: string[]; appliedAt: string; appliedBy: string; roles?: Record<string, string> }; recurringSchedule?: { frequency: string; nextRun: string; owner: string; createdAt: string }; recurringCalendarEventId?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
@@ -4134,6 +4134,83 @@ function App() {
     void apiRequest<{ session: LiveSession; document: DocumentRecord }>(`/api/live-sessions/${id}/ai-brief`, {
       method: "POST",
       body: JSON.stringify({ title: aiBrief.title })
+    }).catch(() => undefined);
+  }
+
+  function applyLiveSessionPlaybook(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const appliedAt = new Date().toISOString();
+    const playbook = {
+      name: target.sessionType === "Approval Room" ? "Finance Approval" : target.status === "Priority" ? "Emergency Briefing" : "District Review",
+      checklist: target.sessionType === "Approval Room"
+        ? ["Amount verified", "Evidence attached", "Signatures checked", "Execution route approved"]
+        : target.status === "Priority"
+          ? ["Incident logged", "Owners assigned", "Directive routed", "Follow-up scheduled"]
+          : ["Attendance captured", "Reports reviewed", "Corrections assigned", "Summary route confirmed"],
+      appliedAt,
+      appliedBy: activeStation.email,
+      roles: {
+        Chair: "Meeting chair",
+        Secretary: "Minutes recorder",
+        Reviewer: "Evidence reviewer"
+      }
+    };
+    const agendaItems = playbook.name === "Finance Approval"
+      ? ["Confirm budget request and authority limit", "Review receipts, signatures, and supporting files", "Record approval decision and conditions", "Route execution notice to finance desk"]
+      : playbook.name === "Emergency Briefing"
+        ? ["Confirm incident facts and affected offices", "Assign response owners and communication path", "Issue urgent directive or welfare support request", "Schedule status check and archive decision record"]
+        : ["Open attendance and confirm quorum", "Review branch reports and correction requests", "Assign evidence follow-up owners", "Prepare upward district summary"];
+    setLiveSessions((items) => items.map((item) => item.id === id ? {
+      ...item,
+      playbook,
+      agendaItems,
+      agendaUpdatedAt: appliedAt,
+      participantRoles: {
+        ...(item.participantRoles ?? {}),
+        [activeStation.email]: item.participantRoles?.[activeStation.email] ?? "Meeting chair"
+      },
+      updatedAt: appliedAt
+    } : item));
+    recordAudit("LiveSessionPlaybookApplied", target.title, playbook.name);
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/playbook`, {
+      method: "POST",
+      body: JSON.stringify({ playbook: playbook.name })
+    }).catch(() => undefined);
+  }
+
+  function scheduleLiveSessionSeries(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const nextRun = new Date(Date.now() + 86400000 * 7).toISOString().slice(0, 10);
+    const recurringSchedule = {
+      frequency: "Weekly",
+      nextRun,
+      owner: activeStation.email,
+      createdAt: new Date().toISOString()
+    };
+    const event: CalendarEvent = {
+      id: `cal-series-${Date.now()}`,
+      title: `Recurring: ${target.title}`,
+      category: "Meeting",
+      owner: target.host,
+      date: nextRun,
+      priority: target.status === "Priority" ? "High" : "Medium",
+      status: "Scheduled",
+      linkedReport: target.linkedRecord,
+      agenda: target.agendaItems?.length ? target.agendaItems.join("; ") : target.purpose
+    };
+    setCalendarEvents((items) => [event, ...items]);
+    setLiveSessions((items) => items.map((item) => item.id === id ? {
+      ...item,
+      recurringSchedule,
+      recurringCalendarEventId: event.id,
+      updatedAt: recurringSchedule.createdAt
+    } : item));
+    recordAudit("LiveSessionSeriesScheduled", target.title, `${recurringSchedule.frequency} from ${nextRun}`);
+    void apiRequest<{ session: LiveSession; calendarEvent: CalendarEvent }>(`/api/live-sessions/${id}/series`, {
+      method: "POST",
+      body: JSON.stringify({ title: event.title, frequency: recurringSchedule.frequency, nextRun, owner: activeStation.email, priority: event.priority })
     }).catch(() => undefined);
   }
 
@@ -9263,6 +9340,8 @@ function App() {
             onAddLiveSessionOfflineNote={addLiveSessionOfflineNote}
             onSyncLiveSessionRecovery={syncLiveSessionRecovery}
             onGenerateLiveSessionAiBrief={generateLiveSessionAiBrief}
+            onApplyLiveSessionPlaybook={applyLiveSessionPlaybook}
+            onScheduleLiveSessionSeries={scheduleLiveSessionSeries}
             onSendLiveSessionSummary={sendLiveSessionSummary}
             onCreateLiveSessionFollowUpTask={createLiveSessionFollowUpTask}
             onScheduleLiveSession={scheduleLiveSession}
@@ -13454,6 +13533,8 @@ function LiveComms({
   onAddLiveSessionOfflineNote,
   onSyncLiveSessionRecovery,
   onGenerateLiveSessionAiBrief,
+  onApplyLiveSessionPlaybook,
+  onScheduleLiveSessionSeries,
   onSendLiveSessionSummary,
   onCreateLiveSessionFollowUpTask,
   onScheduleLiveSession,
@@ -13504,6 +13585,8 @@ function LiveComms({
   onAddLiveSessionOfflineNote: (id: string) => void;
   onSyncLiveSessionRecovery: (id: string) => void;
   onGenerateLiveSessionAiBrief: (id: string) => void;
+  onApplyLiveSessionPlaybook: (id: string) => void;
+  onScheduleLiveSessionSeries: (id: string) => void;
   onSendLiveSessionSummary: (id: string) => void;
   onCreateLiveSessionFollowUpTask: (id: string) => void;
   onScheduleLiveSession: (id: string) => void;
@@ -13640,6 +13723,7 @@ function LiveComms({
               <small>{sessionItem.connectivity ? `${sessionItem.connectivity.status} / ${sessionItem.connectivity.bandwidthMode}` : "connectivity unchecked"} - {sessionItem.fallbackChannel ? "fallback active" : "no fallback"} - {sessionItem.continuityAlertId ? "alert sent" : "no alert"}</small>
               <small>{sessionItem.offlineNotes?.length ?? 0} offline notes - {sessionItem.recoverySummary ? sessionItem.recoverySummary.status : "not recovered"}</small>
               <small>{sessionItem.aiBriefDocumentId ? "AI brief ready" : "AI brief pending"} - {sessionItem.aiBrief?.nextActions.length ?? 0} brief actions</small>
+              <small>{sessionItem.playbook ? `${sessionItem.playbook.name} playbook` : "no playbook"} - {sessionItem.recurringSchedule ? `${sessionItem.recurringSchedule.frequency} series starts ${sessionItem.recurringSchedule.nextRun}` : "one-time session"}</small>
               <small>{sessionItem.files?.length ?? 0} files - {sessionItem.participants?.length ?? 0} invited - {sessionItem.checkedInParticipants?.length ?? 0} checked in - {sessionItem.quorum?.met ? "quorum met" : "quorum pending"}</small>
               <div className="compact-actions">
                 <button type="button" onClick={() => onUpdateLiveSessionStatus(sessionItem.id, "Live")}>Join</button>
@@ -13670,6 +13754,8 @@ function LiveComms({
                 <button type="button" onClick={() => onAddLiveSessionOfflineNote(sessionItem.id)}>Offline note</button>
                 <button type="button" onClick={() => onSyncLiveSessionRecovery(sessionItem.id)}>Recovery sync</button>
                 <button type="button" onClick={() => onGenerateLiveSessionAiBrief(sessionItem.id)}>AI brief</button>
+                <button type="button" onClick={() => onApplyLiveSessionPlaybook(sessionItem.id)}>Playbook</button>
+                <button type="button" onClick={() => onScheduleLiveSessionSeries(sessionItem.id)}>Series</button>
                 <button type="button" onClick={() => onInviteLiveSessionParticipant(sessionItem.id, inviteTarget)}>Invite</button>
                 <button type="button" onClick={() => onCheckInLiveSessionParticipant(sessionItem.id, station.email)}>Check in</button>
                 <button type="button" onClick={() => onAddLiveSessionChat(sessionItem.id)}>Chat</button>
@@ -13726,6 +13812,8 @@ function LiveComms({
             <button type="button" onClick={() => onAddLiveSessionOfflineNote(primarySession.id)}><CloudOff size={14} /> Offline note</button>
             <button type="button" onClick={() => onSyncLiveSessionRecovery(primarySession.id)}><RefreshCw size={14} /> Recovery sync</button>
             <button type="button" onClick={() => onGenerateLiveSessionAiBrief(primarySession.id)}><Sparkles size={14} /> AI brief</button>
+            <button type="button" onClick={() => onApplyLiveSessionPlaybook(primarySession.id)}><ClipboardCheck size={14} /> Apply playbook</button>
+            <button type="button" onClick={() => onScheduleLiveSessionSeries(primarySession.id)}><CalendarDays size={14} /> Make series</button>
             <button type="button" onClick={() => onCloseLiveSession(primarySession.id)}><CheckCircle2 size={14} /> Close meeting</button>
             <button type="button" onClick={() => onCreateLiveSessionFollowUpTask(primarySession.id)}><SquareCheckBig size={14} /> Create follow-up</button>
             <button type="button" onClick={() => onBuildLiveSessionPacket(primarySession.id)}><ArchiveIcon size={14} /> Build packet</button>
