@@ -28,8 +28,57 @@
     ],
     "headers": [
       {
+        "source": "/",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/admin",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/index.html",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
+        "source": "/manifest.webmanifest",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
+          }
+        ]
+      },
+      {
         "source": "**",
         "headers": [
+          {
+            "key": "Content-Security-Policy",
+            "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://rmvi-gcos-api-487881041428.us-central1.run.app; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+          },
           {
             "key": "X-Frame-Options",
             "value": "DENY"
@@ -45,6 +94,14 @@
           {
             "key": "Permissions-Policy",
             "value": "camera=(), microphone=(), geolocation=()"
+          },
+          {
+            "key": "Cross-Origin-Opener-Policy",
+            "value": "same-origin"
+          },
+          {
+            "key": "Cross-Origin-Resource-Policy",
+            "value": "same-origin"
           }
         ]
       },
@@ -54,6 +111,15 @@
           {
             "key": "Cache-Control",
             "value": "public, max-age=31536000, immutable"
+          }
+        ]
+      },
+      {
+        "source": "/sw.js",
+        "headers": [
+          {
+            "key": "Cache-Control",
+            "value": "no-cache, max-age=0, must-revalidate"
           }
         ]
       }

@@ -1,4 +1,4 @@
-const CACHE_VERSION = "rmvi-gcos-offline-v4";
+const CACHE_VERSION = "rmvi-gcos-offline-v5";
 const APP_SHELL = [
   "/",
   "/admin",
