@@ -1839,6 +1839,21 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(continuityAlert.message.kind, "Notification");
     assert.equal(continuityAlert.session.continuityAlertId, continuityAlert.message.id);
 
+    const offlineNoteLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/offline-note`, {
+      note: "County office continued by offline notes",
+      station: "Buchanan District Office"
+    }, nationalToken);
+    assert.equal(offlineNoteLiveSession.offlineNotes[0].body, "County office continued by offline notes");
+    assert.equal(offlineNoteLiveSession.offlineNotes[0].station, "Buchanan District Office");
+
+    const recoveredLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/recovery-sync`, {
+      status: "Recovered",
+      summary: "Offline continuity notes synchronized",
+      bandwidthMode: "Standard"
+    }, nationalToken);
+    assert.equal(recoveredLiveSession.recoverySummary.status, "Recovered");
+    assert.equal(recoveredLiveSession.connectivity.status, "Recovered");
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"

@@ -813,6 +813,39 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { session: item, message: alert };
     },
 
+    addLiveSessionOfflineNote(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.offlineNotes ??= [];
+      const note = {
+        id: `offline-note-${Date.now()}`,
+        author: body.actor,
+        body: body.note ?? "Offline continuity note recorded",
+        station: body.station ?? item.host,
+        createdAt: new Date().toISOString()
+      };
+      item.offlineNotes.unshift(note);
+      item.updatedAt = note.createdAt;
+      record("LiveSessionOfflineNoteAdded", body.actor, item.title, note.body);
+      return item;
+    },
+
+    syncLiveSessionRecovery(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const syncedAt = new Date().toISOString();
+      item.recoverySummary = {
+        status: body.status ?? "Recovered",
+        summary: body.summary ?? `Recovered ${item.offlineNotes?.length ?? 0} offline notes into the live session record.`,
+        syncedAt,
+        syncedBy: body.actor
+      };
+      item.connectivity ??= {};
+      item.connectivity.status = item.recoverySummary.status;
+      item.connectivity.bandwidthMode = body.bandwidthMode ?? item.connectivity.bandwidthMode ?? "Standard";
+      item.updatedAt = syncedAt;
+      record("LiveSessionRecoverySynced", body.actor, item.title, item.recoverySummary.summary);
+      return item;
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -908,7 +941,9 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Risk escalation: ${item.riskEscalationId ?? "Not escalated"}`,
         `Connectivity: ${item.connectivity ? `${item.connectivity.status} - ${item.connectivity.bandwidthMode}` : "Not checked"}`,
         `Fallback channel: ${item.fallbackChannel ? `${item.fallbackChannel.channel} - ${item.fallbackChannel.reason}` : "Not activated"}`,
-        `Continuity alert: ${item.continuityAlertId ?? "Not sent"}`
+        `Continuity alert: ${item.continuityAlertId ?? "Not sent"}`,
+        `Offline notes: ${(item.offlineNotes ?? []).map((note) => `${note.author}: ${note.body}`).join("; ") || "None"}`,
+        `Recovery summary: ${item.recoverySummary ? `${item.recoverySummary.status} - ${item.recoverySummary.summary}` : "Not synced"}`
       ].join("\n");
       packet.custodian = body.actor;
       packet.chainHash = `live-${item.id}-${Date.now()}`;
