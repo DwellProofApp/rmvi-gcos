@@ -1065,6 +1065,17 @@ const validators = {
     if (body.priority !== undefined) requireEnum(body.priority, calendarPriorities, "priority");
   },
 
+  "POST /api/live-sessions/:id/reminder": (body) => {
+    if (body.subject !== undefined) requireString(body.subject, "subject");
+    if (body.route !== undefined) requireString(body.route, "route");
+    if (body.priority !== undefined) requireEnum(body.priority, calendarPriorities, "priority");
+    if (body.recipients !== undefined) requireStringArray(body.recipients, "recipients");
+  },
+
+  "POST /api/live-sessions/:id/follow-up-ledger": (body) => {
+    if (body.owner !== undefined) requireString(body.owner, "owner");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

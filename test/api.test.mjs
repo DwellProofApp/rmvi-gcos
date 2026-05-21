@@ -1880,6 +1880,23 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(seriesLiveSession.session.recurringSchedule.nextRun, "2026-06-22");
     assert.equal(seriesLiveSession.session.recurringCalendarEventId, seriesLiveSession.calendarEvent.id);
 
+    const reminderLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/reminder`, {
+      subject: "District review reminder",
+      route: "National HQ -> District HQ",
+      priority: "High",
+      recipients: ["district_admin@rmvi.org", "finance@rmvi.org"]
+    }, nationalToken);
+    assert.equal(reminderLiveSession.message.subject, "District review reminder");
+    assert.equal(reminderLiveSession.message.recipients.length, 2);
+    assert.equal(reminderLiveSession.session.reminderMessageId, reminderLiveSession.message.id);
+
+    const followUpLedgerSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/follow-up-ledger`, {
+      owner: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(followUpLedgerSession.followUpLedger.owner, "np@rmvi.org");
+    assert.ok(Array.isArray(followUpLedgerSession.followUpLedger.missingParticipants));
+    assert.ok(["Open", "Clear"].includes(followUpLedgerSession.followUpLedger.status));
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"

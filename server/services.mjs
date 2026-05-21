@@ -989,6 +989,54 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { session: item, calendarEvent: created };
     },
 
+    sendLiveSessionReminder(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const sentAt = new Date().toISOString();
+      const recipients = body.recipients?.length ? body.recipients : item.participants ?? [];
+      const reminder = message(
+        "Notification",
+        body.subject ?? `Reminder: ${item.title}`,
+        body.actor ?? item.host,
+        "Ready",
+        item.linkedRecord
+      );
+      reminder.route = body.route ?? item.route;
+      reminder.priority = body.priority ?? (item.status === "Priority" ? "High" : "Medium");
+      reminder.recipients = recipients;
+      reminder.linkedLiveSession = item.id;
+      reminder.body = [
+        `Meeting: ${item.title}`,
+        `Purpose: ${item.purpose}`,
+        `Agenda: ${(item.agendaItems ?? []).join("; ") || "Agenda pending"}`,
+        `Join/check-in required for: ${recipients.join(", ") || "assigned participants"}`
+      ].join("\n");
+      state.messages.unshift(reminder);
+      item.reminderMessageId = reminder.id;
+      item.reminderSentAt = sentAt;
+      item.updatedAt = sentAt;
+      record("LiveSessionReminderSent", body.actor, item.title, `${recipients.length} recipients`);
+      return { session: item, message: reminder };
+    },
+
+    buildLiveSessionFollowUpLedger(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const builtAt = new Date().toISOString();
+      const participants = item.participants ?? [];
+      const checkedIn = new Set(item.checkedInParticipants ?? []);
+      const missingParticipants = participants.filter((participant) => !checkedIn.has(participant));
+      const openActionItems = (item.actionItems ?? []).filter((action) => !action.taskId);
+      item.followUpLedger = {
+        status: missingParticipants.length || openActionItems.length ? "Open" : "Clear",
+        missingParticipants,
+        openActionItems: openActionItems.map((action) => action.title),
+        owner: body.owner ?? body.actor,
+        builtAt
+      };
+      item.updatedAt = builtAt;
+      record("LiveSessionFollowUpLedgerBuilt", body.actor, item.title, item.followUpLedger.status);
+      return item;
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
