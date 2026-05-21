@@ -863,6 +863,34 @@ const validators = {
     if (body.date !== undefined) requireString(body.date, "date");
   },
 
+  "POST /api/live-sessions": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.host !== undefined) requireString(body.host, "host");
+    if (body.sessionType !== undefined) requireString(body.sessionType, "sessionType");
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.linkedRecord !== undefined) requireString(body.linkedRecord, "linkedRecord");
+    if (body.route !== undefined) requireString(body.route, "route");
+    if (body.purpose !== undefined) requireString(body.purpose, "purpose");
+    if (body.participants !== undefined) requireStringArray(body.participants, "participants");
+  },
+
+  "POST /api/live-sessions/:id/status": (body) => {
+    requireString(body.status, "status");
+  },
+
+  "POST /api/live-sessions/:id/file": (body) => {
+    if (body.file !== undefined) requireString(body.file, "file");
+    if (body.fileName !== undefined) requireString(body.fileName, "fileName");
+  },
+
+  "POST /api/live-sessions/:id/note": (body) => {
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/live-sessions/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/personnel": (body) => {
     requireString(body.name, "name");
     requireString(body.role, "role");

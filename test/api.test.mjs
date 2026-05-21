@@ -37,6 +37,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(status.counts.tasks > 0, true);
     assert.equal(status.counts.policies > 0, true);
     assert.equal(status.counts.calendarEvents > 0, true);
+    assert.equal(status.counts.liveSessions > 0, true);
     assert.equal(status.counts.personnel > 0, true);
     assert.equal(status.counts.audit > 0, true);
 
@@ -1600,6 +1601,54 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(calendarDigest.ready >= 1, true);
     assert.equal(calendarDigest.linked >= 1, true);
     assert.equal(calendarDigest.archived >= 1, true);
+
+    const liveSessions = await getJson("/api/live-sessions");
+    assert.equal(liveSessions.length > 0, true);
+
+    const liveDigest = await getJson("/api/live-sessions/digest");
+    assert.equal(liveDigest.total > 0, true);
+    assert.equal(liveDigest.nextSession.length > 0, true);
+
+    const invalidLiveSession = await rawPost("/api/live-sessions", {
+      title: ""
+    }, nationalToken);
+    assert.equal(invalidLiveSession.status, 400);
+
+    const createdLiveSession = await postJson("/api/live-sessions", {
+      title: "Automated district video review",
+      host: "National Presidency Workstation",
+      sessionType: "Video Meeting",
+      status: "Live",
+      linkedRecord: "National mission activity report",
+      route: "National HQ -> District HQ",
+      purpose: "Test live communication workflow",
+      participants: ["np@rmvi.org", "district_admin@rmvi.org"]
+    }, nationalToken);
+    assert.equal(createdLiveSession.title, "Automated district video review");
+    assert.equal(createdLiveSession.status, "Live");
+    assert.equal(createdLiveSession.participants.includes("np@rmvi.org"), true);
+
+    const updatedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/status`, {
+      status: "Priority"
+    }, nationalToken);
+    assert.equal(updatedLiveSession.status, "Priority");
+
+    const liveSessionWithFile = await postJson(`/api/live-sessions/${createdLiveSession.id}/file`, {
+      file: "district-review-packet.pdf"
+    }, nationalToken);
+    assert.equal(liveSessionWithFile.files.includes("district-review-packet.pdf"), true);
+
+    const liveSessionWithNote = await postJson(`/api/live-sessions/${createdLiveSession.id}/note`, {
+      note: "District packet reviewed during automated test"
+    }, nationalToken);
+    assert.equal(liveSessionWithNote.notes.includes("District packet reviewed during automated test"), true);
+
+    const archivedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/archive`, {
+      reason: "Automated live session archive"
+    }, nationalToken);
+    assert.equal(archivedLiveSession.archived, true);
+    assert.equal(archivedLiveSession.status, "Archived");
+    assert.equal(archivedLiveSession.archiveReason, "Automated live session archive");
 
     const personnel = await getJson("/api/personnel");
     const invalidPerson = await rawPost("/api/personnel", {

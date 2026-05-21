@@ -667,6 +667,7 @@ async function projectCompletionReport() {
     { name: "Tasks", complete: status.counts.tasks > 0 },
     { name: "Policies", complete: status.counts.policies > 0 },
     { name: "Calendar", complete: status.counts.calendarEvents > 0 },
+    { name: "Live communications", complete: status.counts.liveSessions > 0 && Boolean(routes["POST /api/live-sessions"]) },
     { name: "Personnel and transfers", complete: status.counts.personnel > 0 && status.counts.transfers > 0 },
     { name: "Offices and hierarchy", complete: status.counts.offices > 0 && status.counts.stations > 0 },
     { name: "Archive and evidence", complete: status.counts.documents > 0 && evidence.total > 0 },
@@ -754,7 +755,8 @@ async function enterpriseCompletionReport() {
     enterpriseTrack("notifications", "Notifications and escalations", [
       { name: "churchmail-notices", ok: state.messages.length > 0, detail: `${state.messages.length} ChurchMail records` },
       { name: "escalation-engine", ok: state.escalations.length > 0, detail: `${state.escalations.length} escalation records` },
-      { name: "deadline-signals", ok: state.tasks.some((task) => task.slaStatus || task.priority === "Critical") || state.calendarEvents.some((event) => event.status === "At Risk"), detail: "Task/calendar risk signals available" }
+      { name: "deadline-signals", ok: state.tasks.some((task) => task.slaStatus || task.priority === "Critical") || state.calendarEvents.some((event) => event.status === "At Risk"), detail: "Task/calendar risk signals available" },
+      { name: "live-comms", ok: (state.liveSessions ?? []).length > 0 && Boolean(routes["POST /api/live-sessions"]), detail: `${(state.liveSessions ?? []).length} live meeting/chat/broadcast records` }
     ]),
     enterpriseTrack("offline-sync", "Offline sync hardening", [
       { name: "offline-sync-route", ok: Boolean(routes["POST /api/offline-sync"]), detail: "Offline sync endpoint available" },
