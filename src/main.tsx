@@ -137,7 +137,7 @@ type Approval = {
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
-type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
+type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; polls?: { id: string; question: string; options: string[]; votes: Record<string, string[]>; status: string; createdBy: string; createdAt: string; updatedAt?: string }[]; resolutions?: { id: string; title: string; status: string; movedBy: string; secondedBy?: string; votesFor: number; votesAgainst: number; createdAt: string; passedAt?: string }[]; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
@@ -3651,6 +3651,8 @@ function App() {
         `Quorum: ${target.quorum?.met ? "Met" : "Not met"} (${target.quorum?.present ?? 0}/${target.quorum?.required ?? 0})`,
         `Agenda: ${(target.agendaItems ?? []).join("; ") || "No agenda recorded"}`,
         `Decisions: ${(target.decisions ?? []).map((decision) => decision.text).join("; ") || "No decisions recorded"}`,
+        `Polls: ${(target.polls ?? []).map((poll) => `${poll.question} (${Object.entries(poll.votes ?? {}).map(([option, voters]) => `${option}: ${voters.length}`).join(", ")})`).join("; ") || "No polls recorded"}`,
+        `Resolutions: ${(target.resolutions ?? []).map((resolution) => `${resolution.title} - ${resolution.status}`).join("; ") || "No resolutions recorded"}`,
         `Action items: ${(target.actionItems ?? []).map((action) => `${action.title} -> ${action.assignee}`).join("; ") || "No action items extracted"}`
       ].join("\n"),
       custodian: activeStation.email,
@@ -3667,6 +3669,126 @@ function App() {
     void apiRequest<{ session: LiveSession; document: DocumentRecord }>(`/api/live-sessions/${id}/minutes`, {
       method: "POST",
       body: JSON.stringify({ name: minutes.name })
+    }).catch(() => undefined);
+  }
+
+  function createLiveSessionPoll(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const options = ["Approve", "Reject", "Abstain"];
+    const poll = {
+      id: `poll-${Date.now()}`,
+      question: `Vote on ${target.linkedRecord}`,
+      options,
+      votes: Object.fromEntries(options.map((option) => [option, [] as string[]])),
+      status: "Open",
+      createdBy: activeStation.email,
+      createdAt: new Date().toISOString()
+    };
+    setLiveSessions((items) => items.map((item) => item.id === id ? {
+      ...item,
+      polls: [poll, ...(item.polls ?? [])],
+      updatedAt: poll.createdAt
+    } : item));
+    recordAudit("LiveSessionPollCreated", target.title, poll.question);
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/poll`, {
+      method: "POST",
+      body: JSON.stringify({ question: poll.question, options })
+    }).catch(() => undefined);
+  }
+
+  function castLiveSessionVote(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const poll = target.polls?.[0];
+    const option = poll?.options[0] ?? "Approve";
+    setLiveSessions((items) => items.map((item) => {
+      if (item.id !== id) return item;
+      const currentPolls = item.polls?.length ? item.polls : [{
+        id: `poll-${Date.now()}`,
+        question: `Vote on ${item.linkedRecord}`,
+        options: ["Approve", "Reject", "Abstain"],
+        votes: { Approve: [], Reject: [], Abstain: [] },
+        status: "Open",
+        createdBy: activeStation.email,
+        createdAt: new Date().toISOString()
+      }];
+      const [activePoll, ...rest] = currentPolls;
+      const votes = Object.fromEntries(Object.entries(activePoll.votes ?? {}).map(([key, voters]) => [key, voters.filter((voter) => voter !== activeStation.email)])) as Record<string, string[]>;
+      votes[option] = [activeStation.email, ...(votes[option] ?? [])];
+      return {
+        ...item,
+        polls: [{ ...activePoll, votes, updatedAt: new Date().toISOString() }, ...rest],
+        updatedAt: new Date().toISOString()
+      };
+    }));
+    recordAudit("LiveSessionVoteCast", target.title, option);
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/vote`, {
+      method: "POST",
+      body: JSON.stringify({ option })
+    }).catch(() => undefined);
+  }
+
+  function createLiveSessionResolution(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const resolution = {
+      id: `resolution-${Date.now()}`,
+      title: `Resolution for ${target.linkedRecord}`,
+      status: "Draft",
+      movedBy: activeStation.email,
+      secondedBy: "",
+      votesFor: 0,
+      votesAgainst: 0,
+      createdAt: new Date().toISOString()
+    };
+    setLiveSessions((items) => items.map((item) => item.id === id ? {
+      ...item,
+      resolutions: [resolution, ...(item.resolutions ?? [])],
+      updatedAt: resolution.createdAt
+    } : item));
+    recordAudit("LiveSessionResolutionCreated", target.title, resolution.title);
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/resolution`, {
+      method: "POST",
+      body: JSON.stringify({ title: resolution.title, movedBy: resolution.movedBy })
+    }).catch(() => undefined);
+  }
+
+  function passLiveSessionResolution(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    setLiveSessions((items) => items.map((item) => {
+      if (item.id !== id) return item;
+      const currentResolutions = item.resolutions?.length ? item.resolutions : [{
+        id: `resolution-${Date.now()}`,
+        title: `Resolution for ${item.linkedRecord}`,
+        status: "Draft",
+        movedBy: activeStation.email,
+        secondedBy: "",
+        votesFor: 0,
+        votesAgainst: 0,
+        createdAt: new Date().toISOString()
+      }];
+      const [activeResolution, ...rest] = currentResolutions;
+      const passed = {
+        ...activeResolution,
+        status: "Passed",
+        secondedBy: activeStation.email,
+        votesFor: Math.max(1, item.checkedInParticipants?.length ?? 1),
+        votesAgainst: 0,
+        passedAt: new Date().toISOString()
+      };
+      return {
+        ...item,
+        resolutions: [passed, ...rest],
+        notes: [`Resolution Passed: ${passed.title}`, ...(item.notes ?? [])],
+        updatedAt: passed.passedAt
+      };
+    }));
+    recordAudit("LiveSessionResolutionPassed", target.title, "Passed");
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/resolution/pass`, {
+      method: "POST",
+      body: JSON.stringify({ status: "Passed", secondedBy: activeStation.email })
     }).catch(() => undefined);
   }
 
@@ -3762,6 +3884,8 @@ function App() {
         `Attendance: ${target.attendanceCount ?? target.checkedInParticipants?.length ?? 0}/${target.participants?.length ?? 0}`,
         `Quorum: ${target.quorum?.met ? "Met" : "Not met"} (${target.quorum?.present ?? 0}/${target.quorum?.required ?? 0})`,
         `Agenda: ${(target.agendaItems ?? []).join("; ") || "No agenda recorded"}`,
+        `Polls: ${(target.polls ?? []).map((poll) => `${poll.question} (${Object.entries(poll.votes ?? {}).map(([option, voters]) => `${option}: ${voters.length}`).join(", ")})`).join("; ") || "No polls recorded"}`,
+        `Resolutions: ${(target.resolutions ?? []).map((resolution) => `${resolution.title} - ${resolution.status}`).join("; ") || "No resolutions recorded"}`,
         `Action items: ${(target.actionItems ?? []).map((action) => `${action.title} -> ${action.assignee}`).join("; ") || "No action items extracted"}`,
         `Notes: ${(target.notes ?? []).join("; ") || "No notes recorded"}`,
         `Decisions: ${(target.decisions ?? []).map((decision) => decision.text).join("; ") || "No decisions recorded"}`,
@@ -8778,6 +8902,10 @@ function App() {
             onBuildLiveSessionAttendance={buildLiveSessionAttendance}
             onCheckLiveSessionQuorum={checkLiveSessionQuorum}
             onCreateLiveSessionMinutes={createLiveSessionMinutes}
+            onCreateLiveSessionPoll={createLiveSessionPoll}
+            onCastLiveSessionVote={castLiveSessionVote}
+            onCreateLiveSessionResolution={createLiveSessionResolution}
+            onPassLiveSessionResolution={passLiveSessionResolution}
             onSendLiveSessionSummary={sendLiveSessionSummary}
             onCreateLiveSessionFollowUpTask={createLiveSessionFollowUpTask}
             onScheduleLiveSession={scheduleLiveSession}
@@ -12953,6 +13081,10 @@ function LiveComms({
   onBuildLiveSessionAttendance,
   onCheckLiveSessionQuorum,
   onCreateLiveSessionMinutes,
+  onCreateLiveSessionPoll,
+  onCastLiveSessionVote,
+  onCreateLiveSessionResolution,
+  onPassLiveSessionResolution,
   onSendLiveSessionSummary,
   onCreateLiveSessionFollowUpTask,
   onScheduleLiveSession,
@@ -12987,6 +13119,10 @@ function LiveComms({
   onBuildLiveSessionAttendance: (id: string) => void;
   onCheckLiveSessionQuorum: (id: string) => void;
   onCreateLiveSessionMinutes: (id: string) => void;
+  onCreateLiveSessionPoll: (id: string) => void;
+  onCastLiveSessionVote: (id: string) => void;
+  onCreateLiveSessionResolution: (id: string) => void;
+  onPassLiveSessionResolution: (id: string) => void;
   onSendLiveSessionSummary: (id: string) => void;
   onCreateLiveSessionFollowUpTask: (id: string) => void;
   onScheduleLiveSession: (id: string) => void;
@@ -13116,6 +13252,7 @@ function LiveComms({
               <small>{sessionItem.recordingStatus ?? "Not recorded"} - {sessionItem.transcriptStatus ?? "No voice transcript"}</small>
               <small>{sessionItem.agendaItems?.length ?? 0} agenda - {sessionItem.screenShareStatus ?? "No screen share"} - {sessionItem.sharedDocuments?.length ?? 0} shared docs</small>
               <small>{Object.keys(sessionItem.participantRoles ?? {}).length} roles - {sessionItem.mutedParticipants?.length ?? 0} muted - {sessionItem.actionItems?.length ?? 0} action items</small>
+              <small>{sessionItem.polls?.length ?? 0} polls - {sessionItem.resolutions?.length ?? 0} resolutions - {sessionItem.resolutions?.[0]?.status ?? "no resolution"}</small>
               <small>{sessionItem.files?.length ?? 0} files - {sessionItem.participants?.length ?? 0} invited - {sessionItem.checkedInParticipants?.length ?? 0} checked in - {sessionItem.quorum?.met ? "quorum met" : "quorum pending"}</small>
               <div className="compact-actions">
                 <button type="button" onClick={() => onUpdateLiveSessionStatus(sessionItem.id, "Live")}>Join</button>
@@ -13130,6 +13267,10 @@ function LiveComms({
                 <button type="button" onClick={() => onBuildLiveSessionAttendance(sessionItem.id)}>Attendance</button>
                 <button type="button" onClick={() => onCheckLiveSessionQuorum(sessionItem.id)}>Quorum</button>
                 <button type="button" onClick={() => onCreateLiveSessionMinutes(sessionItem.id)}>Minutes</button>
+                <button type="button" onClick={() => onCreateLiveSessionPoll(sessionItem.id)}>Poll</button>
+                <button type="button" onClick={() => onCastLiveSessionVote(sessionItem.id)}>Vote</button>
+                <button type="button" onClick={() => onCreateLiveSessionResolution(sessionItem.id)}>Resolution</button>
+                <button type="button" onClick={() => onPassLiveSessionResolution(sessionItem.id)}>Pass</button>
                 <button type="button" onClick={() => onInviteLiveSessionParticipant(sessionItem.id, inviteTarget)}>Invite</button>
                 <button type="button" onClick={() => onCheckInLiveSessionParticipant(sessionItem.id, station.email)}>Check in</button>
                 <button type="button" onClick={() => onAddLiveSessionChat(sessionItem.id)}>Chat</button>
@@ -13172,6 +13313,8 @@ function LiveComms({
             <button type="button" onClick={() => onBuildLiveSessionAttendance(primarySession.id)}><Users size={14} /> Attendance</button>
             <button type="button" onClick={() => onCheckLiveSessionQuorum(primarySession.id)}><BadgeCheck size={14} /> Check quorum</button>
             <button type="button" onClick={() => onCreateLiveSessionMinutes(primarySession.id)}><ScrollText size={14} /> Build minutes</button>
+            <button type="button" onClick={() => onCreateLiveSessionPoll(primarySession.id)}><CircleDot size={14} /> Open poll</button>
+            <button type="button" onClick={() => onCreateLiveSessionResolution(primarySession.id)}><Signature size={14} /> Draft resolution</button>
             <button type="button" onClick={() => onCloseLiveSession(primarySession.id)}><CheckCircle2 size={14} /> Close meeting</button>
             <button type="button" onClick={() => onCreateLiveSessionFollowUpTask(primarySession.id)}><SquareCheckBig size={14} /> Create follow-up</button>
             <button type="button" onClick={() => onBuildLiveSessionPacket(primarySession.id)}><ArchiveIcon size={14} /> Build packet</button>

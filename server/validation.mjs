@@ -963,6 +963,31 @@ const validators = {
     if (body.name !== undefined) requireString(body.name, "name");
   },
 
+  "POST /api/live-sessions/:id/poll": (body) => {
+    if (body.question !== undefined) requireString(body.question, "question");
+    if (body.options !== undefined) requireStringArray(body.options, "options");
+  },
+
+  "POST /api/live-sessions/:id/vote": (body) => {
+    if (body.pollId !== undefined) requireString(body.pollId, "pollId");
+    requireString(body.option, "option");
+    if (body.voter !== undefined) requireString(body.voter, "voter");
+  },
+
+  "POST /api/live-sessions/:id/resolution": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.movedBy !== undefined) requireString(body.movedBy, "movedBy");
+    if (body.secondedBy !== undefined) requireString(body.secondedBy, "secondedBy");
+  },
+
+  "POST /api/live-sessions/:id/resolution/pass": (body) => {
+    if (body.resolutionId !== undefined) requireString(body.resolutionId, "resolutionId");
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.secondedBy !== undefined) requireString(body.secondedBy, "secondedBy");
+    if (body.votesFor !== undefined) requireNumber(body.votesFor, "votesFor");
+    if (body.votesAgainst !== undefined) requireNumber(body.votesAgainst, "votesAgainst");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

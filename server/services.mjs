@@ -538,6 +538,8 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Quorum: ${item.quorum?.met ? "Met" : "Not met"} (${item.quorum?.present ?? 0}/${item.quorum?.required ?? 0})`,
         `Agenda: ${(item.agendaItems ?? []).join("; ") || "No agenda recorded"}`,
         `Decisions: ${(item.decisions ?? []).map((decision) => decision.text ?? decision).join("; ") || "No decisions recorded"}`,
+        `Polls: ${(item.polls ?? []).map((poll) => `${poll.question} (${Object.entries(poll.votes ?? {}).map(([option, voters]) => `${option}: ${voters.length}`).join(", ")})`).join("; ") || "No polls recorded"}`,
+        `Resolutions: ${(item.resolutions ?? []).map((resolution) => `${resolution.title} - ${resolution.status}`).join("; ") || "No resolutions recorded"}`,
         `Action items: ${(item.actionItems ?? []).map((action) => `${action.title} -> ${action.assignee}`).join("; ") || "No action items extracted"}`,
         `Attendance ledger: ${(item.attendanceLedger ?? []).map((row) => `${row.participant} (${row.role}) ${row.present ? "present" : "absent"}`).join("; ") || "No attendance ledger built"}`
       ].join("\n");
@@ -549,6 +551,80 @@ export function createServices({ state, record, requirePermission, findById }) {
       item.updatedAt = item.minutesBuiltAt;
       record("LiveSessionMinutesCreated", body.actor, item.title, minutes.name);
       return { session: item, document: minutes };
+    },
+
+    createLiveSessionPoll(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.polls ??= [];
+      const options = body.options?.length ? body.options : ["Approve", "Reject", "Abstain"];
+      const poll = {
+        id: `poll-${Date.now()}`,
+        question: body.question ?? `Vote on ${item.linkedRecord}`,
+        options,
+        votes: Object.fromEntries(options.map((option) => [option, []])),
+        status: "Open",
+        createdBy: body.actor,
+        createdAt: new Date().toISOString()
+      };
+      item.polls.unshift(poll);
+      item.updatedAt = poll.createdAt;
+      record("LiveSessionPollCreated", body.actor, item.title, poll.question);
+      return item;
+    },
+
+    castLiveSessionVote(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.polls ??= [];
+      const poll = item.polls.find((candidate) => candidate.id === body.pollId) ?? item.polls[0];
+      if (!poll) throw new Error("No live session poll is available");
+      const option = body.option ?? poll.options[0];
+      poll.votes ??= {};
+      for (const voters of Object.values(poll.votes)) {
+        const index = voters.indexOf(body.voter ?? body.actor);
+        if (index >= 0) voters.splice(index, 1);
+      }
+      poll.votes[option] ??= [];
+      poll.votes[option].push(body.voter ?? body.actor);
+      poll.updatedAt = new Date().toISOString();
+      item.updatedAt = poll.updatedAt;
+      record("LiveSessionVoteCast", body.actor, item.title, `${option}: ${poll.question}`);
+      return item;
+    },
+
+    createLiveSessionResolution(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.resolutions ??= [];
+      const resolution = {
+        id: `resolution-${Date.now()}`,
+        title: body.title ?? `Resolution for ${item.linkedRecord}`,
+        status: "Draft",
+        movedBy: body.movedBy ?? body.actor,
+        secondedBy: body.secondedBy ?? "",
+        votesFor: 0,
+        votesAgainst: 0,
+        createdAt: new Date().toISOString()
+      };
+      item.resolutions.unshift(resolution);
+      item.updatedAt = resolution.createdAt;
+      record("LiveSessionResolutionCreated", body.actor, item.title, resolution.title);
+      return item;
+    },
+
+    passLiveSessionResolution(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.resolutions ??= [];
+      const resolution = item.resolutions.find((candidate) => candidate.id === body.resolutionId) ?? item.resolutions[0];
+      if (!resolution) throw new Error("No live session resolution is available");
+      resolution.status = body.status ?? "Passed";
+      resolution.secondedBy = body.secondedBy ?? resolution.secondedBy ?? body.actor;
+      resolution.votesFor = body.votesFor ?? Math.max(1, item.checkedInParticipants?.length ?? 1);
+      resolution.votesAgainst = body.votesAgainst ?? 0;
+      resolution.passedAt = new Date().toISOString();
+      item.notes ??= [];
+      item.notes.unshift(`Resolution ${resolution.status}: ${resolution.title}`);
+      item.updatedAt = resolution.passedAt;
+      record("LiveSessionResolutionPassed", body.actor, item.title, `${resolution.status}: ${resolution.title}`);
+      return item;
     },
 
     sendLiveSessionSummary(id, body) {
@@ -627,6 +703,8 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Attendance: ${item.attendanceCount ?? item.checkedInParticipants?.length ?? 0}/${item.participants?.length ?? 0}`,
         `Quorum: ${item.quorum?.met ? "Met" : "Not met"} (${item.quorum?.present ?? 0}/${item.quorum?.required ?? 0})`,
         `Agenda: ${(item.agendaItems ?? []).join("; ") || "No agenda recorded"}`,
+        `Polls: ${(item.polls ?? []).map((poll) => `${poll.question} (${Object.entries(poll.votes ?? {}).map(([option, voters]) => `${option}: ${voters.length}`).join(", ")})`).join("; ") || "No polls recorded"}`,
+        `Resolutions: ${(item.resolutions ?? []).map((resolution) => `${resolution.title} - ${resolution.status}`).join("; ") || "No resolutions recorded"}`,
         `Action items: ${(item.actionItems ?? []).map((action) => `${action.title} -> ${action.assignee}`).join("; ") || "No action items extracted"}`,
         `Notes: ${(item.notes ?? []).join("; ") || "No notes recorded"}`,
         `Decisions: ${(item.decisions ?? []).map((decision) => decision.text ?? decision).join("; ") || "No decisions recorded"}`,

@@ -1738,6 +1738,34 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(minutesLiveSession.document.classification, "Official meeting minutes");
     assert.equal(minutesLiveSession.session.minutesDocumentId, minutesLiveSession.document.id);
 
+    const pollLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/poll`, {
+      question: "Approve the district review actions?",
+      options: ["Approve", "Reject", "Abstain"]
+    }, nationalToken);
+    assert.equal(pollLiveSession.polls[0].question, "Approve the district review actions?");
+    assert.equal(pollLiveSession.polls[0].votes.Approve.length, 0);
+
+    const votedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/vote`, {
+      option: "Approve"
+    }, nationalToken);
+    assert.equal(votedLiveSession.polls[0].votes.Approve.includes("np@rmvi.org"), true);
+
+    const resolutionLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/resolution`, {
+      title: "Resolution to accept district review actions",
+      movedBy: "np@rmvi.org"
+    }, nationalToken);
+    assert.equal(resolutionLiveSession.resolutions[0].title, "Resolution to accept district review actions");
+    assert.equal(resolutionLiveSession.resolutions[0].status, "Draft");
+
+    const passedResolutionLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/resolution/pass`, {
+      status: "Passed",
+      secondedBy: "district_admin@rmvi.org",
+      votesFor: 2,
+      votesAgainst: 0
+    }, nationalToken);
+    assert.equal(passedResolutionLiveSession.resolutions[0].status, "Passed");
+    assert.equal(passedResolutionLiveSession.resolutions[0].votesFor, 2);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"
