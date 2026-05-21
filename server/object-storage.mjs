@@ -8,12 +8,19 @@ export function createObjectStorageAdapter({
   r2AccountId,
   r2Bucket,
   r2AccessKeyId,
-  r2SecretAccessKey
+  r2SecretAccessKey,
+  s3Bucket,
+  awsRegion,
+  awsAccessKeyId,
+  awsSecretAccessKey
 }) {
   const selected = String(provider ?? "filesystem").toLowerCase();
   if (selected === "filesystem") return createFilesystemObjectStorage({ vaultPath });
   if (selected === "r2" || selected === "cloudflare-r2") {
     return createR2ObjectStorage({ r2AccountId, r2Bucket, r2AccessKeyId, r2SecretAccessKey });
+  }
+  if (selected === "s3" || selected === "aws-s3") {
+    return createS3ObjectStorage({ s3Bucket, awsRegion, awsAccessKeyId, awsSecretAccessKey });
   }
   throw new Error(`Unsupported GCOS_OBJECT_STORAGE_PROVIDER: ${provider}`);
 }
@@ -99,6 +106,62 @@ function createR2ObjectStorage({ r2AccountId, r2Bucket, r2AccessKeyId, r2SecretA
     async deleteObject({ key }) {
       await getClient().send(new DeleteObjectCommand({
         Bucket: r2Bucket,
+        Key: key
+      }));
+    },
+
+    async smokeCheck({ actor } = {}) {
+      return smokeObjectStorage(this, { actor });
+    }
+  };
+}
+
+function createS3ObjectStorage({ s3Bucket, awsRegion, awsAccessKeyId, awsSecretAccessKey }) {
+  const configured = Boolean(s3Bucket && awsRegion);
+  let client = null;
+
+  function getClient() {
+    if (!configured) throw new Error("AWS S3 object storage is not configured");
+    if (!client) {
+      const clientConfig = { region: awsRegion };
+      if (awsAccessKeyId && awsSecretAccessKey) {
+        clientConfig.credentials = {
+          accessKeyId: awsAccessKeyId,
+          secretAccessKey: awsSecretAccessKey
+        };
+      }
+      client = new S3Client(clientConfig);
+    }
+    return client;
+  }
+
+  return {
+    provider: "aws-s3",
+    mode: "s3-object-storage",
+    location: configured ? `s3://${s3Bucket}` : "AWS S3 not configured",
+    configured,
+
+    async putObject({ key, body, contentType }) {
+      await getClient().send(new PutObjectCommand({
+        Bucket: s3Bucket,
+        Key: key,
+        Body: body,
+        ContentType: contentType
+      }));
+      return { storagePath: `s3://${s3Bucket}/${key}` };
+    },
+
+    async getObject({ key }) {
+      const response = await getClient().send(new GetObjectCommand({
+        Bucket: s3Bucket,
+        Key: key
+      }));
+      return Buffer.from(await response.Body.transformToByteArray());
+    },
+
+    async deleteObject({ key }) {
+      await getClient().send(new DeleteObjectCommand({
+        Bucket: s3Bucket,
         Key: key
       }));
     },

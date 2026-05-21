@@ -79,6 +79,12 @@ Replit deployment for `rmvi.org`:
 npm run replit:run
 ```
 
+AWS App Runner deployment for `rmvi.org`:
+
+```bash
+npm run aws:run
+```
+
 Deployment smoke check:
 
 ```bash
@@ -130,6 +136,7 @@ docs/DEPLOYMENT_CHECKLIST.md
 docs/REPLIT_RMVI_DOMAIN.md
 docs/FINAL_RELEASE_HANDOFF.md
 docs/PRODUCTION_INFRASTRUCTURE.md
+docs/AWS_DEPLOYMENT.md
 ```
 
 Final release handoff:
@@ -151,6 +158,8 @@ DATABASE_URL        Optional Replit Postgres fallback when GCOS_DATABASE_URL is 
 GCOS_DATABASE_SSL   Set to 1 when the managed Postgres host requires SSL
 GCOS_DATABASE_POOL_SIZE Max Postgres pool connections, defaults to 5
 GCOS_OBJECT_STORAGE_PROVIDER Object vault backend; use cloudflare-r2 for production files
+GCOS_AWS_REGION   AWS region used when GCOS_OBJECT_STORAGE_PROVIDER=aws-s3
+GCOS_S3_BUCKET    AWS S3 bucket used when GCOS_OBJECT_STORAGE_PROVIDER=aws-s3
 GCOS_R2_ACCOUNT_ID Cloudflare account ID for R2 object storage
 GCOS_R2_BUCKET Cloudflare R2 bucket name, for example rmvi-gcos-vault
 GCOS_R2_ACCESS_KEY_ID Cloudflare R2 access key ID

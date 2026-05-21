@@ -16,6 +16,14 @@ rmvi.org
 
 GCOS remains web-first. Users enter through `https://rmvi.org`, then the sign-in portal loads the correct station workstation.
 
+## AWS Path
+
+The AWS launch path is documented in `docs/AWS_DEPLOYMENT.md`. Use AWS App Runner, Amazon RDS PostgreSQL, and Amazon S3 for the first AWS production deployment.
+
+```bash
+npm run aws:run
+```
+
 ## Required Production Services
 
 1. Replit production deployment for `rmvi-gcos`.

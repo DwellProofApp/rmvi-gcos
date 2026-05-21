@@ -9228,6 +9228,1266 @@ h1 {
   }
 }
 
+/* Executive admin redesign: polished, readable, and organized for real operations. */
+.admin-shell {
+  --admin-blue-950: #061536;
+  --admin-blue-900: #08245a;
+  --admin-blue-800: #0b2f6b;
+  --admin-blue-700: #123f86;
+  --admin-gold: #f4c542;
+  --admin-gold-soft: #fff4cf;
+  --admin-ink: #0f1f3d;
+  --admin-muted: #60708a;
+  --admin-line: #d8e3f2;
+  --admin-panel: #ffffff;
+  --admin-soft: #f5f8fd;
+}
+
+.admin-shell .workspace {
+  min-height: 100vh !important;
+  padding: 0 !important;
+  background:
+    radial-gradient(circle at 88px 86px, rgba(244, 197, 66, 0.22), transparent 170px),
+    linear-gradient(180deg, var(--admin-blue-950) 0, var(--admin-blue-900) 280px, #edf3fb 280px, #edf3fb 100%) !important;
+}
+
+.admin-shell .admin-portal-shell {
+  width: min(1480px, calc(100vw - 32px)) !important;
+  margin: 16px auto 32px !important;
+  border: 1px solid rgba(244, 197, 66, 0.22) !important;
+  border-radius: 28px !important;
+  overflow: hidden !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 30px 80px rgba(3, 14, 37, 0.34) !important;
+}
+
+.admin-shell .admin-portal-topbar {
+  min-height: 82px !important;
+  padding: 16px 22px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.08), transparent),
+    var(--admin-blue-950) !important;
+  border-bottom: 1px solid rgba(244, 197, 66, 0.2) !important;
+}
+
+.admin-shell .admin-portal-brand strong {
+  font-size: 18px !important;
+  letter-spacing: 0 !important;
+}
+
+.admin-shell .admin-portal-brand span {
+  color: rgba(255, 255, 255, 0.74) !important;
+  font-size: 12px !important;
+}
+
+.admin-shell .admin-portal-logo {
+  width: 54px !important;
+  height: 54px !important;
+  border-radius: 16px !important;
+}
+
+.admin-shell .admin-portal-state span,
+.admin-shell .admin-portal-state button {
+  min-height: 38px !important;
+  border-radius: 12px !important;
+  padding: 0 14px !important;
+  font-size: 12px !important;
+}
+
+.admin-shell .admin-portal-state button {
+  background: var(--admin-gold) !important;
+  color: var(--admin-ink) !important;
+}
+
+.admin-shell .admin-portal-layout {
+  grid-template-columns: 276px minmax(0, 1fr) !important;
+  min-height: 880px !important;
+  background: #eef3fb !important;
+}
+
+.admin-shell .admin-portal-rail {
+  gap: 18px !important;
+  padding: 18px !important;
+  background:
+    linear-gradient(180deg, #0a2b67, #061536 72%) !important;
+  border-right: 1px solid rgba(244, 197, 66, 0.16) !important;
+}
+
+.admin-shell .admin-workspace-card {
+  border-radius: 22px !important;
+  padding: 18px !important;
+  background:
+    linear-gradient(135deg, rgba(244, 197, 66, 0.2), rgba(255, 255, 255, 0.06)),
+    rgba(255, 255, 255, 0.04) !important;
+}
+
+.admin-shell .admin-nav-group {
+  gap: 7px !important;
+}
+
+.admin-shell .admin-nav-group p {
+  margin: 0 !important;
+  padding: 0 10px 2px !important;
+  color: rgba(244, 197, 66, 0.86) !important;
+}
+
+.admin-shell .admin-nav-group button {
+  min-height: 50px !important;
+  border-radius: 15px !important;
+  padding: 9px 11px !important;
+}
+
+.admin-shell .admin-nav-group button.active {
+  border-color: rgba(244, 197, 66, 0.5) !important;
+  background: rgba(244, 197, 66, 0.16) !important;
+  box-shadow: inset 4px 0 0 var(--admin-gold) !important;
+}
+
+.admin-shell .admin-nav-group button small {
+  display: none !important;
+}
+
+.admin-shell .admin-portal-main {
+  padding: 22px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.38), transparent 210px),
+    #eef3fb !important;
+}
+
+.admin-shell .admin-command-hero {
+  position: relative !important;
+  grid-template-columns: minmax(0, 1fr) 330px !important;
+  gap: 22px !important;
+  align-items: stretch !important;
+  border: 1px solid rgba(244, 197, 66, 0.28) !important;
+  border-radius: 28px !important;
+  padding: 26px !important;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(244, 197, 66, 0.22), transparent 250px),
+    linear-gradient(135deg, #123f86, #071f4f 58%, #061536) !important;
+  box-shadow: 0 24px 58px rgba(8, 36, 90, 0.28) !important;
+  overflow: hidden !important;
+}
+
+.admin-shell .admin-command-hero::after {
+  content: "";
+  position: absolute;
+  right: -80px;
+  bottom: -130px;
+  width: 300px;
+  height: 300px;
+  border: 1px solid rgba(244, 197, 66, 0.18);
+  border-radius: 999px;
+  pointer-events: none;
+}
+
+.admin-shell .admin-tab-heading {
+  align-items: flex-start !important;
+  gap: 16px !important;
+}
+
+.admin-shell .admin-tab-icon {
+  width: 58px !important;
+  height: 58px !important;
+  border-radius: 18px !important;
+  background: rgba(244, 197, 66, 0.16) !important;
+  color: var(--admin-gold) !important;
+  border: 1px solid rgba(244, 197, 66, 0.28) !important;
+}
+
+.admin-shell .admin-command-hero .admin-tab-heading h1 {
+  margin: 4px 0 0 !important;
+  max-width: 760px !important;
+  color: #ffffff !important;
+  font-size: clamp(32px, 3.4vw, 50px) !important;
+  line-height: 1.02 !important;
+}
+
+.admin-shell .admin-command-hero .admin-tab-heading p {
+  max-width: 720px !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+}
+
+.admin-shell .admin-command-summary {
+  position: relative !important;
+  z-index: 1 !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+}
+
+.admin-shell .admin-command-summary div {
+  min-height: 88px !important;
+  border-radius: 20px !important;
+  padding: 15px !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+}
+
+.admin-shell .admin-hero-brief span {
+  min-height: 34px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+}
+
+.admin-shell .admin-app-suite,
+.admin-shell .admin-node-model,
+.admin-shell .admin-focus-board,
+.admin-shell .admin-console-panel {
+  border: 1px solid var(--admin-line) !important;
+  border-radius: 26px !important;
+  background: var(--admin-panel) !important;
+  box-shadow: 0 16px 44px rgba(15, 31, 61, 0.09) !important;
+}
+
+.admin-shell .admin-app-suite {
+  padding: 20px !important;
+}
+
+.admin-shell .admin-suite-head {
+  padding-bottom: 16px !important;
+  border-bottom: 1px solid #e4ebf6 !important;
+}
+
+.admin-shell .admin-suite-head strong,
+.admin-shell .admin-node-model > div:first-child strong,
+.admin-shell .admin-focus-title strong,
+.admin-shell .admin-console-panel .panel-header h2 {
+  color: var(--admin-ink) !important;
+}
+
+.admin-shell .admin-suite-head span,
+.admin-shell .admin-node-model > div:first-child span {
+  color: #a57700 !important;
+}
+
+.admin-shell .admin-app-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.admin-shell .admin-app-tile {
+  min-height: 118px !important;
+  border-radius: 20px !important;
+  padding: 15px !important;
+  background:
+    linear-gradient(180deg, #ffffff, #f8fbff) !important;
+  border-color: #dbe5f3 !important;
+}
+
+.admin-shell .admin-app-tile span {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 15px !important;
+}
+
+.admin-shell .admin-node-model {
+  grid-template-columns: 0.72fr 1.28fr !important;
+  padding: 22px !important;
+}
+
+.admin-shell .admin-node-model > div:first-child strong {
+  font-size: 28px !important;
+}
+
+.admin-shell .admin-node-flow {
+  grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+}
+
+.admin-shell .admin-node-flow article {
+  min-height: 126px !important;
+  border-radius: 18px !important;
+  background: #f8fbff !important;
+}
+
+.admin-shell .admin-focus-board {
+  padding: 18px !important;
+}
+
+.admin-shell .admin-focus-title {
+  margin-bottom: 14px !important;
+}
+
+.admin-shell .admin-focus-title span {
+  color: var(--admin-muted) !important;
+}
+
+.admin-shell .admin-focus-grid {
+  grid-template-columns: repeat(7, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.admin-shell .admin-focus-card {
+  min-height: 108px !important;
+  grid-template-columns: 38px minmax(0, 1fr) !important;
+  grid-template-areas: "icon label" "icon value" !important;
+  border-radius: 18px !important;
+  background: #f8fbff !important;
+  border-color: #dbe5f3 !important;
+}
+
+.admin-shell .admin-focus-card small,
+.admin-shell .admin-app-tile small,
+.admin-shell .admin-node-flow small {
+  color: var(--admin-muted) !important;
+}
+
+.admin-shell .admin-focus-card strong {
+  color: var(--admin-ink) !important;
+  font-size: 28px !important;
+}
+
+.admin-shell .admin-console-grid {
+  align-items: start !important;
+  gap: 18px !important;
+}
+
+.admin-shell .admin-console-panel {
+  padding: 18px !important;
+}
+
+.admin-shell .admin-console-wide {
+  grid-column: span 8 !important;
+}
+
+.admin-shell .admin-console-panel .panel-header {
+  margin-bottom: 14px !important;
+  padding-bottom: 14px !important;
+  border-bottom: 1px solid #e5edf8 !important;
+}
+
+.admin-shell .admin-console-panel .panel-header > button {
+  background: var(--admin-gold-soft) !important;
+  color: #7a5a10 !important;
+  border-color: rgba(244, 197, 66, 0.45) !important;
+}
+
+.admin-shell .admin-system-grid {
+  gap: 12px !important;
+}
+
+.admin-shell .admin-system-card {
+  min-height: 120px !important;
+  border-radius: 20px !important;
+  background: #f8fbff !important;
+  border-color: #dbe5f3 !important;
+}
+
+.admin-shell .admin-system-card div {
+  background: #eef4ff !important;
+  color: var(--admin-blue-800) !important;
+}
+
+.admin-shell .admin-system-card span,
+.admin-shell .admin-health-list span,
+.admin-shell .admin-station-summary span,
+.admin-shell .admin-session-list span,
+.admin-shell .admin-event-list span {
+  color: var(--admin-muted) !important;
+}
+
+.admin-shell .admin-system-card strong,
+.admin-shell .admin-health-list strong,
+.admin-shell .admin-queue-list strong,
+.admin-shell .admin-station-row strong,
+.admin-shell .admin-session-list strong,
+.admin-shell .admin-event-list strong {
+  color: var(--admin-ink) !important;
+}
+
+.admin-shell .admin-action-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.admin-shell .admin-action-list button,
+.admin-shell .admin-queue-list button,
+.admin-shell .admin-session-list article,
+.admin-shell .admin-event-list article,
+.admin-shell .admin-health-list div {
+  border-radius: 18px !important;
+  border: 1px solid #dbe5f3 !important;
+  background: #f8fbff !important;
+}
+
+.admin-shell .admin-action-list button {
+  min-height: 78px !important;
+}
+
+.admin-shell .admin-queue-list button {
+  min-height: 70px !important;
+  grid-template-columns: 40px minmax(0, 1fr) 42px !important;
+}
+
+.admin-shell .admin-queue-list button svg {
+  width: 38px !important;
+  height: 38px !important;
+  padding: 10px !important;
+  border-radius: 14px !important;
+  background: #eef4ff !important;
+  color: var(--admin-blue-800) !important;
+}
+
+.admin-shell .admin-queue-list button:first-child svg {
+  background: #fff4d1 !important;
+  color: #8a650d !important;
+}
+
+.admin-shell .admin-queue-list strong {
+  width: 38px !important;
+  height: 38px !important;
+  display: grid !important;
+  place-items: center !important;
+  border-radius: 999px !important;
+  background: var(--admin-gold-soft) !important;
+}
+
+.admin-shell .admin-health-list {
+  gap: 9px !important;
+}
+
+.admin-shell .admin-health-list div {
+  min-height: 52px !important;
+  padding: 12px !important;
+}
+
+.admin-shell .admin-approval-queue article {
+  border-radius: 18px !important;
+  background: #f8fbff !important;
+}
+
+.admin-shell .admin-station-summary {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+.admin-shell .admin-station-summary div {
+  min-height: 74px !important;
+  border-radius: 18px !important;
+  background: #f8fbff !important;
+  border-color: #dbe5f3 !important;
+}
+
+.admin-shell .admin-station-summary strong {
+  color: var(--admin-blue-800) !important;
+  font-size: 26px !important;
+}
+
+.admin-shell .admin-station-table {
+  margin-top: 14px !important;
+  gap: 0 !important;
+  border: 1px solid #dbe5f3 !important;
+  border-radius: 22px !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  max-height: none !important;
+  padding-right: 0 !important;
+}
+
+.admin-shell .admin-station-row {
+  min-height: 76px !important;
+  grid-template-columns: minmax(260px, 1.3fr) minmax(180px, 0.86fr) 118px minmax(320px, 0.95fr) !important;
+  gap: 14px !important;
+  border-width: 0 0 1px !important;
+  border-radius: 0 !important;
+  background: #ffffff !important;
+  padding: 13px 16px !important;
+}
+
+.admin-shell .admin-station-row:nth-child(even):not(.head) {
+  background: #f9fbff !important;
+}
+
+.admin-shell .admin-station-row.head {
+  min-height: 42px !important;
+  background: var(--admin-blue-800) !important;
+  color: #ffffff !important;
+}
+
+.admin-shell .admin-station-row small,
+.admin-shell .admin-station-row span {
+  color: var(--admin-muted) !important;
+}
+
+.admin-shell .admin-station-state {
+  justify-self: start !important;
+  min-width: 86px !important;
+  text-align: center !important;
+  background: #eaf2ff !important;
+  color: var(--admin-blue-800) !important;
+}
+
+.admin-shell .admin-station-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  justify-content: flex-end !important;
+  gap: 7px !important;
+}
+
+.admin-shell .admin-station-actions button,
+.admin-shell .admin-session-list button,
+.admin-shell .action-row button,
+.admin-shell .admin-approval-actions button {
+  min-height: 34px !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  border: 1px solid #cfdbea !important;
+  color: var(--admin-blue-800) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+}
+
+.admin-shell .admin-station-actions button:first-child,
+.admin-shell .action-row button:first-child,
+.admin-shell .admin-approval-actions button:first-of-type {
+  background: var(--admin-blue-800) !important;
+  border-color: var(--admin-blue-800) !important;
+  color: #ffffff !important;
+}
+
+.admin-shell .admin-session-list,
+.admin-shell .admin-event-list {
+  gap: 10px !important;
+}
+
+.admin-shell .admin-session-list article,
+.admin-shell .admin-event-list article {
+  padding: 13px !important;
+}
+
+.admin-shell .action-row {
+  margin-top: 14px !important;
+  gap: 8px !important;
+}
+
+@media (max-width: 1180px) {
+  .admin-shell .admin-portal-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-shell .admin-portal-rail {
+    position: sticky !important;
+    top: 0 !important;
+    z-index: 5 !important;
+    display: grid !important;
+    grid-template-columns: 260px repeat(3, minmax(180px, 1fr)) !important;
+    overflow-x: auto !important;
+  }
+
+  .admin-shell .admin-command-hero,
+  .admin-shell .admin-node-model {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-shell .admin-node-flow,
+  .admin-shell .admin-focus-grid {
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+  }
+
+  .admin-shell .admin-station-row {
+    grid-template-columns: minmax(220px, 1fr) minmax(150px, 0.7fr) 100px !important;
+  }
+
+  .admin-shell .admin-station-row > .admin-station-actions {
+    grid-column: 1 / -1 !important;
+    justify-content: flex-start !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-shell .admin-portal-shell {
+    width: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+  }
+
+  .admin-shell .admin-portal-topbar,
+  .admin-shell .admin-portal-state {
+    align-items: flex-start !important;
+  }
+
+  .admin-shell .admin-portal-topbar {
+    flex-direction: column !important;
+  }
+
+  .admin-shell .admin-portal-rail {
+    grid-template-columns: 1fr !important;
+    position: relative !important;
+  }
+
+  .admin-shell .admin-portal-main {
+    padding: 14px !important;
+  }
+
+  .admin-shell .admin-tab-heading {
+    display: grid !important;
+    grid-template-columns: 52px minmax(0, 1fr) !important;
+  }
+
+  .admin-shell .admin-command-hero .admin-tab-heading h1 {
+    font-size: 30px !important;
+  }
+
+  .admin-shell .admin-app-grid,
+  .admin-shell .admin-action-list,
+  .admin-shell .admin-console-panel .admin-system-grid,
+  .admin-shell .admin-station-summary {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-shell .admin-command-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+    gap: 8px !important;
+  }
+
+  .admin-shell .admin-command-summary div {
+    min-height: 76px !important;
+    padding: 11px !important;
+  }
+
+  .admin-shell .admin-command-summary strong {
+    font-size: 17px !important;
+  }
+
+  .admin-shell .admin-console-panel,
+  .admin-shell .admin-console-wide {
+    grid-column: 1 / -1 !important;
+  }
+
+  .admin-shell .admin-station-table {
+    display: block !important;
+    border: 0 !important;
+    background: transparent !important;
+  }
+
+  .admin-shell .admin-station-row.head {
+    display: none !important;
+  }
+
+  .admin-shell .admin-station-row {
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    margin-bottom: 10px !important;
+    border: 1px solid #dbe5f3 !important;
+    border-radius: 18px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .admin-shell .admin-command-summary {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* DwellProof-inspired admin console refit: dark SaaS workspace, compact, non-scattered. */
+.admin-shell {
+  background: #0b1324 !important;
+}
+
+.admin-shell .workspace {
+  background:
+    radial-gradient(circle at 0% 0%, rgba(244, 197, 66, 0.12), transparent 300px),
+    radial-gradient(circle at 100% 18%, rgba(41, 91, 180, 0.22), transparent 360px),
+    #0b1324 !important;
+}
+
+.admin-shell .admin-portal-shell {
+  width: 100% !important;
+  min-height: 100vh !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #0b1324 !important;
+  box-shadow: none !important;
+}
+
+.admin-shell .admin-portal-topbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 40 !important;
+  min-height: 62px !important;
+  padding: 10px 18px !important;
+  background: rgba(11, 19, 36, 0.96) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+  backdrop-filter: blur(18px) !important;
+}
+
+.admin-shell .admin-portal-logo {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+.admin-shell .admin-portal-brand strong {
+  color: #ffffff !important;
+  font-size: 16px !important;
+}
+
+.admin-shell .admin-portal-brand span {
+  color: #94a3b8 !important;
+}
+
+.admin-shell .admin-portal-state span,
+.admin-shell .admin-portal-state button {
+  min-height: 34px !important;
+  border-radius: 12px !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #cbd5e1 !important;
+}
+
+.admin-shell .admin-portal-state span:first-child {
+  border-color: rgba(244, 197, 66, 0.28) !important;
+  background: rgba(244, 197, 66, 0.1) !important;
+  color: #f4c542 !important;
+}
+
+.admin-shell .admin-portal-state button {
+  background: #f4c542 !important;
+  border-color: #f4c542 !important;
+  color: #0b1324 !important;
+}
+
+.admin-shell .admin-portal-layout {
+  display: grid !important;
+  grid-template-columns: 280px minmax(0, 1fr) !important;
+  min-height: calc(100vh - 62px) !important;
+  background: #0b1324 !important;
+}
+
+.admin-shell .admin-portal-rail {
+  position: sticky !important;
+  top: 62px !important;
+  height: calc(100vh - 62px) !important;
+  overflow-y: auto !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 18px !important;
+  padding: 16px !important;
+  background: #0d1829 !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.07) !important;
+}
+
+.admin-shell .admin-workspace-card {
+  border: 1px solid rgba(244, 197, 66, 0.16) !important;
+  border-radius: 20px !important;
+  background: rgba(244, 197, 66, 0.06) !important;
+  padding: 16px !important;
+}
+
+.admin-shell .admin-workspace-card span,
+.admin-shell .admin-nav-group p {
+  color: rgba(244, 197, 66, 0.62) !important;
+}
+
+.admin-shell .admin-workspace-card strong {
+  color: #ffffff !important;
+}
+
+.admin-shell .admin-workspace-card p {
+  color: #94a3b8 !important;
+}
+
+.admin-shell .admin-nav-group button {
+  min-height: 44px !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  color: #94a3b8 !important;
+  border: 1px solid transparent !important;
+}
+
+.admin-shell .admin-nav-group button.active {
+  background: rgba(244, 197, 66, 0.12) !important;
+  border-color: rgba(244, 197, 66, 0.18) !important;
+  color: #f4c542 !important;
+  box-shadow: inset 2px 0 0 #f4c542 !important;
+}
+
+.admin-shell .admin-nav-group button:hover {
+  background: rgba(255, 255, 255, 0.045) !important;
+  color: #ffffff !important;
+}
+
+.admin-shell .admin-nav-group button small {
+  display: none !important;
+}
+
+.admin-shell .admin-portal-main {
+  padding: 24px !important;
+  background: #0b1324 !important;
+}
+
+.admin-shell .admin-portal-main > * {
+  max-width: 1180px !important;
+}
+
+.admin-shell .admin-command-hero,
+.admin-shell .admin-app-suite,
+.admin-shell .admin-node-model,
+.admin-shell .admin-focus-board,
+.admin-shell .admin-console-panel {
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 24px !important;
+  background: rgba(22, 32, 64, 0.72) !important;
+  box-shadow: none !important;
+}
+
+.admin-shell .admin-command-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 340px) !important;
+  gap: 18px !important;
+  padding: 22px !important;
+  background:
+    linear-gradient(135deg, rgba(22, 32, 64, 0.96), rgba(11, 19, 36, 0.96)) !important;
+}
+
+.admin-shell .admin-command-hero::after {
+  display: none !important;
+}
+
+.admin-shell .admin-tab-icon {
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 18px !important;
+  background: rgba(244, 197, 66, 0.12) !important;
+  color: #f4c542 !important;
+  box-shadow: none !important;
+}
+
+.admin-shell .admin-command-hero .admin-tab-heading h1 {
+  color: #ffffff !important;
+  font-size: clamp(25px, 3vw, 34px) !important;
+  line-height: 1.08 !important;
+}
+
+.admin-shell .admin-command-hero .admin-tab-heading p {
+  color: #cbd5e1 !important;
+  font-size: 14px !important;
+  line-height: 1.55 !important;
+}
+
+.admin-shell .admin-tab-heading > div:last-child > span,
+.admin-shell .admin-suite-head span,
+.admin-shell .admin-node-model > div:first-child span {
+  color: #f4c542 !important;
+}
+
+.admin-shell .admin-hero-brief {
+  gap: 7px !important;
+  margin-top: 13px !important;
+}
+
+.admin-shell .admin-hero-brief span {
+  min-height: 30px !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  color: #cbd5e1 !important;
+}
+
+.admin-shell .admin-command-summary {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 10px !important;
+}
+
+.admin-shell .admin-command-summary div {
+  min-height: 72px !important;
+  border-radius: 18px !important;
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(7, 11, 22, 0.42) !important;
+}
+
+.admin-shell .admin-command-summary span,
+.admin-shell .admin-command-summary small {
+  color: #94a3b8 !important;
+}
+
+.admin-shell .admin-command-summary strong {
+  color: #ffffff !important;
+  font-size: 18px !important;
+}
+
+.admin-shell .admin-app-suite,
+.admin-shell .admin-node-model,
+.admin-shell .admin-focus-board,
+.admin-shell .admin-console-panel {
+  margin-top: 18px !important;
+  padding: 18px !important;
+}
+
+.admin-shell .admin-suite-head {
+  border-bottom-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+.admin-shell .admin-suite-head strong,
+.admin-shell .admin-node-model > div:first-child strong,
+.admin-shell .admin-focus-title strong,
+.admin-shell .admin-console-panel .panel-header h2 {
+  color: #ffffff !important;
+}
+
+.admin-shell .admin-suite-head button,
+.admin-shell .action-row button:first-child,
+.admin-shell .admin-station-actions button:first-child,
+.admin-shell .admin-approval-actions button:first-of-type {
+  background: #f4c542 !important;
+  color: #0b1324 !important;
+  border-color: #f4c542 !important;
+}
+
+.admin-shell .admin-app-grid {
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+}
+
+.admin-shell .admin-app-tile,
+.admin-shell .admin-node-flow article,
+.admin-shell .admin-focus-card,
+.admin-shell .admin-system-card,
+.admin-shell .admin-action-list button,
+.admin-shell .admin-queue-list button,
+.admin-shell .admin-health-list div,
+.admin-shell .admin-approval-queue article,
+.admin-shell .admin-session-list article,
+.admin-shell .admin-event-list article {
+  border: 1px solid rgba(255, 255, 255, 0.075) !important;
+  border-radius: 18px !important;
+  background: rgba(7, 11, 22, 0.38) !important;
+  box-shadow: none !important;
+}
+
+.admin-shell .admin-app-tile span,
+.admin-shell .admin-node-flow svg,
+.admin-shell .admin-focus-card > span,
+.admin-shell .admin-system-card div,
+.admin-shell .admin-queue-list button svg {
+  background: rgba(244, 197, 66, 0.1) !important;
+  color: #f4c542 !important;
+}
+
+.admin-shell .admin-app-tile strong,
+.admin-shell .admin-node-flow strong,
+.admin-shell .admin-focus-card strong,
+.admin-shell .admin-system-card strong,
+.admin-shell .admin-action-list span,
+.admin-shell .admin-queue-list strong,
+.admin-shell .admin-health-list strong,
+.admin-shell .admin-approval-queue strong,
+.admin-shell .admin-session-list strong,
+.admin-shell .admin-event-list strong,
+.admin-shell .admin-station-row strong {
+  color: #ffffff !important;
+}
+
+.admin-shell .admin-app-tile small,
+.admin-shell .admin-node-flow small,
+.admin-shell .admin-node-model > div:first-child p,
+.admin-shell .admin-focus-card small,
+.admin-shell .admin-system-card span,
+.admin-shell .admin-system-card small,
+.admin-shell .admin-action-list small,
+.admin-shell .admin-queue-list span,
+.admin-shell .admin-queue-list small,
+.admin-shell .admin-health-list span,
+.admin-shell .admin-approval-queue small,
+.admin-shell .admin-approval-queue p,
+.admin-shell .admin-session-list span,
+.admin-shell .admin-event-list span,
+.admin-shell .admin-station-row small,
+.admin-shell .admin-station-row span {
+  color: #94a3b8 !important;
+}
+
+.admin-shell .admin-node-model {
+  grid-template-columns: minmax(260px, 0.72fr) minmax(0, 1.28fr) !important;
+}
+
+.admin-shell .admin-node-model > div:first-child strong {
+  font-size: 24px !important;
+}
+
+.admin-shell .admin-node-flow {
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+}
+
+.admin-shell .admin-focus-title {
+  color: #f4c542 !important;
+}
+
+.admin-shell .admin-focus-title span {
+  color: #64748b !important;
+}
+
+.admin-shell .admin-focus-grid {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
+}
+
+.admin-shell .admin-focus-card {
+  min-height: 86px !important;
+}
+
+.admin-shell .admin-console-grid {
+  grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  gap: 18px !important;
+}
+
+.admin-shell .admin-console-wide {
+  grid-column: span 8 !important;
+}
+
+.admin-shell .admin-console-panel:not(.admin-console-wide) {
+  grid-column: span 4 !important;
+}
+
+.admin-shell .admin-console-panel .panel-header {
+  border-bottom-color: rgba(255, 255, 255, 0.07) !important;
+}
+
+.admin-shell .admin-console-panel .panel-header > button {
+  background: rgba(244, 197, 66, 0.1) !important;
+  border-color: rgba(244, 197, 66, 0.22) !important;
+  color: #f4c542 !important;
+}
+
+.admin-shell .admin-system-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.admin-shell .admin-action-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+.admin-shell .admin-queue-list strong {
+  color: #0b1324 !important;
+  background: #f4c542 !important;
+}
+
+.admin-shell .admin-station-summary div {
+  border-color: rgba(255, 255, 255, 0.075) !important;
+  background: rgba(7, 11, 22, 0.38) !important;
+}
+
+.admin-shell .admin-station-summary strong {
+  color: #f4c542 !important;
+}
+
+.admin-shell .admin-station-table {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: transparent !important;
+}
+
+.admin-shell .admin-station-row {
+  border-bottom-color: rgba(255, 255, 255, 0.07) !important;
+  background: rgba(7, 11, 22, 0.34) !important;
+}
+
+.admin-shell .admin-station-row:nth-child(even):not(.head) {
+  background: rgba(255, 255, 255, 0.025) !important;
+}
+
+.admin-shell .admin-station-row.head {
+  background: rgba(244, 197, 66, 0.1) !important;
+  color: #f4c542 !important;
+}
+
+.admin-shell .admin-station-state {
+  background: rgba(244, 197, 66, 0.12) !important;
+  color: #f4c542 !important;
+}
+
+.admin-shell .admin-station-actions button,
+.admin-shell .admin-session-list button,
+.admin-shell .action-row button,
+.admin-shell .admin-approval-actions button {
+  background: rgba(255, 255, 255, 0.045) !important;
+  border-color: rgba(255, 255, 255, 0.09) !important;
+  color: #cbd5e1 !important;
+}
+
+.admin-shell .empty-state {
+  color: #94a3b8 !important;
+  background: rgba(7, 11, 22, 0.38) !important;
+  border: 1px dashed rgba(255, 255, 255, 0.12) !important;
+}
+
+@media (max-width: 1180px) {
+  .admin-shell .admin-portal-layout {
+    grid-template-columns: 280px minmax(0, 1fr) !important;
+  }
+
+  .admin-shell .admin-portal-rail {
+    position: sticky !important;
+    top: 62px !important;
+    height: calc(100vh - 62px) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+  }
+
+  .admin-shell .admin-command-hero,
+  .admin-shell .admin-node-model {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-shell .admin-command-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .admin-shell .admin-console-wide,
+  .admin-shell .admin-console-panel:not(.admin-console-wide) {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+@media (max-width: 820px) {
+  .admin-shell .admin-portal-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-shell .admin-portal-rail {
+    position: relative !important;
+    top: auto !important;
+    height: auto !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+  }
+
+  .admin-shell .admin-nav-group {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .admin-shell .admin-nav-group p {
+    grid-column: 1 / -1 !important;
+  }
+
+  .admin-shell .admin-command-summary,
+  .admin-shell .admin-system-grid,
+  .admin-shell .admin-action-list,
+  .admin-shell .admin-station-summary {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (min-width: 561px) and (max-width: 820px) {
+  .admin-shell .admin-portal-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-shell .admin-portal-rail {
+    position: relative !important;
+    top: auto !important;
+    height: auto !important;
+    display: grid !important;
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+    overflow: visible !important;
+    border-right: 0 !important;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.07) !important;
+    padding: 12px !important;
+  }
+
+  .admin-shell .admin-workspace-card {
+    display: none !important;
+  }
+
+  .admin-shell .admin-nav-group {
+    display: grid !important;
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 6px !important;
+  }
+
+  .admin-shell .admin-nav-group p {
+    grid-column: 1 / -1 !important;
+    padding-top: 5px !important;
+  }
+
+  .admin-shell .admin-nav-group button {
+    min-height: 42px !important;
+    display: flex !important;
+    justify-content: center !important;
+    padding: 8px !important;
+  }
+
+  .admin-shell .admin-nav-group button span,
+  .admin-shell .admin-nav-group button > svg:last-child {
+    display: none !important;
+  }
+
+  .admin-shell .admin-portal-main {
+    padding: 14px !important;
+  }
+
+  .admin-shell .admin-command-hero {
+    padding: 16px !important;
+    border-radius: 20px !important;
+  }
+
+  .admin-shell .admin-tab-heading {
+    display: grid !important;
+    grid-template-columns: 44px minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  .admin-shell .admin-tab-icon {
+    width: 44px !important;
+    height: 44px !important;
+    border-radius: 15px !important;
+  }
+
+  .admin-shell .admin-command-hero .admin-tab-heading h1 {
+    font-size: 24px !important;
+  }
+
+  .admin-shell .admin-command-hero .admin-tab-heading p {
+    font-size: 13px !important;
+    line-height: 1.42 !important;
+  }
+
+  .admin-shell .admin-hero-brief {
+    display: flex !important;
+  }
+
+  .admin-shell .admin-command-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
+
+  .admin-shell .admin-command-summary div {
+    min-height: 58px !important;
+    padding: 10px !important;
+  }
+
+  .admin-shell .admin-app-suite,
+  .admin-shell .admin-node-model,
+  .admin-shell .admin-focus-board,
+  .admin-shell .admin-console-panel {
+    margin-top: 12px !important;
+    padding: 14px !important;
+    border-radius: 20px !important;
+  }
+
+  .admin-shell .admin-app-grid,
+  .admin-shell .admin-focus-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .admin-shell .admin-app-tile {
+    min-height: 104px !important;
+    padding: 12px !important;
+  }
+
+  .admin-shell .admin-node-model {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-shell .admin-node-flow {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
 /* Pre-AWS internal design hardening: one calm RMVI workstation system across every module. */
 :root {
   --rmvi-blue-950: #061b42;

@@ -2369,6 +2369,17 @@ function getSessionToken() {
   }
 }
 
+function localhostAdminPreviewSession() {
+  if (!["127.0.0.1", "localhost"].includes(window.location.hostname)) return null;
+  if (new URLSearchParams(window.location.search).get("previewAdmin") !== "1") return null;
+  return {
+    email: "admin@rmvi.org",
+    startedAt: new Date().toISOString(),
+    token: "local-admin-preview",
+    expiresAt: new Date(Date.now() + 60 * 60 * 1000).toISOString()
+  } satisfies Session;
+}
+
 function iconForLevel(level: StationLevel | string) {
   if (level === "International HQ") return Globe2;
   if (level === "National HQ") return Landmark;
@@ -2814,7 +2825,7 @@ function getWorkstationProfile(station: StationCard, permissions: Permissions): 
 }
 
 function App() {
-  const [session, setSession] = usePersistentState<Session | null>("gcos.session", null);
+  const [session, setSession] = usePersistentState<Session | null>("gcos.session", localhostAdminPreviewSession());
   const initialStation = stations.find((station) => station.email === session?.email) ?? stations[1];
   const [activeStation, setActiveStation] = React.useState<StationCard>(initialStation);
   const [activeSection, setActiveSection] = React.useState<Section>(getInitialSection);

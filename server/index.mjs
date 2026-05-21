@@ -25,7 +25,11 @@ const objectStorage = createObjectStorageAdapter({
   r2AccountId: process.env.GCOS_R2_ACCOUNT_ID,
   r2Bucket: process.env.GCOS_R2_BUCKET,
   r2AccessKeyId: process.env.GCOS_R2_ACCESS_KEY_ID,
-  r2SecretAccessKey: process.env.GCOS_R2_SECRET_ACCESS_KEY
+  r2SecretAccessKey: process.env.GCOS_R2_SECRET_ACCESS_KEY,
+  s3Bucket: process.env.GCOS_S3_BUCKET,
+  awsRegion: process.env.GCOS_AWS_REGION ?? process.env.AWS_REGION,
+  awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
+  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
 });
 const SERVE_WEB = process.env.GCOS_SERVE_WEB === "1";
 const WEB_DIST_PATH = process.env.GCOS_WEB_DIST_PATH ?? join(SERVER_DIR, "..", "dist");
