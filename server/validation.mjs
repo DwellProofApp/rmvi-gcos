@@ -134,7 +134,12 @@ const validators = {
 
   "POST /api/persistence/backup-manifest": () => {},
 
-  "POST /api/persistence/restore-drill": () => {},
+  "POST /api/persistence/restore-drill": (body) => {
+    if (body.attestation !== undefined) requireEnum(body.attestation, ["MANAGED_RESTORE_CONFIRMED"], "attestation");
+    if (body.providerReference !== undefined) requireString(body.providerReference, "providerReference");
+    if (body.restoredAt !== undefined) requireString(body.restoredAt, "restoredAt");
+    if (body.evidence !== undefined) requireString(body.evidence, "evidence");
+  },
 
   "POST /api/persistence/verify": () => {},
 

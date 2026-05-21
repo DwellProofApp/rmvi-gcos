@@ -102,7 +102,7 @@ const routes = {
   "GET /api/persistence/backup-manifest": async () => ok(await persistenceBackupManifest()),
   "POST /api/persistence/backup-manifest": async ({ session }) => ok(await recordPersistenceBackupManifest(session.email)),
   "GET /api/persistence/restore-drill": async () => ok(await persistenceRestoreDrill()),
-  "POST /api/persistence/restore-drill": async ({ session }) => ok(await recordPersistenceRestoreDrill(session.email)),
+  "POST /api/persistence/restore-drill": async ({ body, session }) => ok(await recordPersistenceRestoreDrill(body, session.email)),
   "POST /api/persistence/verify": async ({ session }) => ok(await verifyPersistence(session.email)),
   "GET /api/persistence/export": ({ session }) => ok(persistenceExport(session.email)),
   "GET /api/persistence/migration-plan": () => ok(persistenceMigrationPlan()),
@@ -1306,9 +1306,9 @@ async function persistenceRestoreDrill() {
   return storage.restoreDrill(state);
 }
 
-async function recordPersistenceRestoreDrill(actor) {
+async function recordPersistenceRestoreDrill(body, actor) {
   requirePermission(actor, "canApprove");
-  const drill = await persistenceRestoreDrill();
+  const drill = withManagedRestoreAttestation(await persistenceRestoreDrill(), body, actor);
   state.persistenceMeta ??= {};
   state.persistenceMeta.lastRestoreDrill = {
     generatedAt: drill.generatedAt,
@@ -1316,10 +1316,41 @@ async function recordPersistenceRestoreDrill(actor) {
     valid: drill.valid,
     status: drill.status,
     backupHash: drill.backupHash,
-    recordDelta: drill.recordDelta
+    recordDelta: drill.recordDelta,
+    providerReference: drill.attestation?.providerReference ?? null,
+    restoredAt: drill.attestation?.restoredAt ?? null
   };
   record("PersistenceRestoreDrillRecorded", actor, "Persistence backups", `${drill.status} / delta ${drill.recordDelta}`);
   return { drill, status: await persistenceStatus() };
+}
+
+function withManagedRestoreAttestation(drill, body, actor) {
+  if (drill.valid || body?.attestation !== "MANAGED_RESTORE_CONFIRMED") return drill;
+  if (!drill.checks?.some((check) => check.name === "managed-restore")) return drill;
+
+  const restoredAt = body.restoredAt ?? new Date().toISOString();
+  const providerReference = body.providerReference ?? `${drill.provider ?? STORAGE_PROVIDER}-managed-restore`;
+  const evidence = body.evidence ?? "Administrator attested that a managed provider restore/export drill was completed.";
+  const checks = drill.checks.map((check) => (
+    check.name === "managed-restore"
+      ? { ...check, ok: true, detail: `Managed restore attested by ${actor}: ${providerReference}` }
+      : check
+  ));
+  const valid = checks.every((check) => check.ok);
+  return {
+    ...drill,
+    valid,
+    status: valid ? "restorable" : "blocked",
+    checks,
+    nextAction: valid ? "Managed restore drill recorded and ready for launch verification" : drill.nextAction,
+    attestation: {
+      actor,
+      attestation: body.attestation,
+      providerReference,
+      restoredAt,
+      evidence
+    }
+  };
 }
 
 async function verifyPersistence(actor) {

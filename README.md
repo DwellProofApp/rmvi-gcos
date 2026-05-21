@@ -99,6 +99,7 @@ npm run internal:audit
 npm run release:check
 npm run secrets:plan
 npm run launch:verify
+npm run launch:signoff:live
 ```
 
 Frontend:
@@ -180,7 +181,7 @@ GCOS_LOGIN_RATE_LIMIT Login attempts allowed per station/IP window, defaults to 
 GCOS_LOGIN_RATE_WINDOW_MS Login rate-limit window in milliseconds, defaults to 300000
 GCOS_MUTATION_RATE_LIMIT Non-login API mutations allowed per IP window, defaults to 2000
 GCOS_MUTATION_RATE_WINDOW_MS Mutation rate-limit window in milliseconds, defaults to 60000
-GCOS_MANAGED_RESTORE_DRILL Set to 1 after a managed database restore drill is complete
+GCOS_MANAGED_RESTORE_DRILL Set to 1 after a managed database restore drill is complete, or record an admin restore attestation through POST /api/persistence/restore-drill
 GCOS_ENABLE_DEV_RESET Set to 1 to allow POST /api/dev/reset in production
 GCOS_REQUIRE_API_AUTH Set to 1 so production API data requires a station session
 ```
@@ -302,6 +303,23 @@ GET  /api/events
 GET  /api/ai-drafts
 POST /api/ai-drafts
 POST /api/offline-sync
+```
+
+Managed Firestore/Postgres restore drills can be recorded after a provider export/restore test:
+
+```bash
+curl -X POST https://rmvi.org/api/persistence/restore-drill \
+  -H "Authorization: Bearer $GCOS_ADMIN_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"attestation":"MANAGED_RESTORE_CONFIRMED","providerReference":"firebase-managed-export-2026-05-21","evidence":"Firestore managed export restored and record counts reviewed."}'
+```
+
+The same live operations sequence can be run as one command after setting `GCOS_SMOKE_PASSWORD`:
+
+```bash
+GCOS_RESTORE_DRILL_ATTESTATION=MANAGED_RESTORE_CONFIRMED \
+GCOS_RESTORE_DRILL_REFERENCE=firebase-managed-export-2026-05-21 \
+npm run launch:signoff:live
 ```
 
 Protected API mutations require the login token:

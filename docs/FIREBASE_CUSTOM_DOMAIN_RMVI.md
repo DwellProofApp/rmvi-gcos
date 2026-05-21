@@ -57,4 +57,4 @@ Launch verification status: live-verified
 
 ## Known non-blocking follow-up
 
-`GCOS_MANAGED_RESTORE_DRILL=0` is expected until a real managed restore drill is performed. Production readiness is currently 96% without that drill.
+`GCOS_MANAGED_RESTORE_DRILL=0` is expected until a real managed restore drill is performed. After the Firestore export/restore drill is complete, record it with `POST /api/persistence/restore-drill` using `{"attestation":"MANAGED_RESTORE_CONFIRMED"}` and the Firebase export reference. Production readiness is currently 96% without that drill.

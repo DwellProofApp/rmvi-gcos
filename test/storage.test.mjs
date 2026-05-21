@@ -61,3 +61,38 @@ test("database restore drill can be confirmed after managed restore", async () =
     else process.env.GCOS_MANAGED_RESTORE_DRILL = original;
   }
 });
+
+test("database restore drill can use a recorded managed attestation", async () => {
+  const original = process.env.GCOS_MANAGED_RESTORE_DRILL;
+  delete process.env.GCOS_MANAGED_RESTORE_DRILL;
+  try {
+    const adapter = createDatabaseStorageAdapter({ databaseUrl: "postgres://user:pass@db.example.com:5432/gcos" });
+    const seed = createSeedState();
+    seed.persistenceMeta = {
+      lastBackup: {
+        path: "postgres://user:***@db.example.com:5432/gcos",
+        label: "managed-snapshot",
+        hash: "sha256:managed",
+        createdAt: new Date().toISOString(),
+        createdBy: "np@rmvi.org",
+        provider: "database"
+      },
+      lastRestoreDrill: {
+        generatedAt: new Date().toISOString(),
+        actor: "admin@rmvi.org",
+        valid: true,
+        status: "restorable",
+        backupHash: "sha256:managed",
+        recordDelta: 0,
+        providerReference: "managed-provider-drill-001"
+      }
+    };
+    const drill = await adapter.restoreDrill(seed);
+    assert.equal(drill.status, "restorable");
+    assert.equal(drill.valid, true);
+    assert.equal(drill.checks.some((check) => check.name === "managed-restore" && check.ok), true);
+  } finally {
+    if (original === undefined) delete process.env.GCOS_MANAGED_RESTORE_DRILL;
+    else process.env.GCOS_MANAGED_RESTORE_DRILL = original;
+  }
+});

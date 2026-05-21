@@ -106,7 +106,7 @@ MVP persistence can run from the live Postgres JSONB adapter.
 - Set `GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2` and add the R2 account ID, bucket, access key ID, and secret access key for uploaded files.
 - Keep JSON backup/export artifacts until the database cutover checklist is clean.
 - Record `/api/persistence/backup-manifest` after creating a backup so launch readiness can verify the backup set.
-- Run and record `/api/persistence/restore-drill` before cutover to prove the latest backup can be read.
+- Run and record `/api/persistence/restore-drill` before cutover to prove the latest backup can be read. For managed Firestore/Postgres providers, include the `MANAGED_RESTORE_CONFIRMED` attestation and provider export/restore reference after the restore drill is complete.
 - Record `/api/ops/monitor` during launch signoff so production blockers and operational signals are captured in the audit ledger.
 - Record `/api/launch/signoff` as the final MVP, production, and enterprise readiness scorecard.
 
