@@ -86,6 +86,7 @@ const routes = {
   "GET /api/launch/signoff": async () => ok(await launchSignoffMatrix()),
   "POST /api/launch/signoff": async ({ session }) => ok(await recordLaunchSignoff(session.email)),
   "GET /api/files": () => ok(state.files ?? []),
+  "POST /api/files/object-smoke": async ({ session }) => ok(await recordObjectStorageSmoke(session.email)),
   "POST /api/files/upload": async ({ body, session }) => createdResponse(await uploadFile(body, session.email)),
   "GET /api/files/:id/download": async ({ params, session }) => readStoredFile(params.id, session.email),
   "POST /api/documents/:id/file": ({ params, body, session }) => ok(linkDocumentFile(params.id, body, session.email)),
@@ -1448,6 +1449,25 @@ async function uploadFile(body, actor) {
   state.files.unshift(file);
   record("FileUploaded", actor, file.name, `${file.size} bytes ${file.hash}`);
   return file;
+}
+
+async function recordObjectStorageSmoke(actor) {
+  requirePermission(actor, "canApprove");
+  const smoke = await objectStorage.smokeCheck({ actor });
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastObjectStorageSmoke = {
+    status: smoke.status,
+    provider: smoke.provider,
+    mode: smoke.mode,
+    location: smoke.location,
+    checkedAt: smoke.generatedAt,
+    checkedBy: actor,
+    write: smoke.write,
+    read: smoke.read,
+    cleanup: smoke.cleanup
+  };
+  record("ObjectStorageSmokeChecked", actor, "Object vault", `${smoke.provider}: ${smoke.status}`);
+  return { smoke, files: storageProfile().files };
 }
 
 function storageProfile() {

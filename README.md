@@ -41,6 +41,7 @@ Production domain target: `rmvi.org`
 - Database cutover checklist with go/no-go provider switch gates
 - Live Postgres JSONB storage adapter for database-backed persistence
 - Database smoke-check endpoint and CLI for managed Postgres launch verification
+- Object-vault smoke-check endpoint and CLI for file, document, evidence, and media launch verification
 - Launch readiness scoring for MVP and production rollout gates
 - Production readiness profile checker for the `rmvi.org` Replit launch
 - Deployment healthcheck for API, operational status, bootstrap state, and web shell
@@ -81,6 +82,8 @@ Deployment smoke check:
 npm run healthcheck
 npm run domain:check
 npm run production:check
+npm run database:smoke
+npm run object:smoke
 npm run release:check
 npm run secrets:plan
 npm run launch:verify
@@ -225,6 +228,7 @@ GET  /api/persistence/cutover-checklist
 POST /api/persistence/cutover-checklist
 POST /api/persistence/database-smoke
 GET  /api/files
+POST /api/files/object-smoke
 POST /api/files/upload
 GET  /api/files/:id/download
 POST /api/documents/:id/file

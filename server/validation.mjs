@@ -160,6 +160,8 @@ const validators = {
 
   "POST /api/ops/monitor": () => {},
 
+  "POST /api/files/object-smoke": () => {},
+
   "POST /api/files/upload": (body) => {
     requireString(body.name, "name");
     requireString(body.contentType, "contentType");

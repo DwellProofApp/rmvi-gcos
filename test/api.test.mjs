@@ -2673,6 +2673,13 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(downloadedFile.headers.get("content-type"), "text/plain");
     assert.equal(await downloadedFile.text(), "GCOS automated file vault test");
 
+    const objectStorageSmoke = await postJson("/api/files/object-smoke", {}, nationalToken);
+    assert.equal(objectStorageSmoke.smoke.status, "passed");
+    assert.equal(objectStorageSmoke.smoke.write, true);
+    assert.equal(objectStorageSmoke.smoke.read, true);
+    assert.equal(objectStorageSmoke.smoke.cleanup, true);
+    assert.equal(objectStorageSmoke.files.provider, "filesystem");
+
     const classifiedDocument = await postJson(`/api/documents/${document.id}/classification`, {
       classification: "Executive packet"
     }, nationalToken);
