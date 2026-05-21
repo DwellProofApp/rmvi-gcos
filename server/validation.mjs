@@ -916,6 +916,20 @@ const validators = {
     if (body.status !== undefined) requireString(body.status, "status");
   },
 
+  "POST /api/live-sessions/:id/agenda": (body) => {
+    if (body.agenda !== undefined) requireString(body.agenda, "agenda");
+    if (body.items !== undefined) requireStringArray(body.items, "items");
+  },
+
+  "POST /api/live-sessions/:id/screen-share": (body) => {
+    requireString(body.status, "status");
+  },
+
+  "POST /api/live-sessions/:id/share-document": (body) => {
+    requireString(body.name, "name");
+    if (body.source !== undefined) requireString(body.source, "source");
+  },
+
   "POST /api/live-sessions/:id/summary-message": (body) => {
     if (body.subject !== undefined) requireString(body.subject, "subject");
     if (body.route !== undefined) requireString(body.route, "route");

@@ -363,6 +363,52 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
+    updateLiveSessionAgenda(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const fallbackAgenda = [
+        `Review ${item.linkedRecord}`,
+        `Confirm routing through ${item.route}`,
+        "Assign next actions"
+      ];
+      item.agendaItems = body.items?.length ? body.items : [body.agenda, ...fallbackAgenda].filter(Boolean);
+      item.agendaUpdatedAt = new Date().toISOString();
+      item.updatedAt = item.agendaUpdatedAt;
+      record("LiveSessionAgendaUpdated", body.actor, item.title, `${item.agendaItems.length} agenda items`);
+      return item;
+    },
+
+    updateLiveSessionScreenShare(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.screenShareStatus = body.status ?? "Sharing";
+      item.screenSharedBy = body.actor;
+      if (["Stopped", "Ended", "Off"].includes(item.screenShareStatus)) {
+        item.screenShareStoppedAt = new Date().toISOString();
+      } else {
+        item.screenShareStartedAt ??= new Date().toISOString();
+      }
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionScreenShareUpdated", body.actor, item.title, item.screenShareStatus);
+      return item;
+    },
+
+    shareLiveSessionDocument(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      item.sharedDocuments ??= [];
+      item.files ??= [];
+      const sharedDocument = {
+        id: `shared-doc-${Date.now()}`,
+        name: body.name ?? "Shared document",
+        source: body.source ?? "Live Comms",
+        sharedBy: body.actor,
+        sharedAt: new Date().toISOString()
+      };
+      item.sharedDocuments.unshift(sharedDocument);
+      item.files = Array.from(new Set([sharedDocument.name, ...item.files]));
+      item.updatedAt = sharedDocument.sharedAt;
+      record("LiveSessionDocumentShared", body.actor, item.title, sharedDocument.name);
+      return item;
+    },
+
     sendLiveSessionSummary(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const summary = message(
@@ -436,11 +482,14 @@ export function createServices({ state, record, requirePermission, findById }) {
         `Type: ${item.sessionType}`,
         `Route: ${item.route}`,
         `Purpose: ${item.purpose}`,
+        `Agenda: ${(item.agendaItems ?? []).join("; ") || "No agenda recorded"}`,
         `Notes: ${(item.notes ?? []).join("; ") || "No notes recorded"}`,
         `Decisions: ${(item.decisions ?? []).map((decision) => decision.text ?? decision).join("; ") || "No decisions recorded"}`,
         `Transcript: ${(item.transcript ?? []).map((entry) => `${entry.author}: ${entry.body}`).join("; ") || "No transcript messages"}`,
         `Voice transcript: ${item.voiceTranscript ?? "No voice transcript attached"}`,
         `Recording: ${item.recordingStatus ?? "Not recorded"}`,
+        `Screen share: ${item.screenShareStatus ?? "Not shared"}${item.screenSharedBy ? ` by ${item.screenSharedBy}` : ""}`,
+        `Shared documents: ${(item.sharedDocuments ?? []).map((document) => `${document.name} (${document.source})`).join(", ") || "No live documents shared"}`,
         `Files: ${(item.files ?? []).join(", ") || "No files attached"}`
       ].join("\n");
       packet.custodian = body.actor;

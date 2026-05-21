@@ -137,7 +137,7 @@ type Approval = {
 type GovernanceTask = { id: string; title: string; owner: string; assignee: string; priority: "Low" | "Medium" | "High" | "Critical"; due: string; status: "Queued" | "In Progress" | "Blocked" | "Complete"; blocker?: string; watchers?: string[]; dependencies?: string[]; approvalRequired?: boolean; approvalRoute?: string; sla?: string; slaStatus?: string; evidence?: string; handoffTo?: string; escalated?: boolean; escalationReason?: string; comments?: string[]; checkpoints?: string[]; scheduledFor?: string; dispatchTeam?: string; dispatchLocation?: string; timeHours?: number; qaStatus?: string; qaReviewer?: string; riskAccepted?: boolean; riskReason?: string; templateSaved?: boolean; templateName?: string; linkedReport?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
-type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; archived?: boolean; archiveReason?: string };
+type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; followUpTaskId?: string; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; archived?: boolean; archiveReason?: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
@@ -3424,6 +3424,69 @@ function App() {
     }).catch(() => undefined);
   }
 
+  function updateLiveSessionAgenda(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const agendaItems = [
+      `Review ${target.linkedRecord}`,
+      `Confirm route: ${target.route}`,
+      "Assign follow-up ownership"
+    ];
+    setLiveSessions((items) => items.map((item) => item.id === id ? {
+      ...item,
+      agendaItems,
+      agendaUpdatedAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    } : item));
+    recordAudit("LiveSessionAgendaUpdated", target.title, `${agendaItems.length} agenda items`);
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/agenda`, {
+      method: "POST",
+      body: JSON.stringify({ items: agendaItems })
+    }).catch(() => undefined);
+  }
+
+  function updateLiveSessionScreenShare(id: string, status: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const now = new Date().toISOString();
+    setLiveSessions((items) => items.map((item) => item.id === id ? {
+      ...item,
+      screenShareStatus: status,
+      screenSharedBy: activeStation.email,
+      screenShareStartedAt: status === "Sharing" ? item.screenShareStartedAt ?? now : item.screenShareStartedAt,
+      screenShareStoppedAt: status === "Stopped" ? now : item.screenShareStoppedAt,
+      updatedAt: now
+    } : item));
+    recordAudit("LiveSessionScreenShareUpdated", target.title, status);
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/screen-share`, {
+      method: "POST",
+      body: JSON.stringify({ status })
+    }).catch(() => undefined);
+  }
+
+  function shareLiveSessionDocument(id: string) {
+    const target = liveSessions.find((item) => item.id === id);
+    if (!target) return;
+    const sharedDocument = {
+      id: `shared-doc-${Date.now()}`,
+      name: `${target.linkedRecord} shared brief.pdf`,
+      source: "Live Comms",
+      sharedBy: activeStation.email,
+      sharedAt: new Date().toISOString()
+    };
+    setLiveSessions((items) => items.map((item) => item.id === id ? {
+      ...item,
+      sharedDocuments: [sharedDocument, ...(item.sharedDocuments ?? [])],
+      files: Array.from(new Set([sharedDocument.name, ...(item.files ?? [])])),
+      updatedAt: sharedDocument.sharedAt
+    } : item));
+    recordAudit("LiveSessionDocumentShared", target.title, sharedDocument.name);
+    void apiRequest<LiveSession>(`/api/live-sessions/${id}/share-document`, {
+      method: "POST",
+      body: JSON.stringify({ name: sharedDocument.name, source: sharedDocument.source })
+    }).catch(() => undefined);
+  }
+
   function sendLiveSessionSummary(id: string) {
     const target = liveSessions.find((item) => item.id === id);
     if (!target) return;
@@ -3513,11 +3576,14 @@ function App() {
         `Type: ${target.sessionType}`,
         `Route: ${target.route}`,
         `Purpose: ${target.purpose}`,
+        `Agenda: ${(target.agendaItems ?? []).join("; ") || "No agenda recorded"}`,
         `Notes: ${(target.notes ?? []).join("; ") || "No notes recorded"}`,
         `Decisions: ${(target.decisions ?? []).map((decision) => decision.text).join("; ") || "No decisions recorded"}`,
         `Transcript: ${(target.transcript ?? []).map((entry) => `${entry.author}: ${entry.body}`).join("; ") || "No transcript messages"}`,
         `Voice transcript: ${target.voiceTranscript ?? "No voice transcript attached"}`,
         `Recording: ${target.recordingStatus ?? "Not recorded"}`,
+        `Screen share: ${target.screenShareStatus ?? "Not shared"}${target.screenSharedBy ? ` by ${target.screenSharedBy}` : ""}`,
+        `Shared documents: ${(target.sharedDocuments ?? []).map((document) => `${document.name} (${document.source})`).join(", ") || "No live documents shared"}`,
         `Files: ${(target.files ?? []).join(", ") || "No files attached"}`
       ].join("\n"),
       custodian: activeStation.email,
@@ -8514,6 +8580,9 @@ function App() {
             onRecordLiveSessionDecision={recordLiveSessionDecision}
             onUpdateLiveSessionRecording={updateLiveSessionRecording}
             onAttachLiveSessionTranscript={attachLiveSessionTranscript}
+            onUpdateLiveSessionAgenda={updateLiveSessionAgenda}
+            onUpdateLiveSessionScreenShare={updateLiveSessionScreenShare}
+            onShareLiveSessionDocument={shareLiveSessionDocument}
             onSendLiveSessionSummary={sendLiveSessionSummary}
             onCreateLiveSessionFollowUpTask={createLiveSessionFollowUpTask}
             onScheduleLiveSession={scheduleLiveSession}
@@ -12679,6 +12748,9 @@ function LiveComms({
   onRecordLiveSessionDecision,
   onUpdateLiveSessionRecording,
   onAttachLiveSessionTranscript,
+  onUpdateLiveSessionAgenda,
+  onUpdateLiveSessionScreenShare,
+  onShareLiveSessionDocument,
   onSendLiveSessionSummary,
   onCreateLiveSessionFollowUpTask,
   onScheduleLiveSession,
@@ -12703,6 +12775,9 @@ function LiveComms({
   onRecordLiveSessionDecision: (id: string) => void;
   onUpdateLiveSessionRecording: (id: string, status: string) => void;
   onAttachLiveSessionTranscript: (id: string) => void;
+  onUpdateLiveSessionAgenda: (id: string) => void;
+  onUpdateLiveSessionScreenShare: (id: string, status: string) => void;
+  onShareLiveSessionDocument: (id: string) => void;
   onSendLiveSessionSummary: (id: string) => void;
   onCreateLiveSessionFollowUpTask: (id: string) => void;
   onScheduleLiveSession: (id: string) => void;
@@ -12830,11 +12905,15 @@ function LiveComms({
               <small>Linked record: {sessionItem.linkedRecord}</small>
               <small>{sessionItem.notes?.length ?? 0} notes - {sessionItem.transcript?.length ?? 0} messages - {sessionItem.decisions?.length ?? 0} decisions</small>
               <small>{sessionItem.recordingStatus ?? "Not recorded"} - {sessionItem.transcriptStatus ?? "No voice transcript"}</small>
+              <small>{sessionItem.agendaItems?.length ?? 0} agenda - {sessionItem.screenShareStatus ?? "No screen share"} - {sessionItem.sharedDocuments?.length ?? 0} shared docs</small>
               <small>{sessionItem.files?.length ?? 0} files - {sessionItem.participants?.length ?? 0} invited - {sessionItem.checkedInParticipants?.length ?? 0} checked in</small>
               <div className="compact-actions">
                 <button type="button" onClick={() => onUpdateLiveSessionStatus(sessionItem.id, "Live")}>Join</button>
                 <button type="button" onClick={() => onUpdateLiveSessionRecording(sessionItem.id, sessionItem.recordingStatus === "Recording" ? "Stopped" : "Recording")}>{sessionItem.recordingStatus === "Recording" ? "Stop rec" : "Record"}</button>
                 <button type="button" onClick={() => onAttachLiveSessionTranscript(sessionItem.id)}>Transcript</button>
+                <button type="button" onClick={() => onUpdateLiveSessionAgenda(sessionItem.id)}>Agenda</button>
+                <button type="button" onClick={() => onUpdateLiveSessionScreenShare(sessionItem.id, sessionItem.screenShareStatus === "Sharing" ? "Stopped" : "Sharing")}>{sessionItem.screenShareStatus === "Sharing" ? "Stop share" : "Share screen"}</button>
+                <button type="button" onClick={() => onShareLiveSessionDocument(sessionItem.id)}>Share doc</button>
                 <button type="button" onClick={() => onInviteLiveSessionParticipant(sessionItem.id, inviteTarget)}>Invite</button>
                 <button type="button" onClick={() => onCheckInLiveSessionParticipant(sessionItem.id, station.email)}>Check in</button>
                 <button type="button" onClick={() => onAddLiveSessionChat(sessionItem.id)}>Chat</button>
@@ -12870,6 +12949,8 @@ function LiveComms({
             <span>{primarySession.title}</span>
             <small>{primarySession.purpose}</small>
             <button type="button" onClick={() => onSendLiveSessionSummary(primarySession.id)}><Mail size={14} /> Send summary</button>
+            <button type="button" onClick={() => onUpdateLiveSessionAgenda(primarySession.id)}><ClipboardCheck size={14} /> Set agenda</button>
+            <button type="button" onClick={() => onShareLiveSessionDocument(primarySession.id)}><FileCheck2 size={14} /> Share document</button>
             <button type="button" onClick={() => onCreateLiveSessionFollowUpTask(primarySession.id)}><SquareCheckBig size={14} /> Create follow-up</button>
             <button type="button" onClick={() => onBuildLiveSessionPacket(primarySession.id)}><ArchiveIcon size={14} /> Build packet</button>
             <button type="button" onClick={() => onOpenSection("Reports")}><FileCheck2 size={14} /> Open linked reports</button>

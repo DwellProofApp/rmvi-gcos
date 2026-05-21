@@ -1681,6 +1681,25 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(transcriptLiveSession.voiceTranscript, "Automated voice transcript for the live session.");
     assert.equal(transcriptLiveSession.transcriptStatus, "Transcribed");
 
+    const agendaLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/agenda`, {
+      items: ["Opening prayer", "Review district report", "Assign follow-up"]
+    }, nationalToken);
+    assert.equal(agendaLiveSession.agendaItems.includes("Review district report"), true);
+    assert.equal(Boolean(agendaLiveSession.agendaUpdatedAt), true);
+
+    const screenShareLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/screen-share`, {
+      status: "Sharing"
+    }, nationalToken);
+    assert.equal(screenShareLiveSession.screenShareStatus, "Sharing");
+    assert.equal(screenShareLiveSession.screenSharedBy, "np@rmvi.org");
+
+    const sharedDocLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/share-document`, {
+      name: "district-agenda.pdf",
+      source: "Meeting agenda"
+    }, nationalToken);
+    assert.equal(sharedDocLiveSession.sharedDocuments[0].name, "district-agenda.pdf");
+    assert.equal(sharedDocLiveSession.files.includes("district-agenda.pdf"), true);
+
     const liveSessionSummary = await postJson(`/api/live-sessions/${createdLiveSession.id}/summary-message`, {
       subject: "Automated live session summary",
       route: "National HQ -> District HQ"
