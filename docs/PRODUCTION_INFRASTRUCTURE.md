@@ -6,19 +6,26 @@ This runbook is the launch infrastructure checklist for `rmvi.org`.
 
 ```text
 rmvi.org
-  -> Replit Deployment: rmvi-gcos
-  -> Node single-process server
-  -> Built React web app served from dist
-  -> GCOS API under same origin
-  -> Managed Postgres persistence
-  -> Cloudflare R2 object vault for uploaded files and evidence
+  -> Firebase Hosting
+  -> Cloud Run service: rmvi-gcos-api
+  -> Built React web app plus GCOS API
+  -> Firestore persistence
+  -> Firebase Storage object vault for uploaded files and evidence
 ```
 
 GCOS remains web-first. Users enter through `https://rmvi.org`, then the sign-in portal loads the correct station workstation.
 
+## Recommended Google/Firebase Path
+
+The current recommendation is Firebase Hosting, Cloud Run, Firestore, and Firebase Storage. The full runbook is in `docs/FIREBASE_DEPLOYMENT.md`.
+
+```bash
+npm run firebase:run
+```
+
 ## AWS Path
 
-The AWS launch path is documented in `docs/AWS_DEPLOYMENT.md`. Use AWS Elastic Beanstalk, Amazon RDS PostgreSQL, and Amazon S3 for the first AWS production deployment. App Runner is only an option if the AWS account already has access.
+The AWS launch path is still available in `docs/AWS_DEPLOYMENT.md`. Use it only if RMVI decides to run on AWS later.
 
 ```bash
 npm run aws:run
@@ -26,11 +33,11 @@ npm run aws:run
 
 ## Required Production Services
 
-1. Replit production deployment for `rmvi-gcos`.
-2. Custom domain `rmvi.org` attached to that deployment.
-3. Managed Postgres database for users, reports, messages, workflows, approvals, audit rows, office hierarchy, and sessions.
-4. Object vault storage for PDFs, photos, videos, voice notes, signed documents, and report evidence.
-5. Production secrets configured from `.env.production.example`.
+1. Firebase Hosting site for `rmvi.org`.
+2. Cloud Run service for `rmvi-gcos-api`.
+3. Firestore database for users, reports, messages, workflows, approvals, audit rows, office hierarchy, and sessions.
+4. Firebase Storage bucket for PDFs, photos, videos, voice notes, signed documents, and report evidence.
+5. Production environment configured from `.env.firebase.example`.
 6. Backup and restore drill recorded from the GCOS Audit workspace.
 
 ## Replit Secrets

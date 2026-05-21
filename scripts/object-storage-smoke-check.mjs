@@ -16,7 +16,8 @@ const objectStorage = createObjectStorageAdapter({
   s3Bucket: process.env.GCOS_S3_BUCKET,
   awsRegion: process.env.GCOS_AWS_REGION ?? process.env.AWS_REGION,
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  firebaseStorageBucket: process.env.GCOS_FIREBASE_STORAGE_BUCKET ?? process.env.FIREBASE_STORAGE_BUCKET
 });
 
 const smoke = await objectStorage.smokeCheck({ actor: "object-storage-smoke-check" });

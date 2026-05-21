@@ -136,6 +136,7 @@ docs/DEPLOYMENT_CHECKLIST.md
 docs/REPLIT_RMVI_DOMAIN.md
 docs/FINAL_RELEASE_HANDOFF.md
 docs/PRODUCTION_INFRASTRUCTURE.md
+docs/FIREBASE_DEPLOYMENT.md
 docs/AWS_DEPLOYMENT.md
 ```
 
@@ -152,12 +153,15 @@ docs/PRODUCTION_INFRASTRUCTURE.md
 VITE_GCOS_API_BASE  Frontend API origin; leave empty for same-origin production serving
 GCOS_API_PORT       API/web server port, defaults to 8787
 GCOS_HOST           Bind host, use 127.0.0.1 locally and 0.0.0.0 on Replit/hosting
-GCOS_STORAGE_PROVIDER Storage adapter, use json by default or database for Postgres JSONB
+GCOS_STORAGE_PROVIDER Storage adapter, use json locally, firestore on Firebase, or database for Postgres JSONB
 GCOS_DATABASE_URL   Postgres connection string used when GCOS_STORAGE_PROVIDER=database
 DATABASE_URL        Optional Replit Postgres fallback when GCOS_DATABASE_URL is not set
 GCOS_DATABASE_SSL   Set to 1 when the managed Postgres host requires SSL
 GCOS_DATABASE_POOL_SIZE Max Postgres pool connections, defaults to 5
-GCOS_OBJECT_STORAGE_PROVIDER Object vault backend; use cloudflare-r2 for production files
+GCOS_OBJECT_STORAGE_PROVIDER Object vault backend; use firebase-storage, cloudflare-r2, or aws-s3 for production files
+GCOS_FIREBASE_PROJECT_ID Firebase/Google project ID when GCOS_STORAGE_PROVIDER=firestore
+GCOS_FIREBASE_NAMESPACE Firestore namespace prefix, usually production
+GCOS_FIREBASE_STORAGE_BUCKET Firebase Storage bucket when GCOS_OBJECT_STORAGE_PROVIDER=firebase-storage
 GCOS_AWS_REGION   AWS region used when GCOS_OBJECT_STORAGE_PROVIDER=aws-s3
 GCOS_S3_BUCKET    AWS S3 bucket used when GCOS_OBJECT_STORAGE_PROVIDER=aws-s3
 GCOS_R2_ACCOUNT_ID Cloudflare account ID for R2 object storage

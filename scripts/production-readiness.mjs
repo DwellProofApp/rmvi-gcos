@@ -8,6 +8,7 @@ const env = { ...defaults, ...process.env };
 const databaseUrl = env.GCOS_DATABASE_URL ?? env.DATABASE_URL ?? "";
 const databaseUrlSource = process.env.GCOS_DATABASE_URL ? "GCOS_DATABASE_URL" : process.env.DATABASE_URL ? "DATABASE_URL" : "";
 const objectStorageProvider = String(env.GCOS_OBJECT_STORAGE_PROVIDER ?? "filesystem").toLowerCase();
+const recordStorageProvider = String(env.GCOS_STORAGE_PROVIDER ?? "json").toLowerCase();
 
 const required = [
   ["NODE_ENV", (value) => value === "production", "set NODE_ENV=production"],
@@ -18,18 +19,21 @@ const required = [
   ["GCOS_HEALTHCHECK_URL", (value) => value === "https://rmvi.org", "set GCOS_HEALTHCHECK_URL=https://rmvi.org"],
   ["GCOS_ENABLE_DEV_RESET", (value) => value === "0", "set GCOS_ENABLE_DEV_RESET=0"],
   ["GCOS_REQUIRE_API_AUTH", (value) => value === "1", "set GCOS_REQUIRE_API_AUTH=1"],
-  ["GCOS_STORAGE_PROVIDER", (value) => value === "database", "set GCOS_STORAGE_PROVIDER=database"],
-  ["GCOS_DATABASE_URL", () => Boolean(databaseUrl) && !/USER:PASSWORD|HOST|DATABASE/.test(databaseUrl), "set a real managed Postgres URL in GCOS_DATABASE_URL or Replit DATABASE_URL"],
-  ["GCOS_DATABASE_SSL", (value) => value === "1", "set GCOS_DATABASE_SSL=1"],
-  ["GCOS_DATABASE_POOL_SIZE", (value) => Number(value) >= 2, "set GCOS_DATABASE_POOL_SIZE to at least 2"],
-  ["GCOS_OBJECT_STORAGE_PROVIDER", (value) => ["filesystem", "r2", "cloudflare-r2", "s3", "aws-s3"].includes(String(value).toLowerCase()), "set GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2 or aws-s3 for durable object storage"],
-  ["GCOS_OBJECT_VAULT_PATH", (value) => objectStorageProvider.includes("r2") || Boolean(value), "set a persistent object vault path"],
+  ["GCOS_STORAGE_PROVIDER", (value) => ["database", "firestore", "firebase"].includes(String(value).toLowerCase()), "set GCOS_STORAGE_PROVIDER=firestore for Firebase or database for managed Postgres"],
+  ["GCOS_DATABASE_URL", () => recordStorageProvider !== "database" || (Boolean(databaseUrl) && !/USER:PASSWORD|HOST|DATABASE/.test(databaseUrl)), "set a real managed Postgres URL in GCOS_DATABASE_URL or DATABASE_URL"],
+  ["GCOS_DATABASE_SSL", (value) => recordStorageProvider !== "database" || value === "1", "set GCOS_DATABASE_SSL=1 for Postgres"],
+  ["GCOS_DATABASE_POOL_SIZE", (value) => recordStorageProvider !== "database" || Number(value) >= 2, "set GCOS_DATABASE_POOL_SIZE to at least 2 for Postgres"],
+  ["GCOS_FIREBASE_PROJECT_ID", (value) => !["firestore", "firebase"].includes(recordStorageProvider) || Boolean(value || env.GOOGLE_CLOUD_PROJECT), "set GCOS_FIREBASE_PROJECT_ID for Firestore"],
+  ["GCOS_FIREBASE_NAMESPACE", (value) => !["firestore", "firebase"].includes(recordStorageProvider) || Boolean(value), "set GCOS_FIREBASE_NAMESPACE=production"],
+  ["GCOS_OBJECT_STORAGE_PROVIDER", (value) => ["filesystem", "r2", "cloudflare-r2", "s3", "aws-s3", "firebase-storage", "google-cloud-storage", "gcs"].includes(String(value).toLowerCase()), "set GCOS_OBJECT_STORAGE_PROVIDER=firebase-storage, cloudflare-r2, or aws-s3 for durable object storage"],
+  ["GCOS_OBJECT_VAULT_PATH", (value) => objectStorageProvider.includes("r2") || objectStorageProvider.includes("s3") || objectStorageProvider.includes("firebase") || objectStorageProvider.includes("google") || objectStorageProvider === "gcs" || Boolean(value), "set a persistent object vault path"],
   ["GCOS_R2_ACCOUNT_ID", (value) => !objectStorageProvider.includes("r2") || Boolean(value), "set GCOS_R2_ACCOUNT_ID for Cloudflare R2"],
   ["GCOS_R2_BUCKET", (value) => !objectStorageProvider.includes("r2") || Boolean(value), "set GCOS_R2_BUCKET for Cloudflare R2"],
   ["GCOS_R2_ACCESS_KEY_ID", (value) => !objectStorageProvider.includes("r2") || Boolean(value), "set GCOS_R2_ACCESS_KEY_ID for Cloudflare R2"],
   ["GCOS_R2_SECRET_ACCESS_KEY", (value) => !objectStorageProvider.includes("r2") || Boolean(value), "set GCOS_R2_SECRET_ACCESS_KEY for Cloudflare R2"],
   ["GCOS_S3_BUCKET", (value) => !objectStorageProvider.includes("s3") || Boolean(value), "set GCOS_S3_BUCKET for AWS S3"],
   ["GCOS_AWS_REGION", (value) => !objectStorageProvider.includes("s3") || Boolean(value || env.AWS_REGION), "set GCOS_AWS_REGION or AWS_REGION for AWS S3"],
+  ["GCOS_FIREBASE_STORAGE_BUCKET", (value) => !(objectStorageProvider.includes("firebase") || objectStorageProvider.includes("google") || objectStorageProvider === "gcs") || Boolean(value || env.FIREBASE_STORAGE_BUCKET), "set GCOS_FIREBASE_STORAGE_BUCKET for Firebase Storage"],
   ["GCOS_LOGIN_RATE_LIMIT", (value) => Number(value) >= 5, "set GCOS_LOGIN_RATE_LIMIT to at least 5"],
   ["GCOS_LOGIN_RATE_WINDOW_MS", (value) => Number(value) >= 60000, "set GCOS_LOGIN_RATE_WINDOW_MS to at least 60000"],
   ["GCOS_MUTATION_RATE_LIMIT", (value) => Number(value) >= 100, "set GCOS_MUTATION_RATE_LIMIT to at least 100"],

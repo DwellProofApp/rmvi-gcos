@@ -29,7 +29,8 @@ const objectStorage = createObjectStorageAdapter({
   s3Bucket: process.env.GCOS_S3_BUCKET,
   awsRegion: process.env.GCOS_AWS_REGION ?? process.env.AWS_REGION,
   awsAccessKeyId: process.env.AWS_ACCESS_KEY_ID,
-  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY
+  awsSecretAccessKey: process.env.AWS_SECRET_ACCESS_KEY,
+  firebaseStorageBucket: process.env.GCOS_FIREBASE_STORAGE_BUCKET ?? process.env.FIREBASE_STORAGE_BUCKET
 });
 const SERVE_WEB = process.env.GCOS_SERVE_WEB === "1";
 const WEB_DIST_PATH = process.env.GCOS_WEB_DIST_PATH ?? join(SERVER_DIR, "..", "dist");
@@ -1049,16 +1050,19 @@ function productionSecretEntries() {
     { name: "GCOS_HEALTHCHECK_URL", value: "https://rmvi.org", configured: (process.env.GCOS_HEALTHCHECK_URL ?? "") === "https://rmvi.org", sensitive: false },
     { name: "GCOS_ENABLE_DEV_RESET", value: "0", configured: !DEV_RESET_ENABLED, sensitive: false },
     { name: "GCOS_REQUIRE_API_AUTH", value: "1", configured: REQUIRE_API_AUTH, sensitive: false },
-    { name: "GCOS_STORAGE_PROVIDER", value: "database", configured: STORAGE_PROVIDER === "database", sensitive: false },
-    { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? `${redactSecret(DATABASE_URL)}${DATABASE_URL_SOURCE === "DATABASE_URL" ? " via DATABASE_URL" : ""}` : "required", configured: Boolean(DATABASE_URL), sensitive: true },
-    { name: "GCOS_DATABASE_SSL", value: "1", configured: process.env.GCOS_DATABASE_SSL === "1", sensitive: false },
-    { name: "GCOS_DATABASE_POOL_SIZE", value: process.env.GCOS_DATABASE_POOL_SIZE ?? "5", configured: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, sensitive: false },
+    { name: "GCOS_STORAGE_PROVIDER", value: STORAGE_PROVIDER, configured: STORAGE_PROVIDER === "database" ? Boolean(DATABASE_URL) : STORAGE_PROVIDER === "firestore", sensitive: false },
+    { name: "GCOS_DATABASE_URL", value: DATABASE_URL ? `${redactSecret(DATABASE_URL)}${DATABASE_URL_SOURCE === "DATABASE_URL" ? " via DATABASE_URL" : ""}` : "required for Postgres only", configured: ["firestore", "firebase"].includes(STORAGE_PROVIDER) || (STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL)), sensitive: true },
+    { name: "GCOS_DATABASE_SSL", value: process.env.GCOS_DATABASE_SSL ?? "required for Postgres only", configured: ["firestore", "firebase"].includes(STORAGE_PROVIDER) || (STORAGE_PROVIDER === "database" && process.env.GCOS_DATABASE_SSL === "1"), sensitive: false },
+    { name: "GCOS_DATABASE_POOL_SIZE", value: process.env.GCOS_DATABASE_POOL_SIZE ?? "5", configured: ["firestore", "firebase"].includes(STORAGE_PROVIDER) || (STORAGE_PROVIDER === "database" && Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2), sensitive: false },
+    { name: "GCOS_FIREBASE_PROJECT_ID", value: process.env.GCOS_FIREBASE_PROJECT_ID ?? process.env.GOOGLE_CLOUD_PROJECT ?? "required for Firebase", configured: STORAGE_PROVIDER !== "firestore" || Boolean(process.env.GCOS_FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT), sensitive: false },
+    { name: "GCOS_FIREBASE_NAMESPACE", value: process.env.GCOS_FIREBASE_NAMESPACE ?? "production", configured: STORAGE_PROVIDER !== "firestore" || Boolean(process.env.GCOS_FIREBASE_NAMESPACE), sensitive: false },
     { name: "GCOS_OBJECT_STORAGE_PROVIDER", value: OBJECT_STORAGE_PROVIDER, configured: objectStorage.configured, sensitive: false },
-    { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: objectStorage.provider === "cloudflare-r2" || Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false },
+    { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: ["cloudflare-r2", "aws-s3", "firebase-storage"].includes(objectStorage.provider) || Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false },
     { name: "GCOS_R2_ACCOUNT_ID", value: process.env.GCOS_R2_ACCOUNT_ID ? "configured" : "required for R2", configured: objectStorage.provider !== "cloudflare-r2" || Boolean(process.env.GCOS_R2_ACCOUNT_ID), sensitive: true },
     { name: "GCOS_R2_BUCKET", value: process.env.GCOS_R2_BUCKET ?? "required for R2", configured: objectStorage.provider !== "cloudflare-r2" || Boolean(process.env.GCOS_R2_BUCKET), sensitive: false },
     { name: "GCOS_R2_ACCESS_KEY_ID", value: process.env.GCOS_R2_ACCESS_KEY_ID ? "configured" : "required for R2", configured: objectStorage.provider !== "cloudflare-r2" || Boolean(process.env.GCOS_R2_ACCESS_KEY_ID), sensitive: true },
     { name: "GCOS_R2_SECRET_ACCESS_KEY", value: process.env.GCOS_R2_SECRET_ACCESS_KEY ? "configured" : "required for R2", configured: objectStorage.provider !== "cloudflare-r2" || Boolean(process.env.GCOS_R2_SECRET_ACCESS_KEY), sensitive: true },
+    { name: "GCOS_FIREBASE_STORAGE_BUCKET", value: process.env.GCOS_FIREBASE_STORAGE_BUCKET ?? process.env.FIREBASE_STORAGE_BUCKET ?? "required for Firebase Storage", configured: objectStorage.provider !== "firebase-storage" || Boolean(process.env.GCOS_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET), sensitive: false },
     { name: "GCOS_LOGIN_RATE_LIMIT", value: String(LOGIN_RATE_LIMIT), configured: LOGIN_RATE_LIMIT >= 5, sensitive: false },
     { name: "GCOS_LOGIN_RATE_WINDOW_MS", value: String(LOGIN_RATE_WINDOW_MS), configured: LOGIN_RATE_WINDOW_MS >= 60000, sensitive: false },
     { name: "GCOS_MUTATION_RATE_LIMIT", value: String(MUTATION_RATE_LIMIT), configured: MUTATION_RATE_LIMIT >= 100, sensitive: false },
@@ -1093,9 +1097,13 @@ function productionSecretsPlan() {
 
 function productionSecretAction(name) {
   if (name === "GCOS_DATABASE_URL") return "Create/connect managed Postgres and set GCOS_DATABASE_URL in Replit Secrets.";
-  if (name === "GCOS_OBJECT_STORAGE_PROVIDER") return "Set GCOS_OBJECT_STORAGE_PROVIDER=cloudflare-r2 after the Cloudflare R2 bucket and API token are ready.";
+  if (name === "GCOS_STORAGE_PROVIDER") return "Set GCOS_STORAGE_PROVIDER=firestore for Firebase or database for managed Postgres.";
+  if (name === "GCOS_FIREBASE_PROJECT_ID") return "Create the Firebase project, then set GCOS_FIREBASE_PROJECT_ID.";
+  if (name === "GCOS_FIREBASE_NAMESPACE") return "Set GCOS_FIREBASE_NAMESPACE=production.";
+  if (name === "GCOS_OBJECT_STORAGE_PROVIDER") return "Set GCOS_OBJECT_STORAGE_PROVIDER=firebase-storage for Google/Firebase deployment.";
   if (name === "GCOS_OBJECT_VAULT_PATH") return "Set GCOS_OBJECT_VAULT_PATH to a persistent upload vault path.";
   if (name.startsWith("GCOS_R2_")) return "Create a Cloudflare R2 bucket and API token, then add this R2 value in Replit Secrets.";
+  if (name === "GCOS_FIREBASE_STORAGE_BUCKET") return "Enable Firebase Storage, then set GCOS_FIREBASE_STORAGE_BUCKET to the bucket name.";
   if (name === "NODE_ENV") return "Set NODE_ENV=production in Replit Secrets.";
   if (name === "GCOS_ALLOWED_ORIGIN") return "Set GCOS_ALLOWED_ORIGIN=https://rmvi.org.";
   if (name === "GCOS_HEALTHCHECK_URL") return "Set GCOS_HEALTHCHECK_URL=https://rmvi.org.";
@@ -1491,7 +1499,7 @@ function storageProfile() {
     recommendedProduction: {
       database: "Managed Postgres",
       fileVault: "Durable object storage for PDFs, photos, videos, voice notes, and signed documents",
-      currentLaunch: objectStorage.provider === "cloudflare-r2" ? "Replit Postgres plus Cloudflare R2" : "Replit Postgres plus configured object vault path"
+      currentLaunch: objectStorage.provider === "firebase-storage" ? "Firebase Hosting, Firestore, Cloud Run, and Firebase Storage" : objectStorage.provider === "cloudflare-r2" ? "Replit Postgres plus Cloudflare R2" : "Managed records plus configured object vault path"
     }
   };
 }

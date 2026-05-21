@@ -1,6 +1,8 @@
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 import { DeleteObjectCommand, GetObjectCommand, PutObjectCommand, S3Client } from "@aws-sdk/client-s3";
+import { getStorage } from "firebase-admin/storage";
+import { firebaseConfigured, getFirebaseAdminApp } from "./firebase-admin.mjs";
 
 export function createObjectStorageAdapter({
   provider,
@@ -12,7 +14,8 @@ export function createObjectStorageAdapter({
   s3Bucket,
   awsRegion,
   awsAccessKeyId,
-  awsSecretAccessKey
+  awsSecretAccessKey,
+  firebaseStorageBucket
 }) {
   const selected = String(provider ?? "filesystem").toLowerCase();
   if (selected === "filesystem") return createFilesystemObjectStorage({ vaultPath });
@@ -21,6 +24,9 @@ export function createObjectStorageAdapter({
   }
   if (selected === "s3" || selected === "aws-s3") {
     return createS3ObjectStorage({ s3Bucket, awsRegion, awsAccessKeyId, awsSecretAccessKey });
+  }
+  if (selected === "firebase-storage" || selected === "google-cloud-storage" || selected === "gcs") {
+    return createFirebaseStorageObjectStorage({ firebaseStorageBucket });
   }
   throw new Error(`Unsupported GCOS_OBJECT_STORAGE_PROVIDER: ${provider}`);
 }
@@ -164,6 +170,56 @@ function createS3ObjectStorage({ s3Bucket, awsRegion, awsAccessKeyId, awsSecretA
         Bucket: s3Bucket,
         Key: key
       }));
+    },
+
+    async smokeCheck({ actor } = {}) {
+      return smokeObjectStorage(this, { actor });
+    }
+  };
+}
+
+function createFirebaseStorageObjectStorage({ firebaseStorageBucket }) {
+  const configured = firebaseConfigured() && Boolean(firebaseStorageBucket || process.env.GCOS_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET);
+  let bucket = null;
+
+  function getBucket() {
+    if (!configured) throw new Error("Firebase Storage is not configured");
+    if (!bucket) {
+      bucket = getStorage(getFirebaseAdminApp()).bucket(firebaseStorageBucket || process.env.GCOS_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET);
+    }
+    return bucket;
+  }
+
+  const bucketName = firebaseStorageBucket || process.env.GCOS_FIREBASE_STORAGE_BUCKET || process.env.FIREBASE_STORAGE_BUCKET || "Firebase Storage bucket not configured";
+
+  return {
+    provider: "firebase-storage",
+    mode: "google-cloud-object-storage",
+    location: configured ? `gs://${bucketName}` : "Firebase Storage not configured",
+    configured,
+
+    async putObject({ key, body, contentType }) {
+      const file = getBucket().file(key);
+      await file.save(body, {
+        resumable: false,
+        metadata: {
+          contentType: contentType ?? "application/octet-stream"
+        }
+      });
+      return { storagePath: `gs://${getBucket().name}/${key}` };
+    },
+
+    async getObject({ key }) {
+      const [buffer] = await getBucket().file(key).download();
+      return buffer;
+    },
+
+    async deleteObject({ key }) {
+      try {
+        await getBucket().file(key).delete();
+      } catch (error) {
+        if (error.code !== 404) throw error;
+      }
     },
 
     async smokeCheck({ actor } = {}) {
