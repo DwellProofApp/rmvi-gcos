@@ -7706,6 +7706,74 @@ h1 {
   color: #061a3d;
 }
 
+.restore-runbook-panel {
+  display: grid;
+  grid-template-columns: minmax(0, 0.95fr) minmax(240px, 1.05fr);
+  gap: 14px;
+  margin-top: 14px;
+  padding: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.11), rgba(255, 255, 255, 0.055)),
+    rgba(255, 255, 255, 0.07);
+}
+
+.restore-runbook-panel span {
+  display: block;
+  margin-bottom: 6px;
+  color: #f4c542;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.restore-runbook-panel strong {
+  display: block;
+  color: #ffffff;
+  font-size: 18px;
+}
+
+.restore-runbook-panel small {
+  display: block;
+  margin-top: 8px;
+  color: rgba(255, 255, 255, 0.72);
+  line-height: 1.5;
+}
+
+.restore-runbook-panel ol {
+  display: grid;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  counter-reset: restore-step;
+}
+
+.restore-runbook-panel li {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 850;
+}
+
+.restore-runbook-panel li::before {
+  counter-increment: restore-step;
+  content: counter(restore-step);
+  width: 24px;
+  height: 24px;
+  display: grid;
+  flex: 0 0 auto;
+  place-items: center;
+  border-radius: 999px;
+  background: #f4c542;
+  color: #061a3d;
+  font-size: 12px;
+  font-weight: 950;
+}
+
 .production-readiness-grid .insight {
   min-height: 84px;
   border-color: rgba(255, 255, 255, 0.12);

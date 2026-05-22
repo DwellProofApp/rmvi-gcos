@@ -15822,12 +15822,14 @@ function Audit({
     if (!confirmed) return;
     const providerReference = window.prompt("Provider reference or restore ticket", `firebase-managed-restore-${new Date().toISOString().slice(0, 10)}`);
     if (!providerReference) return;
+    const evidence = window.prompt("Evidence note for audit record", "Firestore managed export restored, record counts reviewed, and launch administrator approved the restore drill.");
+    if (!evidence) return;
     void apiRequest<{ drill: PersistenceRestoreDrill; status: PersistenceStatus }>("/api/persistence/restore-drill", {
       method: "POST",
       body: JSON.stringify({
         attestation: "MANAGED_RESTORE_CONFIRMED",
         providerReference,
-        evidence: "Firebase/Firestore managed export or restore drill completed and reviewed by the RMVI launch administrator.",
+        evidence,
         restoredAt: new Date().toISOString()
       })
     }).then((result) => {
@@ -16378,6 +16380,20 @@ function Audit({
           <button className="primary" onClick={recordRestoreDrill}><ShieldCheck size={16} /> Attest restore drill</button>
           <button onClick={recordLaunchReadiness}><Globe2 size={16} /> Record launch check</button>
           <button onClick={recordOperationalMonitor}><RadioTower size={16} /> Record monitor</button>
+        </div>
+        <div className="restore-runbook-panel">
+          <div>
+            <span>Restore drill runbook</span>
+            <strong>Final step before 100% production signoff</strong>
+            <small>Create a backup, verify the manifest, run the managed Firebase/Firestore restore test, record the provider reference, then archive the evidence note in the audit ledger.</small>
+          </div>
+          <ol>
+            <li>Create backup snapshot</li>
+            <li>Record backup manifest</li>
+            <li>Run provider restore/export test</li>
+            <li>Compare record counts and hashes</li>
+            <li>Attest restore drill with evidence</li>
+          </ol>
         </div>
         <div className="production-readiness-grid">
           <Insight label="Production checks" value={`${productionPassed}/${productionChecks.length || 20}`} />
