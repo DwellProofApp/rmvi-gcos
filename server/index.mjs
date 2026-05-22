@@ -8,6 +8,9 @@ import { createServices } from "./services.mjs";
 import { createObjectStorageAdapter } from "./object-storage.mjs";
 import { createStorageAdapter } from "./storage/index.mjs";
 import { validateRequest } from "./validation.mjs";
+import { createAuthProvider } from "./integrations/auth-provider.mjs";
+import { createEmailProvider } from "./integrations/email-provider.mjs";
+import { createVideoProvider } from "./integrations/video-provider.mjs";
 
 const PORT = Number(process.env.GCOS_API_PORT ?? process.env.PORT ?? 8787);
 const HOST = process.env.GCOS_HOST ?? "127.0.0.1";
@@ -57,9 +60,14 @@ const usesManagedRecordStorage = STORAGE_PROVIDER === "database" || ["firestore"
 const usesDurableObjectStorage = ["cloudflare-r2", "aws-s3", "firebase-storage", "google-cloud-storage", "gcs"].includes(objectStorage.provider);
 const storage = createStorageAdapter({ provider: STORAGE_PROVIDER, dataPath: DATA_PATH, databaseUrl: DATABASE_URL });
 const BUILD_INFO = await loadBuildInfo();
+const integrations = {
+  auth: createAuthProvider(),
+  email: createEmailProvider(),
+  video: createVideoProvider()
+};
 
 const state = await loadState();
-const services = createServices({ state, record, requirePermission, findById });
+const services = createServices({ state, record, requirePermission, findById, integrations });
 const sessions = new Map();
 const rateLimitBuckets = new Map();
 
@@ -87,6 +95,7 @@ const routes = {
   "POST /api/security-controls/:name/remediation": ({ params, body, session }) => createdResponse(createSecurityControlRemediation(params.name, body, session.email)),
   "POST /api/security-controls/:name/verify": ({ params, body, session }) => ok(verifySecurityControl(params.name, body, session.email)),
   "GET /api/status": () => ok(operationalStatus({ includeSessions: !REQUIRE_API_AUTH })),
+  "GET /api/integrations/status": () => ok(integrationStatus()),
   "GET /api/ops/monitor": async () => ok(await operationalMonitor()),
   "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
@@ -159,16 +168,16 @@ const routes = {
   "POST /api/stations/:id/authority": ({ params, body }) => ok(services.updateStationAuthority(params.id, body)),
   "POST /api/stations/:id/verify": ({ params, body }) => ok(services.verifyStation(params.id, body)),
   "POST /api/stations/:id/watch": ({ params, body }) => ok(services.watchStation(params.id, body)),
-  "POST /api/stations/:id/suspend": ({ params, body }) => ok(services.suspendStation(params.id, body)),
-  "POST /api/stations/:id/activate": ({ params, body }) => ok(services.activateStation(params.id, body)),
+  "POST /api/stations/:id/suspend": async ({ params, body }) => ok(await services.suspendStation(params.id, body)),
+  "POST /api/stations/:id/activate": async ({ params, body }) => ok(await services.activateStation(params.id, body)),
   "POST /api/stations/:id/mirror": ({ params, body }) => createdResponse(services.mirrorStation(params.id, body)),
-  "POST /api/stations/:id/credential/rotate": ({ params, body }) => ok(services.rotateStationCredential(params.id, body)),
-  "POST /api/stations/:id/credential/reset": ({ params, body }) => ok(services.forceStationPasswordReset(params.id, body)),
+  "POST /api/stations/:id/credential/rotate": async ({ params, body }) => ok(await services.rotateStationCredential(params.id, body)),
+  "POST /api/stations/:id/credential/reset": async ({ params, body }) => ok(await services.forceStationPasswordReset(params.id, body)),
   "POST /api/stations/:id/credential/mfa": ({ params, body }) => ok(services.requireStationMfa(params.id, body)),
   "POST /api/stations/:id/credential/lock": ({ params, body }) => ok(services.lockStationCredential(params.id, body)),
   "POST /api/stations/:id/credential/unlock": ({ params, body }) => ok(services.unlockStationCredential(params.id, body)),
   "GET /api/messages": () => ok(state.messages),
-  "POST /api/messages": ({ body }) => createdResponse(services.createMessage(body)),
+  "POST /api/messages": async ({ body }) => createdResponse(await services.createMessage(body)),
   "POST /api/messages/bulk/approve": ({ body }) => ok(services.bulkApproveMessages(body)),
   "GET /api/messages/digest": () => ok(services.messageDigest()),
   "POST /api/messages/:id/classify": ({ params, body }) => ok(services.classifyMessage(params.id, body)),
@@ -298,7 +307,7 @@ const routes = {
   "POST /api/calendar-events/bulk/reschedule": ({ body }) => ok(services.bulkRescheduleCalendarEvents(body)),
   "GET /api/calendar-events/digest": () => ok(services.calendarDigest()),
   "GET /api/live-sessions": () => ok(state.liveSessions ?? []),
-  "POST /api/live-sessions": ({ body, session }) => createdResponse(services.createLiveSession({ ...body, actor: session.email })),
+  "POST /api/live-sessions": async ({ body, session }) => createdResponse(await services.createLiveSession({ ...body, actor: session.email })),
   "GET /api/live-sessions/digest": () => ok(services.liveCommsDigest()),
   "POST /api/live-sessions/:id/status": ({ params, body, session }) => ok(services.updateLiveSessionStatus(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/file": ({ params, body, session }) => ok(services.attachLiveSessionFile(params.id, { ...body, actor: session.email })),
@@ -387,17 +396,17 @@ const routes = {
   "POST /api/escalations/bulk/resolve": ({ body }) => ok(services.bulkResolveEscalations(body)),
   "GET /api/escalations/digest": () => ok(services.escalationDigest()),
   "GET /api/offices": () => ok(state.offices),
-  "POST /api/offices": ({ body }) => {
-    const result = services.createOffice(body);
+  "POST /api/offices": async ({ body }) => {
+    const result = await services.createOffice(body);
     if (result.conflict) return conflict({ error: result.error });
     return createdResponse(result);
   },
   "POST /api/offices/:id/supervisor": ({ params, body }) => ok(services.updateOfficeSupervisor(params.id, body)),
   "POST /api/offices/:id/status": ({ params, body }) => ok(services.updateOfficeStatus(params.id, body)),
-  "POST /api/offices/:id/activate": ({ params, body }) => ok(services.activateOffice(params.id, body)),
-  "POST /api/offices/:id/suspend": ({ params, body }) => ok(services.suspendOffice(params.id, body)),
-  "POST /api/offices/:id/password/rotate": ({ params, body }) => ok(services.rotateOfficePassword(params.id, body)),
-  "POST /api/offices/:id/station/activate": ({ params, body }) => ok(services.activateOfficeStation(params.id, body)),
+  "POST /api/offices/:id/activate": async ({ params, body }) => ok(await services.activateOffice(params.id, body)),
+  "POST /api/offices/:id/suspend": async ({ params, body }) => ok(await services.suspendOffice(params.id, body)),
+  "POST /api/offices/:id/password/rotate": async ({ params, body }) => ok(await services.rotateOfficePassword(params.id, body)),
+  "POST /api/offices/:id/station/activate": async ({ params, body }) => ok(await services.activateOfficeStation(params.id, body)),
   "POST /api/offices/:id/department": ({ params, body }) => ok(services.updateOfficeDepartment(params.id, body)),
   "POST /api/offices/:id/level": ({ params, body }) => ok(services.updateOfficeLevel(params.id, body)),
   "POST /api/offices/:id/email/verify": ({ params, body }) => ok(services.verifyOfficeEmail(params.id, body)),
@@ -516,9 +525,9 @@ const routes = {
   "POST /api/ai-drafts/:id/watch": ({ params, body }) => ok(services.watchAiDraft(params.id, body)),
   "POST /api/ai-drafts/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateAiDraft(params.id, body)),
   "POST /api/offline-sync": ({ body }) => ok(services.syncOfflineActions(body)),
-  "POST /api/auth/login": ({ body }) => {
+  "POST /api/auth/login": async ({ body }) => {
     assertLoginRateLimit(body.email, body.clientIp);
-    const result = services.login(body);
+    const result = await services.login(body);
     if (result.unauthorized) return unauthorized({ error: result.error });
     const session = createSession(result.station.email);
     return ok({ ...result, permissions: getPermissions(result.station), token: session.token, expiresAt: session.expiresAt });
@@ -602,8 +611,22 @@ function operationalStatus({ includeSessions = true } = {}) {
     },
     storageProfile: storageProfile()
   };
+  status.integrations = integrationStatus();
   if (includeSessions) status.sessions = sessionSummary();
   return status;
+}
+
+function integrationStatus() {
+  return {
+    auth: integrations.auth.status(),
+    email: integrations.email.status(),
+    video: integrations.video.status(),
+    records: {
+      identitySynced: state.stations.filter((station) => station.identitySyncedAt).length,
+      churchMailDelivered: state.messages.filter((message) => message.delivery?.status === "Sent" || message.delivery?.status === "Queued").length,
+      liveRooms: (state.liveSessions ?? []).filter((session) => session.joinUrl).length
+    }
+  };
 }
 
 function deploymentBuildInfo() {
@@ -1094,6 +1117,11 @@ function productionSecretEntries() {
     { name: "GCOS_DATABASE_POOL_SIZE", value: process.env.GCOS_DATABASE_POOL_SIZE ?? "5", configured: ["firestore", "firebase"].includes(STORAGE_PROVIDER) || (STORAGE_PROVIDER === "database" && Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2), sensitive: false },
     { name: "GCOS_FIREBASE_PROJECT_ID", value: process.env.GCOS_FIREBASE_PROJECT_ID ?? process.env.GOOGLE_CLOUD_PROJECT ?? "required for Firebase", configured: STORAGE_PROVIDER !== "firestore" || Boolean(process.env.GCOS_FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT), sensitive: false },
     { name: "GCOS_FIREBASE_NAMESPACE", value: process.env.GCOS_FIREBASE_NAMESPACE ?? "production", configured: STORAGE_PROVIDER !== "firestore" || Boolean(process.env.GCOS_FIREBASE_NAMESPACE), sensitive: false },
+    { name: "GCOS_AUTH_PROVIDER", value: integrations.auth.status().provider, configured: integrations.auth.status().provider === "firebase", sensitive: false },
+    { name: "GCOS_FIREBASE_WEB_API_KEY", value: integrations.auth.status().passwordSignIn ? "configured" : "required for Firebase password sign-in", configured: integrations.auth.status().provider !== "firebase" || integrations.auth.status().passwordSignIn, sensitive: true },
+    { name: "GCOS_EMAIL_PROVIDER", value: integrations.email.status().provider, configured: integrations.email.status().ready && integrations.email.status().provider !== "log", sensitive: false },
+    { name: "GCOS_EMAIL_FROM", value: integrations.email.status().from, configured: /@rmvi\.org$/i.test(integrations.email.status().from), sensitive: false },
+    { name: "GCOS_VIDEO_PROVIDER", value: integrations.video.status().provider, configured: integrations.video.status().ready && integrations.video.status().provider !== "internal", sensitive: false },
     { name: "GCOS_OBJECT_STORAGE_PROVIDER", value: OBJECT_STORAGE_PROVIDER, configured: objectStorage.configured, sensitive: false },
     { name: "GCOS_OBJECT_VAULT_PATH", value: OBJECT_VAULT_PATH, configured: ["cloudflare-r2", "aws-s3", "firebase-storage"].includes(objectStorage.provider) || Boolean(process.env.GCOS_OBJECT_VAULT_PATH), sensitive: false },
     { name: "GCOS_R2_ACCOUNT_ID", value: process.env.GCOS_R2_ACCOUNT_ID ? "configured" : "required for R2", configured: objectStorage.provider !== "cloudflare-r2" || Boolean(process.env.GCOS_R2_ACCOUNT_ID), sensitive: true },
@@ -1143,6 +1171,11 @@ function productionSecretAction(name) {
   if (name === "GCOS_STORAGE_PROVIDER") return "Set GCOS_STORAGE_PROVIDER=firestore for Firebase or database for managed Postgres.";
   if (name === "GCOS_FIREBASE_PROJECT_ID") return "Create the Firebase project, then set GCOS_FIREBASE_PROJECT_ID.";
   if (name === "GCOS_FIREBASE_NAMESPACE") return "Set GCOS_FIREBASE_NAMESPACE=production.";
+  if (name === "GCOS_AUTH_PROVIDER") return "Set GCOS_AUTH_PROVIDER=firebase so station accounts provision into Firebase Auth.";
+  if (name === "GCOS_FIREBASE_WEB_API_KEY") return "Add the Firebase web API key so server-side station password sign-in can verify Firebase Auth users.";
+  if (name === "GCOS_EMAIL_PROVIDER") return "Connect SendGrid or Resend, then set GCOS_EMAIL_PROVIDER plus the API key.";
+  if (name === "GCOS_EMAIL_FROM") return "Set GCOS_EMAIL_FROM to an authenticated rmvi.org sender such as churchmail@rmvi.org.";
+  if (name === "GCOS_VIDEO_PROVIDER") return "Set GCOS_VIDEO_PROVIDER=daily with GCOS_DAILY_API_KEY, or jitsi for provider room links.";
   if (name === "GCOS_OBJECT_STORAGE_PROVIDER") return "Set GCOS_OBJECT_STORAGE_PROVIDER=firebase-storage for Google/Firebase deployment.";
   if (name === "GCOS_OBJECT_VAULT_PATH") return "Set GCOS_OBJECT_VAULT_PATH to a persistent upload vault path.";
   if (name.startsWith("GCOS_R2_")) return "Create a Cloudflare R2 bucket and API token, then add this R2 value in Replit Secrets.";

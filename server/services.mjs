@@ -21,7 +21,7 @@ import { pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
 const LOCKOUT_ATTEMPTS = 3;
 const LOCKOUT_MINUTES = 15;
 
-export function createServices({ state, record, requirePermission, findById }) {
+export function createServices({ state, record, requirePermission, findById, integrations = {} }) {
   ensureAuthCredentials();
 
   function findStationIdentity(id) {
@@ -137,6 +137,47 @@ export function createServices({ state, record, requirePermission, findById }) {
     return { station: stationRecord, credential: publicCredential(credential), temporaryPassword: password };
   }
 
+  async function provisionProviderAuth(stationRecord, password, actor) {
+    try {
+      const result = await integrations.auth?.provisionStation?.(stationRecord, password, { actor });
+      if (result?.ok) {
+        stationRecord.identityProvider = result.provider;
+        stationRecord.identityUid = result.uid;
+        stationRecord.identitySyncedAt = new Date().toISOString();
+        record("IdentityProviderProvisioned", actor, stationRecord.email, `${result.provider}:${result.uid}`);
+      }
+      return result;
+    } catch (error) {
+      stationRecord.identityProviderError = error.message;
+      record("IdentityProviderProvisionFailed", actor, stationRecord.email, error.message);
+      return { ok: false, error: error.message };
+    }
+  }
+
+  async function setProviderPassword(stationRecord, password, actor) {
+    try {
+      const result = await integrations.auth?.setPassword?.(stationRecord, password);
+      if (result?.ok) record("IdentityProviderPasswordSynced", actor, stationRecord.email, result.provider);
+      return result;
+    } catch (error) {
+      record("IdentityProviderPasswordSyncFailed", actor, stationRecord.email, error.message);
+      return { ok: false, error: error.message };
+    }
+  }
+
+  async function updateProviderStationState(stationRecord, action, actor) {
+    try {
+      const result = action === "suspend"
+        ? await integrations.auth?.suspendStation?.(stationRecord)
+        : await integrations.auth?.activateStation?.(stationRecord);
+      if (result?.ok) record("IdentityProviderStatusSynced", actor, stationRecord.email, `${action}:${result.provider}`);
+      return result;
+    } catch (error) {
+      record("IdentityProviderStatusSyncFailed", actor, stationRecord.email, error.message);
+      return { ok: false, error: error.message };
+    }
+  }
+
   function generateDraft(kind, focus, actor) {
     const openEscalations = state.escalations.filter((item) => item.status !== "Resolved");
     const pendingApprovals = state.approvals.filter((item) => item.state !== "Approved");
@@ -243,7 +284,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       };
     },
 
-    createLiveSession(body) {
+    async createLiveSession(body) {
       state.liveSessions ??= [];
       const created = liveSession(
         body.title ?? "GCOS live session",
@@ -255,6 +296,18 @@ export function createServices({ state, record, requirePermission, findById }) {
         body.purpose ?? "Live administrative collaboration"
       );
       created.participants = body.participants ?? [body.actor].filter(Boolean);
+      try {
+        const room = await integrations.video?.createRoom?.(created);
+        if (room) {
+          created.videoProvider = room.provider;
+          created.roomName = room.roomName;
+          created.joinUrl = room.joinUrl;
+          created.videoExpiresAt = room.expiresAt;
+        }
+      } catch (error) {
+        created.videoProvider = "unavailable";
+        created.videoError = error.message;
+      }
       state.liveSessions.unshift(created);
       record("LiveSessionCreated", body.actor, created.title, `${created.sessionType} linked to ${created.linkedRecord}`);
       return created;
@@ -1244,10 +1297,29 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
-    createMessage(body) {
+    async createMessage(body) {
       const created = message(body.kind, body.subject, body.from, body.status ?? "Ready", body.files ?? "No attachments");
+      created.to = body.to ?? body.recipient ?? body.routeTo;
+      created.route = body.route ?? body.routingPath;
       state.messages.unshift(created);
       record("EmailSent", body.actor ?? body.from ?? "ChurchMail", created.subject, `${created.kind} routed`);
+      try {
+        const delivery = await integrations.email?.deliverChurchMail?.(created, [body.to, body.recipient].filter(Boolean));
+        if (delivery) {
+          created.delivery = {
+            provider: delivery.provider,
+            status: delivery.ok ? "Sent" : "Queued",
+            mode: delivery.mode,
+            messageId: delivery.messageId,
+            recipients: delivery.to,
+            updatedAt: new Date().toISOString()
+          };
+          record("ChurchMailDeliveryQueued", body.actor ?? body.from ?? "ChurchMail", created.subject, `${created.delivery.provider}:${created.delivery.status}`);
+        }
+      } catch (error) {
+        created.delivery = { provider: integrations.email?.provider ?? "unknown", status: "Failed", error: error.message, updatedAt: new Date().toISOString() };
+        record("ChurchMailDeliveryFailed", body.actor ?? body.from ?? "ChurchMail", created.subject, error.message);
+      }
       return created;
     },
 
@@ -2905,7 +2977,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       };
     },
 
-    createOffice(body) {
+    async createOffice(body) {
       requirePermission(body.actor, "canCreateOffices");
       if (state.stations.some((entry) => entry.email === body.email) || state.offices.some((entry) => entry.email === body.email)) {
         return { conflict: true, error: "Station email already exists" };
@@ -2923,6 +2995,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       });
       state.stations.push(createdStation);
       ensureStationCredential(created.email, created.password);
+      await provisionProviderAuth(createdStation, created.password, body.actor);
       record("OfficeCreated", body.actor, created.name, `${created.level} workstation provisioned`);
       return created;
     },
@@ -2951,33 +3024,48 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
-    activateOffice(id, body) {
+    async activateOffice(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);
       item.status = "Active";
+      const stationRecord = state.stations.find((entry) => entry.email === item.email);
+      if (stationRecord) {
+        stationRecord.status = "Active";
+        await updateProviderStationState(stationRecord, "activate", body.actor);
+        await integrations.email?.sendAccountActivated?.({ station: stationRecord, actor: body.actor });
+      }
       record("OfficeActivated", body.actor, item.name, "Office activated");
       return item;
     },
 
-    suspendOffice(id, body) {
+    async suspendOffice(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);
       item.status = "Suspended";
+      const stationRecord = state.stations.find((entry) => entry.email === item.email);
+      if (stationRecord) {
+        stationRecord.officeStatus = "Suspended";
+        await updateProviderStationState(stationRecord, "suspend", body.actor);
+      }
       record("OfficeSuspended", body.actor, item.name, body.reason ?? "Office suspended");
       return item;
     },
 
-    rotateOfficePassword(id, body) {
+    async rotateOfficePassword(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);
       item.password = body.password ?? `gcos-${item.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}-${Date.now().toString(36)}`;
       const stationRecord = state.stations.find((entry) => entry.email === item.email);
-      if (stationRecord) setStationPassword(stationRecord, item.password, body.actor);
+      if (stationRecord) {
+        setStationPassword(stationRecord, item.password, body.actor);
+        await setProviderPassword(stationRecord, item.password, body.actor);
+        await integrations.email?.sendAccountActivated?.({ station: stationRecord, password: item.password, actor: body.actor });
+      }
       record("OfficePasswordRotated", body.actor, item.name, "Station credential rotated");
       return item;
     },
 
-    activateOfficeStation(id, body) {
+    async activateOfficeStation(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);
       if (!state.stations.some((entry) => entry.email === item.email)) {
@@ -2994,6 +3082,13 @@ export function createServices({ state, record, requirePermission, findById }) {
       }
       ensureStationCredential(item.email, item.password);
       item.status = "Active";
+      const stationRecord = state.stations.find((entry) => entry.email === item.email);
+      if (stationRecord) {
+        stationRecord.status = "Active";
+        await provisionProviderAuth(stationRecord, item.password, body.actor);
+        await updateProviderStationState(stationRecord, "activate", body.actor);
+        await integrations.email?.sendAccountActivated?.({ station: stationRecord, password: item.password, actor: body.actor });
+      }
       record("OfficeStationActivated", body.actor, item.name, `${item.email} ready`);
       return item;
     },
@@ -3141,20 +3236,23 @@ export function createServices({ state, record, requirePermission, findById }) {
       return item;
     },
 
-    suspendStation(id, body) {
+    async suspendStation(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findStationIdentity(id);
       item.status = "Suspended";
       item.suspensionReason = body.reason ?? "Station suspended from hierarchy graph";
+      await updateProviderStationState(item, "suspend", body.actor);
       record("StationSuspended", body.actor, item.email, item.suspensionReason);
       return item;
     },
 
-    activateStation(id, body) {
+    async activateStation(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findStationIdentity(id);
       item.status = "Active";
       item.suspensionReason = undefined;
+      await updateProviderStationState(item, "activate", body.actor);
+      await integrations.email?.sendAccountActivated?.({ station: item, actor: body.actor });
       record("StationActivated", body.actor, item.email, body.reason ?? "Station reactivated");
       return item;
     },
@@ -3174,18 +3272,24 @@ export function createServices({ state, record, requirePermission, findById }) {
       return created;
     },
 
-    rotateStationCredential(id, body) {
+    async rotateStationCredential(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findStationIdentity(id);
       const temporaryPassword = body.password ?? `gcos-${item.email.split("@")[0].replace(/[^a-z0-9]+/gi, "-")}-${Date.now().toString(36)}`;
-      return setStationPassword(item, temporaryPassword, body.actor);
+      const result = setStationPassword(item, temporaryPassword, body.actor);
+      await setProviderPassword(item, temporaryPassword, body.actor);
+      await integrations.email?.sendAccountActivated?.({ station: item, password: temporaryPassword, actor: body.actor });
+      return result;
     },
 
-    forceStationPasswordReset(id, body) {
+    async forceStationPasswordReset(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findStationIdentity(id);
       const temporaryPassword = body.password ?? `reset-${Date.now().toString(36)}`;
-      return setStationPassword(item, temporaryPassword, body.actor, "StationCredentialResetForced");
+      const result = setStationPassword(item, temporaryPassword, body.actor, "StationCredentialResetForced");
+      await setProviderPassword(item, temporaryPassword, body.actor);
+      await integrations.email?.sendAccountActivated?.({ station: item, password: temporaryPassword, actor: body.actor });
+      return result;
     },
 
     requireStationMfa(id, body) {
@@ -4018,7 +4122,7 @@ export function createServices({ state, record, requirePermission, findById }) {
       return { synced: actions.length, auditCount: state.audit.length };
     },
 
-    login(body) {
+    async login(body) {
       ensureAuthCredentials();
       const normalizedEmail = normalizeStationEmail(body.email);
       const foundOffice = state.offices.find((item) => item.email === normalizedEmail);
@@ -4027,7 +4131,9 @@ export function createServices({ state, record, requirePermission, findById }) {
         record("LoginBlocked", normalizedEmail, normalizedEmail, "Station credential locked");
         return { unauthorized: true, error: "Station credential locked" };
       }
-      if (!passwordMatches(body.password, credential)) {
+      const providerVerification = await integrations.auth?.verifyPassword?.(normalizedEmail, body.password);
+      const passwordVerified = providerVerification?.ok || passwordMatches(body.password, credential);
+      if (!passwordVerified) {
         credential.failedAttempts = (credential.failedAttempts ?? 0) + 1;
         credential.lastFailedAt = new Date().toISOString();
         if (credential.failedAttempts >= LOCKOUT_ATTEMPTS) {
@@ -4052,8 +4158,17 @@ export function createServices({ state, record, requirePermission, findById }) {
       credential.lastLoginAt = new Date().toISOString();
       foundStation.credentialStatus = credential.forceReset ? "Reset required" : "Active";
       foundStation.mfaRequired = credential.mfaRequired;
+      if (providerVerification?.ok) {
+        foundStation.identityProvider = providerVerification.provider;
+        foundStation.identityUid = providerVerification.uid;
+      }
+      const providerToken = await integrations.auth?.issueToken?.(foundStation.email, {
+        stationId: foundStation.id,
+        stationLevel: foundStation.level,
+        stationEmail: foundStation.email
+      });
       record("Login", body.email, foundStation.title, "Allowed");
-      return { station: foundStation, credential: publicCredential(credential), token: `demo.${Buffer.from(body.email).toString("base64url")}` };
+      return { station: foundStation, credential: publicCredential(credential), providerToken, token: `demo.${Buffer.from(body.email).toString("base64url")}` };
     }
   };
 }
