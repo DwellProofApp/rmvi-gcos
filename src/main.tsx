@@ -9701,7 +9701,7 @@ function LoginScreen({
 }) {
   const isAdminPortal = adminRouteRequested();
   const [authMode, setAuthMode] = React.useState<"create" | "signin">("signin");
-  const [email, setEmail] = React.useState("np@rmvi.org");
+  const [email, setEmail] = React.useState(isAdminPortal ? "admin@rmvi.org" : "");
   const [password, setPassword] = React.useState("");
   const [confirmPassword, setConfirmPassword] = React.useState("");
   const [fullName, setFullName] = React.useState("");
@@ -9814,7 +9814,7 @@ function LoginScreen({
   }
 
   return (
-    <main className="login-shell public-software-gateway">
+    <main className={isAdminPortal ? "login-shell public-software-gateway admin-login-gateway" : "login-shell public-software-gateway station-signin-gateway"}>
       <header className="public-gateway-header" aria-label="Remedy Movement International public gateway header">
         <div className="brand login-brand">
           <div className="brand-mark">
@@ -9826,81 +9826,117 @@ function LoginScreen({
           </div>
         </div>
         <div className="gateway-status-pill">
-          <Globe2 size={15} />
-          Official web sign-in
+          {isAdminPortal ? <ShieldCheck size={15} /> : <Globe2 size={15} />}
+          {isAdminPortal ? "Administrator access" : "Official web sign-in"}
         </div>
         <nav className="public-gateway-nav" aria-label="Public page navigation">
-          <a href="#download">Download</a>
-          <a href="#signin">Sign in</a>
-          <a href="/admin">Admin</a>
+          {isAdminPortal ? (
+            <>
+              <a href="/">User sign in</a>
+              <a href="#signin">Admin sign in</a>
+            </>
+          ) : (
+            <>
+              <a href="#download">Download</a>
+              <a href="#signin">Sign in</a>
+              <a href="/admin">Admin</a>
+            </>
+          )}
         </nav>
       </header>
 
       <section className="login-panel">
-        <div className="login-intro software-download-hero" id="download">
-          <div className="download-hero-copy">
-            <div className="login-emblem">
-              <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
-            </div>
-            <div className="download-kicker">
-              <span>Official {CHURCH_NAME} software portal</span>
-              <strong>{pwa.installed ? "Installed on this device" : pwa.canInstall ? "Install ready" : "Web app ready"}</strong>
-            </div>
-            <div>
-              <h1>GCOS for secure church operations.</h1>
-              <p>{CHURCH_NAME} users can install the workstation app, sign in through the secure web portal, send ChurchMail, prepare reports, and keep work moving when internet service is limited.</p>
-            </div>
-            <div className="download-hero-actions">
-              <button type="button" className="primary-download-action" onClick={installWindowsApp}>
-                <Download size={18} />
-                Install app
-              </button>
-              <button type="button" onClick={continueInBrowser}>
-                <Globe2 size={18} />
-                Use in browser
-              </button>
-              <button type="button" onClick={downloadInstallGuide}>
-                <FileText size={18} />
-                Install guide
-              </button>
-            </div>
-            {downloadNotice && <div className="download-notice">{downloadNotice}</div>}
-            <div className="login-trust-row" aria-label="Access protections">
-              <span><ShieldCheck size={15} /> Protected sign-in</span>
-              <span><GitBranch size={15} /> Office routed</span>
-              <span><CloudOff size={15} /> Offline capable</span>
+        {isAdminPortal ? (
+          <div className="login-intro admin-access-hero" id="download">
+            <div className="download-hero-copy">
+              <div className="login-emblem">
+                <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
+              </div>
+              <div className="download-kicker">
+                <span>Administrator command portal</span>
+                <strong>rmvi.org/admin</strong>
+              </div>
+              <div>
+                <h1>Admin control for GCOS.</h1>
+                <p>Authorized administrators sign in here to approve accounts, create office nodes, manage users, review audit records, monitor deployment health, and control RMVI governance operations.</p>
+              </div>
+              <div className="admin-login-capabilities" aria-label="Admin capabilities">
+                <article><KeyRound size={18} /><strong>User approval</strong><small>Approve, verify, reset, suspend, and activate station accounts.</small></article>
+                <article><Building2 size={18} /><strong>Office nodes</strong><small>Create departments, branches, units, and reporting relationships.</small></article>
+                <article><ShieldCheck size={18} /><strong>Security oversight</strong><small>Review sessions, audit trails, evidence, readiness, and deployment status.</small></article>
+              </div>
+              <div className="login-trust-row" aria-label="Admin access protections">
+                <span><LockKeyhole size={15} /> Admin credentials required</span>
+                <span><GitBranch size={15} /> Hierarchy controlled</span>
+                <span><ShieldCheck size={15} /> Audit recorded</span>
+              </div>
             </div>
           </div>
-
-          <div className="download-platform-panel" aria-label="Download and install options">
-            <div className="download-panel-header">
-              <span>Choose your platform</span>
-              <strong>RMVI GCOS</strong>
+        ) : (
+          <div className="login-intro software-download-hero" id="download">
+            <div className="download-hero-copy">
+              <div className="login-emblem">
+                <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
+              </div>
+              <div className="download-kicker">
+                <span>Official {CHURCH_NAME} software portal</span>
+                <strong>{pwa.installed ? "Installed on this device" : pwa.canInstall ? "Install ready" : "Web app ready"}</strong>
+              </div>
+              <div>
+                <h1>Sign in to RMVI GCOS.</h1>
+                <p>{CHURCH_NAME} users can sign in through the secure web portal, install the workstation app, send ChurchMail, prepare reports, and keep work moving when internet service is limited.</p>
+              </div>
+              <div className="download-hero-actions">
+                <button type="button" className="primary-download-action" onClick={installWindowsApp}>
+                  <Download size={18} />
+                  Install app
+                </button>
+                <button type="button" onClick={continueInBrowser}>
+                  <Globe2 size={18} />
+                  Use in browser
+                </button>
+                <button type="button" onClick={downloadInstallGuide}>
+                  <FileText size={18} />
+                  Install guide
+                </button>
+              </div>
+              {downloadNotice && <div className="download-notice">{downloadNotice}</div>}
+              <div className="login-trust-row" aria-label="Access protections">
+                <span><ShieldCheck size={15} /> Protected sign-in</span>
+                <span><GitBranch size={15} /> Office routed</span>
+                <span><CloudOff size={15} /> Offline capable</span>
+              </div>
             </div>
-            <button type="button" className="download-card primary" onClick={installWindowsApp}>
-              <Download size={22} />
-              <span>Windows</span>
-              <strong>Install desktop-style app</strong>
-              <small>Use Chrome or Microsoft Edge. GCOS opens from the Start menu after install.</small>
-              <b>{pwa.canInstall ? "Install prompt available" : "Uses live rmvi.org install prompt"}</b>
-            </button>
-            <button type="button" className="download-card" onClick={showIosInstallHelp}>
-              <Smartphone size={22} />
-              <span>iPhone / iPad</span>
-              <strong>Add to Home Screen</strong>
-              <small>Open rmvi.org in Safari, tap Share, then add GCOS to the home screen.</small>
-              <b>Safari install path</b>
-            </button>
-            <button type="button" className="download-card" onClick={continueInBrowser}>
-              <Globe2 size={22} />
-              <span>Web</span>
-              <strong>Use in browser</strong>
-              <small>Sign in from any modern browser without installing anything first.</small>
-              <b>Fastest access</b>
-            </button>
-          </div>
 
-        </div>
+            <div className="download-platform-panel" aria-label="Download and install options">
+              <div className="download-panel-header">
+                <span>Choose your platform</span>
+                <strong>RMVI GCOS</strong>
+              </div>
+              <button type="button" className="download-card primary" onClick={installWindowsApp}>
+                <Download size={22} />
+                <span>Windows</span>
+                <strong>Install desktop-style app</strong>
+                <small>Use Chrome or Microsoft Edge. GCOS opens from the Start menu after install.</small>
+                <b>{pwa.canInstall ? "Install prompt available" : "Uses live rmvi.org install prompt"}</b>
+              </button>
+              <button type="button" className="download-card" onClick={showIosInstallHelp}>
+                <Smartphone size={22} />
+                <span>iPhone / iPad</span>
+                <strong>Add to Home Screen</strong>
+                <small>Open rmvi.org in Safari, tap Share, then add GCOS to the home screen.</small>
+                <b>Safari install path</b>
+              </button>
+              <button type="button" className="download-card" onClick={continueInBrowser}>
+                <Globe2 size={22} />
+                <span>Web</span>
+                <strong>Use in browser</strong>
+                <small>Sign in from any modern browser without installing anything first.</small>
+                <b>Fastest access</b>
+              </button>
+            </div>
+          </div>
+        )}
 
         <div className="login-card" id="signin" aria-label="Station sign-in form">
           <div className="auth-mode-toggle" role="tablist" aria-label="Account access mode">
@@ -9922,8 +9958,8 @@ function LoginScreen({
             </div>
             <div>
               <span>{authMode === "create" ? "New workstation setup" : "Station access"}</span>
-              <h2>{authMode === "create" ? "Request a church office account" : "Sign in to your workstation"}</h2>
-              <p>{authMode === "create" ? "Create an RMVI office account for administrator approval." : `${selectedStation.level} - ${selectedStation.authority}`}</p>
+              <h2>{authMode === "create" ? "Request a church office account" : isAdminPortal ? "Sign in to admin board" : "Sign in to your workstation"}</h2>
+              <p>{authMode === "create" ? "Create an RMVI office account for administrator approval." : isAdminPortal ? "Full administrator access requires an approved RMVI admin station email." : `${selectedStation.level} - ${selectedStation.authority}`}</p>
             </div>
           </div>
 
