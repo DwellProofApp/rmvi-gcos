@@ -1,7 +1,9 @@
-const CACHE_VERSION = "rmvi-gcos-offline-v5";
+const CACHE_VERSION = "rmvi-gcos-offline-v6";
 const APP_SHELL = [
   "/",
+  "/app",
   "/admin",
+  "/admin/board",
   "/offline.html",
   "/manifest.webmanifest",
   "/icons/gcos-icon.svg",
@@ -99,7 +101,7 @@ async function networkFirst(request, shellFallback = "/offline.html") {
     if (response.ok) {
       const cache = await caches.open(CACHE_VERSION);
       await cache.put(request, response.clone());
-      if (request.mode === "navigate") await cache.put("/", response.clone());
+      if (request.mode === "navigate" && new URL(request.url).pathname === "/") await cache.put("/", response.clone());
     }
     return response;
   } catch {

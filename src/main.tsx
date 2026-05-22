@@ -2192,20 +2192,33 @@ function isSection(value: string | null): value is Section {
   return navItems.some((item) => item.label === value);
 }
 
-function adminRouteRequested() {
+function adminLandingRequested() {
   return window.location.pathname.replace(/\/+$/, "") === "/admin";
 }
 
+function adminBoardRequested() {
+  return window.location.pathname.replace(/\/+$/, "") === "/admin/board";
+}
+
+function adminRouteRequested() {
+  return adminLandingRequested() || adminBoardRequested();
+}
+
+function userLandingRequested() {
+  const path = window.location.pathname.replace(/\/+$/, "") || "/";
+  return path === "/";
+}
+
 function getInitialSection(): Section {
-  if (adminRouteRequested()) return "Admin Board";
+  if (adminBoardRequested()) return "Admin Board";
   const section = new URLSearchParams(window.location.search).get("section");
   return isSection(section) ? section : "Control Center";
 }
 
 function sectionPath(section: Section) {
-  if (section === "Admin Board") return "/admin";
-  if (section === "Control Center") return "/";
-  return `/?section=${encodeURIComponent(section).replaceAll("%20", "+")}`;
+  if (section === "Admin Board") return "/admin/board";
+  if (section === "Control Center") return "/app";
+  return `/app?section=${encodeURIComponent(section).replaceAll("%20", "+")}`;
 }
 
 function inferFileType(files: string) {
@@ -3042,11 +3055,12 @@ function App() {
   const criticalNotificationCount = notifications.filter((item) => ["Critical", "High"].includes(item.severity)).length;
 
   React.useEffect(() => {
+    if (!session || adminLandingRequested() || userLandingRequested()) return;
     if (!allowedSections.includes(activeSection)) {
       setActiveSection("Control Center");
       window.history.replaceState({}, "", sectionPath("Control Center"));
     }
-  }, [activeSection, allowedSections]);
+  }, [activeSection, allowedSections, session]);
 
   const effectiveSection: Section = allowedSections.includes(activeSection) ? activeSection : "Control Center";
 
@@ -3222,11 +3236,10 @@ function App() {
   React.useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("logout") !== "1") return;
-    const landingSection: Section = adminRouteRequested() ? "Admin Board" : "Control Center";
     setSession(null);
-    setActiveSection(landingSection);
+    setActiveSection(adminRouteRequested() ? "Admin Board" : "Control Center");
     url.searchParams.delete("logout");
-    window.history.replaceState({}, "", sectionPath(landingSection));
+    window.history.replaceState({}, "", adminRouteRequested() ? "/admin" : "/");
   }, [setSession]);
 
   React.useEffect(() => {
@@ -3268,8 +3281,9 @@ function App() {
   }, [networkOnline, offlineQueue.length, session]);
 
   React.useEffect(() => {
+    if (!session || adminLandingRequested() || userLandingRequested()) return;
     window.history.replaceState({}, "", sectionPath(effectiveSection));
-  }, [effectiveSection]);
+  }, [effectiveSection, session]);
 
   function recordAudit(event: string, object: string, result: string) {
     const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
@@ -4731,11 +4745,21 @@ function App() {
   function handleLogout() {
     recordAudit("Logout", activeStation.title, "Session closed");
     setSession(null);
-    const landingSection: Section = adminRouteRequested() ? "Admin Board" : "Control Center";
-    setActiveSection(landingSection);
+    setActiveSection(adminRouteRequested() ? "Admin Board" : "Control Center");
+    window.history.replaceState({}, "", adminRouteRequested() ? "/admin" : "/");
   }
 
-  if (!session) {
+  const showAdminSignInGate = adminLandingRequested();
+  const showUserSignInGate = userLandingRequested();
+
+  React.useEffect(() => {
+    if ((!showAdminSignInGate && !showUserSignInGate) || !session) return;
+    window.localStorage.removeItem("gcos.session");
+    setSession(null);
+    setActiveSection(showAdminSignInGate ? "Admin Board" : "Control Center");
+  }, [session, setSession, showAdminSignInGate, showUserSignInGate]);
+
+  if (!session || showAdminSignInGate || showUserSignInGate) {
     return <LoginScreen stationDirectory={stationDirectory} pwa={pwa} onLogin={handleLogin} onCreateAccount={createAccount} />;
   }
 
