@@ -1,0 +1,470 @@
+/* Department-aware interior product layer.
+   This file keeps the logged-in GCOS app polished, readable, and role-specific. */
+
+.app-shell:not(.admin-shell) {
+  --role-primary: #0b3478;
+  --role-primary-dark: #061733;
+  --role-accent: #f4c542;
+  --role-soft: #eaf2ff;
+  --role-ink: #10213f;
+  --role-muted: #60708c;
+  --role-card: #ffffff;
+  --role-line: #d8e2f2;
+  min-height: 100vh !important;
+  background:
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--role-accent) 18%, transparent), transparent 32%),
+    linear-gradient(135deg, #eef4fb 0%, #f8fbff 48%, #eef4fb 100%) !important;
+  color: var(--role-ink) !important;
+}
+
+.app-shell.workstation-finance:not(.admin-shell) {
+  --role-primary: #0b5d4b;
+  --role-primary-dark: #06342c;
+  --role-accent: #d6a631;
+  --role-soft: #eaf8f1;
+}
+
+.app-shell.workstation-audit:not(.admin-shell) {
+  --role-primary: #243b73;
+  --role-primary-dark: #101b36;
+  --role-accent: #f0b429;
+  --role-soft: #edf2ff;
+}
+
+.app-shell.workstation-mission:not(.admin-shell) {
+  --role-primary: #0b4f8a;
+  --role-primary-dark: #06294a;
+  --role-accent: #f4c542;
+  --role-soft: #e8f5ff;
+}
+
+.app-shell.workstation-education:not(.admin-shell),
+.app-shell.workstation-media:not(.admin-shell) {
+  --role-primary: #28528f;
+  --role-primary-dark: #102744;
+  --role-accent: #f4c542;
+  --role-soft: #eef5ff;
+}
+
+.app-shell.workstation-pastoral-care:not(.admin-shell),
+.app-shell.workstation-welfare:not(.admin-shell) {
+  --role-primary: #49633a;
+  --role-primary-dark: #23311d;
+  --role-accent: #f1c75b;
+  --role-soft: #f1f8ec;
+}
+
+.app-shell.workstation-facilities:not(.admin-shell),
+.app-shell.workstation-safety:not(.admin-shell) {
+  --role-primary: #6e3f16;
+  --role-primary-dark: #311a08;
+  --role-accent: #f1c75b;
+  --role-soft: #fff4df;
+}
+
+.app-shell.workstation-worship:not(.admin-shell) {
+  --role-primary: #334f9d;
+  --role-primary-dark: #121d42;
+  --role-accent: #f4c542;
+  --role-soft: #eef3ff;
+}
+
+.app-shell.workstation-supervisory:not(.admin-shell),
+.app-shell.workstation-local:not(.admin-shell) {
+  --role-primary: #0b3478;
+  --role-primary-dark: #061733;
+  --role-accent: #f4c542;
+  --role-soft: #eaf2ff;
+}
+
+.app-shell:not(.admin-shell) .sidebar {
+  background:
+    radial-gradient(circle at 18% 2%, color-mix(in srgb, var(--role-accent) 24%, transparent), transparent 220px),
+    linear-gradient(180deg, var(--role-primary-dark) 0%, var(--role-primary) 58%, #061733 100%) !important;
+}
+
+.app-shell:not(.admin-shell) .workspace {
+  min-width: 0;
+  background:
+    radial-gradient(circle at 88% 0%, color-mix(in srgb, var(--role-accent) 18%, transparent), transparent 260px),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%) !important;
+}
+
+.app-shell:not(.admin-shell) .user-topbar {
+  border-radius: 20px !important;
+  border-color: color-mix(in srgb, var(--role-primary) 16%, #d8e2f2) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(255, 255, 255, 0.9)),
+    var(--role-soft) !important;
+}
+
+.app-shell:not(.admin-shell) .organization-kicker,
+.app-shell:not(.admin-shell) .station-home-hero > div:first-child > span,
+.app-shell:not(.admin-shell) .role-system-panel > div:first-child > span,
+.app-shell:not(.admin-shell) .panel-header > span,
+.app-shell:not(.admin-shell) .panel-header div + span {
+  color: color-mix(in srgb, var(--role-primary) 72%, #10213f) !important;
+}
+
+.app-shell:not(.admin-shell) .nav-item.active,
+.app-shell:not(.admin-shell) .nav-item:hover {
+  border-color: color-mix(in srgb, var(--role-accent) 58%, #ffffff) !important;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--role-accent) 28%, transparent), rgba(255, 255, 255, 0.14)) !important;
+  box-shadow: inset 4px 0 0 var(--role-accent), 0 10px 24px rgba(2, 12, 31, 0.16) !important;
+}
+
+.app-shell:not(.admin-shell) .station-home {
+  display: grid;
+  gap: 20px;
+}
+
+.app-shell:not(.admin-shell) .station-home-hero {
+  position: relative;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(210px, 0.34fr) minmax(210px, 0.34fr) !important;
+  gap: 18px !important;
+  overflow: hidden;
+  border: 1px solid color-mix(in srgb, var(--role-primary) 20%, transparent) !important;
+  border-radius: 28px !important;
+  padding: clamp(22px, 3vw, 36px) !important;
+  background:
+    radial-gradient(circle at 86% 4%, color-mix(in srgb, var(--role-accent) 24%, transparent), transparent 280px),
+    linear-gradient(135deg, var(--role-primary-dark) 0%, var(--role-primary) 100%) !important;
+  color: #ffffff !important;
+  box-shadow: 0 24px 70px rgba(16, 33, 63, 0.22) !important;
+}
+
+.app-shell:not(.admin-shell) .station-home-hero::after {
+  content: "";
+  position: absolute;
+  inset: auto -60px -170px auto;
+  width: 360px;
+  height: 360px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+}
+
+.app-shell:not(.admin-shell) .station-home-hero h2 {
+  margin: 8px 0 10px !important;
+  color: #ffffff !important;
+  font-size: clamp(34px, 4.8vw, 58px) !important;
+  line-height: 1 !important;
+  letter-spacing: 0 !important;
+}
+
+.app-shell:not(.admin-shell) .station-home-hero p {
+  max-width: 850px;
+  color: rgba(255, 255, 255, 0.84) !important;
+  font-size: 16px !important;
+  line-height: 1.55 !important;
+}
+
+.app-shell:not(.admin-shell) .station-focus-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 18px;
+}
+
+.app-shell:not(.admin-shell) .station-focus-row small,
+.app-shell:not(.admin-shell) .station-home-state {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+  color: #ffffff !important;
+  backdrop-filter: blur(10px);
+}
+
+.app-shell:not(.admin-shell) .station-focus-row small {
+  border-radius: 999px;
+  padding: 8px 11px;
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.app-shell:not(.admin-shell) .station-home-state {
+  align-self: stretch;
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  min-height: 130px;
+  border-radius: 20px;
+  padding: 18px;
+}
+
+.app-shell:not(.admin-shell) .station-home-state span,
+.app-shell:not(.admin-shell) .station-home-state small {
+  color: rgba(255, 255, 255, 0.76) !important;
+}
+
+.app-shell:not(.admin-shell) .station-home-state strong {
+  color: #ffffff !important;
+  font-size: 24px;
+  line-height: 1.05;
+}
+
+.app-shell:not(.admin-shell) .role-system-panel {
+  display: grid !important;
+  grid-template-columns: minmax(260px, 0.35fr) minmax(0, 1fr) !important;
+  gap: 18px !important;
+  padding: 22px !important;
+  border-radius: 24px !important;
+  border-color: color-mix(in srgb, var(--role-primary) 16%, #d8e2f2) !important;
+  background:
+    linear-gradient(135deg, #ffffff, color-mix(in srgb, var(--role-soft) 74%, #ffffff)) !important;
+}
+
+.app-shell:not(.admin-shell) .role-system-panel strong {
+  display: block;
+  margin: 4px 0 8px;
+  color: var(--role-ink);
+  font-size: 24px;
+}
+
+.app-shell:not(.admin-shell) .role-system-panel p {
+  color: var(--role-muted);
+  line-height: 1.5;
+}
+
+.app-shell:not(.admin-shell) .role-tool-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 12px;
+}
+
+.app-shell:not(.admin-shell) .role-tool-grid button,
+.app-shell:not(.admin-shell) .station-home-actions button {
+  border: 1px solid var(--role-line) !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  color: var(--role-ink) !important;
+  box-shadow: 0 12px 26px rgba(16, 33, 63, 0.07) !important;
+  transition: transform 0.16s ease, border-color 0.16s ease, box-shadow 0.16s ease;
+}
+
+.app-shell:not(.admin-shell) .role-tool-grid button {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr);
+  gap: 6px 12px;
+  align-items: center;
+  min-height: 94px;
+  padding: 14px;
+  text-align: left;
+}
+
+.app-shell:not(.admin-shell) .role-tool-grid button:hover,
+.app-shell:not(.admin-shell) .station-home-actions button:hover,
+.app-shell:not(.admin-shell) .station-panel:hover {
+  transform: translateY(-2px);
+  border-color: color-mix(in srgb, var(--role-accent) 70%, var(--role-line)) !important;
+  box-shadow: 0 20px 36px rgba(16, 33, 63, 0.11) !important;
+}
+
+.app-shell:not(.admin-shell) .role-tool-grid svg {
+  grid-row: span 2;
+  width: 42px;
+  height: 42px;
+  padding: 11px;
+  border-radius: 14px;
+  background: var(--role-soft);
+  color: var(--role-primary);
+}
+
+.app-shell:not(.admin-shell) .role-tool-grid span,
+.app-shell:not(.admin-shell) .station-home-actions span,
+.app-shell:not(.admin-shell) .station-list strong,
+.app-shell:not(.admin-shell) .station-inbox-row strong,
+.app-shell:not(.admin-shell) .station-featured-mail strong {
+  color: var(--role-ink) !important;
+}
+
+.app-shell:not(.admin-shell) .role-tool-grid small,
+.app-shell:not(.admin-shell) .station-home-actions small,
+.app-shell:not(.admin-shell) .station-list span,
+.app-shell:not(.admin-shell) .station-inbox-row span,
+.app-shell:not(.admin-shell) .station-inbox-row small {
+  color: var(--role-muted) !important;
+}
+
+.app-shell:not(.admin-shell) .station-home-actions {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 14px !important;
+}
+
+.app-shell:not(.admin-shell) .station-home-actions button {
+  min-height: 126px !important;
+  padding: 16px !important;
+  text-align: left;
+}
+
+.app-shell:not(.admin-shell) .station-home-actions svg {
+  width: 40px;
+  height: 40px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--role-soft);
+  color: var(--role-primary);
+}
+
+.app-shell:not(.admin-shell) .station-home-actions strong {
+  display: inline-block;
+  margin: 10px 8px 0 0;
+  color: var(--role-primary) !important;
+  font-size: 28px;
+  line-height: 1;
+}
+
+.app-shell:not(.admin-shell) .station-workspace-grid {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+}
+
+.app-shell:not(.admin-shell) .station-panel {
+  border-radius: 22px !important;
+  border-color: color-mix(in srgb, var(--role-primary) 13%, #d8e2f2) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+}
+
+.app-shell:not(.admin-shell) .station-panel-large {
+  grid-column: span 2;
+}
+
+.app-shell:not(.admin-shell) .station-featured-mail,
+.app-shell:not(.admin-shell) .station-inbox-row,
+.app-shell:not(.admin-shell) .station-list button {
+  width: 100%;
+  text-align: left;
+}
+
+.app-shell:not(.admin-shell) .station-featured-mail {
+  display: grid;
+  grid-template-columns: minmax(86px, 0.18fr) minmax(0, 1fr) auto;
+  gap: 14px;
+  align-items: center;
+  min-height: 104px;
+  margin-bottom: 14px;
+  padding: 16px;
+  border: 1px solid color-mix(in srgb, var(--role-primary) 14%, #d8e2f2);
+  border-radius: 18px;
+  background:
+    linear-gradient(135deg, color-mix(in srgb, var(--role-soft) 60%, #ffffff), #ffffff);
+}
+
+.app-shell:not(.admin-shell) .kind,
+.app-shell:not(.admin-shell) .status-pill {
+  border-radius: 999px;
+}
+
+.app-shell:not(.admin-shell) .kind {
+  justify-self: start;
+  padding: 7px 10px;
+  background: var(--role-soft);
+  color: var(--role-primary);
+  font-size: 12px;
+  font-weight: 950;
+}
+
+.app-shell:not(.admin-shell) .station-inbox-list,
+.app-shell:not(.admin-shell) .station-list {
+  display: grid;
+  gap: 10px;
+}
+
+.app-shell:not(.admin-shell) .station-inbox-row,
+.app-shell:not(.admin-shell) .station-list button {
+  display: grid;
+  grid-template-columns: minmax(110px, 0.24fr) minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  padding: 14px;
+}
+
+.app-shell:not(.admin-shell) .station-list.compact button {
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.app-shell:not(.admin-shell) .mail-kind-marker {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: fit-content;
+  padding: 7px 9px;
+  border-radius: 999px;
+  background: var(--role-soft);
+  color: var(--role-primary);
+  font-weight: 900;
+}
+
+.app-shell:not(.admin-shell) .station-form {
+  display: grid;
+  gap: 12px;
+}
+
+.app-shell:not(.admin-shell) .station-form label,
+.app-shell:not(.admin-shell) .station-inline-task {
+  display: grid;
+  gap: 7px;
+}
+
+.app-shell:not(.admin-shell) .station-form label span {
+  color: var(--role-muted);
+  font-size: 12px;
+  font-weight: 900;
+}
+
+.app-shell:not(.admin-shell) .station-form button,
+.app-shell:not(.admin-shell) .station-inline-task button,
+.app-shell:not(.admin-shell) .station-inbox-actions button {
+  border-color: var(--role-primary) !important;
+  background: var(--role-primary) !important;
+  color: #ffffff !important;
+}
+
+.app-shell:not(.admin-shell) .station-feedback {
+  border: 1px solid color-mix(in srgb, var(--role-accent) 60%, #d8e2f2);
+  border-radius: 16px;
+  padding: 13px 16px;
+  background: color-mix(in srgb, var(--role-accent) 16%, #ffffff);
+  color: var(--role-ink);
+  font-weight: 850;
+}
+
+@media (max-width: 1180px) {
+  .app-shell:not(.admin-shell) .station-home-hero,
+  .app-shell:not(.admin-shell) .role-system-panel,
+  .app-shell:not(.admin-shell) .station-workspace-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-shell:not(.admin-shell) .station-panel-large {
+    grid-column: auto;
+  }
+
+  .app-shell:not(.admin-shell) .station-home-actions {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 680px) {
+  .app-shell:not(.admin-shell) .station-home-hero {
+    padding: 20px !important;
+    border-radius: 22px !important;
+  }
+
+  .app-shell:not(.admin-shell) .station-home-hero h2 {
+    font-size: 34px !important;
+  }
+
+  .app-shell:not(.admin-shell) .station-home-actions,
+  .app-shell:not(.admin-shell) .role-tool-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-shell:not(.admin-shell) .station-featured-mail,
+  .app-shell:not(.admin-shell) .station-inbox-row,
+  .app-shell:not(.admin-shell) .station-list button {
+    grid-template-columns: 1fr;
+  }
+}

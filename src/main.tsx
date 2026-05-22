@@ -58,6 +58,7 @@ import {
 import "./styles.css";
 import "./signin-overrides.css";
 import "./admin-board-overrides.css";
+import "./interior-overrides.css";
 
 type StationLevel =
   | "International HQ"
@@ -2545,6 +2546,120 @@ function getAllowedSections(station: StationCard, permissions: Permissions): Sec
   return navItems.map((item) => item.label).filter((section) => allowed.has(section));
 }
 
+function uniqueWords(values: Array<string | undefined>) {
+  return Array.from(new Set(values
+    .flatMap((value) => String(value ?? "").toLowerCase().split(/[^a-z0-9@.]+/))
+    .map((value) => value.trim())
+    .filter((value) => value.length > 2)));
+}
+
+function profileKeywords(station: StationCard, profile: WorkstationProfile) {
+  const profileSpecific: Record<string, string[]> = {
+    admin: ["admin", "audit", "office", "user", "deployment", "session", "executive", "governance"],
+    finance: ["finance", "financial", "budget", "approval", "offering", "tithe", "deposit", "reconciliation", "expense", "stewardship", "release"],
+    audit: ["audit", "compliance", "evidence", "archive", "sealed", "control", "policy", "exception", "vault"],
+    mission: ["mission", "missions", "evangelism", "outreach", "kingdom", "harvesters", "souls", "converts", "church", "planting", "transfer"],
+    education: ["education", "school", "sunday", "discipleship", "training", "teacher", "youth", "children", "class"],
+    "pastoral-care": ["pastoral", "care", "prayer", "counseling", "visitation", "hospital", "bereavement", "member"],
+    facilities: ["facility", "facilities", "construction", "maintenance", "repair", "building", "asset", "equipment", "sanitation"],
+    safety: ["security", "safety", "protocol", "incident", "coverage", "emergency", "risk"],
+    welfare: ["welfare", "social", "development", "assistance", "community", "beneficiary", "benevolence"],
+    media: ["media", "communication", "communications", "broadcast", "recording", "livestream", "announcement", "technical", "sound"],
+    worship: ["worship", "choir", "music", "usher", "ushering", "service", "rehearsal"],
+    supervisory: ["report", "summary", "directive", "approval", "escalation", "district", "county", "national", "area", "branch"],
+    local: ["local", "branch", "administration", "meeting", "attendance", "membership", "service", "weekly", "monthly"]
+  };
+  return uniqueWords([
+    station.email,
+    station.title,
+    station.level,
+    station.authority,
+    station.nodeKind,
+    station.permissionPreset,
+    station.reportingRoute,
+    profile.key,
+    profile.label,
+    profile.title,
+    profile.description,
+    ...profile.focus,
+    ...profile.reportTypes,
+    ...(profileSpecific[profile.key] ?? [])
+  ]);
+}
+
+function scopedTextMatches(text: string, keywords: string[]) {
+  const value = text.toLowerCase();
+  return keywords.some((keyword) => value.includes(keyword));
+}
+
+function scopeMessages(messages: Message[], station: StationCard, permissions: Permissions, profile: WorkstationProfile) {
+  if (permissions.canOverride) return messages;
+  const keywords = profileKeywords(station, profile);
+  return messages.filter((message) => scopedTextMatches([
+    message.kind,
+    message.subject,
+    message.from,
+    message.files,
+    message.route,
+    message.priority,
+    message.body,
+    message.linkedReport,
+    ...(message.recipients ?? [])
+  ].join(" "), keywords));
+}
+
+function scopeReports(reports: Report[], station: StationCard, permissions: Permissions, profile: WorkstationProfile) {
+  if (permissions.canOverride) return reports;
+  const keywords = profileKeywords(station, profile);
+  return reports.filter((report) => profile.reportTypes.includes(report.type ?? "")
+    || scopedTextMatches([
+      report.name,
+      report.owner,
+      report.path,
+      report.type,
+      report.routingStage,
+      report.evidenceStatus,
+      report.preparedBy,
+      ...(report.templateChecklist ?? [])
+    ].join(" "), keywords));
+}
+
+function scopeApprovals(approvals: Approval[], station: StationCard, permissions: Permissions, profile: WorkstationProfile) {
+  if (permissions.canOverride) return approvals;
+  const keywords = profileKeywords(station, profile);
+  return approvals.filter((approval) => scopedTextMatches([approval.request, approval.route, approval.limit, approval.delegate, approval.linkedReport].join(" "), keywords));
+}
+
+function scopeTasks(tasks: GovernanceTask[], station: StationCard, permissions: Permissions, profile: WorkstationProfile) {
+  if (permissions.canOverride) return tasks;
+  const keywords = profileKeywords(station, profile);
+  return tasks.filter((task) => scopedTextMatches([task.title, task.owner, task.assignee, task.priority, task.due, task.linkedReport, task.linkedApproval].join(" "), keywords));
+}
+
+function scopeDocuments(documents: DocumentRecord[], station: StationCard, permissions: Permissions, profile: WorkstationProfile) {
+  if (permissions.canOverride) return documents;
+  const keywords = profileKeywords(station, profile);
+  return documents.filter((document) => scopedTextMatches([document.name, document.classification, document.source, document.owner, document.status, document.linkedReport, document.linkedApproval].join(" "), keywords));
+}
+
+function scopePersonnel(personnel: PersonRecord[], station: StationCard, permissions: Permissions, profile: WorkstationProfile) {
+  if (permissions.canOverride) return personnel;
+  const keywords = profileKeywords(station, profile);
+  return personnel.filter((person) => scopedTextMatches([person.name, person.role, person.currentStation, person.assignedStation, person.status, person.trainingTrack, person.stationAccess].join(" "), keywords));
+}
+
+function scopeEscalations(escalations: Escalation[], station: StationCard, permissions: Permissions, profile: WorkstationProfile) {
+  if (permissions.canOverride) return escalations;
+  const keywords = profileKeywords(station, profile);
+  return escalations.filter((escalation) => scopedTextMatches([escalation.item, escalation.owner, escalation.reason, escalation.status, escalation.severity].join(" "), keywords));
+}
+
+function scopeTransfers(transfers: Transfer[], station: StationCard, permissions: Permissions, profile: WorkstationProfile) {
+  if (permissions.canOverride) return transfers;
+  const keywords = profileKeywords(station, profile);
+  return transfers.filter((transfer) => scopedTextMatches([transfer.person, transfer.from, transfer.to, transfer.risk, transfer.step].join(" "), keywords));
+}
+
 function makeProfile(profile: WorkstationProfile): WorkstationProfile {
   return profile;
 }
@@ -2937,37 +3052,46 @@ function App() {
   const offlineConflicts = React.useMemo(() => buildOfflineConflicts(offlineQueue), [offlineQueue]);
   const StationIcon = resolveStationIcon(activeStation);
   const permissions = getPermissions(activeStation);
+  const workstationProfile = React.useMemo(() => getWorkstationProfile(activeStation, permissions), [activeStation, permissions]);
   const allowedSections = React.useMemo(() => getAllowedSections(activeStation, permissions), [activeStation, permissions]);
+  const scopedMessages = React.useMemo(() => scopeMessages(messages, activeStation, permissions, workstationProfile), [activeStation, messages, permissions, workstationProfile]);
+  const scopedReports = React.useMemo(() => scopeReports(reports, activeStation, permissions, workstationProfile), [activeStation, permissions, reports, workstationProfile]);
+  const scopedApprovals = React.useMemo(() => scopeApprovals(approvals, activeStation, permissions, workstationProfile), [activeStation, approvals, permissions, workstationProfile]);
+  const scopedTasks = React.useMemo(() => scopeTasks(tasks, activeStation, permissions, workstationProfile), [activeStation, permissions, tasks, workstationProfile]);
+  const scopedDocuments = React.useMemo(() => scopeDocuments(documents, activeStation, permissions, workstationProfile), [activeStation, documents, permissions, workstationProfile]);
+  const scopedPersonnel = React.useMemo(() => scopePersonnel(personnel, activeStation, permissions, workstationProfile), [activeStation, permissions, personnel, workstationProfile]);
+  const scopedEscalations = React.useMemo(() => scopeEscalations(escalations, activeStation, permissions, workstationProfile), [activeStation, escalations, permissions, workstationProfile]);
+  const scopedTransfers = React.useMemo(() => scopeTransfers(transfers, activeStation, permissions, workstationProfile), [activeStation, permissions, transfers, workstationProfile]);
   const visibleStationDirectory = React.useMemo(() => {
     if (permissions.canOverride) return stationDirectory;
     return stationDirectory.filter((station) => normalizeStationEmail(station.email) === normalizeStationEmail(activeStation.email));
   }, [activeStation.email, permissions.canOverride, stationDirectory]);
   const operatingMetrics = React.useMemo(() => {
-    const commandCount = messages.filter((item) => ["Directive", "Notification", "Transfer"].includes(item.kind)).length + transfers.length;
-    const activeReportCount = reports.filter((item) => item.state !== "Approved").length + tasks.filter((item) => item.status !== "Complete").length;
-    const openEscalationCount = escalations.filter((item) => item.status !== "Resolved").length;
-    const onTrackWorkflows = reports.filter((item) => item.state === "Approved").length
-      + approvals.filter((item) => item.state === "Approved").length
-      + tasks.filter((item) => item.status === "Complete").length
+    const commandCount = scopedMessages.filter((item) => ["Directive", "Notification", "Transfer"].includes(item.kind)).length + scopedTransfers.length;
+    const activeReportCount = scopedReports.filter((item) => item.state !== "Approved").length + scopedTasks.filter((item) => item.status !== "Complete").length;
+    const openEscalationCount = scopedEscalations.filter((item) => item.status !== "Resolved").length;
+    const onTrackWorkflows = scopedReports.filter((item) => item.state === "Approved").length
+      + scopedApprovals.filter((item) => item.state === "Approved").length
+      + scopedTasks.filter((item) => item.status === "Complete").length
       + policies.filter((item) => item.status === "Active").length
       + calendarEvents.filter((item) => item.status === "Complete").length
-      + personnel.filter((item) => item.status === "Assigned").length
-      + escalations.filter((item) => item.status === "Resolved").length;
-    const totalTrackedWorkflows = reports.length + approvals.length + tasks.length + policies.length + calendarEvents.length + personnel.length + escalations.length;
+      + scopedPersonnel.filter((item) => item.status === "Assigned").length
+      + scopedEscalations.filter((item) => item.status === "Resolved").length;
+    const totalTrackedWorkflows = scopedReports.length + scopedApprovals.length + scopedTasks.length + policies.length + calendarEvents.length + scopedPersonnel.length + scopedEscalations.length;
     const sla = totalTrackedWorkflows ? Math.round((onTrackWorkflows / totalTrackedWorkflows) * 100) : 100;
     return {
       commands: commandCount,
       activeReports: activeReportCount,
       sla,
       auditEvents: auditRows.length,
-      commandTrend: offlineQueue.length ? `${offlineQueue.length} queued` : `${messages.length} signals`,
+      commandTrend: offlineQueue.length ? `${offlineQueue.length} queued` : `${scopedMessages.length} signals`,
       reportTrend: openEscalationCount ? `${openEscalationCount} escalated` : "clear",
       slaTrend: sla >= 80 ? "on time" : "watch",
-      auditTrend: documents.length ? `${documents.length} vaulted` : "immutable"
+      auditTrend: scopedDocuments.length ? `${scopedDocuments.length} vaulted` : "immutable"
     };
-  }, [approvals, auditRows, calendarEvents, documents, escalations, messages, offlineQueue, personnel, policies, reports, tasks, transfers]);
+  }, [auditRows.length, calendarEvents, offlineQueue.length, policies, scopedApprovals, scopedDocuments.length, scopedEscalations, scopedMessages, scopedPersonnel, scopedReports, scopedTasks, scopedTransfers.length]);
   const notifications = React.useMemo<NotificationItem[]>(() => [
-    ...escalations
+    ...scopedEscalations
       .filter((item) => item.status !== "Resolved")
       .map((item) => ({
         id: item.id,
@@ -2976,7 +3100,7 @@ function App() {
         detail: item.reason,
         severity: item.severity === "Critical" ? "Critical" as const : "High" as const
       })),
-    ...approvals
+    ...scopedApprovals
       .filter((item) => item.state !== "Approved")
       .slice(0, 3)
       .map((item) => ({
@@ -2986,7 +3110,7 @@ function App() {
         detail: `${item.route} - ${item.signatures} signatures`,
         severity: item.state === "Escalated" ? "High" as const : "Medium" as const
       })),
-    ...tasks
+    ...scopedTasks
       .filter((item) => item.status !== "Complete")
       .slice(0, 3)
       .map((item) => ({
@@ -3016,7 +3140,7 @@ function App() {
         detail: `${item.date} - ${item.owner}`,
         severity: item.priority === "Critical" ? "Critical" as const : item.priority === "High" ? "High" as const : "Info" as const
       })),
-    ...personnel
+    ...scopedPersonnel
       .filter((item) => item.status === "Transfer Pending")
       .slice(0, 3)
       .map((item) => ({
@@ -3026,7 +3150,7 @@ function App() {
         detail: `${item.currentStation} -> ${item.assignedStation}`,
         severity: "Medium" as const
       })),
-    ...transfers
+    ...scopedTransfers
       .filter((item) => item.step !== "New station login ready")
       .slice(0, 2)
       .map((item) => ({
@@ -3053,7 +3177,7 @@ function App() {
         detail: `${item.object} - ${item.result}`,
         severity: item.event === "EscalationTriggered" ? "High" as const : "Info" as const
       }))
-  ].filter((item) => allowedSections.includes(item.section)).slice(0, 10), [allowedSections, approvals, auditRows, calendarEvents, escalations, offlineQueue, personnel, policies, tasks, transfers]);
+  ].filter((item) => allowedSections.includes(item.section)).slice(0, 10), [allowedSections, auditRows, calendarEvents, offlineQueue, policies, scopedApprovals, scopedEscalations, scopedPersonnel, scopedTasks, scopedTransfers]);
   const criticalNotificationCount = notifications.filter((item) => ["Critical", "High"].includes(item.severity)).length;
 
   React.useEffect(() => {
@@ -3068,18 +3192,18 @@ function App() {
 
   const searchResults = React.useMemo(() => {
     const records: SearchResult[] = [
-      ...messages.map((item) => ({ id: item.id, section: "ChurchMail" as Section, title: item.subject, meta: `${item.kind} - ${item.from} - ${item.files}`, status: item.status })),
-      ...reports.map((item) => ({ id: item.id, section: "Reports" as Section, title: item.name, meta: `${item.owner} - ${item.path} - ${item.due}`, status: item.state })),
-      ...approvals.map((item) => ({ id: item.id, section: "Approvals" as Section, title: item.request, meta: `${item.route} - ${item.limit}`, status: item.state })),
-      ...tasks.map((item) => ({ id: item.id, section: "Tasks" as Section, title: item.title, meta: `${item.owner} - ${item.assignee} - ${item.priority} - ${item.due}`, status: item.status })),
+      ...scopedMessages.map((item) => ({ id: item.id, section: "ChurchMail" as Section, title: item.subject, meta: `${item.kind} - ${item.from} - ${item.files}`, status: item.status })),
+      ...scopedReports.map((item) => ({ id: item.id, section: "Reports" as Section, title: item.name, meta: `${item.owner} - ${item.path} - ${item.due}`, status: item.state })),
+      ...scopedApprovals.map((item) => ({ id: item.id, section: "Approvals" as Section, title: item.request, meta: `${item.route} - ${item.limit}`, status: item.state })),
+      ...scopedTasks.map((item) => ({ id: item.id, section: "Tasks" as Section, title: item.title, meta: `${item.owner} - ${item.assignee} - ${item.priority} - ${item.due}`, status: item.status })),
       ...policies.map((item) => ({ id: item.id, section: "Policies" as Section, title: item.title, meta: `${item.category} - ${item.owner} - ${item.summary}`, status: item.status })),
       ...calendarEvents.map((item) => ({ id: item.id, section: "Calendar" as Section, title: item.title, meta: `${item.category} - ${item.owner} - ${item.date} - ${item.priority}`, status: item.status })),
       ...liveSessions.map((item) => ({ id: item.id, section: "Live Comms" as Section, title: item.title, meta: `${item.sessionType} - ${item.host} - ${item.route} - ${item.linkedRecord}`, status: item.status })),
-      ...personnel.map((item) => ({ id: item.id, section: "Personnel" as Section, title: item.name, meta: `${item.role} - ${item.currentStation} -> ${item.assignedStation}`, status: item.status })),
-      ...escalations.map((item) => ({ id: item.id, section: "Escalations" as Section, title: item.item, meta: `${item.owner} - ${item.reason}`, status: item.status })),
+      ...scopedPersonnel.map((item) => ({ id: item.id, section: "Personnel" as Section, title: item.name, meta: `${item.role} - ${item.currentStation} -> ${item.assignedStation}`, status: item.status })),
+      ...scopedEscalations.map((item) => ({ id: item.id, section: "Escalations" as Section, title: item.item, meta: `${item.owner} - ${item.reason}`, status: item.status })),
       ...offices.map((item) => ({ id: item.id, section: "Offices" as Section, title: item.name, meta: `${item.email} - ${item.level} - ${item.supervisor}`, status: item.status })),
-      ...transfers.map((item) => ({ id: item.id, section: "Transfers" as Section, title: item.person, meta: `${item.from} -> ${item.to} - ${item.risk}`, status: item.step })),
-      ...documents.map((item) => ({ id: item.id, section: "Archive" as Section, title: item.name, meta: `${item.classification} - ${item.source} - ${item.owner}`, status: item.status })),
+      ...scopedTransfers.map((item) => ({ id: item.id, section: "Transfers" as Section, title: item.person, meta: `${item.from} -> ${item.to} - ${item.risk}`, status: item.step })),
+      ...scopedDocuments.map((item) => ({ id: item.id, section: "Archive" as Section, title: item.name, meta: `${item.classification} - ${item.source} - ${item.owner}`, status: item.status })),
       ...auditRows.map((item) => ({ id: item.id, section: "Audit" as Section, title: item.object, meta: `${item.event} - ${item.actor} - ${item.result}`, status: item.time }))
     ];
     const query = searchQuery.trim().toLowerCase();
@@ -3088,7 +3212,7 @@ function App() {
       .filter((record) => allowedSections.includes(record.section))
       .filter((record) => [record.title, record.meta, record.status, record.section].join(" ").toLowerCase().includes(query))
       .slice(0, 8);
-  }, [allowedSections, approvals, auditRows, calendarEvents, documents, escalations, liveSessions, messages, offices, personnel, policies, reports, searchQuery, tasks, transfers]);
+  }, [allowedSections, auditRows, calendarEvents, liveSessions, offices, policies, scopedApprovals, scopedDocuments, scopedEscalations, scopedMessages, scopedPersonnel, scopedReports, scopedTasks, scopedTransfers, searchQuery]);
 
   function openSection(section: Section) {
     const nextSection = allowedSections.includes(section) ? section : "Control Center";
@@ -9049,7 +9173,7 @@ function App() {
   }
 
   return (
-    <main className={effectiveSection === "Admin Board" ? "app-shell admin-shell" : "app-shell"}>
+    <main className={`${effectiveSection === "Admin Board" ? "app-shell admin-shell" : "app-shell"} workstation-${workstationProfile.key}`}>
       <aside className="sidebar">
         <button className="brand brand-button" type="button" aria-label="Open workstation home" title="Open workstation home" onClick={() => openSection("Control Center")}>
           <div className="brand-mark">
@@ -9181,16 +9305,16 @@ function App() {
           permissions.canOverride ? <ControlCenter
             offlineMode={offlineMode}
             networkOnline={networkOnline}
-            messages={messages}
-            reports={reports}
-            approvals={approvals}
-            tasks={tasks}
+            messages={scopedMessages}
+            reports={scopedReports}
+            approvals={scopedApprovals}
+            tasks={scopedTasks}
             policies={policies}
             calendarEvents={calendarEvents}
-            personnel={personnel}
-            escalations={escalations}
-            transfers={transfers}
-            documents={documents}
+            personnel={scopedPersonnel}
+            escalations={scopedEscalations}
+            transfers={scopedTransfers}
+            documents={scopedDocuments}
             events={events}
             offlineQueue={offlineQueue}
             offlineConflicts={offlineConflicts}
@@ -9210,10 +9334,10 @@ function App() {
             onOpenCommandEscalation={openCommandEscalation}
           /> : <StationHome
             station={activeStation}
-            messages={messages}
-            reports={reports}
-            tasks={tasks}
-            documents={documents}
+            messages={scopedMessages}
+            reports={scopedReports}
+            tasks={scopedTasks}
+            documents={scopedDocuments}
             offlineMode={offlineMode}
             networkOnline={networkOnline}
             offlineQueue={offlineQueue}
@@ -9225,7 +9349,7 @@ function App() {
         )}
         {effectiveSection === "ChurchMail" && (
           <ChurchMail
-            messages={messages}
+            messages={scopedMessages}
             events={events}
             station={activeStation}
             offlineMode={offlineMode}
@@ -9250,7 +9374,7 @@ function App() {
         )}
         {effectiveSection === "Reports" && (
           <Reports
-            reports={reports}
+            reports={scopedReports}
             station={activeStation}
             onCreateReport={createReportDraft}
             onSubmitReport={submitReport}
@@ -9279,7 +9403,7 @@ function App() {
         )}
         {effectiveSection === "Approvals" && (
           <Approvals
-            approvals={approvals}
+            approvals={scopedApprovals}
             station={activeStation}
             permissions={permissions}
             onCreateApproval={createApprovalRequest}
@@ -9305,7 +9429,7 @@ function App() {
         )}
         {effectiveSection === "Tasks" && (
           <Tasks
-            tasks={tasks}
+            tasks={scopedTasks}
             station={activeStation}
             offlineMode={offlineMode}
             onCreateTask={createTask}
@@ -9408,7 +9532,7 @@ function App() {
         )}
         {effectiveSection === "Personnel" && (
           <PersonnelDirectory
-            personnel={personnel}
+            personnel={scopedPersonnel}
             station={activeStation}
             permissions={permissions}
             offlineMode={offlineMode}
@@ -9436,7 +9560,7 @@ function App() {
         )}
         {effectiveSection === "Escalations" && (
           <Escalations
-            escalations={escalations}
+            escalations={scopedEscalations}
             station={activeStation}
             permissions={permissions}
             events={events}
@@ -9466,14 +9590,14 @@ function App() {
         {effectiveSection === "AI Desk" && (
           <AiDesk
             drafts={aiDrafts}
-            reports={reports}
-            approvals={approvals}
-            tasks={tasks}
+            reports={scopedReports}
+            approvals={scopedApprovals}
+            tasks={scopedTasks}
             policies={policies}
             calendarEvents={calendarEvents}
-            personnel={personnel}
-            escalations={escalations}
-            messages={messages}
+            personnel={scopedPersonnel}
+            escalations={scopedEscalations}
+            messages={scopedMessages}
             onGenerateDraft={generateAiDraft}
             onRefreshDraft={refreshAiDraft}
             onArchiveDraft={archiveAiDraft}
@@ -9493,10 +9617,10 @@ function App() {
           <LiveComms
             station={activeStation}
             offices={offices}
-            reports={reports}
-            approvals={approvals}
-            tasks={tasks}
-            messages={messages}
+            reports={scopedReports}
+            approvals={scopedApprovals}
+            tasks={scopedTasks}
+            messages={scopedMessages}
             liveSessions={liveSessions}
             onCreateLiveSession={createLiveSession}
             onUpdateLiveSessionStatus={updateLiveSessionStatus}
@@ -9567,7 +9691,7 @@ function App() {
         {effectiveSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} onActivateOffice={activateOffice} onSuspendOffice={suspendOffice} onRotatePassword={rotateOfficePassword} onActivateStation={activateOfficeStation} onUpdateDepartment={updateOfficeDepartment} onUpdateLevel={updateOfficeLevel} onVerifyEmail={verifyOfficeEmail} onWatchOffice={watchOffice} onNoteOffice={noteOffice} onUpdateCapacity={updateOfficeCapacity} onReviewCompliance={reviewOfficeCompliance} onArchiveOffice={archiveOffice} onBulkActivate={bulkActivateOffices} onRefreshDigest={refreshOfficeDigest} digest={officeDigest} />}
         {effectiveSection === "Transfers" && (
           <Transfers
-            transfers={transfers}
+            transfers={scopedTransfers}
             permissions={permissions}
             offlineQueue={offlineQueue}
             onSync={syncOfflineQueue}
@@ -9592,7 +9716,7 @@ function App() {
             digest={transferDigest}
           />
         )}
-        {effectiveSection === "Archive" && <Archive documents={documents} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onVerifyDocument={verifyDocument} onAssignCustody={assignDocumentCustody} onUpdateChain={updateDocumentChain} onExtractText={extractDocumentText} onLinkReport={linkDocumentReport} onLinkApproval={linkDocumentApproval} onWatchDocument={watchDocument} onExportDocument={exportDocumentRecord} onUploadFile={uploadDocumentFile} onBulkSeal={bulkSealDocuments} onRefreshManifest={refreshArchiveManifest} />}
+        {effectiveSection === "Archive" && <Archive documents={scopedDocuments} station={activeStation} offlineMode={offlineMode} manifest={archiveManifest} onArchiveDocument={archiveDocument} onUpdateClassification={updateDocumentClassification} onUpdateOwner={updateDocumentOwner} onMarkReview={markDocumentReview} onMarkArchived={markDocumentArchived} onSealDocument={sealDocument} onPlaceHold={placeDocumentHold} onUpdateRetention={updateDocumentRetention} onDuplicateDocument={duplicateDocument} onVerifyDocument={verifyDocument} onAssignCustody={assignDocumentCustody} onUpdateChain={updateDocumentChain} onExtractText={extractDocumentText} onLinkReport={linkDocumentReport} onLinkApproval={linkDocumentApproval} onWatchDocument={watchDocument} onExportDocument={exportDocumentRecord} onUploadFile={uploadDocumentFile} onBulkSeal={bulkSealDocuments} onRefreshManifest={refreshArchiveManifest} />}
         {effectiveSection === "Account Settings" && (
           <AccountSettings
             station={activeStation}
