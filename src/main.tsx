@@ -57,6 +57,7 @@ import {
 } from "lucide-react";
 import "./styles.css";
 import "./signin-overrides.css";
+import "./admin-board-overrides.css";
 
 type StationLevel =
   | "International HQ"
