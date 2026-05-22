@@ -10168,6 +10168,1533 @@ h1 {
   }
 }
 
+/* ==========================================================================
+   GCOS DESIGN SYSTEM V3
+   Investor-ready visual polish for the public gateway, app workspace,
+   admin board, dashboards, forms, lists, tables, and mobile views.
+   ========================================================================== */
+
+:root {
+  --gcos-blue-950: #061733;
+  --gcos-blue-900: #08265b;
+  --gcos-blue-800: #0b3478;
+  --gcos-blue-700: #104a9f;
+  --gcos-blue-100: #dce9ff;
+  --gcos-blue-050: #f4f8ff;
+  --gcos-gold-600: #c99422;
+  --gcos-gold-500: #e5b532;
+  --gcos-gold-100: #fff4cf;
+  --gcos-ink: #11213e;
+  --gcos-muted: #63728a;
+  --gcos-subtle: #edf3fb;
+  --gcos-line: #d9e4f3;
+  --gcos-white: #ffffff;
+  --gcos-success: #137a5b;
+  --gcos-danger: #bc3c3c;
+  --gcos-warning: #a66a00;
+  --gcos-radius-xs: 10px;
+  --gcos-radius-sm: 14px;
+  --gcos-radius-md: 18px;
+  --gcos-radius-lg: 24px;
+  --gcos-shadow-sm: 0 10px 24px rgba(6, 23, 51, 0.08);
+  --gcos-shadow-md: 0 18px 48px rgba(6, 23, 51, 0.12);
+  --gcos-shadow-lg: 0 28px 80px rgba(6, 23, 51, 0.16);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  background: #f4f7fb !important;
+  color: var(--gcos-ink);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  text-rendering: optimizeLegibility;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(229, 181, 50, 0.55) !important;
+  outline-offset: 2px;
+}
+
+.empty-state,
+.search-empty,
+.login-error,
+.login-notice,
+.download-notice,
+.compose-feedback {
+  border-radius: var(--gcos-radius-sm) !important;
+  border: 1px solid rgba(11, 52, 120, 0.12) !important;
+  background: #f8fbff !important;
+  color: var(--gcos-ink) !important;
+  line-height: 1.5;
+}
+
+.login-error {
+  border-color: rgba(188, 60, 60, 0.24) !important;
+  background: #fff4f4 !important;
+  color: #832626 !important;
+}
+
+.login-notice,
+.download-notice,
+.compose-feedback {
+  border-color: rgba(19, 122, 91, 0.2) !important;
+  background: #f1fbf7 !important;
+  color: #0f6048 !important;
+}
+
+/* Public software portal */
+.public-software-gateway {
+  min-height: 100vh;
+  background:
+    linear-gradient(180deg, rgba(6, 23, 51, 0.92), rgba(8, 38, 91, 0.86) 34%, #f4f7fb 34%, #f4f7fb 100%) !important;
+  padding: 22px;
+}
+
+.public-gateway-header,
+.public-download-footer {
+  max-width: 1180px;
+  margin-inline: auto;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: var(--gcos-radius-lg) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+  box-shadow: var(--gcos-shadow-sm);
+  backdrop-filter: blur(18px);
+}
+
+.public-gateway-header {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 18px;
+  padding: 14px 16px !important;
+  margin-bottom: 28px !important;
+}
+
+.public-gateway-header .brand,
+.public-gateway-header .brand strong,
+.public-gateway-header .brand span,
+.gateway-status-pill,
+.public-gateway-nav a {
+  color: #fff !important;
+}
+
+.public-gateway-header .brand-mark,
+.login-emblem,
+.admin-portal-logo,
+.brand-mark {
+  background: #fff !important;
+  border-radius: 18px !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+}
+
+.brand-mark img,
+.login-emblem img,
+.admin-portal-logo img {
+  object-fit: contain !important;
+}
+
+.gateway-status-pill,
+.public-gateway-nav a {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  padding: 10px 13px !important;
+  text-decoration: none;
+}
+
+.login-panel {
+  width: min(1180px, 100%);
+  margin-inline: auto;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.4fr) minmax(360px, 0.72fr);
+  gap: 24px;
+  align-items: stretch;
+}
+
+.software-download-hero,
+.admin-access-hero,
+.login-card,
+.gateway-flow-steps article,
+.download-platform-panel {
+  border: 1px solid rgba(217, 228, 243, 0.9) !important;
+  border-radius: var(--gcos-radius-lg) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: var(--gcos-shadow-md) !important;
+}
+
+.software-download-hero,
+.admin-access-hero {
+  overflow: hidden;
+  position: relative;
+  padding: 36px !important;
+}
+
+.software-download-hero::before,
+.admin-access-hero::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 7px;
+  background: linear-gradient(90deg, var(--gcos-gold-500), #fff0b5, var(--gcos-blue-700));
+}
+
+.download-hero-copy h1 {
+  max-width: 720px;
+  margin: 14px 0 12px !important;
+  color: var(--gcos-blue-950) !important;
+  font-size: clamp(34px, 5vw, 68px) !important;
+  line-height: 0.94 !important;
+  letter-spacing: 0 !important;
+}
+
+.download-hero-copy p {
+  max-width: 760px;
+  color: #4d5f79 !important;
+  font-size: clamp(16px, 1.6vw, 20px) !important;
+  line-height: 1.55 !important;
+}
+
+.download-kicker,
+.login-heading span,
+.report-card-title span,
+.section-kicker,
+.panel-header span,
+.admin-tab-heading span,
+.admin-suite-head span {
+  color: var(--gcos-gold-600) !important;
+  font-size: 12px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase;
+}
+
+.download-hero-actions,
+.login-trust-row,
+.public-download-footer div:last-child {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.download-hero-actions button,
+.public-download-footer button,
+.login-form button,
+.auth-mode-toggle button,
+.secondary-auth-action,
+.action-row button,
+.compact-actions button,
+.wide-action,
+.panel-header button,
+.churchmail-action-groups button,
+.report-selected-actions button,
+.report-command-grid button,
+.admin-portal-state button,
+.admin-suite-head button {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 42px;
+  border: 1px solid rgba(11, 52, 120, 0.16) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  color: var(--gcos-blue-900) !important;
+  font-weight: 800 !important;
+  box-shadow: 0 6px 16px rgba(6, 23, 51, 0.06);
+}
+
+.download-hero-actions .primary-download-action,
+.login-form button[type="submit"],
+.report-command-grid button.primary,
+.action-row button:first-child,
+.wide-action {
+  border-color: var(--gcos-blue-800) !important;
+  background: var(--gcos-blue-800) !important;
+  color: #fff !important;
+}
+
+.download-platform-panel {
+  align-self: stretch;
+  padding: 20px !important;
+}
+
+.download-card {
+  display: grid !important;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 12px;
+  width: 100%;
+  margin-top: 12px;
+  padding: 16px !important;
+  text-align: left;
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-md) !important;
+  background: #fff !important;
+  color: var(--gcos-ink) !important;
+}
+
+.download-card svg {
+  grid-row: span 4;
+  color: var(--gcos-blue-800);
+}
+
+.download-card.primary {
+  border-color: rgba(229, 181, 50, 0.7) !important;
+  background: linear-gradient(135deg, #fffaf0, #ffffff) !important;
+}
+
+.login-card {
+  padding: 24px !important;
+}
+
+.login-heading {
+  display: grid !important;
+  grid-template-columns: 54px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.station-avatar,
+.admin-tab-icon,
+.report-document-seal {
+  display: grid;
+  place-items: center;
+  border-radius: 16px !important;
+  background: linear-gradient(135deg, var(--gcos-blue-100), #fff) !important;
+  color: var(--gcos-blue-800) !important;
+}
+
+.login-heading h2 {
+  margin: 4px 0 !important;
+  color: var(--gcos-blue-950) !important;
+  font-size: 26px !important;
+}
+
+.login-form label,
+.report-form label,
+.churchmail-form label,
+.office-form label,
+.ai-desk-form label {
+  display: grid !important;
+  gap: 7px;
+  color: var(--gcos-ink) !important;
+  font-weight: 800 !important;
+}
+
+.login-form input,
+.login-form select,
+.login-form textarea,
+.report-form input,
+.report-form select,
+.report-form textarea,
+.churchmail-form input,
+.churchmail-form select,
+.churchmail-form textarea,
+.office-form input,
+.office-form select,
+.office-form textarea,
+.ai-desk-form input,
+.ai-desk-form select,
+.ai-desk-form textarea,
+.search-box input,
+.user-topbar .search-box input {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  color: var(--gcos-ink) !important;
+  padding: 11px 13px !important;
+  box-shadow: inset 0 1px 0 rgba(6, 23, 51, 0.02);
+}
+
+.login-form textarea,
+.report-form textarea,
+.churchmail-form textarea,
+.office-form textarea,
+.ai-desk-form textarea {
+  min-height: 98px;
+  resize: vertical;
+}
+
+.gateway-flow-steps {
+  width: min(1180px, 100%);
+  margin: 24px auto 0;
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.gateway-flow-steps article {
+  padding: 18px !important;
+}
+
+.gateway-flow-steps article > div:first-child {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  color: var(--gcos-blue-800);
+}
+
+.public-download-footer {
+  margin-top: 22px !important;
+  padding: 16px !important;
+}
+
+/* Main app shell */
+.app-shell:not(.admin-shell) {
+  display: grid !important;
+  grid-template-columns: 288px minmax(0, 1fr);
+  min-height: 100vh;
+  background: #f4f7fb !important;
+}
+
+.app-shell:not(.admin-shell) .sidebar {
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow: auto;
+  padding: 18px !important;
+  background:
+    linear-gradient(180deg, var(--gcos-blue-900), var(--gcos-blue-950)) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+  color: #fff !important;
+}
+
+.app-shell:not(.admin-shell) .brand-button,
+.app-shell:not(.admin-shell) .station-switcher,
+.app-shell:not(.admin-shell) .nav-item {
+  border-radius: var(--gcos-radius-md) !important;
+}
+
+.app-shell:not(.admin-shell) .brand,
+.app-shell:not(.admin-shell) .brand strong,
+.app-shell:not(.admin-shell) .brand span,
+.app-shell:not(.admin-shell) .sidebar p {
+  color: #fff !important;
+}
+
+.app-shell:not(.admin-shell) .nav-list {
+  display: grid;
+  gap: 7px;
+}
+
+.app-shell:not(.admin-shell) .nav-item {
+  min-height: 48px;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: rgba(255, 255, 255, 0.84) !important;
+}
+
+.app-shell:not(.admin-shell) .nav-item svg {
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.app-shell:not(.admin-shell) .nav-item.active,
+.app-shell:not(.admin-shell) .nav-item:hover {
+  border-color: rgba(229, 181, 50, 0.55) !important;
+  background: rgba(255, 255, 255, 0.14) !important;
+  color: #fff !important;
+}
+
+.app-shell:not(.admin-shell) .nav-item.active {
+  box-shadow: inset 4px 0 0 var(--gcos-gold-500);
+}
+
+.workspace {
+  min-width: 0;
+  background:
+    linear-gradient(180deg, #edf4ff 0, #f8fafc 310px, #f4f7fb 100%) !important;
+}
+
+.topbar,
+.user-topbar,
+.section-banner,
+.station-landing,
+.panel,
+.station-panel,
+.metric-card,
+.command-card,
+.insight,
+.churchmail-panel,
+.churchmail-message-detail,
+.reports-left-panel,
+.reports-main-panel,
+.reports-right-panel,
+.report-card,
+.approval-card,
+.task-card,
+.policy-card,
+.calendar-card,
+.personnel-card,
+.escalation-card,
+.office-card,
+.transfer-card,
+.archive-card,
+.audit-card,
+.live-comms-card,
+.source-map-item,
+.data-table,
+.admin-console-panel,
+.admin-app-suite,
+.admin-node-model,
+.admin-focus-board {
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-lg) !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: var(--gcos-shadow-sm) !important;
+}
+
+.topbar,
+.user-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  margin-bottom: 18px;
+  padding: 16px !important;
+  backdrop-filter: blur(18px);
+}
+
+.user-topbar .station-title h1,
+.section-banner h1,
+.station-landing h1,
+.panel-header h2,
+.report-card-title h3,
+.churchmail-hero h2,
+.admin-command-hero h1 {
+  color: var(--gcos-blue-950) !important;
+  letter-spacing: 0 !important;
+}
+
+.user-topbar .station-title p,
+.section-banner p,
+.station-landing p,
+.panel p,
+.report-card p,
+.churchmail-hero p,
+.admin-command-hero p,
+.metric-card small,
+.insight small,
+.data-table small {
+  color: var(--gcos-muted) !important;
+}
+
+.topbar-actions,
+.user-topbar .topbar-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.sync-toggle,
+.api-status,
+.install-toggle,
+.session-pill,
+.permission-strip,
+.account-menu-button,
+.icon-button,
+.notification-button {
+  min-height: 42px;
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
+  color: var(--gcos-blue-900) !important;
+  box-shadow: 0 5px 14px rgba(6, 23, 51, 0.05);
+}
+
+.section-banner,
+.station-landing {
+  padding: clamp(22px, 3vw, 34px) !important;
+  background:
+    radial-gradient(circle at 94% 12%, rgba(229, 181, 50, 0.18), transparent 260px),
+    linear-gradient(135deg, #ffffff 0%, #f5f9ff 100%) !important;
+}
+
+.section-banner h1,
+.station-landing h1 {
+  font-size: clamp(30px, 4vw, 52px) !important;
+  line-height: 1.02 !important;
+}
+
+.metrics-grid,
+.metric-grid,
+.command-grid,
+.insight-grid,
+.reports-grid,
+.admin-console-grid {
+  gap: 16px !important;
+}
+
+.metric-card {
+  padding: 18px !important;
+}
+
+.metric-card strong {
+  color: var(--gcos-blue-950) !important;
+  font-size: clamp(24px, 3vw, 34px) !important;
+}
+
+.metric-card span {
+  color: var(--gcos-muted) !important;
+  font-weight: 800 !important;
+}
+
+.panel,
+.station-panel,
+.report-card,
+.churchmail-panel,
+.churchmail-message-detail {
+  padding: clamp(16px, 2vw, 24px) !important;
+}
+
+.panel-header {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 16px !important;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--gcos-line);
+}
+
+.panel-header div:first-child,
+.report-card-title,
+.churchmail-panel-title,
+.admin-focus-title,
+.admin-suite-head {
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.panel-header svg,
+.report-card-title svg,
+.churchmail-panel-title svg,
+.admin-suite-head svg {
+  color: var(--gcos-blue-800) !important;
+}
+
+.status-pill,
+.churchmail-kind-chip,
+.badge,
+.flow-meter-label,
+.admin-station-state {
+  border-radius: 999px !important;
+  border: 1px solid rgba(11, 52, 120, 0.14) !important;
+  background: var(--gcos-blue-050) !important;
+  color: var(--gcos-blue-800) !important;
+  font-weight: 900 !important;
+}
+
+/* Reports */
+.reports-app {
+  display: grid;
+  gap: 18px;
+}
+
+.reports-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 18px;
+  padding: clamp(22px, 3vw, 34px) !important;
+  border-radius: var(--gcos-radius-lg);
+  background:
+    radial-gradient(circle at 96% 10%, rgba(229, 181, 50, 0.22), transparent 260px),
+    linear-gradient(135deg, var(--gcos-blue-900), var(--gcos-blue-800)) !important;
+  color: #fff !important;
+  box-shadow: var(--gcos-shadow-md);
+}
+
+.reports-hero h2,
+.reports-hero p,
+.reports-hero span,
+.reports-hero strong,
+.reports-hero small {
+  color: #fff !important;
+}
+
+.reports-hero h2 {
+  max-width: 820px;
+  font-size: clamp(28px, 4vw, 50px) !important;
+  line-height: 1.04 !important;
+}
+
+.reports-hero-stats {
+  min-width: 190px;
+  align-self: stretch;
+  display: grid;
+  align-content: center;
+  justify-items: start;
+  padding: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: var(--gcos-radius-md);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.reports-stepper {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.reports-stepper > div {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr);
+  gap: 4px 10px;
+  align-items: center;
+  padding: 14px !important;
+  border: 1px solid var(--gcos-line);
+  border-radius: var(--gcos-radius-sm);
+  background: #fff;
+}
+
+.reports-stepper span {
+  grid-row: span 2;
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--gcos-blue-100);
+  color: var(--gcos-blue-800);
+  font-weight: 900;
+}
+
+.reports-stepper .active span {
+  background: var(--gcos-gold-500);
+  color: var(--gcos-blue-950);
+}
+
+.reports-layout {
+  display: grid !important;
+  grid-template-columns: minmax(280px, 0.8fr) minmax(420px, 1.3fr) minmax(300px, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.report-card-title {
+  margin-bottom: 14px;
+}
+
+.report-card-title h3 {
+  margin: 2px 0 0;
+}
+
+.report-library-summary,
+.template-requirement-grid,
+.report-meta-strip,
+.report-submit-steps,
+.admin-system-grid,
+.admin-command-summary,
+.admin-focus-grid,
+.admin-station-summary,
+.churchmail-status-grid,
+.churchmail-meta-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 12px !important;
+}
+
+.report-library-summary > div,
+.template-requirement-grid > div,
+.report-submit-steps > div,
+.admin-system-card,
+.admin-station-summary > div,
+.churchmail-status-grid article,
+.churchmail-meta-grid div {
+  padding: 14px !important;
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-sm) !important;
+  background: #f8fbff !important;
+}
+
+.report-category-pills,
+.report-selected-actions,
+.report-actions-row,
+.report-command-grid,
+.admin-station-actions,
+.compact-actions {
+  display: flex !important;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.report-category-pills button {
+  min-height: 34px;
+  border: 1px solid var(--gcos-line);
+  border-radius: 999px;
+  background: #fff;
+  color: var(--gcos-blue-800);
+  padding: 7px 11px;
+  font-weight: 800;
+}
+
+.report-category-pills button.active {
+  border-color: var(--gcos-blue-800);
+  background: var(--gcos-blue-800);
+  color: #fff;
+}
+
+.template-filter-bar {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 10px;
+}
+
+.template-filter-bar label {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+}
+
+.report-template-list {
+  display: grid !important;
+  gap: 10px;
+  max-height: 520px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.report-template-list button,
+.report-inbox-list button,
+.churchmail-list-item,
+.admin-queue-list button,
+.admin-action-list button,
+.admin-nav-group button {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-sm) !important;
+  background: #fff !important;
+  color: var(--gcos-ink) !important;
+  padding: 13px !important;
+}
+
+.report-template-list button.selected,
+.report-inbox-list button.active,
+.churchmail-list-item.selected,
+.admin-nav-group button.active {
+  border-color: rgba(229, 181, 50, 0.75) !important;
+  background: linear-gradient(135deg, #fffaf0, #ffffff) !important;
+  box-shadow: inset 4px 0 0 var(--gcos-gold-500);
+}
+
+.report-template-preview,
+.selected-report-summary,
+.report-preview-box,
+.report-route-box {
+  margin-top: 14px;
+  padding: 16px !important;
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-md) !important;
+  background: #fff !important;
+}
+
+.template-preview-head,
+.template-route-line,
+.template-checklist-block > div:first-child,
+.selected-report-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.template-checklist-preview {
+  display: grid;
+  gap: 7px;
+  margin-top: 10px;
+}
+
+.template-checklist-preview span {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--gcos-muted);
+  font-size: 13px;
+}
+
+.report-document-head {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr);
+  gap: 14px;
+  align-items: center;
+  padding: 16px;
+  border: 1px solid var(--gcos-line);
+  border-radius: var(--gcos-radius-md);
+  background: #f8fbff;
+}
+
+.report-document-seal img {
+  width: 52px;
+  height: 52px;
+  object-fit: contain;
+}
+
+.report-section-editor {
+  display: grid !important;
+  gap: 12px;
+}
+
+.report-section-card {
+  padding: 14px;
+  border: 1px solid var(--gcos-line);
+  border-radius: var(--gcos-radius-sm);
+  background: #fff;
+}
+
+.report-section-card > span {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.report-section-card small {
+  display: grid;
+  place-items: center;
+  width: 27px;
+  height: 27px;
+  border-radius: 50%;
+  background: var(--gcos-blue-050);
+  color: var(--gcos-blue-800);
+}
+
+.report-sticky-actions {
+  position: sticky;
+  bottom: 12px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 12px;
+  border: 1px solid var(--gcos-line);
+  border-radius: var(--gcos-radius-md);
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: var(--gcos-shadow-sm);
+}
+
+.report-command-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.report-command-grid button,
+.report-file-command {
+  justify-content: flex-start !important;
+  min-height: 64px;
+}
+
+.report-command-grid button span,
+.report-file-command span {
+  display: grid;
+  gap: 2px;
+}
+
+.report-command-grid small,
+.report-file-command small {
+  color: inherit;
+  opacity: 0.72;
+}
+
+.file-action input {
+  display: none;
+}
+
+/* ChurchMail and app content lists */
+.churchmail-hero {
+  border-radius: var(--gcos-radius-lg) !important;
+  background:
+    radial-gradient(circle at 92% 0%, rgba(229, 181, 50, 0.24), transparent 260px),
+    linear-gradient(135deg, var(--gcos-blue-900), var(--gcos-blue-800)) !important;
+  color: #fff !important;
+}
+
+.churchmail-hero h2,
+.churchmail-hero p,
+.churchmail-hero span {
+  color: #fff !important;
+}
+
+.churchmail-workspace {
+  display: grid !important;
+  grid-template-columns: minmax(280px, 0.9fr) minmax(380px, 1.1fr) minmax(260px, 0.8fr);
+  gap: 16px;
+}
+
+.churchmail-list {
+  display: grid;
+  gap: 10px;
+}
+
+.churchmail-list-item {
+  display: grid !important;
+  gap: 7px;
+}
+
+.churchmail-list-item strong,
+.report-template-list strong,
+.report-inbox-list strong,
+.admin-queue-list strong,
+.data-table strong {
+  color: var(--gcos-blue-950) !important;
+}
+
+.churchmail-detail-head {
+  display: grid !important;
+  grid-template-columns: 52px minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.churchmail-message-icon {
+  border-radius: 16px !important;
+  background: var(--gcos-blue-050) !important;
+  color: var(--gcos-blue-800) !important;
+}
+
+.churchmail-action-groups {
+  display: grid !important;
+  gap: 12px;
+}
+
+.churchmail-action-groups > div {
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-sm) !important;
+  background: #f8fbff !important;
+}
+
+/* Tables, rows, and repeated operational cards */
+.data-table,
+.admin-station-table,
+.admin-session-list,
+.admin-event-list,
+.admin-approval-queue,
+.admin-queue-list,
+.admin-health-list,
+.report-inbox-list {
+  display: grid;
+  gap: 10px;
+}
+
+.data-table > *,
+.admin-station-row,
+.admin-session-list article,
+.admin-event-list article,
+.admin-approval-queue article,
+.admin-health-list > div,
+.task-card,
+.policy-card,
+.calendar-card,
+.personnel-card,
+.escalation-card,
+.office-card,
+.transfer-card,
+.archive-card,
+.source-map-item,
+.approval-lane,
+.approval-card {
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-sm) !important;
+  background: #fff !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: 0 6px 18px rgba(6, 23, 51, 0.045);
+}
+
+.admin-station-row {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 1.1fr) minmax(180px, 0.9fr) 120px minmax(260px, 1fr);
+  gap: 12px;
+  align-items: center;
+  padding: 14px !important;
+}
+
+.admin-station-row.head {
+  background: var(--gcos-blue-050) !important;
+  color: var(--gcos-muted) !important;
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-station-row small,
+.admin-session-list span,
+.admin-event-list span,
+.admin-queue-list small,
+.admin-app-tile small,
+.admin-nav-group small {
+  display: block;
+  color: var(--gcos-muted) !important;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+/* Admin board */
+.admin-portal-shell {
+  min-height: 100vh;
+  background: #f4f7fb !important;
+  color: var(--gcos-ink) !important;
+}
+
+.admin-portal-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  display: flex !important;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 14px 22px !important;
+  background: rgba(6, 23, 51, 0.96) !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12) !important;
+  backdrop-filter: blur(18px);
+}
+
+.admin-portal-layout {
+  display: grid !important;
+  grid-template-columns: 310px minmax(0, 1fr);
+  min-height: calc(100vh - 74px);
+}
+
+.admin-portal-rail {
+  position: sticky;
+  top: 74px;
+  height: calc(100vh - 74px);
+  overflow: auto;
+  padding: 18px !important;
+  border-right: 1px solid var(--gcos-line) !important;
+  background: #fff !important;
+}
+
+.admin-workspace-card {
+  padding: 18px !important;
+  border-radius: var(--gcos-radius-lg) !important;
+  background:
+    radial-gradient(circle at 100% 0, rgba(229, 181, 50, 0.22), transparent 180px),
+    linear-gradient(135deg, var(--gcos-blue-900), var(--gcos-blue-800)) !important;
+  color: #fff !important;
+  box-shadow: var(--gcos-shadow-sm);
+}
+
+.admin-workspace-card span,
+.admin-workspace-card strong,
+.admin-workspace-card p {
+  color: #fff !important;
+}
+
+.admin-nav-group {
+  margin-top: 18px;
+}
+
+.admin-nav-group p {
+  margin: 0 0 8px;
+  color: var(--gcos-muted);
+  font-size: 12px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-nav-group button {
+  display: grid !important;
+  grid-template-columns: 28px minmax(0, 1fr) 16px;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.admin-portal-main {
+  min-width: 0;
+  padding: clamp(18px, 2.4vw, 30px) !important;
+  background:
+    linear-gradient(180deg, #edf4ff 0, #f8fafc 290px, #f4f7fb 100%) !important;
+}
+
+.admin-command-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.42fr);
+  gap: 20px;
+  padding: clamp(24px, 3vw, 34px) !important;
+  border-radius: var(--gcos-radius-lg) !important;
+  background:
+    radial-gradient(circle at 94% 10%, rgba(229, 181, 50, 0.24), transparent 300px),
+    linear-gradient(135deg, var(--gcos-blue-900), var(--gcos-blue-800)) !important;
+  color: #fff !important;
+  box-shadow: var(--gcos-shadow-lg);
+}
+
+.admin-command-hero h1,
+.admin-command-hero p,
+.admin-command-hero span,
+.admin-command-hero strong,
+.admin-command-hero small {
+  color: #fff !important;
+}
+
+.admin-tab-heading {
+  display: grid !important;
+  grid-template-columns: 60px minmax(0, 1fr);
+  gap: 16px;
+}
+
+.admin-tab-heading h1 {
+  margin: 4px 0 10px !important;
+  font-size: clamp(34px, 4vw, 56px) !important;
+  line-height: 1.02 !important;
+}
+
+.admin-hero-brief {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+}
+
+.admin-hero-brief span,
+.admin-command-summary div {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  border-radius: var(--gcos-radius-sm) !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+}
+
+.admin-command-summary {
+  align-content: stretch;
+}
+
+.admin-command-summary div {
+  padding: 14px !important;
+}
+
+.admin-app-suite,
+.admin-node-model,
+.admin-focus-board,
+.admin-console-grid {
+  margin-top: 18px;
+}
+
+.admin-app-suite,
+.admin-node-model,
+.admin-focus-board,
+.admin-console-panel {
+  padding: clamp(16px, 2vw, 22px) !important;
+}
+
+.admin-app-grid {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.admin-app-tile {
+  display: grid !important;
+  gap: 8px;
+  min-height: 136px;
+  justify-items: start;
+  align-content: start;
+  padding: 16px !important;
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-md) !important;
+  background: #fff !important;
+  color: var(--gcos-ink) !important;
+  text-align: left;
+  box-shadow: 0 7px 18px rgba(6, 23, 51, 0.045);
+}
+
+.admin-app-tile span:first-child {
+  display: grid;
+  place-items: center;
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  background: var(--gcos-blue-050);
+  color: var(--gcos-blue-800);
+}
+
+.admin-app-tile.gold span:first-child {
+  background: var(--gcos-gold-100);
+  color: var(--gcos-gold-600);
+}
+
+.admin-app-tile.green span:first-child {
+  background: #eaf8f1;
+  color: var(--gcos-success);
+}
+
+.admin-node-model {
+  display: grid;
+  grid-template-columns: minmax(260px, 0.6fr) minmax(0, 1fr);
+  gap: 18px;
+}
+
+.admin-node-flow {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+
+.admin-node-flow article {
+  padding: 14px;
+  border: 1px solid var(--gcos-line);
+  border-radius: var(--gcos-radius-sm);
+  background: #f8fbff;
+}
+
+.admin-focus-card {
+  position: relative;
+  min-height: 112px !important;
+  padding: 16px !important;
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-md) !important;
+  background: #fff !important;
+  color: var(--gcos-ink) !important;
+  text-align: left;
+}
+
+.admin-focus-card > span {
+  display: grid !important;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 13px;
+  background: var(--gcos-blue-050);
+  color: var(--gcos-blue-800);
+}
+
+.admin-focus-card.urgent > span {
+  background: #fff0f0;
+  color: var(--gcos-danger);
+}
+
+.admin-focus-card.warning > span {
+  background: var(--gcos-gold-100);
+  color: var(--gcos-warning);
+}
+
+.admin-focus-card strong {
+  display: block;
+  margin-top: 10px;
+  color: var(--gcos-blue-950) !important;
+  font-size: 28px;
+}
+
+.admin-focus-card svg:last-child {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  color: var(--gcos-muted);
+}
+
+.admin-console-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px !important;
+}
+
+.admin-console-wide {
+  grid-column: 1 / -1;
+}
+
+.admin-action-list {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.admin-action-list button,
+.admin-queue-list button {
+  display: grid !important;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-health-list {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-health-list > div {
+  padding: 12px !important;
+}
+
+/* Audit / deployment surfaces */
+.production-readiness-cockpit,
+.launch-ops-wizard,
+.audit-toolbar,
+.archive-toolbar {
+  border: 1px solid var(--gcos-line) !important;
+  border-radius: var(--gcos-radius-lg) !important;
+  background: #fff !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: var(--gcos-shadow-sm);
+}
+
+.production-readiness-cockpit h2,
+.launch-ops-wizard h2 {
+  color: var(--gcos-blue-950) !important;
+}
+
+/* Mobile and tablet */
+@media (max-width: 1180px) {
+  .login-panel,
+  .reports-layout,
+  .churchmail-workspace,
+  .admin-command-hero,
+  .admin-node-model {
+    grid-template-columns: 1fr !important;
+  }
+
+  .gateway-flow-steps {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  .admin-portal-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-portal-rail {
+    position: static;
+    height: auto;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+  }
+}
+
+@media (max-width: 880px) {
+  .public-software-gateway {
+    padding: 12px;
+  }
+
+  .public-gateway-header {
+    grid-template-columns: 1fr !important;
+  }
+
+  .public-gateway-nav {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+
+  .download-hero-copy h1 {
+    font-size: 40px !important;
+  }
+
+  .app-shell:not(.admin-shell) {
+    grid-template-columns: 1fr !important;
+  }
+
+  .app-shell:not(.admin-shell) .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 70;
+    height: auto;
+    max-height: 132px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+  }
+
+  .app-shell:not(.admin-shell) .nav-list {
+    display: flex !important;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+  }
+
+  .app-shell:not(.admin-shell) .nav-item {
+    min-width: 54px;
+    padding: 10px !important;
+  }
+
+  .app-shell:not(.admin-shell) .nav-item span,
+  .app-shell:not(.admin-shell) .station-switcher {
+    display: none !important;
+  }
+
+  .workspace,
+  .admin-portal-main {
+    padding: 12px !important;
+  }
+
+  .user-topbar {
+    position: static;
+  }
+
+  .admin-console-grid,
+  .admin-action-list,
+  .reports-stepper,
+  .report-meta-strip,
+  .report-command-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-station-row {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 560px) {
+  .software-download-hero,
+  .admin-access-hero,
+  .login-card,
+  .admin-command-hero,
+  .reports-hero,
+  .section-banner,
+  .station-landing {
+    padding: 18px !important;
+    border-radius: 18px !important;
+  }
+
+  .download-hero-copy h1,
+  .reports-hero h2,
+  .admin-tab-heading h1 {
+    font-size: 32px !important;
+    line-height: 1.04 !important;
+  }
+
+  .login-heading,
+  .admin-tab-heading,
+  .report-document-head,
+  .churchmail-detail-head {
+    grid-template-columns: 1fr !important;
+  }
+
+  .gateway-flow-steps,
+  .admin-portal-rail,
+  .admin-app-grid,
+  .admin-focus-grid,
+  .admin-system-grid,
+  .admin-health-list,
+  .churchmail-status-grid,
+  .churchmail-meta-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  .template-filter-bar {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* Executive admin redesign: polished, readable, and organized for real operations. */
 .admin-shell {
   --admin-blue-950: #061536;
