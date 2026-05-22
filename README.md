@@ -94,6 +94,7 @@ npm run production:check
 npm run database:smoke
 npm run object:smoke
 npm run runtime:smoke
+npm run deployment:align
 npm run preaws:check
 npm run internal:audit
 npm run release:check
