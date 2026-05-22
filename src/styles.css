@@ -7552,6 +7552,187 @@ h1 {
   color: #0b2f6b;
 }
 
+.production-readiness-cockpit {
+  border-color: rgba(244, 197, 66, 0.32);
+  background:
+    linear-gradient(135deg, rgba(11, 47, 107, 0.98), rgba(6, 26, 61, 0.96)),
+    #0b2f6b;
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.production-readiness-cockpit .panel-header h2,
+.production-readiness-cockpit .production-readiness-hero h2,
+.production-readiness-cockpit .production-score-ring strong,
+.production-readiness-cockpit .production-runway strong,
+.production-readiness-cockpit .production-hold-list strong,
+.production-readiness-cockpit .insight strong {
+  color: #ffffff;
+}
+
+.production-readiness-cockpit .panel-header button,
+.production-readiness-cockpit .production-readiness-hero span,
+.production-readiness-cockpit .production-runway span,
+.production-readiness-cockpit .production-hold-list small,
+.production-readiness-cockpit .insight span {
+  color: rgba(255, 255, 255, 0.72);
+}
+
+.production-readiness-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 20px;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.13);
+  border-radius: 10px;
+  background:
+    radial-gradient(circle at top right, rgba(244, 197, 66, 0.22), transparent 34%),
+    rgba(255, 255, 255, 0.08);
+}
+
+.production-readiness-hero span {
+  display: inline-flex;
+  margin-bottom: 7px;
+  color: #f4c542;
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.production-readiness-hero h2 {
+  margin: 0;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1;
+}
+
+.production-readiness-hero p {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.76);
+  font-size: 15px;
+  line-height: 1.55;
+}
+
+.production-score-ring {
+  width: 112px;
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 2px solid rgba(244, 197, 66, 0.72);
+  border-radius: 999px;
+  background: rgba(244, 197, 66, 0.1);
+  box-shadow: inset 0 0 0 10px rgba(255, 255, 255, 0.06);
+}
+
+.production-score-ring strong {
+  font-size: 34px;
+  line-height: 1;
+}
+
+.production-score-ring span {
+  margin: -18px 0 0;
+  color: #f4c542;
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.production-runway,
+.production-readiness-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.production-runway article {
+  min-height: 86px;
+  display: grid;
+  gap: 6px;
+  align-content: center;
+  padding: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.production-runway article.complete svg {
+  color: #64d892;
+}
+
+.production-runway article.hold {
+  border-color: rgba(244, 197, 66, 0.4);
+}
+
+.production-runway article.hold svg {
+  color: #f4c542;
+}
+
+.production-runway span {
+  font-size: 11px;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.production-runway strong {
+  font-size: 16px;
+}
+
+.production-command-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.production-command-row button {
+  min-height: 42px;
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+  font-weight: 850;
+}
+
+.production-command-row button.primary {
+  border-color: rgba(244, 197, 66, 0.62);
+  background: #f4c542;
+  color: #061a3d;
+}
+
+.production-readiness-grid .insight {
+  min-height: 84px;
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.production-hold-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.production-hold-list article {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  padding: 12px;
+  border: 1px solid rgba(244, 197, 66, 0.32);
+  border-radius: 10px;
+  background: rgba(244, 197, 66, 0.08);
+}
+
+.production-hold-list svg {
+  color: #f4c542;
+}
+
 .app-shell:not(.admin-shell) {
   background:
     linear-gradient(180deg, #061a3d, #0b2f6b 42%, #071f4f),
