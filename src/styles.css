@@ -1822,6 +1822,19 @@ h1 {
 }
 
 @media (max-width: 1100px) {
+  .churchmail-workspace,
+  .churchmail-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .churchmail-status-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .churchmail-action-groups {
+    grid-template-columns: 1fr;
+  }
+
   .public-software-gateway .login-panel {
     grid-template-columns: 1fr;
   }
@@ -1849,6 +1862,17 @@ h1 {
   .public-software-gateway {
     padding: 12px;
     background: #edf3fb;
+  }
+
+  .churchmail-status-grid,
+  .churchmail-meta-grid,
+  .churchmail-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .churchmail-detail-head,
+  .churchmail-route-card {
+    grid-template-columns: 1fr;
   }
 
   .public-software-gateway .public-gateway-header {
@@ -1958,6 +1982,430 @@ h1 {
   border-radius: 7px;
   padding: 9px 10px;
   font-size: 13px;
+}
+
+.churchmail-app {
+  display: grid;
+  gap: 16px;
+}
+
+.churchmail-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.24fr);
+  gap: 16px;
+  align-items: stretch;
+  border: 1px solid rgba(244, 197, 66, 0.28);
+  border-radius: 10px;
+  background:
+    linear-gradient(135deg, rgba(5, 24, 63, 0.98), rgba(12, 54, 127, 0.98)),
+    var(--rmvi-blue-800, #0b2f6b);
+  color: #ffffff;
+  padding: clamp(20px, 3vw, 30px);
+  box-shadow: 0 20px 42px rgba(2, 12, 31, 0.16);
+}
+
+.churchmail-hero span,
+.churchmail-panel-title span {
+  color: #f4c542;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.churchmail-hero h2 {
+  margin: 8px 0 8px;
+  color: #ffffff;
+  font-size: clamp(28px, 4vw, 44px);
+  line-height: 1.04;
+}
+
+.churchmail-hero p {
+  max-width: 74ch;
+  margin: 0;
+  color: rgba(255, 255, 255, 0.84);
+  font-weight: 650;
+  line-height: 1.55;
+}
+
+.churchmail-live-card {
+  display: grid;
+  align-content: center;
+  gap: 5px;
+  border: 1px solid rgba(244, 197, 66, 0.35);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 16px;
+}
+
+.churchmail-live-card svg {
+  color: #f4c542;
+}
+
+.churchmail-live-card strong {
+  color: #ffffff;
+  font-size: 42px;
+  line-height: 1;
+}
+
+.churchmail-live-card small {
+  color: rgba(255, 255, 255, 0.76);
+  font-weight: 750;
+}
+
+.churchmail-status-grid {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.churchmail-status-grid article {
+  min-height: 86px;
+  border: 1px solid #d8e2f2;
+  border-radius: 9px;
+  background: #ffffff;
+  padding: 13px;
+  display: grid;
+  align-content: start;
+  gap: 5px;
+  box-shadow: 0 12px 24px rgba(2, 12, 31, 0.07);
+}
+
+.churchmail-status-grid svg {
+  color: #d6a631;
+}
+
+.churchmail-status-grid span {
+  color: #5b6680;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.churchmail-status-grid strong {
+  color: #0b2f6b;
+  font-size: clamp(18px, 2vw, 26px);
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.churchmail-workspace {
+  display: grid;
+  grid-template-columns: minmax(280px, 0.34fr) minmax(0, 1fr) minmax(290px, 0.32fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.churchmail-sidebar,
+.churchmail-reading-pane,
+.churchmail-compose-pane {
+  display: grid;
+  gap: 16px;
+}
+
+.churchmail-panel,
+.churchmail-message-detail {
+  border: 1px solid #d8e2f2;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #10213f;
+  padding: 16px;
+  box-shadow: 0 14px 30px rgba(2, 12, 31, 0.08);
+}
+
+.churchmail-panel-title {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid #e8eef8;
+  padding-bottom: 12px;
+  margin-bottom: 12px;
+}
+
+.churchmail-panel-title h3 {
+  margin: 3px 0 0;
+  color: #0b2f6b;
+  font-size: 20px;
+  line-height: 1.1;
+}
+
+.churchmail-panel-title button,
+.churchmail-wide-action {
+  min-height: 36px;
+  border: 1px solid #cbd9ec;
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #0b2f6b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 0 10px;
+  font-weight: 850;
+}
+
+.churchmail-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.churchmail-filter-grid label {
+  display: grid;
+  gap: 6px;
+}
+
+.churchmail-filter-grid span,
+.churchmail-form label span {
+  color: #5b6680;
+  font-size: 12px;
+  font-weight: 850;
+}
+
+.churchmail-filter-grid select,
+.churchmail-form input,
+.churchmail-form select {
+  min-height: 44px;
+  border: 1px solid #d8e2f2;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #10213f;
+  padding: 0 11px;
+}
+
+.churchmail-list {
+  display: grid;
+  gap: 9px;
+  max-height: 650px;
+  overflow: auto;
+  padding-right: 2px;
+}
+
+.churchmail-list-item {
+  position: relative;
+  width: 100%;
+  border: 1px solid #e1e9f7;
+  border-radius: 9px;
+  background: #f8fbff;
+  color: #10213f;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  text-align: left;
+  transition: transform 150ms ease, border-color 150ms ease, background 150ms ease, box-shadow 150ms ease;
+}
+
+.churchmail-list-item:hover,
+.churchmail-list-item.selected {
+  border-color: #f4c542;
+  background: #ffffff;
+  box-shadow: 0 12px 22px rgba(8, 31, 70, 0.08);
+  transform: translateY(-1px);
+}
+
+.churchmail-kind-chip {
+  width: fit-content;
+  border: 1px solid #efd483;
+  border-radius: 999px;
+  background: #fff8dc;
+  color: #6f5200;
+  padding: 5px 8px;
+  font-size: 11px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.churchmail-list-item strong {
+  color: #0b2f6b;
+  font-size: 15px;
+  line-height: 1.22;
+}
+
+.churchmail-list-item span,
+.churchmail-list-item small {
+  color: #5b6680;
+  font-size: 12px;
+  font-weight: 750;
+  line-height: 1.35;
+}
+
+.churchmail-message-detail {
+  display: grid;
+  gap: 16px;
+}
+
+.churchmail-detail-head {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+  border-bottom: 1px solid #e8eef8;
+  padding-bottom: 16px;
+}
+
+.churchmail-message-icon {
+  width: 54px;
+  height: 54px;
+  border-radius: 10px;
+  display: grid;
+  place-items: center;
+  background: #0b2f6b;
+  color: #ffffff;
+}
+
+.churchmail-message-icon.report {
+  background: #0b7a5c;
+}
+
+.churchmail-message-icon.approval {
+  background: #6f5200;
+}
+
+.churchmail-message-icon.transfer {
+  background: #3d4b7a;
+}
+
+.churchmail-detail-head span {
+  color: #d6a631;
+  font-size: 12px;
+  font-weight: 950;
+  text-transform: uppercase;
+}
+
+.churchmail-detail-head h3 {
+  margin: 5px 0 6px;
+  color: #0b2f6b;
+  font-size: clamp(26px, 3.2vw, 40px);
+  line-height: 1.05;
+}
+
+.churchmail-detail-head p {
+  margin: 0;
+  color: #5b6680;
+  line-height: 1.55;
+  font-weight: 650;
+}
+
+.churchmail-route-card {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 12px;
+  align-items: center;
+  border: 1px solid #cbd9ec;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #f8fbff, #eef5ff);
+  padding: 14px;
+}
+
+.churchmail-route-card span,
+.churchmail-meta-grid span,
+.churchmail-action-groups span {
+  color: #5b6680;
+  font-size: 12px;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.churchmail-route-card strong {
+  display: block;
+  margin-top: 4px;
+  color: #0b2f6b;
+  line-height: 1.35;
+}
+
+.churchmail-route-card svg {
+  color: #d6a631;
+}
+
+.churchmail-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.churchmail-meta-grid div {
+  border: 1px solid #d8e2f2;
+  border-radius: 9px;
+  background: #ffffff;
+  padding: 12px;
+}
+
+.churchmail-meta-grid strong {
+  display: block;
+  margin-top: 5px;
+  color: #0b2f6b;
+}
+
+.churchmail-action-groups {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.churchmail-action-groups > div {
+  border: 1px solid #d8e2f2;
+  border-radius: 10px;
+  background: #f8fbff;
+  padding: 12px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.churchmail-action-groups > div > span {
+  flex-basis: 100%;
+}
+
+.churchmail-action-groups button {
+  min-height: 38px;
+  border: 1px solid #cbd9ec;
+  border-radius: 8px;
+  background: #ffffff;
+  color: #0b2f6b;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 10px;
+  font-weight: 850;
+}
+
+.churchmail-action-groups button:hover,
+.churchmail-panel-title button:hover,
+.churchmail-wide-action:hover {
+  border-color: #0b2f6b;
+  background: #eef5ff;
+}
+
+.churchmail-form button {
+  width: 100%;
+}
+
+@media (max-width: 1100px) {
+  .churchmail-workspace,
+  .churchmail-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .churchmail-status-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .churchmail-action-groups {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .churchmail-status-grid,
+  .churchmail-meta-grid,
+  .churchmail-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .churchmail-detail-head,
+  .churchmail-route-card {
+    grid-template-columns: 1fr;
+  }
 }
 
 .station-home {

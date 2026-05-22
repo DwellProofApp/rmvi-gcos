@@ -10978,113 +10978,184 @@ function ChurchMail({
   }
 
   return (
-    <section className="module-grid">
-      <div className="panel module-primary">
-        <PanelHeader icon={Mail} title="ChurchMail Governance Inbox" action="Classified routing" />
-        <div className="office-summary-grid">
-          <Insight label="Ready" value={String(digest?.ready ?? readyCount)} />
-          <Insight label="Review" value={String(digest?.review ?? reviewCount)} />
-          <Insight label="Escalated" value={String(digest?.escalated ?? escalatedCount)} />
-          <Insight label="Archived" value={String(digest?.archived ?? messages.filter((message) => message.archived).length)} />
-          <Insight label="Watched" value={String(digest?.watched ?? watchedCount)} />
-          <Insight label="Next message" value={digest?.nextMessage ?? selected?.subject ?? "None"} />
+    <section className="churchmail-app">
+      <div className="churchmail-hero">
+        <div>
+          <span>ChurchMail</span>
+          <h2>Official RMVI governance communication.</h2>
+          <p>Receive directives, submit reports, request approvals, acknowledge transfers, and archive every official message into the audit record.</p>
         </div>
-        <div className="archive-toolbar">
-          <label>
-            <span>Classification</span>
-            <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as MessageKind | "All kinds")}>
-              {["All kinds", "Directive", "Report", "Approval", "Notification", "Transfer"].map((kind) => <option key={kind} value={kind}>{kind}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Status</span>
-            <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Status | "All statuses")}>
-              {["All statuses", "Ready", "In Review", "Escalated", "Approved", "Queued"].map((status) => <option key={status} value={status}>{status}</option>)}
-            </select>
-          </label>
-          <button onClick={onRefreshDigest}><RefreshCw size={15} /> Digest</button>
-          <button disabled={!visibleMessages.length} onClick={() => onBulkApprove(visibleMessages.slice(0, 3).map((message) => message.id))}><CheckCircle2 size={15} /> Bulk approve</button>
-        </div>
-        <div className="mail-layout">
-          <div className="message-list">
-            {visibleMessages.map((message) => (
-              <button
-                className={message.id === selected?.id ? "message-button selected" : "message-button"}
-                key={message.id}
-                aria-label={message.subject}
-                onClick={() => setSelectedId(message.id)}
-              >
-                <MessageCard message={message} />
-              </button>
-            ))}
-            {visibleMessages.length === 0 && <div className="empty-state">No ChurchMail messages match the current filters.</div>}
-          </div>
-          {selected && (
-            <div className="mail-preview">
-              <div className={`kind ${selected.kind.toLowerCase()}`}>{selected.kind}</div>
-              <h2>{selected.subject}</h2>
-              <p>{selected.from} sent an official {selected.kind.toLowerCase()} with attached governance records: {selected.files}.</p>
-              <div className="route-box">
-                <strong>Routing chain</strong>
-                <span>{selected.route ?? "Origin station -> Current station -> Supervising authority -> Archive vault"}</span>
-              </div>
-              <div className="approval-meta">
-                <small>{selected.priority ?? "Medium"} priority</small>
-                <small>{selected.watchers?.length ?? 0} watchers</small>
-                <small>{selected.archived ? "Archived" : "Live record"}</small>
-              </div>
-              <div className="action-row">
-                <button onClick={() => onUpdateStatus(selected.id, "In Review")}><FileClock size={15} /> Review</button>
-                <button onClick={() => onClassify(selected.id, selected.kind === "Directive" ? "Notification" : "Directive")}><SlidersHorizontal size={15} /> Classify</button>
-                <button onClick={() => onAcknowledge(selected.id)}><Send size={15} /> Acknowledge</button>
-                <button onClick={() => onApproveMessage(selected.id)}><CheckCircle2 size={15} /> Approve</button>
-                <button onClick={() => onEscalateMessage(selected.id)}><AlertTriangle size={15} /> Escalate</button>
-                <button onClick={() => onUpdateRoute(selected.id)}><Workflow size={15} /> Route</button>
-                <button onClick={() => onUpdatePriority(selected.id)}><TimerReset size={15} /> Priority</button>
-                <button onClick={() => onWatchMessage(selected.id)}><Bell size={15} /> Watch</button>
-                <button onClick={() => onDuplicateMessage(selected.id)}><Files size={15} /> Duplicate</button>
-                <button onClick={() => onArchiveMessage(selected.id)}><LockKeyhole size={15} /> Archive</button>
-                <button onClick={() => onCreateReport(selected.id)}><FileCheck2 size={15} /> Create report</button>
-                <button onClick={() => onRequestApproval(selected.id)}><Signature size={15} /> Request approval</button>
-                <button onClick={() => onArchiveAttachments(selected.id)}><Files size={15} /> Vault</button>
-              </div>
-            </div>
-          )}
+        <div className="churchmail-live-card">
+          <Mail size={22} />
+          <strong>{visibleMessages.length}</strong>
+          <span>visible messages</span>
+          <small>{offlineMode ? "Offline queue active" : "Live routing active"}</small>
         </div>
       </div>
-      <div className="side-stack">
-        <div className="panel module-side">
-          <PanelHeader icon={Send} title="Compose ChurchMail" action={offlineMode ? "Queue" : "Route"} />
-          <form className="churchmail-form" onSubmit={submitMessage}>
-            <label>
-              <span>Sender station</span>
-              <input value={station.email} readOnly />
-            </label>
-            <label>
-              <span>Classification</span>
-              <select value={composeKind} onChange={(event) => setComposeKind(event.target.value as MessageKind)}>
-                {["Directive", "Report", "Approval", "Notification", "Transfer"].map((kind) => (
-                  <option key={kind} value={kind}>{kind}</option>
-                ))}
-              </select>
-            </label>
-            <label>
-              <span>Recipient / route</span>
-              <input value={composeTo} onChange={(event) => setComposeTo(event.target.value)} />
-            </label>
-            <label>
-              <span>Subject</span>
-              <input value={composeSubject} onChange={(event) => setComposeSubject(event.target.value)} />
-            </label>
-            <label>
-              <span>Attachments</span>
-              <input value={composeFiles} onChange={(event) => setComposeFiles(event.target.value)} />
-            </label>
-            {composeFeedback && <div className="compose-feedback">{composeFeedback}</div>}
-            <button type="submit"><Send size={15} /> Send ChurchMail</button>
-          </form>
-        </div>
-        <EventBusPanel events={events} />
+
+      <div className="churchmail-status-grid">
+        <article><Inbox size={17} /><span>Ready</span><strong>{digest?.ready ?? readyCount}</strong></article>
+        <article><FileClock size={17} /><span>Review</span><strong>{digest?.review ?? reviewCount}</strong></article>
+        <article><AlertTriangle size={17} /><span>Escalated</span><strong>{digest?.escalated ?? escalatedCount}</strong></article>
+        <article><ArchiveIcon size={17} /><span>Archived</span><strong>{digest?.archived ?? messages.filter((message) => message.archived).length}</strong></article>
+        <article><Bell size={17} /><span>Watched</span><strong>{digest?.watched ?? watchedCount}</strong></article>
+        <article><Send size={17} /><span>Next</span><strong>{digest?.nextMessage ?? selected?.subject ?? "None"}</strong></article>
+      </div>
+
+      <div className="churchmail-workspace">
+        <aside className="churchmail-sidebar">
+          <div className="churchmail-panel">
+            <div className="churchmail-panel-title">
+              <div>
+                <span>Inbox filters</span>
+                <h3>Message Queue</h3>
+              </div>
+              <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Refresh</button>
+            </div>
+            <div className="churchmail-filter-grid">
+              <label>
+                <span>Classification</span>
+                <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as MessageKind | "All kinds")}>
+                  {["All kinds", "Directive", "Report", "Approval", "Notification", "Transfer"].map((kind) => <option key={kind} value={kind}>{kind}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Status</span>
+                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Status | "All statuses")}>
+                  {["All statuses", "Ready", "In Review", "Escalated", "Approved", "Queued"].map((status) => <option key={status} value={status}>{status}</option>)}
+                </select>
+              </label>
+            </div>
+            <div className="churchmail-list">
+              {visibleMessages.map((message) => (
+                <button
+                  className={message.id === selected?.id ? "churchmail-list-item selected" : "churchmail-list-item"}
+                  key={message.id}
+                  aria-label={message.subject}
+                  onClick={() => setSelectedId(message.id)}
+                >
+                  <div className="churchmail-kind-chip">{message.kind}</div>
+                  <strong>{message.subject}</strong>
+                  <span>{message.from} - {message.age}</span>
+                  <small>{message.files}</small>
+                  <StatusPill status={message.status} />
+                </button>
+              ))}
+              {visibleMessages.length === 0 && <div className="empty-state">No ChurchMail messages match the current filters.</div>}
+            </div>
+          </div>
+        </aside>
+
+        <main className="churchmail-reading-pane">
+          {selected ? (
+            <article className="churchmail-message-detail">
+              <div className="churchmail-detail-head">
+                <div className={`churchmail-message-icon ${selected.kind.toLowerCase()}`}>
+                  {selected.kind === "Report" ? <FileCheck2 size={22} /> : selected.kind === "Approval" ? <Signature size={22} /> : selected.kind === "Transfer" ? <GitBranch size={22} /> : <Mail size={22} />}
+                </div>
+                <div>
+                  <span>{selected.kind} / {selected.status}</span>
+                  <h3>{selected.subject}</h3>
+                  <p>{selected.from} sent this official communication {selected.age} ago with attached governance records: {selected.files}.</p>
+                </div>
+              </div>
+              <div className="churchmail-route-card">
+                <div>
+                  <span>Routing chain</span>
+                  <strong>{selected.route ?? "Origin station -> Current station -> Supervising authority -> Archive vault"}</strong>
+                </div>
+                <Workflow size={22} />
+              </div>
+              <div className="churchmail-meta-grid">
+                <div><span>Priority</span><strong>{selected.priority ?? "Medium"}</strong></div>
+                <div><span>Watchers</span><strong>{selected.watchers?.length ?? 0}</strong></div>
+                <div><span>Archive</span><strong>{selected.archived ? "Archived" : "Live record"}</strong></div>
+              </div>
+              <div className="churchmail-action-groups">
+                <div>
+                  <span>Review</span>
+                  <button onClick={() => onUpdateStatus(selected.id, "In Review")}><FileClock size={15} /> Review</button>
+                  <button onClick={() => onAcknowledge(selected.id)}><Send size={15} /> Acknowledge</button>
+                  <button onClick={() => onApproveMessage(selected.id)}><CheckCircle2 size={15} /> Approve</button>
+                </div>
+                <div>
+                  <span>Routing</span>
+                  <button onClick={() => onUpdateRoute(selected.id)}><Workflow size={15} /> Route</button>
+                  <button onClick={() => onUpdatePriority(selected.id)}><TimerReset size={15} /> Priority</button>
+                  <button onClick={() => onEscalateMessage(selected.id)}><AlertTriangle size={15} /> Escalate</button>
+                </div>
+                <div>
+                  <span>Records</span>
+                  <button onClick={() => onWatchMessage(selected.id)}><Bell size={15} /> Watch</button>
+                  <button onClick={() => onDuplicateMessage(selected.id)}><Files size={15} /> Duplicate</button>
+                  <button onClick={() => onArchiveMessage(selected.id)}><LockKeyhole size={15} /> Archive</button>
+                </div>
+                <div>
+                  <span>Convert</span>
+                  <button onClick={() => onClassify(selected.id, selected.kind === "Directive" ? "Notification" : "Directive")}><SlidersHorizontal size={15} /> Classify</button>
+                  <button onClick={() => onCreateReport(selected.id)}><FileCheck2 size={15} /> Create report</button>
+                  <button onClick={() => onRequestApproval(selected.id)}><Signature size={15} /> Request approval</button>
+                  <button onClick={() => onArchiveAttachments(selected.id)}><ArchiveIcon size={15} /> Vault</button>
+                </div>
+              </div>
+            </article>
+          ) : (
+            <div className="empty-state">Select a message to review its route, attachments, and workflow actions.</div>
+          )}
+        </main>
+
+        <aside className="churchmail-compose-pane">
+          <div className="churchmail-panel">
+            <div className="churchmail-panel-title">
+              <div>
+                <span>{offlineMode ? "Offline queue" : "Live route"}</span>
+                <h3>Compose ChurchMail</h3>
+              </div>
+              <Send size={18} />
+            </div>
+            <form className="churchmail-form" onSubmit={submitMessage}>
+              <label>
+                <span>Sender station</span>
+                <input value={station.email} readOnly />
+              </label>
+              <label>
+                <span>Classification</span>
+                <select value={composeKind} onChange={(event) => setComposeKind(event.target.value as MessageKind)}>
+                  {["Directive", "Report", "Approval", "Notification", "Transfer"].map((kind) => (
+                    <option key={kind} value={kind}>{kind}</option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                <span>Recipient / route</span>
+                <input value={composeTo} onChange={(event) => setComposeTo(event.target.value)} />
+              </label>
+              <label>
+                <span>Subject</span>
+                <input value={composeSubject} onChange={(event) => setComposeSubject(event.target.value)} />
+              </label>
+              <label>
+                <span>Attachments</span>
+                <input value={composeFiles} onChange={(event) => setComposeFiles(event.target.value)} />
+              </label>
+              {composeFeedback && <div className="compose-feedback">{composeFeedback}</div>}
+              <button type="submit"><Send size={15} /> Send ChurchMail</button>
+            </form>
+          </div>
+          <div className="churchmail-panel">
+            <div className="churchmail-panel-title">
+              <div>
+                <span>Bulk operations</span>
+                <h3>Queue Control</h3>
+              </div>
+              <CheckCircle2 size={18} />
+            </div>
+            <button className="churchmail-wide-action" disabled={!visibleMessages.length} onClick={() => onBulkApprove(visibleMessages.slice(0, 3).map((message) => message.id))}>
+              <CheckCircle2 size={15} /> Bulk approve first 3 visible
+            </button>
+          </div>
+          <EventBusPanel events={events} />
+        </aside>
       </div>
     </section>
   );
