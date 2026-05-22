@@ -10168,6 +10168,168 @@ h1 {
   }
 }
 
+/* FINAL SIGN-IN CONTRAST FIX: blue public/admin gateways with readable text. */
+.login-shell.public-software-gateway,
+.login-shell.public-software-gateway.station-signin-gateway,
+.login-shell.public-software-gateway.admin-login-gateway {
+  min-height: 100vh !important;
+  background:
+    radial-gradient(circle at 16% 8%, rgba(244, 197, 66, 0.22), transparent 280px),
+    radial-gradient(circle at 92% 12%, rgba(255, 255, 255, 0.12), transparent 300px),
+    linear-gradient(180deg, #061733 0%, #08265b 54%, #0b3478 100%) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .public-gateway-header,
+.login-shell.public-software-gateway .public-download-footer,
+.login-shell.public-software-gateway .software-download-hero,
+.login-shell.public-software-gateway .admin-access-hero,
+.login-shell.public-software-gateway .login-card,
+.login-shell.public-software-gateway .gateway-flow-steps article,
+.login-shell.public-software-gateway .download-platform-panel {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.045)),
+    rgba(6, 23, 51, 0.72) !important;
+  color: #ffffff !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.26) !important;
+  backdrop-filter: blur(18px);
+}
+
+.login-shell.public-software-gateway .software-download-hero,
+.login-shell.public-software-gateway .admin-access-hero,
+.login-shell.public-software-gateway .login-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.login-shell.public-software-gateway .software-download-hero::before,
+.login-shell.public-software-gateway .admin-access-hero::before,
+.login-shell.public-software-gateway .login-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: linear-gradient(90deg, #f4c542, #fff2b0, #1f66c5);
+}
+
+.login-shell.public-software-gateway .brand strong,
+.login-shell.public-software-gateway .brand span,
+.login-shell.public-software-gateway .public-gateway-header a,
+.login-shell.public-software-gateway .gateway-status-pill,
+.login-shell.public-software-gateway .download-hero-copy h1,
+.login-shell.public-software-gateway .download-hero-copy h2,
+.login-shell.public-software-gateway .download-hero-copy h3,
+.login-shell.public-software-gateway .download-hero-copy p,
+.login-shell.public-software-gateway .download-hero-copy strong,
+.login-shell.public-software-gateway .download-hero-copy small,
+.login-shell.public-software-gateway .login-heading h2,
+.login-shell.public-software-gateway .login-heading p,
+.login-shell.public-software-gateway .login-form label,
+.login-shell.public-software-gateway .login-form label span,
+.login-shell.public-software-gateway .login-card-footer span,
+.login-shell.public-software-gateway .station-flow-note p,
+.login-shell.public-software-gateway .gateway-flow-steps strong,
+.login-shell.public-software-gateway .gateway-flow-steps p,
+.login-shell.public-software-gateway .public-download-footer strong,
+.login-shell.public-software-gateway .public-download-footer span,
+.login-shell.public-software-gateway .login-support span,
+.login-shell.public-software-gateway .admin-login-capabilities strong,
+.login-shell.public-software-gateway .admin-login-capabilities small {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.login-shell.public-software-gateway .download-kicker span,
+.login-shell.public-software-gateway .download-kicker strong,
+.login-shell.public-software-gateway .login-heading span,
+.login-shell.public-software-gateway .station-flow-note span,
+.login-shell.public-software-gateway .download-panel-header span,
+.login-shell.public-software-gateway .download-panel-header strong {
+  color: #f4c542 !important;
+}
+
+.login-shell.public-software-gateway .login-trust-row span,
+.login-shell.public-software-gateway .admin-login-capabilities article,
+.login-shell.public-software-gateway .station-flow-note,
+.login-shell.public-software-gateway .login-support,
+.login-shell.public-software-gateway .download-card,
+.login-shell.public-software-gateway .auth-mode-toggle,
+.login-shell.public-software-gateway .login-card-footer {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-card span,
+.login-shell.public-software-gateway .download-card strong,
+.login-shell.public-software-gateway .download-card small,
+.login-shell.public-software-gateway .download-card b {
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-card.primary,
+.login-shell.public-software-gateway .download-card:hover,
+.login-shell.public-software-gateway .auth-mode-toggle button.active {
+  border-color: rgba(244, 197, 66, 0.72) !important;
+  background: rgba(244, 197, 66, 0.16) !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions button,
+.login-shell.public-software-gateway .public-download-footer button,
+.login-shell.public-software-gateway .auth-mode-toggle button,
+.login-shell.public-software-gateway .secondary-auth-action {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions .primary-download-action,
+.login-shell.public-software-gateway .login-form button[type="submit"] {
+  border-color: #f4c542 !important;
+  background: #f4c542 !important;
+  color: #061733 !important;
+}
+
+.login-shell.public-software-gateway .login-form input,
+.login-shell.public-software-gateway .login-form select,
+.login-shell.public-software-gateway .login-form textarea {
+  border: 1px solid rgba(255, 255, 255, 0.38) !important;
+  background: #ffffff !important;
+  color: #10213f !important;
+}
+
+.login-shell.public-software-gateway .login-form input::placeholder,
+.login-shell.public-software-gateway .login-form textarea::placeholder {
+  color: #6b7890 !important;
+}
+
+.login-shell.public-software-gateway .station-avatar,
+.login-shell.public-software-gateway .login-emblem,
+.login-shell.public-software-gateway .brand-mark,
+.login-shell.public-software-gateway .gateway-flow-steps article > div:first-child span {
+  background: #ffffff !important;
+  color: #0b2f6b !important;
+}
+
+.login-shell.public-software-gateway .gateway-flow-steps article > div:first-child svg,
+.login-shell.public-software-gateway .login-card svg,
+.login-shell.public-software-gateway .download-card svg {
+  color: #f4c542 !important;
+}
+
+@media (max-width: 880px) {
+  .login-shell.public-software-gateway .login-panel {
+    grid-template-columns: 1fr !important;
+  }
+
+  .login-shell.public-software-gateway .software-download-hero,
+  .login-shell.public-software-gateway .admin-access-hero,
+  .login-shell.public-software-gateway .login-card {
+    padding: 22px !important;
+  }
+}
+
 /* ==========================================================================
    GCOS DESIGN SYSTEM V3
    Investor-ready visual polish for the public gateway, app workspace,
