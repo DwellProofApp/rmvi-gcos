@@ -1,0 +1,155 @@
+/* Final sign-in contrast layer.
+   Loaded after the main stylesheet so the RMVI/admin gateways stay readable. */
+
+.login-shell.public-software-gateway {
+  min-height: 100vh !important;
+  background:
+    radial-gradient(circle at 16% 8%, rgba(244, 197, 66, 0.24), transparent 280px),
+    radial-gradient(circle at 92% 12%, rgba(255, 255, 255, 0.13), transparent 320px),
+    linear-gradient(180deg, #061733 0%, #08265b 54%, #0b3478 100%) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .admin-access-hero,
+.login-shell.public-software-gateway .software-download-hero,
+.login-shell.public-software-gateway .login-card,
+.login-shell.public-software-gateway .gateway-flow-steps article,
+.login-shell.public-software-gateway .public-download-footer {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
+    rgba(6, 23, 51, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .login-emblem,
+.login-shell.public-software-gateway .brand-mark {
+  display: grid !important;
+  place-items: center !important;
+  width: 84px !important;
+  height: 84px !important;
+  padding: 8px !important;
+  border: 1px solid rgba(244, 197, 66, 0.4) !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  color: #061733 !important;
+  overflow: hidden !important;
+}
+
+.login-shell.public-software-gateway .login-emblem img,
+.login-shell.public-software-gateway .brand-mark img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+.login-shell.public-software-gateway .download-kicker {
+  display: inline-grid !important;
+  gap: 4px !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  padding: 10px 13px !important;
+  border: 1px solid rgba(244, 197, 66, 0.48) !important;
+  border-radius: 14px !important;
+  background: rgba(244, 197, 66, 0.16) !important;
+}
+
+.login-shell.public-software-gateway .download-kicker span,
+.login-shell.public-software-gateway .download-kicker strong {
+  display: block !important;
+  color: #f4c542 !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25) !important;
+}
+
+.login-shell.public-software-gateway .download-kicker span {
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+.login-shell.public-software-gateway .download-kicker strong {
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+.login-shell.public-software-gateway .download-hero-copy h1,
+.login-shell.public-software-gateway .download-hero-copy p,
+.login-shell.public-software-gateway .download-hero-copy strong:not(.download-kicker strong),
+.login-shell.public-software-gateway .download-hero-copy small,
+.login-shell.public-software-gateway .login-heading h2,
+.login-shell.public-software-gateway .login-heading p,
+.login-shell.public-software-gateway .login-form label,
+.login-shell.public-software-gateway .login-form label span,
+.login-shell.public-software-gateway .login-card-footer span,
+.login-shell.public-software-gateway .station-flow-note p,
+.login-shell.public-software-gateway .gateway-flow-steps strong,
+.login-shell.public-software-gateway .gateway-flow-steps p,
+.login-shell.public-software-gateway .public-download-footer strong,
+.login-shell.public-software-gateway .public-download-footer span,
+.login-shell.public-software-gateway .login-support span,
+.login-shell.public-software-gateway .admin-login-capabilities strong,
+.login-shell.public-software-gateway .admin-login-capabilities small {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.login-shell.public-software-gateway .login-heading span,
+.login-shell.public-software-gateway .station-flow-note span,
+.login-shell.public-software-gateway .download-panel-header span,
+.login-shell.public-software-gateway .download-panel-header strong {
+  color: #f4c542 !important;
+}
+
+.login-shell.public-software-gateway .login-trust-row span,
+.login-shell.public-software-gateway .admin-login-capabilities article,
+.login-shell.public-software-gateway .station-flow-note,
+.login-shell.public-software-gateway .login-support,
+.login-shell.public-software-gateway .download-card,
+.login-shell.public-software-gateway .auth-mode-toggle,
+.login-shell.public-software-gateway .login-card-footer {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-card span,
+.login-shell.public-software-gateway .download-card strong,
+.login-shell.public-software-gateway .download-card small,
+.login-shell.public-software-gateway .download-card b {
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions button,
+.login-shell.public-software-gateway .public-download-footer button,
+.login-shell.public-software-gateway .auth-mode-toggle button,
+.login-shell.public-software-gateway .secondary-auth-action {
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions .primary-download-action,
+.login-shell.public-software-gateway .login-form button[type="submit"] {
+  border-color: #f4c542 !important;
+  background: #f4c542 !important;
+  color: #061733 !important;
+}
+
+.login-shell.public-software-gateway .login-form input,
+.login-shell.public-software-gateway .login-form select,
+.login-shell.public-software-gateway .login-form textarea {
+  border-color: rgba(255, 255, 255, 0.42) !important;
+  background: #ffffff !important;
+  color: #10213f !important;
+}
+
+.login-shell.public-software-gateway .station-avatar,
+.login-shell.public-software-gateway .gateway-flow-steps article > div:first-child span {
+  background: #ffffff !important;
+  color: #0b2f6b !important;
+}
