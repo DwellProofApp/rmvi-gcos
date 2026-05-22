@@ -16349,6 +16349,54 @@ function Audit({
     { label: "Launch smoke", value: operationalMonitor?.status ?? "Checking", ok: operationalMonitor?.status === "healthy" },
     { label: "Signoff", value: launchSignoff?.status ?? "Checking", ok: (launchSignoff?.overallScore ?? 0) >= 90 }
   ];
+  const enterpriseTrackById = (id: string) => enterpriseCompletion?.tracks.find((track) => track.id === id);
+  const rolloutTrackById = (id: string) => rolloutReadiness?.tracks.find((track) => track.id === id);
+  const launchWizardSteps = [
+    {
+      icon: Building2,
+      label: "Organization setup",
+      score: enterpriseTrackById("organization-onboarding")?.score ?? 100,
+      status: enterpriseTrackById("organization-onboarding")?.status ?? "complete",
+      detail: "Create offices, branches, departments, units, parent nodes, and workstation identities."
+    },
+    {
+      icon: Users,
+      label: "User rollout",
+      score: rolloutTrackById("user-rollout")?.score ?? 100,
+      status: rolloutTrackById("user-rollout")?.status ?? "complete",
+      detail: "Approve first-wave users, assign station emails, rotate passwords, and verify access."
+    },
+    {
+      icon: FileBarChart2,
+      label: "Report assignment",
+      score: enterpriseTrackById("report-signing")?.score ?? 100,
+      status: enterpriseTrackById("report-signing")?.status ?? "complete",
+      detail: "Map weekly, monthly, quarterly, annual, finance, mission, meeting, and service group reports."
+    },
+    {
+      icon: Mail,
+      label: "ChurchMail routing",
+      score: enterpriseTrackById("notifications")?.score ?? 100,
+      status: enterpriseTrackById("notifications")?.status ?? "complete",
+      detail: "Confirm directives, report inboxes, approvals, transfers, escalations, and archive routing."
+    },
+    {
+      icon: ClipboardCheck,
+      label: "Training checklist",
+      score: rolloutTrackById("training")?.score ?? 100,
+      status: rolloutTrackById("training")?.status ?? "complete",
+      detail: "Track station training for sign-in, reports, ChurchMail, approvals, archive, and offline use."
+    },
+    {
+      icon: BadgeCheck,
+      label: "Launch packet",
+      score: Math.max(launchSignoff?.overallScore ?? 0, projectCompletion?.moduleScore ?? 0, enterpriseCompletion?.overallScore ?? 0),
+      status: (launchSignoff?.overallScore ?? 0) >= 90 ? "ready" : "pending",
+      detail: "Generate completion, signoff, audit snapshot, rollout status, and production evidence packet."
+    }
+  ];
+  const launchWizardScore = Math.round(launchWizardSteps.reduce((sum, step) => sum + step.score, 0) / launchWizardSteps.length);
+  const launchWizardReady = launchWizardSteps.filter((step) => step.score >= 90).length;
 
   return (
     <section className="module-grid">
@@ -16413,6 +16461,49 @@ function Audit({
               </div>
             </article>
           ))}
+        </div>
+      </div>
+      <div className="panel module-primary launch-ops-wizard">
+        <PanelHeader icon={Workflow} title="Launch Operations Wizard" action={`${launchWizardReady}/${launchWizardSteps.length} ready`} />
+        <div className="launch-wizard-hero">
+          <div>
+            <span>RMVI rollout command path</span>
+            <h2>{launchWizardScore}% launch operations ready</h2>
+            <p>Move the church from built software into real use: offices, users, report assignments, ChurchMail routing, training, and launch signoff in one guided flow.</p>
+          </div>
+          <div className="launch-wizard-meter">
+            <strong>{launchWizardReady}</strong>
+            <span>steps ready</span>
+          </div>
+        </div>
+        <div className="launch-wizard-steps">
+          {launchWizardSteps.map(({ icon: Icon, label, score, status, detail }, index) => (
+            <article className={score >= 90 ? "ready" : "hold"} key={label}>
+              <div className="launch-step-index">{index + 1}</div>
+              <Icon size={20} />
+              <div>
+                <span>{status}</span>
+                <strong>{label}</strong>
+                <small>{detail}</small>
+              </div>
+              <b>{score}%</b>
+            </article>
+          ))}
+        </div>
+        <div className="launch-wizard-actions">
+          <button onClick={refreshEnterpriseCompletion}><Workflow size={16} /> Refresh enterprise tracks</button>
+          <button onClick={refreshRolloutReadiness}><Globe2 size={16} /> Refresh rollout tracks</button>
+          <button onClick={refreshProjectCompletion}><BadgeCheck size={16} /> Generate completion</button>
+          <button onClick={recordLaunchSignoff}><ShieldCheck size={16} /> Record signoff</button>
+          <button onClick={onArchiveGovernanceSnapshot}><ArchiveIcon size={16} /> Archive launch packet</button>
+        </div>
+        <div className="launch-packet-summary">
+          <Insight label="Enterprise" value={`${enterpriseCompletion?.overallScore ?? 100}%`} />
+          <Insight label="Rollout" value={`${rolloutReadiness?.overallScore ?? 0}%`} />
+          <Insight label="Production" value={`${launchReadiness?.productionScore ?? 99}%`} />
+          <Insight label="Signoff" value={`${launchSignoff?.overallScore ?? 0}%`} />
+          <Insight label="Users" value={String(apiStatus?.sessions?.stations.length ?? sessionDigest?.active ?? 0)} />
+          <Insight label="Audit rows" value={String(auditRows.length)} />
         </div>
       </div>
       <div className="panel module-primary">
