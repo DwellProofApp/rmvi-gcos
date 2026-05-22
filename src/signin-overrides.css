@@ -55,6 +55,13 @@
   background: rgba(244, 197, 66, 0.16) !important;
 }
 
+.login-shell.public-software-gateway.admin-login-gateway .download-kicker {
+  border-color: rgba(244, 197, 66, 0.72) !important;
+  background:
+    linear-gradient(135deg, rgba(6, 23, 51, 0.82), rgba(11, 52, 120, 0.72)) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18) !important;
+}
+
 .login-shell.public-software-gateway .download-kicker span,
 .login-shell.public-software-gateway .download-kicker strong {
   display: block !important;
@@ -68,6 +75,14 @@
   font-weight: 950 !important;
   letter-spacing: 0.08em !important;
   text-transform: uppercase !important;
+}
+
+.login-shell.public-software-gateway.admin-login-gateway .download-kicker span {
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway.admin-login-gateway .download-kicker strong {
+  color: #f4c542 !important;
 }
 
 .login-shell.public-software-gateway .download-kicker strong {
