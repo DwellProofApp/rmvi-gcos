@@ -182,6 +182,11 @@ GCOS_LOGIN_RATE_LIMIT Login attempts allowed per station/IP window, defaults to 
 GCOS_LOGIN_RATE_WINDOW_MS Login rate-limit window in milliseconds, defaults to 300000
 GCOS_MUTATION_RATE_LIMIT Non-login API mutations allowed per IP window, defaults to 2000
 GCOS_MUTATION_RATE_WINDOW_MS Mutation rate-limit window in milliseconds, defaults to 60000
+GCOS_BACKUP_RETENTION_DAYS Production backup retention target in days, minimum 30
+GCOS_AUDIT_RETENTION_POLICY Audit retention policy, set to immutable for production
+GCOS_INCIDENT_RESPONSE_OWNER RMVI address responsible for incident response
+GCOS_SUPPORT_CONTACT RMVI support mailbox for production operations
+GCOS_MONITORING_MODE Production monitoring mode, for example cloud-run-healthcheck
 GCOS_MANAGED_RESTORE_DRILL Set to 1 after a managed database restore drill is complete, or record an admin restore attestation through POST /api/persistence/restore-drill
 GCOS_ENABLE_DEV_RESET Set to 1 to allow POST /api/dev/reset in production
 GCOS_REQUIRE_API_AUTH Set to 1 so production API data requires a station session

@@ -3,7 +3,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
-const defaults = loadProductionDefaults(await readOptional(join(ROOT, ".env.production.example")));
+const productionDefaults = loadProductionDefaults(await readOptional(join(ROOT, ".env.production.example")));
+const firebaseDefaults = loadProductionDefaults(await readOptional(join(ROOT, ".env.firebase.example")));
+const defaults = { ...productionDefaults, ...firebaseDefaults };
 const env = { ...defaults, ...process.env };
 const databaseUrl = env.GCOS_DATABASE_URL ?? env.DATABASE_URL ?? "";
 const databaseUrlSource = process.env.GCOS_DATABASE_URL ? "GCOS_DATABASE_URL" : process.env.DATABASE_URL ? "DATABASE_URL" : "";
@@ -38,6 +40,11 @@ const required = [
   ["GCOS_LOGIN_RATE_WINDOW_MS", (value) => Number(value) >= 60000, "set GCOS_LOGIN_RATE_WINDOW_MS to at least 60000"],
   ["GCOS_MUTATION_RATE_LIMIT", (value) => Number(value) >= 100, "set GCOS_MUTATION_RATE_LIMIT to at least 100"],
   ["GCOS_MUTATION_RATE_WINDOW_MS", (value) => Number(value) >= 60000, "set GCOS_MUTATION_RATE_WINDOW_MS to at least 60000"],
+  ["GCOS_BACKUP_RETENTION_DAYS", (value) => Number(value) >= 30, "set GCOS_BACKUP_RETENTION_DAYS to at least 30"],
+  ["GCOS_AUDIT_RETENTION_POLICY", (value) => String(value).toLowerCase() === "immutable", "set GCOS_AUDIT_RETENTION_POLICY=immutable"],
+  ["GCOS_INCIDENT_RESPONSE_OWNER", (value) => /@rmvi\.org$/i.test(String(value)), "set GCOS_INCIDENT_RESPONSE_OWNER to an RMVI address"],
+  ["GCOS_SUPPORT_CONTACT", (value) => /@rmvi\.org$/i.test(String(value)), "set GCOS_SUPPORT_CONTACT to an RMVI address"],
+  ["GCOS_MONITORING_MODE", (value) => ["cloud-run-healthcheck", "firebase-healthcheck", "managed"].includes(String(value).toLowerCase()), "set GCOS_MONITORING_MODE=cloud-run-healthcheck"],
   ["GCOS_MANAGED_RESTORE_DRILL", (value) => value === "1", "set GCOS_MANAGED_RESTORE_DRILL=1 after a managed restore drill"]
 ];
 

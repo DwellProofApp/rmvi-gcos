@@ -48,6 +48,13 @@ const LOGIN_RATE_LIMIT = positiveNumber(process.env.GCOS_LOGIN_RATE_LIMIT, 8);
 const LOGIN_RATE_WINDOW_MS = positiveNumber(process.env.GCOS_LOGIN_RATE_WINDOW_MS, 5 * 60 * 1000);
 const MUTATION_RATE_LIMIT = positiveNumber(process.env.GCOS_MUTATION_RATE_LIMIT, 2000);
 const MUTATION_RATE_WINDOW_MS = positiveNumber(process.env.GCOS_MUTATION_RATE_WINDOW_MS, 60 * 1000);
+const BACKUP_RETENTION_DAYS = positiveNumber(process.env.GCOS_BACKUP_RETENTION_DAYS, 0);
+const AUDIT_RETENTION_POLICY = process.env.GCOS_AUDIT_RETENTION_POLICY ?? "";
+const INCIDENT_RESPONSE_OWNER = process.env.GCOS_INCIDENT_RESPONSE_OWNER ?? "";
+const SUPPORT_CONTACT = process.env.GCOS_SUPPORT_CONTACT ?? "";
+const MONITORING_MODE = process.env.GCOS_MONITORING_MODE ?? "";
+const usesManagedRecordStorage = STORAGE_PROVIDER === "database" || ["firestore", "firebase"].includes(STORAGE_PROVIDER);
+const usesDurableObjectStorage = ["cloudflare-r2", "aws-s3", "firebase-storage", "google-cloud-storage", "gcs"].includes(objectStorage.provider);
 const storage = createStorageAdapter({ provider: STORAGE_PROVIDER, dataPath: DATA_PATH, databaseUrl: DATABASE_URL });
 const BUILD_INFO = await loadBuildInfo();
 
@@ -643,16 +650,21 @@ async function launchReadiness() {
     { name: "serve-web", category: "production", ok: SERVE_WEB, detail: SERVE_WEB ? "Web served by API" : "Set GCOS_SERVE_WEB=1" },
     { name: "production-reset-lock", category: "production", ok: !DEV_RESET_ENABLED, detail: DEV_RESET_ENABLED ? "Development reset enabled" : "Development reset disabled" },
     { name: "api-auth-lock", category: "production", ok: REQUIRE_API_AUTH, detail: REQUIRE_API_AUTH ? "Production API data requires station sessions" : "Set GCOS_REQUIRE_API_AUTH=1" },
-    { name: "managed-database", category: "production", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? `Database provider selected${DATABASE_URL_SOURCE ? ` via ${DATABASE_URL_SOURCE}` : ""}` : "JSON provider active" },
+    { name: "managed-database", category: "production", ok: usesManagedRecordStorage && (STORAGE_PROVIDER !== "database" || Boolean(DATABASE_URL)), detail: STORAGE_PROVIDER === "database" ? `Database provider selected${DATABASE_URL_SOURCE ? ` via ${DATABASE_URL_SOURCE}` : ""}` : `${STORAGE_PROVIDER} provider active` },
     { name: "database-ssl", category: "production", ok: process.env.GCOS_DATABASE_SSL === "1" || STORAGE_PROVIDER !== "database", detail: process.env.GCOS_DATABASE_SSL === "1" ? "Database SSL enabled" : "Database SSL not required for current provider" },
     { name: "cors-origin", category: "production", ok: ALLOWED_ORIGIN !== "*", detail: ALLOWED_ORIGIN },
     { name: "healthcheck-domain", category: "production", ok: (process.env.GCOS_HEALTHCHECK_URL ?? "").includes(DOMAIN), detail: process.env.GCOS_HEALTHCHECK_URL ?? "not configured" },
-    { name: "object-vault-path", category: "production", ok: objectStorage.configured && (!OBJECT_VAULT_PATH.includes("/data/object-vault") || process.env.GCOS_OBJECT_VAULT_PATH !== undefined || objectStorage.provider === "cloudflare-r2"), detail: `${objectStorage.provider}: ${objectStorage.location}` },
+    { name: "object-vault-path", category: "production", ok: objectStorage.configured && (usesDurableObjectStorage || !OBJECT_VAULT_PATH.includes("/data/object-vault") || process.env.GCOS_OBJECT_VAULT_PATH !== undefined), detail: `${objectStorage.provider}: ${objectStorage.location}` },
     { name: "body-limit", category: "production", ok: MAX_BODY_BYTES >= 1048576, detail: `${MAX_BODY_BYTES} bytes` },
     { name: "rate-limit-protection", category: "production", ok: LOGIN_RATE_LIMIT > 0 && MUTATION_RATE_LIMIT > 0, detail: `${LOGIN_RATE_LIMIT} login attempts / ${Math.round(LOGIN_RATE_WINDOW_MS / 1000)}s` },
+    { name: "backup-retention-policy", category: "production", ok: BACKUP_RETENTION_DAYS >= 30, detail: BACKUP_RETENTION_DAYS ? `${BACKUP_RETENTION_DAYS} days` : "Set GCOS_BACKUP_RETENTION_DAYS" },
+    { name: "audit-retention-policy", category: "production", ok: AUDIT_RETENTION_POLICY.toLowerCase() === "immutable", detail: AUDIT_RETENTION_POLICY || "Set GCOS_AUDIT_RETENTION_POLICY=immutable" },
+    { name: "incident-response-owner", category: "production", ok: /@rmvi\.org$/i.test(INCIDENT_RESPONSE_OWNER), detail: INCIDENT_RESPONSE_OWNER || "Set GCOS_INCIDENT_RESPONSE_OWNER" },
+    { name: "support-contact", category: "production", ok: /@rmvi\.org$/i.test(SUPPORT_CONTACT), detail: SUPPORT_CONTACT || "Set GCOS_SUPPORT_CONTACT" },
+    { name: "monitoring-mode", category: "production", ok: ["cloud-run-healthcheck", "firebase-healthcheck", "managed"].includes(MONITORING_MODE.toLowerCase()), detail: MONITORING_MODE || "Set GCOS_MONITORING_MODE" },
     { name: "backup-manifest", category: "production", ok: backupManifest.status === "protected", detail: `${backupManifest.total} backups, ${backupManifest.totalBytes} bytes` },
     { name: "restore-drill", category: "production", ok: restoreDrill.status === "restorable", detail: restoreDrill.nextAction },
-    { name: "database-pool", category: "production", ok: Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, detail: process.env.GCOS_DATABASE_POOL_SIZE ?? "default" }
+    { name: "database-pool", category: "production", ok: STORAGE_PROVIDER !== "database" || Number(process.env.GCOS_DATABASE_POOL_SIZE ?? 0) >= 2, detail: STORAGE_PROVIDER === "database" ? (process.env.GCOS_DATABASE_POOL_SIZE ?? "default") : "Not required for current provider" }
   ];
   const mvpChecks = checks.filter((check) => check.category === "mvp");
   const productionChecks = checks.filter((check) => check.category === "production");
@@ -1093,6 +1105,11 @@ function productionSecretEntries() {
     { name: "GCOS_LOGIN_RATE_WINDOW_MS", value: String(LOGIN_RATE_WINDOW_MS), configured: LOGIN_RATE_WINDOW_MS >= 60000, sensitive: false },
     { name: "GCOS_MUTATION_RATE_LIMIT", value: String(MUTATION_RATE_LIMIT), configured: MUTATION_RATE_LIMIT >= 100, sensitive: false },
     { name: "GCOS_MUTATION_RATE_WINDOW_MS", value: String(MUTATION_RATE_WINDOW_MS), configured: MUTATION_RATE_WINDOW_MS >= 60000, sensitive: false },
+    { name: "GCOS_BACKUP_RETENTION_DAYS", value: String(BACKUP_RETENTION_DAYS || 365), configured: BACKUP_RETENTION_DAYS >= 30, sensitive: false },
+    { name: "GCOS_AUDIT_RETENTION_POLICY", value: AUDIT_RETENTION_POLICY || "immutable", configured: AUDIT_RETENTION_POLICY.toLowerCase() === "immutable", sensitive: false },
+    { name: "GCOS_INCIDENT_RESPONSE_OWNER", value: INCIDENT_RESPONSE_OWNER || "admin@rmvi.org", configured: /@rmvi\.org$/i.test(INCIDENT_RESPONSE_OWNER), sensitive: false },
+    { name: "GCOS_SUPPORT_CONTACT", value: SUPPORT_CONTACT || "admin@rmvi.org", configured: /@rmvi\.org$/i.test(SUPPORT_CONTACT), sensitive: false },
+    { name: "GCOS_MONITORING_MODE", value: MONITORING_MODE || "cloud-run-healthcheck", configured: ["cloud-run-healthcheck", "firebase-healthcheck", "managed"].includes(MONITORING_MODE.toLowerCase()), sensitive: false },
     { name: "GCOS_MANAGED_RESTORE_DRILL", value: "1", configured: process.env.GCOS_MANAGED_RESTORE_DRILL === "1", sensitive: false }
   ];
 }
@@ -1155,9 +1172,10 @@ async function launchSignoffMatrix() {
   const productionGates = [
     { name: "production-env", ok: process.env.NODE_ENV === "production", detail: process.env.NODE_ENV ?? "not set" },
     { name: "domain-and-cors", ok: DOMAIN === "rmvi.org" && ALLOWED_ORIGIN === "https://rmvi.org", detail: `${DOMAIN} / ${ALLOWED_ORIGIN}` },
-    { name: "managed-database", ok: STORAGE_PROVIDER === "database" && Boolean(DATABASE_URL), detail: STORAGE_PROVIDER === "database" ? "Database provider selected" : "JSON provider active" },
+    { name: "managed-database", ok: usesManagedRecordStorage && (STORAGE_PROVIDER !== "database" || Boolean(DATABASE_URL)), detail: STORAGE_PROVIDER === "database" ? "Database provider selected" : `${STORAGE_PROVIDER} provider active` },
+    { name: "retention-and-ownership", ok: BACKUP_RETENTION_DAYS >= 30 && AUDIT_RETENTION_POLICY.toLowerCase() === "immutable" && /@rmvi\.org$/i.test(INCIDENT_RESPONSE_OWNER) && /@rmvi\.org$/i.test(SUPPORT_CONTACT), detail: `${BACKUP_RETENTION_DAYS || 0} days / ${AUDIT_RETENTION_POLICY || "no audit policy"}` },
     { name: "backup-and-restore", ok: backupManifest.status === "protected" && restoreDrill.valid, detail: `${backupManifest.status} / ${restoreDrill.status}` },
-    { name: "deployment-monitor", ok: monitor.status === "healthy", detail: `${monitor.status} with ${monitor.criticalSignals.length} signals` }
+    { name: "deployment-monitor", ok: monitor.status === "healthy" && Boolean(MONITORING_MODE), detail: `${monitor.status} with ${monitor.criticalSignals.length} signals / ${MONITORING_MODE || "no monitoring mode"}` }
   ];
   const enterpriseGates = [
     { name: "security-controls", ok: security.verified >= 2 && security.exceptions === 0, detail: `${security.verified} verified, ${security.exceptions} exceptions` },
