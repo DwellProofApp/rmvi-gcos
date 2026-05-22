@@ -9587,6 +9587,161 @@ h1 {
   }
 }
 
+/* Last-mile contrast fix: keep gold decorative, never behind words. */
+.app-shell:not(.admin-shell) .graph-node,
+.app-shell:not(.admin-shell) .hierarchy-row,
+.app-shell:not(.admin-shell) .control-row {
+  border: 1px solid var(--rmvi-line) !important;
+  border-radius: 18px !important;
+  background: linear-gradient(180deg, #ffffff, #f8fbff) !important;
+  color: var(--rmvi-ink) !important;
+  box-shadow: var(--rmvi-shadow-soft) !important;
+}
+
+.app-shell:not(.admin-shell) .graph-node strong,
+.app-shell:not(.admin-shell) .hierarchy-row strong,
+.app-shell:not(.admin-shell) .node-main strong {
+  color: var(--rmvi-ink) !important;
+}
+
+.app-shell:not(.admin-shell) .graph-node span,
+.app-shell:not(.admin-shell) .hierarchy-row span,
+.app-shell:not(.admin-shell) .node-main span,
+.app-shell:not(.admin-shell) .node-metric,
+.app-shell:not(.admin-shell) .flow-meter span,
+.flow-meter span,
+.progress span {
+  color: var(--rmvi-muted) !important;
+  background: transparent !important;
+  text-shadow: none !important;
+}
+
+.app-shell:not(.admin-shell) .node-badge {
+  border: 1px solid rgba(244, 197, 66, 0.5) !important;
+  background: #fff6d8 !important;
+  color: var(--rmvi-gold-ink) !important;
+  box-shadow: none !important;
+}
+
+.flow-meter div,
+.progress,
+.app-shell:not(.admin-shell) .flow-meter div,
+.app-shell:not(.admin-shell) .progress {
+  height: 9px !important;
+  border: 1px solid #dbe6f6 !important;
+  background: #edf3fb !important;
+}
+
+.progress i,
+.flow-meter i,
+.app-shell:not(.admin-shell) .progress i,
+.app-shell:not(.admin-shell) .flow-meter i {
+  background: linear-gradient(90deg, var(--rmvi-blue), var(--rmvi-gold)) !important;
+}
+
+.app-shell:not(.admin-shell) .station-avatar {
+  border: 1px solid rgba(244, 197, 66, 0.5) !important;
+  background: #fff8df !important;
+  color: var(--rmvi-blue) !important;
+}
+
+/* Remove decorative yellow from text surfaces; reserve gold for icons,
+   small badges, and progress fills so wording stays clear. */
+.app-shell:not(.admin-shell) .graph-node,
+.app-shell:not(.admin-shell) .hierarchy-row,
+.app-shell:not(.admin-shell) .control-row {
+  border: 1px solid var(--rmvi-line) !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, #ffffff, #f8fbff) !important;
+  color: var(--rmvi-ink) !important;
+  box-shadow: var(--rmvi-shadow-soft) !important;
+}
+
+.app-shell:not(.admin-shell) .graph-node strong,
+.app-shell:not(.admin-shell) .hierarchy-row strong,
+.app-shell:not(.admin-shell) .node-main strong {
+  color: var(--rmvi-ink) !important;
+}
+
+.app-shell:not(.admin-shell) .graph-node span,
+.app-shell:not(.admin-shell) .hierarchy-row span,
+.app-shell:not(.admin-shell) .node-main span,
+.app-shell:not(.admin-shell) .node-metric,
+.app-shell:not(.admin-shell) .flow-meter span {
+  color: var(--rmvi-muted) !important;
+  background: transparent !important;
+}
+
+.app-shell:not(.admin-shell) .node-badge {
+  border: 1px solid rgba(244, 197, 66, 0.5) !important;
+  background: #fff6d8 !important;
+  color: var(--rmvi-gold-ink) !important;
+  box-shadow: none !important;
+}
+
+.progress span,
+.flow-meter span {
+  background: transparent !important;
+}
+
+.progress i,
+.flow-meter i,
+.app-shell:not(.admin-shell) .progress i,
+.app-shell:not(.admin-shell) .flow-meter i {
+  background: linear-gradient(90deg, var(--rmvi-blue), var(--rmvi-gold)) !important;
+}
+
+.flow-meter div,
+.progress,
+.app-shell:not(.admin-shell) .flow-meter div,
+.app-shell:not(.admin-shell) .progress {
+  height: 9px !important;
+  border: 1px solid #dbe6f6 !important;
+  background: #edf3fb !important;
+}
+
+.app-shell:not(.admin-shell) .station-avatar {
+  border: 1px solid rgba(244, 197, 66, 0.5) !important;
+  background: #fff8df !important;
+  color: var(--rmvi-blue) !important;
+}
+
+.app-shell:not(.admin-shell) .organization-kicker,
+.section-banner span,
+.welcome-kicker,
+.download-kicker span,
+.login-heading > div:last-child > span,
+.admin-tab-heading span,
+.admin-focus-title span {
+  color: #8a6408 !important;
+  background: transparent !important;
+  text-shadow: none !important;
+}
+
+.section-banner .organization-kicker,
+.section-banner span,
+.reports-hero span,
+.churchmail-hero span,
+.station-home-hero span,
+.station-landing span,
+.admin-tab-hero span {
+  color: #ffe49b !important;
+}
+
+.panel-header > span,
+.metric-card small,
+.approval-meta small,
+.message-footer small,
+.mail-kind-marker,
+.kind,
+.status,
+.severity,
+.admin-station-state {
+  background: #fff9e8 !important;
+  color: #6c4f06 !important;
+}
+
 @media (max-width: 760px) {
   .login-shell {
     gap: 14px;
