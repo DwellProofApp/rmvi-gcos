@@ -9587,6 +9587,118 @@ h1 {
   }
 }
 
+/* Global gold safety policy.
+   No readable text should sit directly on a gold/yellow fill anywhere in GCOS. */
+.app-shell:not(.admin-shell) .station-option.selected,
+.app-shell:not(.admin-shell) .station-list button.active,
+.app-shell:not(.admin-shell) .station-switcher button.active {
+  border-color: rgba(244, 197, 66, 0.58) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.pipeline-step,
+.app-shell:not(.admin-shell) .pipeline-step {
+  border: 1px solid #dbe6f6 !important;
+  background: #ffffff !important;
+  color: var(--rmvi-blue) !important;
+  box-shadow: 0 8px 18px rgba(9, 39, 92, 0.06) !important;
+}
+
+.pipeline-step::before,
+.pipeline-step::after {
+  background: var(--rmvi-gold) !important;
+}
+
+.report-submit-steps div span,
+.reports-stepper span,
+.report-section-card > span small,
+.template-checklist-preview small,
+.template-requirement-grid small {
+  border: 1px solid rgba(244, 197, 66, 0.48) !important;
+  background: #fff9e8 !important;
+  color: var(--rmvi-gold-ink) !important;
+}
+
+.report-category-pills button.active,
+.report-filter-compact button.active,
+.auth-mode-toggle button.active {
+  border-color: var(--rmvi-blue) !important;
+  background: var(--rmvi-blue) !important;
+  color: #ffffff !important;
+}
+
+.report-meta-strip div,
+.report-route-box,
+.template-route-line,
+.template-checklist-block,
+.template-requirement-grid div,
+.selected-report-summary div,
+.report-document-seal,
+.download-notice {
+  border: 1px solid var(--rmvi-line) !important;
+  background: #f8fbff !important;
+  color: var(--rmvi-ink) !important;
+}
+
+.report-meta-strip span,
+.report-route-box span,
+.template-route-line span,
+.template-checklist-block span,
+.template-requirement-grid span,
+.selected-report-summary span,
+.report-document-seal span {
+  background: transparent !important;
+  color: var(--rmvi-muted) !important;
+}
+
+.report-meta-strip strong,
+.report-route-box strong,
+.template-route-line strong,
+.template-checklist-block strong,
+.template-requirement-grid strong,
+.selected-report-summary strong,
+.report-document-seal strong {
+  color: var(--rmvi-ink) !important;
+}
+
+.report-section-card > span small,
+.report-submit-steps div span {
+  display: inline-grid !important;
+  place-items: center !important;
+  min-width: 34px !important;
+  min-height: 28px !important;
+  border-radius: 10px !important;
+  font-weight: 900 !important;
+}
+
+.pending,
+.queued,
+.synced,
+.success {
+  border-color: #dbe6f6 !important;
+  background: #f8fbff !important;
+  color: var(--rmvi-ink) !important;
+}
+
+.success {
+  border-color: rgba(22, 121, 77, 0.28) !important;
+  background: #eefaf4 !important;
+  color: var(--rmvi-success) !important;
+}
+
+.report-route-box small,
+.template-route-line small,
+.report-card-title small,
+.report-sticky-actions small,
+.report-sticky-actions > div,
+.report-document-head small,
+.report-preview-box small {
+  border-color: var(--rmvi-line) !important;
+  background: #f8fbff !important;
+  color: var(--rmvi-muted) !important;
+}
+
 /* Last-mile contrast fix: keep gold decorative, never behind words. */
 .app-shell:not(.admin-shell) .graph-node,
 .app-shell:not(.admin-shell) .hierarchy-row,
