@@ -1,0 +1,511 @@
+/* Final product polish layer.
+   Keeps RMVI royal blue, gold, and white while giving the in-app surfaces
+   a more mature software product feel. Loaded after all other styles. */
+
+:root {
+  --rmvi-blue-950: #061733;
+  --rmvi-blue-900: #08275c;
+  --rmvi-blue-800: #0b3478;
+  --rmvi-blue-700: #114899;
+  --rmvi-blue-100: #eaf2ff;
+  --rmvi-gold-500: #f4c542;
+  --rmvi-gold-600: #c99422;
+  --rmvi-ink: #10213f;
+  --rmvi-muted: #64748b;
+  --rmvi-page: #f4f7fc;
+  --rmvi-card: #ffffff;
+  --rmvi-line: #d9e4f5;
+  --rmvi-shadow: 0 20px 54px rgba(8, 39, 92, 0.12);
+}
+
+body {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(244, 197, 66, 0.12), transparent 260px),
+    radial-gradient(circle at 92% 5%, rgba(17, 72, 153, 0.12), transparent 360px),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%) !important;
+  color: var(--rmvi-ink);
+}
+
+.app-shell {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(244, 197, 66, 0.11), transparent 360px),
+    linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%) !important;
+}
+
+/* App Interior */
+.app-shell:not(.admin-shell) {
+  --role-primary: var(--rmvi-blue-800);
+  --role-primary-dark: var(--rmvi-blue-950);
+  --role-accent: var(--rmvi-gold-500);
+  --role-soft: var(--rmvi-blue-100);
+  --role-ink: var(--rmvi-ink);
+  --role-muted: var(--rmvi-muted);
+  background:
+    radial-gradient(circle at 92% 0%, color-mix(in srgb, var(--role-accent) 15%, transparent), transparent 360px),
+    linear-gradient(180deg, #f7fbff 0%, #edf3fb 100%) !important;
+}
+
+.app-shell:not(.admin-shell) .sidebar {
+  width: 100%;
+  padding: 18px 14px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.08), transparent 220px),
+    linear-gradient(180deg, var(--role-primary-dark) 0%, var(--role-primary) 62%, #071d43 100%) !important;
+  box-shadow: 18px 0 46px rgba(6, 23, 51, 0.18);
+}
+
+.app-shell:not(.admin-shell) .brand {
+  min-height: 74px;
+  padding: 10px 8px 18px !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.13);
+}
+
+.app-shell:not(.admin-shell) .brand strong {
+  color: #ffffff !important;
+  font-size: 15px !important;
+  letter-spacing: 0;
+}
+
+.app-shell:not(.admin-shell) .brand span {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.app-shell:not(.admin-shell) .brand-mark {
+  width: 50px !important;
+  height: 50px !important;
+  border-radius: 14px !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.app-shell:not(.admin-shell) .nav-list {
+  gap: 7px !important;
+}
+
+.app-shell:not(.admin-shell) .nav-item {
+  min-height: 46px !important;
+  border: 1px solid transparent !important;
+  border-radius: 14px !important;
+  color: rgba(255, 255, 255, 0.82) !important;
+}
+
+.app-shell:not(.admin-shell) .nav-item svg {
+  color: rgba(255, 255, 255, 0.8) !important;
+}
+
+.app-shell:not(.admin-shell) .nav-item span {
+  color: rgba(255, 255, 255, 0.78) !important;
+  font-size: 13px !important;
+  font-weight: 780;
+}
+
+.app-shell:not(.admin-shell) .nav-item.active,
+.app-shell:not(.admin-shell) .nav-item:hover {
+  border-color: rgba(244, 197, 66, 0.5) !important;
+  background:
+    linear-gradient(135deg, rgba(244, 197, 66, 0.24), rgba(255, 255, 255, 0.1)) !important;
+  color: #ffffff !important;
+  box-shadow: inset 4px 0 0 var(--role-accent), 0 14px 30px rgba(2, 12, 31, 0.2) !important;
+}
+
+.app-shell:not(.admin-shell) .nav-item.active span,
+.app-shell:not(.admin-shell) .nav-item:hover span,
+.app-shell:not(.admin-shell) .nav-item.active svg,
+.app-shell:not(.admin-shell) .nav-item:hover svg {
+  color: #ffffff !important;
+}
+
+.app-shell:not(.admin-shell) .workspace {
+  padding: clamp(16px, 2.2vw, 28px) !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.64), transparent 230px),
+    linear-gradient(180deg, #f7fbff 0%, #edf3fb 100%) !important;
+}
+
+.app-shell:not(.admin-shell) .topbar,
+.app-shell:not(.admin-shell) .user-topbar {
+  border: 1px solid rgba(11, 52, 120, 0.12) !important;
+  border-radius: 24px !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(250, 253, 255, 0.92)) !important;
+  box-shadow: 0 16px 42px rgba(8, 39, 92, 0.1) !important;
+}
+
+.app-shell:not(.admin-shell) .topbar h1,
+.app-shell:not(.admin-shell) .station-title h1 {
+  color: var(--rmvi-ink) !important;
+  letter-spacing: 0 !important;
+}
+
+.app-shell:not(.admin-shell) .topbar p,
+.app-shell:not(.admin-shell) .station-title p {
+  color: var(--rmvi-muted) !important;
+}
+
+.app-shell:not(.admin-shell) .icon-button,
+.app-shell:not(.admin-shell) .api-status,
+.app-shell:not(.admin-shell) .session-pill,
+.app-shell:not(.admin-shell) .install-toggle,
+.app-shell:not(.admin-shell) .sync-toggle {
+  min-height: 42px !important;
+  border: 1px solid var(--rmvi-line) !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  color: var(--rmvi-ink) !important;
+  box-shadow: 0 10px 24px rgba(8, 39, 92, 0.07) !important;
+}
+
+.app-shell:not(.admin-shell) .api-status {
+  border-color: rgba(15, 118, 110, 0.22) !important;
+  background: #ecfdf5 !important;
+}
+
+.app-shell:not(.admin-shell) .module-grid {
+  align-items: start;
+  gap: 18px !important;
+}
+
+.app-shell:not(.admin-shell) .panel,
+.app-shell:not(.admin-shell) .metric-card,
+.app-shell:not(.admin-shell) .message-item,
+.app-shell:not(.admin-shell) .workflow-item,
+.app-shell:not(.admin-shell) .approval-item,
+.app-shell:not(.admin-shell) .station-panel,
+.app-shell:not(.admin-shell) .role-system-panel {
+  border: 1px solid rgba(11, 52, 120, 0.13) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(250, 253, 255, 0.95)) !important;
+  box-shadow: var(--rmvi-shadow) !important;
+  color: var(--rmvi-ink) !important;
+}
+
+.app-shell:not(.admin-shell) .panel-header {
+  min-height: 54px;
+  padding-bottom: 14px !important;
+  margin-bottom: 16px !important;
+  border-bottom: 1px solid #e5ecf7 !important;
+}
+
+.app-shell:not(.admin-shell) .panel-header div:first-child svg {
+  width: 38px;
+  height: 38px;
+  padding: 9px;
+  border-radius: 13px;
+  background: var(--role-soft);
+  color: var(--role-primary);
+}
+
+.app-shell:not(.admin-shell) .panel-header h2 {
+  color: var(--rmvi-ink) !important;
+  font-size: 18px !important;
+  letter-spacing: 0 !important;
+}
+
+.app-shell:not(.admin-shell) .panel-header > button {
+  border: 1px solid rgba(11, 52, 120, 0.14) !important;
+  border-radius: 999px !important;
+  background: #ffffff !important;
+  color: var(--role-primary) !important;
+}
+
+.app-shell:not(.admin-shell) .metric-card {
+  min-height: 132px !important;
+  padding: 18px !important;
+}
+
+.app-shell:not(.admin-shell) .metric-card strong {
+  color: var(--rmvi-ink) !important;
+  font-size: 26px !important;
+}
+
+.app-shell:not(.admin-shell) .metric-card span,
+.app-shell:not(.admin-shell) .metric-card small,
+.app-shell:not(.admin-shell) .message-item span,
+.app-shell:not(.admin-shell) .workflow-item span,
+.app-shell:not(.admin-shell) .approval-item span {
+  color: var(--rmvi-muted) !important;
+}
+
+.app-shell:not(.admin-shell) .message-item,
+.app-shell:not(.admin-shell) .workflow-item,
+.app-shell:not(.admin-shell) .approval-item {
+  border-radius: 18px !important;
+  padding: 15px !important;
+  box-shadow: 0 10px 26px rgba(8, 39, 92, 0.07) !important;
+}
+
+.app-shell:not(.admin-shell) .message-item strong,
+.app-shell:not(.admin-shell) .workflow-item strong,
+.app-shell:not(.admin-shell) .approval-item strong {
+  color: var(--rmvi-ink) !important;
+}
+
+.app-shell:not(.admin-shell) input,
+.app-shell:not(.admin-shell) select,
+.app-shell:not(.admin-shell) textarea {
+  border: 1px solid #d7e2f2 !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+  color: var(--rmvi-ink) !important;
+  box-shadow: inset 0 1px 0 rgba(8, 39, 92, 0.04);
+}
+
+.app-shell:not(.admin-shell) input:focus,
+.app-shell:not(.admin-shell) select:focus,
+.app-shell:not(.admin-shell) textarea:focus {
+  border-color: var(--role-primary) !important;
+  outline: 3px solid color-mix(in srgb, var(--role-primary) 18%, transparent) !important;
+}
+
+.app-shell:not(.admin-shell) button {
+  letter-spacing: 0 !important;
+}
+
+.app-shell:not(.admin-shell) .reports-app {
+  color: var(--rmvi-ink) !important;
+}
+
+.app-shell:not(.admin-shell) .reports-hero {
+  border: 1px solid rgba(244, 197, 66, 0.24) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 92% 4%, rgba(244, 197, 66, 0.22), transparent 260px),
+    linear-gradient(135deg, var(--role-primary-dark) 0%, var(--role-primary) 100%) !important;
+  box-shadow: 0 24px 70px rgba(8, 39, 92, 0.2) !important;
+}
+
+.app-shell:not(.admin-shell) .reports-hero h2,
+.app-shell:not(.admin-shell) .reports-hero p,
+.app-shell:not(.admin-shell) .reports-hero span,
+.app-shell:not(.admin-shell) .reports-hero strong,
+.app-shell:not(.admin-shell) .reports-hero small {
+  color: #ffffff !important;
+}
+
+.app-shell:not(.admin-shell) .status,
+.app-shell:not(.admin-shell) .status-pill {
+  border: 1px solid rgba(11, 52, 120, 0.12) !important;
+  color: var(--role-primary) !important;
+  background: var(--role-soft) !important;
+  font-weight: 900 !important;
+}
+
+.app-shell:not(.admin-shell) .status.escalated,
+.app-shell:not(.admin-shell) .status.blocked,
+.app-shell:not(.admin-shell) .status.rejected {
+  color: #9f1239 !important;
+  background: #fff1f2 !important;
+  border-color: #fecdd3 !important;
+}
+
+/* Admin Board */
+.admin-shell .admin-portal-shell {
+  background:
+    radial-gradient(circle at 9% 0%, rgba(244, 197, 66, 0.13), transparent 310px),
+    radial-gradient(circle at 96% 2%, rgba(17, 72, 153, 0.16), transparent 360px),
+    linear-gradient(180deg, #f7fbff 0%, #edf3fb 100%) !important;
+}
+
+.admin-shell .admin-portal-topbar {
+  min-height: 76px;
+  background:
+    linear-gradient(135deg, rgba(6, 23, 51, 0.98), rgba(11, 52, 120, 0.96)) !important;
+  box-shadow: 0 18px 46px rgba(6, 23, 51, 0.22) !important;
+}
+
+.admin-shell .admin-portal-brand strong,
+.admin-shell .admin-portal-brand span,
+.admin-shell .admin-portal-state span {
+  color: #ffffff !important;
+}
+
+.admin-shell .admin-portal-logo {
+  border-radius: 15px !important;
+  background: #ffffff !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, 0.22);
+}
+
+.admin-shell .admin-portal-rail {
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f8fbff 100%) !important;
+}
+
+.admin-shell .admin-portal-main {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.68), transparent 260px),
+    #f4f7fc !important;
+}
+
+.admin-shell .admin-command-hero {
+  border-color: rgba(244, 197, 66, 0.28) !important;
+  background:
+    linear-gradient(90deg, rgba(255, 255, 255, 0.06) 0 1px, transparent 1px 84px),
+    radial-gradient(circle at 92% 0%, rgba(244, 197, 66, 0.24), transparent 300px),
+    linear-gradient(135deg, #061733 0%, #092a63 48%, #114899 100%) !important;
+}
+
+.admin-shell .admin-tab-heading h1 {
+  font-size: clamp(34px, 3.6vw, 54px) !important;
+}
+
+.admin-shell .admin-app-suite,
+.admin-shell .admin-node-model,
+.admin-shell .admin-focus-board,
+.admin-shell .admin-console-panel {
+  border: 1px solid rgba(11, 52, 120, 0.13) !important;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #fafdff 100%) !important;
+  box-shadow: var(--rmvi-shadow) !important;
+}
+
+.admin-shell .admin-app-grid {
+  grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)) !important;
+}
+
+.admin-shell .admin-app-tile,
+.admin-shell .admin-node-flow article,
+.admin-shell .admin-focus-card,
+.admin-shell .admin-system-card,
+.admin-shell .admin-action-list button,
+.admin-shell .admin-queue-list button,
+.admin-shell .admin-health-list div,
+.admin-shell .admin-station-summary div,
+.admin-shell .admin-station-row,
+.admin-shell .admin-session-list article,
+.admin-shell .admin-event-list article,
+.admin-shell .admin-approval-queue article {
+  border: 1px solid #dce7f6 !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, #ffffff, #f8fbff) !important;
+  box-shadow: 0 10px 28px rgba(8, 39, 92, 0.07) !important;
+}
+
+.admin-shell .admin-app-tile strong,
+.admin-shell .admin-node-flow strong,
+.admin-shell .admin-focus-card strong,
+.admin-shell .admin-system-card strong,
+.admin-shell .admin-station-row strong,
+.admin-shell .admin-session-list strong,
+.admin-shell .admin-event-list strong,
+.admin-shell .admin-queue-list strong {
+  color: var(--rmvi-ink) !important;
+}
+
+.admin-shell .admin-app-tile small,
+.admin-shell .admin-node-flow small,
+.admin-shell .admin-focus-card small,
+.admin-shell .admin-system-card small,
+.admin-shell .admin-station-row small,
+.admin-shell .admin-station-row span,
+.admin-shell .admin-session-list span,
+.admin-shell .admin-event-list span,
+.admin-shell .admin-queue-list small {
+  color: var(--rmvi-muted) !important;
+}
+
+.admin-shell .admin-station-row.head {
+  background: linear-gradient(135deg, var(--rmvi-blue-900), var(--rmvi-blue-800)) !important;
+  box-shadow: none !important;
+}
+
+.admin-shell .admin-station-row.head span {
+  color: #ffffff !important;
+  font-weight: 900 !important;
+}
+
+.admin-shell .admin-station-actions button,
+.admin-shell .compact-actions button,
+.admin-shell .action-row button,
+.admin-shell .admin-approval-actions button,
+.admin-shell .wide-action {
+  min-height: 38px !important;
+  border: 1px solid #d8e2f2 !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: var(--rmvi-ink) !important;
+}
+
+.admin-shell .action-row button:first-child,
+.admin-shell .wide-action,
+.admin-shell .admin-suite-head button {
+  border-color: var(--rmvi-blue-800) !important;
+  background: linear-gradient(135deg, var(--rmvi-blue-800), var(--rmvi-blue-700)) !important;
+  color: #ffffff !important;
+}
+
+.admin-shell .admin-suite-head span,
+.admin-shell .admin-focus-title span,
+.admin-shell .admin-console-panel .panel-header span {
+  color: var(--rmvi-gold-600) !important;
+}
+
+.admin-shell .admin-console-panel .panel-header h2,
+.admin-shell .admin-suite-head strong,
+.admin-shell .admin-focus-title strong {
+  color: var(--rmvi-ink) !important;
+}
+
+@media (max-width: 1100px) {
+  .app-shell {
+    grid-template-columns: 96px minmax(0, 1fr);
+  }
+
+  .app-shell:not(.admin-shell) .brand strong,
+  .app-shell:not(.admin-shell) .brand span,
+  .app-shell:not(.admin-shell) .nav-item span {
+    display: none !important;
+  }
+
+  .app-shell:not(.admin-shell) .nav-item {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell:not(.admin-shell) {
+    display: block;
+  }
+
+  .app-shell:not(.admin-shell) .sidebar {
+    position: sticky;
+    top: 0;
+    z-index: 70;
+    height: auto;
+    overflow-x: auto;
+    flex-direction: row;
+    align-items: center;
+    gap: 10px;
+    padding: 12px !important;
+  }
+
+  .app-shell:not(.admin-shell) .brand {
+    min-width: 64px;
+    padding: 0 !important;
+    border-bottom: 0;
+  }
+
+  .app-shell:not(.admin-shell) .nav-list {
+    display: flex;
+    flex-direction: row;
+    min-width: max-content;
+  }
+
+  .app-shell:not(.admin-shell) .nav-item {
+    width: 50px;
+    height: 50px;
+    padding: 0;
+  }
+
+  .app-shell:not(.admin-shell) .station-switcher {
+    display: none;
+  }
+
+  .app-shell:not(.admin-shell) .workspace {
+    padding: 14px !important;
+  }
+
+  .admin-shell .admin-portal-main {
+    padding: 16px !important;
+  }
+}
