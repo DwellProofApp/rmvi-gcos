@@ -50,9 +50,10 @@
   width: fit-content !important;
   max-width: 100% !important;
   padding: 10px 13px !important;
-  border: 1px solid rgba(244, 197, 66, 0.48) !important;
+  border: 1px solid rgba(255, 255, 255, 0.32) !important;
   border-radius: 14px !important;
-  background: rgba(244, 197, 66, 0.16) !important;
+  background:
+    linear-gradient(135deg, rgba(6, 23, 51, 0.92), rgba(11, 52, 120, 0.84)) !important;
 }
 
 .login-shell.public-software-gateway.admin-login-gateway .download-kicker {
@@ -65,7 +66,7 @@
 .login-shell.public-software-gateway .download-kicker span,
 .login-shell.public-software-gateway .download-kicker strong {
   display: block !important;
-  color: #f4c542 !important;
+  color: #ffffff !important;
   opacity: 1 !important;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25) !important;
 }
