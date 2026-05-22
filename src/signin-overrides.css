@@ -3,11 +3,50 @@
 
 .login-shell.public-software-gateway {
   min-height: 100vh !important;
+  height: auto !important;
+  overflow: visible !important;
+  overflow-y: visible !important;
   background:
     radial-gradient(circle at 16% 8%, rgba(244, 197, 66, 0.24), transparent 280px),
     radial-gradient(circle at 92% 12%, rgba(255, 255, 255, 0.13), transparent 320px),
     linear-gradient(180deg, #061733 0%, #08265b 54%, #0b3478 100%) !important;
   color: #ffffff !important;
+}
+
+html:has(.login-shell.public-software-gateway),
+body:has(.login-shell.public-software-gateway),
+#root:has(.login-shell.public-software-gateway) {
+  min-height: 100% !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: auto !important;
+}
+
+html:has(.login-shell.public-software-gateway)::-webkit-scrollbar,
+body:has(.login-shell.public-software-gateway)::-webkit-scrollbar,
+.login-shell.public-software-gateway::-webkit-scrollbar {
+  width: 14px !important;
+  height: 14px !important;
+  display: block !important;
+}
+
+html:has(.login-shell.public-software-gateway)::-webkit-scrollbar-thumb,
+body:has(.login-shell.public-software-gateway)::-webkit-scrollbar-thumb,
+.login-shell.public-software-gateway::-webkit-scrollbar-thumb {
+  border: 3px solid #eaf1fb !important;
+  border-radius: 999px !important;
+  background: #0b3478 !important;
+}
+
+html:has(.login-shell.public-software-gateway)::-webkit-scrollbar-track,
+body:has(.login-shell.public-software-gateway)::-webkit-scrollbar-track,
+.login-shell.public-software-gateway::-webkit-scrollbar-track {
+  background: #eaf1fb !important;
+}
+
+.login-shell.public-software-gateway.admin-login-gateway .gateway-flow-steps {
+  display: none !important;
 }
 
 .login-shell.public-software-gateway .admin-access-hero,
@@ -67,6 +106,8 @@
 .login-shell.public-software-gateway .download-kicker strong {
   display: block !important;
   color: #ffffff !important;
+  border: 1px solid rgba(255, 255, 255, 0.22) !important;
+  background: rgba(255, 255, 255, 0.1) !important;
   opacity: 1 !important;
   text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25) !important;
 }
@@ -80,10 +121,12 @@
 
 .login-shell.public-software-gateway.admin-login-gateway .download-kicker span {
   color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .login-shell.public-software-gateway.admin-login-gateway .download-kicker strong {
   color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.1) !important;
 }
 
 .login-shell.public-software-gateway .download-kicker strong {

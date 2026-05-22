@@ -2,9 +2,51 @@
    Loaded last so /admin/board reads like a real software control room. */
 
 .admin-shell .workspace {
+  min-height: 100vh !important;
+  height: auto !important;
+  overflow: visible !important;
   background:
     linear-gradient(180deg, #eaf1fb 0 310px, #f6f8fc 310px 100%) !important;
   color: #10213f !important;
+}
+
+html:has(.admin-shell),
+body:has(.admin-shell),
+#root:has(.admin-shell),
+.app-shell.admin-shell {
+  min-height: 100% !important;
+  height: auto !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  scrollbar-width: auto !important;
+}
+
+html:has(.admin-shell)::-webkit-scrollbar,
+body:has(.admin-shell)::-webkit-scrollbar,
+.app-shell.admin-shell::-webkit-scrollbar,
+.admin-shell .workspace::-webkit-scrollbar,
+.admin-shell .admin-portal-main::-webkit-scrollbar {
+  width: 14px !important;
+  height: 14px !important;
+  display: block !important;
+}
+
+html:has(.admin-shell)::-webkit-scrollbar-thumb,
+body:has(.admin-shell)::-webkit-scrollbar-thumb,
+.app-shell.admin-shell::-webkit-scrollbar-thumb,
+.admin-shell .workspace::-webkit-scrollbar-thumb,
+.admin-shell .admin-portal-main::-webkit-scrollbar-thumb {
+  border: 3px solid #eaf1fb !important;
+  border-radius: 999px !important;
+  background: #0b3478 !important;
+}
+
+html:has(.admin-shell)::-webkit-scrollbar-track,
+body:has(.admin-shell)::-webkit-scrollbar-track,
+.app-shell.admin-shell::-webkit-scrollbar-track,
+.admin-shell .workspace::-webkit-scrollbar-track,
+.admin-shell .admin-portal-main::-webkit-scrollbar-track {
+  background: #eaf1fb !important;
 }
 
 .admin-shell .admin-portal-shell {

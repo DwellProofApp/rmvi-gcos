@@ -10151,27 +10151,29 @@ function LoginScreen({
         </div>
       </section>
 
-      <section className="gateway-flow-steps" aria-label="GCOS station access flow">
-        {[
-          { icon: Plus, label: "Request account", text: "A church office or department submits its official @rmvi.org station account." },
-          { icon: ShieldCheck, label: "Admin approval", text: "Administrators approve the account, verify the office, and assign permissions." },
-          { icon: LockKeyhole, label: "Station sign-in", text: "Users sign in manually with their assigned station email and password." },
-          { icon: LayoutDashboard, label: "Workstation opens", text: "GCOS loads the correct dashboard, inbox, reports, approvals, tasks, and archive." },
-          { icon: FileCheck2, label: "Submit upward", text: "Reports, ChurchMail, evidence, corrections, and approvals route through hierarchy." }
-        ].map((step, index) => {
-          const StepIcon = step.icon;
-          return (
-            <article key={step.label}>
-              <div>
-                <span>{index + 1}</span>
-                <StepIcon size={18} />
-              </div>
-              <strong>{step.label}</strong>
-              <p>{step.text}</p>
-            </article>
-          );
-        })}
-      </section>
+      {!isAdminPortal && (
+        <section className="gateway-flow-steps" aria-label="GCOS station access flow">
+          {[
+            { icon: Plus, label: "Request account", text: "A church office or department submits its official @rmvi.org station account." },
+            { icon: ShieldCheck, label: "Admin approval", text: "Administrators approve the account, verify the office, and assign permissions." },
+            { icon: LockKeyhole, label: "Station sign-in", text: "Users sign in manually with their assigned station email and password." },
+            { icon: LayoutDashboard, label: "Workstation opens", text: "GCOS loads the correct dashboard, inbox, reports, approvals, tasks, and archive." },
+            { icon: FileCheck2, label: "Submit upward", text: "Reports, ChurchMail, evidence, corrections, and approvals route through hierarchy." }
+          ].map((step, index) => {
+            const StepIcon = step.icon;
+            return (
+              <article key={step.label}>
+                <div>
+                  <span>{index + 1}</span>
+                  <StepIcon size={18} />
+                </div>
+                <strong>{step.label}</strong>
+                <p>{step.text}</p>
+              </article>
+            );
+          })}
+        </section>
+      )}
 
       <footer className="public-download-footer" aria-label="Download footer">
         <div>
