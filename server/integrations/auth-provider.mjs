@@ -91,10 +91,14 @@ export function createAuthProvider() {
     },
     async issueToken(email, claims = {}) {
       if (provider !== "firebase" || !firebaseReady) return null;
-      const user = await findFirebaseUser(email);
-      if (!user) return null;
-      const auth = await getAuth();
-      return auth.createCustomToken(user.uid, claims);
+      try {
+        const user = await findFirebaseUser(email);
+        if (!user) return null;
+        const auth = await getAuth();
+        return await auth.createCustomToken(user.uid, claims);
+      } catch {
+        return null;
+      }
     },
     async provisionStation(stationRecord, password, claims = {}) {
       if (provider !== "firebase") return { ok: false, provider, mode: "local-auth" };
