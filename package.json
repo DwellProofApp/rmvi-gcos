@@ -21,6 +21,7 @@
     "deployment:align": "node scripts/deployment-alignment-check.mjs",
     "firebase:domain-check": "node scripts/firebase-domain-check.mjs",
     "hosting:security-check": "node scripts/hosting-security-check.mjs",
+    "performance:check": "node scripts/performance-budget.mjs",
     "preaws:check": "node scripts/pre-aws-hardening-check.mjs",
     "internal:audit": "node scripts/internal-page-audit.mjs",
     "release:check": "node scripts/final-release-check.mjs",

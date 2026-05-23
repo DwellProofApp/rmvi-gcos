@@ -26,6 +26,7 @@ await runStep("release-check", "npm", ["run", "release:check"], { required: true
 await runStep("enterprise-check", "npm", ["run", "enterprise:check"], { required: true });
 await runStep("secrets-plan", "npm", ["run", "secrets:plan"], { required: false, env });
 await runStep("build", "npm", ["run", "build"], { required: true });
+await runStep("performance-budget", "npm", ["run", "performance:check"], { required: true });
 await runStep("test", "npm", ["test"], { required: true });
 await runStep("production-profile", "npm", ["run", "production:check"], { required: strict, env });
 
