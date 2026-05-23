@@ -1,5 +1,6 @@
 import { createServer } from "node:http";
 import { createHash, randomUUID } from "node:crypto";
+import { resolveTxt } from "node:dns/promises";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -75,7 +76,8 @@ const routes = {
   "GET /health": () => ok({ status: "ok", service: "gcos-api", time: new Date().toISOString(), build: publicBuildInfo() }),
   "GET /api/deployment/build-info": () => ok(deploymentBuildInfo()),
   "GET /api/integrations/readiness": () => ok(integrationReadiness()),
-  "POST /api/integrations/email/test": async ({ body, session }) => ok(await integrations.email.sendTestEmail({ to: body.to ?? session.email, actor: session.email })),
+  "GET /api/integrations/email/activation": async () => ok(await churchMailEmailActivation()),
+  "POST /api/integrations/email/test": async ({ body, session }) => ok(await sendChurchMailProviderTest(body.to ?? session.email, session.email)),
   "GET /api/readiness": () => ok(readinessReport()),
   "GET /api/readiness/digest": () => ok(readinessDigest()),
   "POST /api/readiness/bulk/acknowledge": ({ body, session }) => ok(bulkAcknowledgeReadiness(body, session.email)),
@@ -694,6 +696,114 @@ function integrationReadiness() {
     video,
     checks
   };
+}
+
+async function churchMailEmailActivation() {
+  const email = integrations.email.status();
+  const providerSelected = ["resend", "sendgrid"].includes(email.provider);
+  const senderDomainReady = /@rmvi\.org$/i.test(email.from);
+  const apiSecretReady = email.ready && email.provider !== "log";
+  const txt = await emailDnsSignals(email.domain || DOMAIN);
+  const dnsReady = txt.spf.ok && txt.dmarc.ok;
+  const lastTest = state.emailActivation?.lastTest ?? null;
+  const testReady = Boolean(lastTest?.ok && lastTest?.provider && lastTest.provider !== "log");
+  const steps = [
+    {
+      id: "provider",
+      name: "Select live provider",
+      ok: providerSelected,
+      detail: providerSelected ? `${email.provider} selected for outbound ChurchMail` : "Set GCOS_EMAIL_PROVIDER=resend after the Resend domain is verified."
+    },
+    {
+      id: "sender",
+      name: "Use rmvi.org sender",
+      ok: senderDomainReady,
+      detail: senderDomainReady ? `${email.from} is the active sender` : "Set GCOS_EMAIL_FROM=churchmail@rmvi.org."
+    },
+    {
+      id: "secret",
+      name: "Attach provider API key",
+      ok: apiSecretReady,
+      detail: apiSecretReady ? `${email.deliveryMode} secret is active` : `Set ${email.provider === "sendgrid" ? "GCOS_SENDGRID_API_KEY" : "GCOS_RESEND_API_KEY"} in Cloud Run.`
+    },
+    {
+      id: "dns",
+      name: "Verify sender DNS",
+      ok: dnsReady,
+      detail: dnsReady ? "SPF and DMARC records are visible for rmvi.org" : "Publish provider DNS records for SPF/DKIM/DMARC, then refresh this board."
+    },
+    {
+      id: "test",
+      name: "Send live delivery test",
+      ok: testReady,
+      detail: testReady ? `Last live test sent to ${lastTest.to} with ${lastTest.provider}` : "Use Test ChurchMail after the provider key is connected."
+    }
+  ];
+  const ready = steps.filter((step) => step.ok).length;
+  return {
+    generatedAt: new Date().toISOString(),
+    status: ready === steps.length ? "email-live" : providerSelected || apiSecretReady ? "activation-in-progress" : "provider-needed",
+    provider: email.provider,
+    deliveryMode: email.deliveryMode,
+    from: email.from,
+    replyTo: email.replyTo,
+    domain: email.domain || DOMAIN,
+    ready,
+    total: steps.length,
+    score: Math.round((ready / steps.length) * 100),
+    dns: txt,
+    lastTest,
+    missing: email.missing ?? [],
+    steps,
+    nextActions: steps.filter((step) => !step.ok).map((step) => step.detail)
+  };
+}
+
+async function emailDnsSignals(domain) {
+  const target = domain || DOMAIN;
+  const [rootTxt, dmarcTxt] = await Promise.all([
+    readTxtRecord(target),
+    readTxtRecord(`_dmarc.${target}`)
+  ]);
+  const rootFlat = rootTxt.flat().join(" ");
+  const dmarcFlat = dmarcTxt.flat().join(" ");
+  return {
+    domain: target,
+    spf: {
+      ok: /v=spf1/i.test(rootFlat),
+      records: rootTxt
+    },
+    dmarc: {
+      ok: /v=DMARC1/i.test(dmarcFlat),
+      records: dmarcTxt
+    },
+    dkim: {
+      ok: false,
+      records: [],
+      detail: "DKIM selector is provider-specific. Use the Resend domain screen to confirm DKIM after provider setup."
+    }
+  };
+}
+
+async function readTxtRecord(hostname) {
+  try {
+    return await resolveTxt(hostname);
+  } catch {
+    return [];
+  }
+}
+
+async function sendChurchMailProviderTest(to, actor) {
+  const result = await integrations.email.sendTestEmail({ to, actor });
+  state.emailActivation ??= {};
+  state.emailActivation.lastTest = {
+    ...result,
+    to,
+    actor,
+    checkedAt: new Date().toISOString()
+  };
+  record(result.ok && result.provider !== "log" ? "ChurchMailLiveEmailTestSent" : "ChurchMailEmailTestChecked", actor, to, result.messageId ?? result.mode ?? result.provider);
+  return result;
 }
 
 function deploymentBuildInfo() {

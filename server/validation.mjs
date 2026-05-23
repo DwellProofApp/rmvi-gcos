@@ -916,6 +916,10 @@ const validators = {
     if (body.email !== undefined) requireEmail(body.email, "email");
   },
 
+  "POST /api/integrations/email/test": (body) => {
+    if (body.to !== undefined) requireEmail(body.to, "to");
+  },
+
   "POST /api/live-sessions/:id/check-in": (body) => {
     if (body.participant !== undefined) requireString(body.participant, "participant");
     if (body.email !== undefined) requireEmail(body.email, "email");

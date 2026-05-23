@@ -383,6 +383,28 @@ type IntegrationReadiness = {
   video: { provider: string; ready: boolean; realtime: string };
   checks: { name: string; ok: boolean; detail: string }[];
 };
+type ChurchMailEmailActivation = {
+  generatedAt: string;
+  status: string;
+  provider: string;
+  deliveryMode: string;
+  from: string;
+  replyTo: string;
+  domain: string;
+  ready: number;
+  total: number;
+  score: number;
+  dns: {
+    domain: string;
+    spf: { ok: boolean; records: string[][] };
+    dmarc: { ok: boolean; records: string[][] };
+    dkim: { ok: boolean; records: string[][]; detail: string };
+  };
+  lastTest: null | { ok: boolean; provider: string; mode?: string; messageId?: string; subject?: string; to: string; actor: string; checkedAt: string };
+  missing: string[];
+  steps: { id: string; name: string; ok: boolean; detail: string }[];
+  nextActions: string[];
+};
 type OperationalMonitor = {
   generatedAt: string;
   status: string;
@@ -15919,6 +15941,7 @@ function Audit({
   const [deploymentPlan, setDeploymentPlan] = React.useState<DeploymentPlan | null>(null);
   const [productionSecretsPlan, setProductionSecretsPlan] = React.useState<ProductionSecretsPlan | null>(null);
   const [integrationReadiness, setIntegrationReadiness] = React.useState<IntegrationReadiness | null>(null);
+  const [emailActivation, setEmailActivation] = React.useState<ChurchMailEmailActivation | null>(null);
   const [emailTestResult, setEmailTestResult] = React.useState<string>("");
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
   const [productionHandoff, setProductionHandoff] = React.useState<ProductionHandoff | null>(null);
@@ -15980,6 +16003,7 @@ function Audit({
     void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
     void apiRequest<ProductionSecretsPlan>("/api/production/secrets-plan").then(setProductionSecretsPlan).catch(() => undefined);
     void apiRequest<IntegrationReadiness>("/api/integrations/readiness").then(setIntegrationReadiness).catch(() => undefined);
+    void apiRequest<ChurchMailEmailActivation>("/api/integrations/email/activation").then(setEmailActivation).catch(() => undefined);
     void apiRequest<ProductionHandoff>("/api/ops/production-handoff").then(setProductionHandoff).catch(() => undefined);
     void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
@@ -16243,7 +16267,12 @@ function Audit({
 
   function refreshIntegrationReadiness() {
     void apiRequest<IntegrationReadiness>("/api/integrations/readiness").then(setIntegrationReadiness).catch(() => undefined);
+    void apiRequest<ChurchMailEmailActivation>("/api/integrations/email/activation").then(setEmailActivation).catch(() => undefined);
     refreshProductionHandoff();
+  }
+
+  function refreshEmailActivation() {
+    void apiRequest<ChurchMailEmailActivation>("/api/integrations/email/activation").then(setEmailActivation).catch(() => undefined);
   }
 
   function sendEmailProviderTest() {
@@ -16256,6 +16285,7 @@ function Audit({
     }).then((result) => {
       setEmailTestResult(result.ok ? `${result.provider} test sent${result.messageId ? ` (${result.messageId})` : ""}` : `${result.provider} test not sent: ${result.mode ?? "provider not ready"}`);
       refreshIntegrationReadiness();
+      refreshEmailActivation();
     }).catch((error) => {
       setEmailTestResult(error instanceof Error ? error.message : "Email provider test failed");
     });
@@ -17476,6 +17506,57 @@ function Audit({
               {!entry.configured && <small>{entry.nextAction}</small>}
             </article>
           ))}
+        </div>
+      </div>
+      <div className="panel module-side churchmail-activation-board">
+        <PanelHeader icon={Mail} title="ChurchMail Email Activation" action={emailActivation?.status ?? "checking"} />
+        <div className="email-activation-hero">
+          <div>
+            <span>rmvi.org delivery</span>
+            <strong>{emailActivation?.score ?? 0}%</strong>
+            <small>{emailActivation?.nextActions[0] ?? "Connect the live email provider, verify DNS, and send the final delivery test."}</small>
+          </div>
+          <Mail size={34} />
+        </div>
+        <div className="action-row">
+          <button onClick={refreshEmailActivation}><RefreshCw size={15} /> Refresh DNS</button>
+          <button onClick={sendEmailProviderTest}><Send size={15} /> Test delivery</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Provider" value={emailActivation?.provider ?? "Checking"} />
+          <Insight label="Mode" value={emailActivation?.deliveryMode ?? "Pending"} />
+          <Insight label="Sender" value={emailActivation?.from ?? "churchmail@rmvi.org"} />
+          <Insight label="Domain" value={emailActivation?.domain ?? "rmvi.org"} />
+          <Insight label="SPF" value={emailActivation?.dns.spf.ok ? "Found" : "Needed"} />
+          <Insight label="DMARC" value={emailActivation?.dns.dmarc.ok ? "Found" : "Needed"} />
+        </div>
+        {emailTestResult && (
+          <div className={emailTestResult.toLowerCase().includes("sent") ? "login-notice" : "login-error"}>{emailTestResult}</div>
+        )}
+        <div className="email-activation-steps">
+          {(emailActivation?.steps ?? []).map((step, index) => (
+            <article className={step.ok ? "ready" : "hold"} key={step.id}>
+              <span>{index + 1}</span>
+              {step.ok ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
+              <div>
+                <strong>{step.name}</strong>
+                <small>{step.detail}</small>
+              </div>
+            </article>
+          ))}
+          {!emailActivation && <div className="empty-state">Checking ChurchMail email provider, DNS, sender address, and last delivery test.</div>}
+        </div>
+        <div className="email-dns-notes">
+          <article>
+            <span>Last test</span>
+            <strong>{emailActivation?.lastTest ? `${emailActivation.lastTest.provider} / ${emailActivation.lastTest.to}` : "No live test yet"}</strong>
+            <small>{emailActivation?.lastTest ? formatDateTime(emailActivation.lastTest.checkedAt) : "Run a test after Resend is connected."}</small>
+          </article>
+          <article>
+            <span>DKIM</span>
+            <strong>{emailActivation?.dns.dkim.ok ? "Verified" : "Provider screen"}</strong>
+            <small>{emailActivation?.dns.dkim.detail ?? "Provider-specific DKIM selectors appear in Resend after the domain is added."}</small>
+          </article>
         </div>
       </div>
       <div className="panel module-side service-connection-board">
