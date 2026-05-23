@@ -397,6 +397,18 @@ type OperationalMonitor = {
   criticalSignals: { name: string; severity: string; detail: string }[];
   nextActions: string[];
 };
+type ProductionHandoff = {
+  generatedAt: string;
+  domain: string;
+  status: string;
+  summary: string;
+  build: { gitCommit: string; gitBranch: string; deploymentTarget: string };
+  scores: { mvp: number; production: number; operations: number; signoff: number; integrations: number };
+  blockers: { id: string; severity: string; title: string; detail: string; owner: string; command: string }[];
+  phases: { name: string; status: string; score: number; detail: string }[];
+  providerStatus: { auth: string; email: string; video: string; records: string; objects: string; backup: string; restore: string };
+  actionPlan: { title: string; command: string; done: boolean }[];
+};
 type LaunchSignoff = {
   generatedAt: string;
   targetDomain: string;
@@ -15867,6 +15879,7 @@ function Audit({
   const [integrationReadiness, setIntegrationReadiness] = React.useState<IntegrationReadiness | null>(null);
   const [emailTestResult, setEmailTestResult] = React.useState<string>("");
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
+  const [productionHandoff, setProductionHandoff] = React.useState<ProductionHandoff | null>(null);
   const [launchSignoff, setLaunchSignoff] = React.useState<LaunchSignoff | null>(null);
   const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
   const [enterpriseCompletion, setEnterpriseCompletion] = React.useState<EnterpriseCompletion | null>(null);
@@ -15921,6 +15934,7 @@ function Audit({
     void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
     void apiRequest<ProductionSecretsPlan>("/api/production/secrets-plan").then(setProductionSecretsPlan).catch(() => undefined);
     void apiRequest<IntegrationReadiness>("/api/integrations/readiness").then(setIntegrationReadiness).catch(() => undefined);
+    void apiRequest<ProductionHandoff>("/api/ops/production-handoff").then(setProductionHandoff).catch(() => undefined);
     void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
     void apiRequest<EnterpriseCompletion>("/api/enterprise/completion").then(setEnterpriseCompletion).catch(() => undefined);
@@ -15980,6 +15994,7 @@ function Audit({
       setPersistenceStatus(result.status);
       void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
       void apiRequest<OperationalMonitor>("/api/ops/monitor").then(setOperationalMonitor).catch(() => undefined);
+      void apiRequest<ProductionHandoff>("/api/ops/production-handoff").then(setProductionHandoff).catch(() => undefined);
       void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
       void apiRequest<PersistenceCutoverChecklist>("/api/persistence/cutover-checklist").then(setCutoverChecklist).catch(() => undefined);
       onRefreshAuditDigest();
@@ -16070,6 +16085,10 @@ function Audit({
     void apiRequest<OperationalMonitor>("/api/ops/monitor").then(setOperationalMonitor).catch(() => undefined);
   }
 
+  function refreshProductionHandoff() {
+    void apiRequest<ProductionHandoff>("/api/ops/production-handoff").then(setProductionHandoff).catch(() => undefined);
+  }
+
   function recordOperationalMonitor() {
     void apiRequest<{ monitor: OperationalMonitor; status: PersistenceStatus }>("/api/ops/monitor", {
       method: "POST",
@@ -16077,6 +16096,7 @@ function Audit({
     }).then((result) => {
       setOperationalMonitor(result.monitor);
       setPersistenceStatus(result.status);
+      refreshProductionHandoff();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16104,6 +16124,7 @@ function Audit({
     }).then((result) => {
       setLaunchSignoff(result.signoff);
       setPersistenceStatus(result.status);
+      refreshProductionHandoff();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16115,6 +16136,7 @@ function Audit({
     }).then((result) => {
       setLaunchReadiness(result.launch);
       setPersistenceStatus(result.status);
+      refreshProductionHandoff();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16129,6 +16151,7 @@ function Audit({
 
   function refreshIntegrationReadiness() {
     void apiRequest<IntegrationReadiness>("/api/integrations/readiness").then(setIntegrationReadiness).catch(() => undefined);
+    refreshProductionHandoff();
   }
 
   function sendEmailProviderTest() {
@@ -16562,6 +16585,99 @@ function Audit({
 
   return (
     <section className="module-grid">
+      <div className="panel module-primary production-handoff-board">
+        <PanelHeader icon={BadgeCheck} title="Production Handoff Board" action={productionHandoff?.status ?? "checking"} />
+        <div className="handoff-hero">
+          <div>
+            <span>rmvi.org command status</span>
+            <h2>{productionHandoff?.summary ?? "Checking live production handoff status..."}</h2>
+            <p>One operator view for the final launch blockers, connected providers, build alignment, restore evidence, and ChurchMail email readiness.</p>
+          </div>
+          <div className="handoff-build-card">
+            <span>Live build</span>
+            <strong>{productionHandoff?.build.gitCommit ?? "checking"}</strong>
+            <small>{productionHandoff?.domain ?? "rmvi.org"} / {productionHandoff?.build.deploymentTarget ?? "firebase"}</small>
+          </div>
+        </div>
+        <div className="handoff-score-grid">
+          <Insight label="MVP" value={`${productionHandoff?.scores.mvp ?? launchReadiness?.mvpScore ?? 0}%`} />
+          <Insight label="Production" value={`${productionHandoff?.scores.production ?? launchReadiness?.productionScore ?? 0}%`} />
+          <Insight label="Operations" value={`${productionHandoff?.scores.operations ?? operationalMonitor?.score ?? 0}%`} />
+          <Insight label="Integrations" value={`${productionHandoff?.scores.integrations ?? 0}%`} />
+          <Insight label="Signoff" value={`${productionHandoff?.scores.signoff ?? launchSignoff?.overallScore ?? 0}%`} />
+        </div>
+        <div className="handoff-provider-strip">
+          <article><span>Auth</span><strong>{productionHandoff?.providerStatus.auth ?? "checking"}</strong></article>
+          <article><span>Email</span><strong>{productionHandoff?.providerStatus.email ?? "checking"}</strong></article>
+          <article><span>Video</span><strong>{productionHandoff?.providerStatus.video ?? "checking"}</strong></article>
+          <article><span>Records</span><strong>{productionHandoff?.providerStatus.records ?? "firestore"}</strong></article>
+          <article><span>Files</span><strong>{productionHandoff?.providerStatus.objects ?? "firebase-storage"}</strong></article>
+          <article><span>Restore</span><strong>{productionHandoff?.providerStatus.restore ?? "pending"}</strong></article>
+        </div>
+        <div className="handoff-columns">
+          <div>
+            <div className="handoff-subhead">
+              <strong>Launch phases</strong>
+              <button onClick={refreshProductionHandoff}><RefreshCw size={15} /> Refresh</button>
+            </div>
+            <div className="handoff-phase-list">
+              {(productionHandoff?.phases ?? []).map((phase) => (
+                <article className={phase.score >= 90 ? "ready" : "hold"} key={phase.name}>
+                  {phase.score >= 90 ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+                  <div>
+                    <span>{phase.status}</span>
+                    <strong>{phase.name}</strong>
+                    <small>{phase.detail}</small>
+                  </div>
+                  <b>{phase.score}%</b>
+                </article>
+              ))}
+              {!productionHandoff && <div className="empty-state">Loading production handoff phases.</div>}
+            </div>
+          </div>
+          <div>
+            <div className="handoff-subhead">
+              <strong>Operator action plan</strong>
+              <button onClick={recordOperationalMonitor}><RadioTower size={15} /> Record monitor</button>
+            </div>
+            <div className="handoff-action-list">
+              {(productionHandoff?.actionPlan ?? []).map((action) => (
+                <article className={action.done ? "done" : "todo"} key={action.title}>
+                  {action.done ? <CheckCircle2 size={17} /> : <CircleDot size={17} />}
+                  <div>
+                    <strong>{action.title}</strong>
+                    <code>{action.command}</code>
+                  </div>
+                </article>
+              ))}
+              {!productionHandoff && <div className="empty-state">Loading operator action plan.</div>}
+            </div>
+          </div>
+        </div>
+        <div className="handoff-blockers">
+          {(productionHandoff?.blockers ?? []).map((blocker) => (
+            <article key={blocker.id}>
+              <AlertTriangle size={18} />
+              <div>
+                <span>{blocker.severity} / {blocker.owner}</span>
+                <strong>{blocker.title}</strong>
+                <small>{blocker.detail}</small>
+                <code>{blocker.command}</code>
+              </div>
+            </article>
+          ))}
+          {productionHandoff && productionHandoff.blockers.length === 0 && (
+            <article className="clear">
+              <CheckCircle2 size={18} />
+              <div>
+                <span>Clear</span>
+                <strong>No production handoff blockers</strong>
+                <small>Run launch verification and archive the final signoff packet.</small>
+              </div>
+            </article>
+          )}
+        </div>
+      </div>
       <div className="panel module-primary production-readiness-cockpit">
         <PanelHeader icon={ShieldCheck} title="Production Readiness Cockpit" action={operationsStage} />
         <div className="production-readiness-hero">

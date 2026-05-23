@@ -100,6 +100,7 @@ const routes = {
   "GET /api/integrations/status": () => ok(integrationStatus()),
   "GET /api/ops/monitor": async () => ok(await operationalMonitor()),
   "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
+  "GET /api/ops/production-handoff": async () => ok(await productionHandoff()),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
@@ -816,6 +817,118 @@ async function operationalMonitor() {
     nextActions: criticalSignals.length
       ? criticalSignals.slice(0, 4).map((signal) => signal.detail)
       : ["Continue scheduled production smoke checks"]
+  };
+}
+
+async function productionHandoff() {
+  const launch = await launchReadiness();
+  const monitor = await operationalMonitor();
+  const signoff = await launchSignoffMatrix();
+  const backupManifest = await persistenceBackupManifest();
+  const restoreDrill = await persistenceRestoreDrill();
+  const integrationsReady = integrationReadiness();
+  const emailLive = integrationsReady.email.ready && integrationsReady.email.provider !== "log";
+  const restoreReady = restoreDrill.valid || restoreDrill.status === "restorable";
+  const blockers = [
+    ...(!emailLive ? [{
+      id: "churchmail-email",
+      severity: "High",
+      title: "Connect live ChurchMail email",
+      detail: integrationsReady.nextActions.find((action) => action.includes("GCOS_RESEND_API_KEY")) ?? "Verify rmvi.org in Resend and set GCOS_RESEND_API_KEY.",
+      owner: SUPPORT_CONTACT || "admin@rmvi.org",
+      command: "GCOS_RESEND_API_KEY='...' npm run resend:connect"
+    }] : []),
+    ...(!restoreReady ? [{
+      id: "managed-restore-drill",
+      severity: "High",
+      title: "Complete managed restore drill",
+      detail: restoreDrill.nextAction,
+      owner: INCIDENT_RESPONSE_OWNER || "admin@rmvi.org",
+      command: "GCOS_SMOKE_PASSWORD='<admin-password>' npm run restore:managed:attest"
+    }] : []),
+    ...((signoff.overallScore < 90) ? [{
+      id: "launch-signoff",
+      severity: "Medium",
+      title: "Record launch signoff",
+      detail: signoff.nextActions[0] ?? "Record final launch signoff after production gates are complete.",
+      owner: INCIDENT_RESPONSE_OWNER || "admin@rmvi.org",
+      command: "npm run launch:verify:firebase"
+    }] : [])
+  ];
+  const phases = [
+    {
+      name: "Foundation",
+      status: launch.mvpScore >= 95 ? "complete" : "hold",
+      score: launch.mvpScore,
+      detail: "Web workstation, station accounts, reports, approvals, audit, archive, offline shell, and domain routing."
+    },
+    {
+      name: "Production Operations",
+      status: launch.productionScore >= 99 ? "ready" : "hold",
+      score: launch.productionScore,
+      detail: "Firebase Hosting, Cloud Run, Firestore, Storage, auth lock, backup manifest, restore workflow, monitoring."
+    },
+    {
+      name: "Service Connections",
+      status: integrationsReady.status === "connected" ? "complete" : "needs-configuration",
+      score: Math.round((integrationsReady.ready / integrationsReady.total) * 100),
+      detail: `${integrationsReady.ready}/${integrationsReady.total} providers connected`
+    },
+    {
+      name: "Launch Signoff",
+      status: signoff.status,
+      score: signoff.overallScore,
+      detail: signoff.blockers[0] ?? "Launch matrix is tracking MVP, production, and enterprise gates."
+    }
+  ];
+  return {
+    generatedAt: new Date().toISOString(),
+    domain: DOMAIN,
+    build: publicBuildInfo(),
+    status: blockers.length ? "operator-action-needed" : "launch-ready",
+    summary: blockers.length
+      ? `${blockers.length} operator action${blockers.length === 1 ? "" : "s"} remain before full production signoff.`
+      : "GCOS is ready for full production signoff.",
+    scores: {
+      mvp: launch.mvpScore,
+      production: launch.productionScore,
+      operations: monitor.score,
+      signoff: signoff.overallScore,
+      integrations: Math.round((integrationsReady.ready / integrationsReady.total) * 100)
+    },
+    blockers,
+    phases,
+    providerStatus: {
+      auth: integrationsReady.auth.passwordSignIn && !integrationsReady.auth.localFallback ? "firebase-auth-live" : "auth-hold",
+      email: emailLive ? integrationsReady.email.deliveryMode : "resend-key-needed",
+      video: integrationsReady.video.ready ? integrationsReady.video.provider : "video-hold",
+      records: STORAGE_PROVIDER,
+      objects: objectStorage.provider,
+      backup: backupManifest.status,
+      restore: restoreDrill.status
+    },
+    actionPlan: [
+      {
+        title: "Prepare restore evidence",
+        command: "GCOS_SMOKE_PASSWORD='<admin-password>' npm run restore:managed",
+        done: backupManifest.status === "protected"
+      },
+      {
+        title: "Attest managed restore drill",
+        command: "GCOS_RESTORE_DRILL_ATTESTATION=MANAGED_RESTORE_CONFIRMED npm run restore:managed:attest",
+        done: restoreReady
+      },
+      {
+        title: "Connect ChurchMail email",
+        command: "GCOS_RESEND_API_KEY='...' npm run resend:connect",
+        done: emailLive
+      },
+      {
+        title: "Verify live launch",
+        command: "npm run launch:verify:firebase",
+        done: monitor.status === "healthy" && launch.productionScore >= 99
+      }
+    ]
   };
 }
 
