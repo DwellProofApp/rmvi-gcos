@@ -30,8 +30,8 @@ function readGit(args) {
 }
 
 function readBuildMeta() {
-  const file = join(root.pathname, ".gcos-build.json");
-  if (!existsSync(file)) return {};
+  const file = [join(root.pathname, "gcos-build.json"), join(root.pathname, ".gcos-build.json")].find((candidate) => existsSync(candidate));
+  if (!file) return {};
 
   try {
     return JSON.parse(readFileSync(file, "utf8"));

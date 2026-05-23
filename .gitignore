@@ -3,6 +3,7 @@ dist
 .npm-cache
 .tools/
 .gcos-build.json
+gcos-build.json
 .firebase/
 .DS_Store
 data/*.json
