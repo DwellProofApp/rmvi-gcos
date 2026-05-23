@@ -328,6 +328,22 @@ GCOS_RESTORE_DRILL_REFERENCE=firebase-managed-export-2026-05-21 \
 npm run launch:signoff:live
 ```
 
+For the restore drill only, use the dedicated helper. First prepare the backup evidence:
+
+```bash
+GCOS_SMOKE_PASSWORD=<admin-password> npm run restore:managed
+```
+
+After the Firebase/Firestore managed export or restore test is completed and reviewed, record the attestation:
+
+```bash
+GCOS_SMOKE_PASSWORD=<admin-password> \
+GCOS_RESTORE_DRILL_ATTESTATION=MANAGED_RESTORE_CONFIRMED \
+GCOS_RESTORE_DRILL_REFERENCE=firebase-managed-export-2026-05-23 \
+GCOS_RESTORE_DRILL_EVIDENCE="Firestore export restored, record counts reviewed, and launch administrator approved evidence." \
+npm run restore:managed:attest
+```
+
 Protected API mutations require the login token:
 
 ```bash

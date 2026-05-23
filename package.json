@@ -31,6 +31,8 @@
     "launch:verify:live": "node scripts/launch-verify.mjs --live",
     "launch:verify:firebase": "node scripts/launch-verify.mjs --live --firebase",
     "launch:signoff:live": "node scripts/live-ops-signoff.mjs",
+    "restore:managed": "node scripts/managed-restore-drill.mjs",
+    "restore:managed:attest": "node scripts/managed-restore-drill.mjs --attest",
     "build": "node scripts/write-build-info.mjs && vite build",
     "preview": "vite preview --host 127.0.0.1",
     "test": "node --test",
