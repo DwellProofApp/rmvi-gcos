@@ -3,7 +3,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { readFile, writeFile } from "node:fs/promises";
 import { dirname, extname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { audit, createSeedState, getPermissions, normalizeStationEmail } from "./domain.mjs";
+import { audit, createSeedState, documentRecord, getPermissions, normalizeStationEmail } from "./domain.mjs";
 import { createServices } from "./services.mjs";
 import { createObjectStorageAdapter } from "./object-storage.mjs";
 import { createStorageAdapter } from "./storage/index.mjs";
@@ -102,6 +102,7 @@ const routes = {
   "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
   "GET /api/ops/production-handoff": async () => ok(await productionHandoff()),
   "GET /api/ops/production-handoff/packet": async ({ session }) => ok(await productionHandoffPacket(session.email)),
+  "POST /api/ops/production-handoff/archive": async ({ body, session }) => createdResponse(await archiveProductionHandoffPacket(body, session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
@@ -1007,6 +1008,58 @@ async function productionHandoffPacket(actor = "system") {
       }))
     }
   };
+}
+
+async function archiveProductionHandoffPacket(body, actor) {
+  requirePermission(actor, "canApprove");
+  const packet = await productionHandoffPacket(actor);
+  const now = new Date().toISOString();
+  const name = `RMVI GCOS production handoff packet ${now.slice(0, 10)}.json`;
+  const bytes = Buffer.from(`${JSON.stringify(packet, null, 2)}\n`, "utf8");
+  const hash = hashBuffer(bytes);
+  const id = randomUUID();
+  const safeName = name.toLowerCase().replace(/[^a-z0-9.]+/g, "-").replace(/(^-|-$)/g, "");
+  const objectKey = `${id}/${safeName}`;
+  const stored = await objectStorage.putObject({ key: objectKey, body: bytes, contentType: "application/json" });
+  state.files ??= [];
+  const file = {
+    id,
+    name,
+    contentType: "application/json",
+    size: bytes.length,
+    hash,
+    objectKey,
+    storageProvider: objectStorage.provider,
+    storagePath: stored.storagePath,
+    uploadedAt: now,
+    uploadedBy: actor,
+    source: "Production Handoff Board",
+    linkedTo: []
+  };
+  const document = documentRecord(name, "Production handoff packet", "Audit", actor, "JSON", "Sealed");
+  document.fileHash = hash;
+  document.fileSize = bytes.length;
+  document.contentType = "application/json";
+  document.verified = true;
+  document.verificationNote = body.reason ?? "Production handoff packet archived from GCOS operations board.";
+  document.custodian = actor;
+  document.custodyAt = now;
+  document.chainHash = hash;
+  document.extractedText = [
+    packet.summary,
+    `Build ${packet.build.gitCommit}`,
+    `Status ${packet.handoff.status}`,
+    `Remaining actions: ${packet.acceptance.remainingActions.map((action) => action.id).join(", ") || "none"}`
+  ].join("\n");
+  document.extractedAt = now;
+  document.exportedAt = now;
+  document.exportReason = "Production launch evidence";
+  document.files = [fileReference(file)];
+  linkFileTo(file, "document", document.id);
+  state.files.unshift(file);
+  state.documents.unshift(document);
+  record("ProductionHandoffPacketArchived", actor, document.name, `${hash} / ${packet.handoff.status}`);
+  return { document, file, packet, documents: state.documents };
 }
 
 async function projectCompletionReport() {

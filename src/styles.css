@@ -8040,6 +8040,17 @@ h1 {
   overflow-wrap: anywhere;
 }
 
+.handoff-archive-notice {
+  margin-top: 14px;
+  padding: 12px 14px;
+  border: 1px solid rgba(19, 132, 85, 0.22);
+  border-radius: 10px;
+  background: #f4fcf8;
+  color: #0f5132;
+  font-size: 13px;
+  font-weight: 850;
+}
+
 .handoff-blockers {
   margin-top: 16px;
 }

@@ -15894,6 +15894,7 @@ function Audit({
   const [emailTestResult, setEmailTestResult] = React.useState<string>("");
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
   const [productionHandoff, setProductionHandoff] = React.useState<ProductionHandoff | null>(null);
+  const [handoffArchiveNotice, setHandoffArchiveNotice] = React.useState("");
   const [launchSignoff, setLaunchSignoff] = React.useState<LaunchSignoff | null>(null);
   const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
   const [enterpriseCompletion, setEnterpriseCompletion] = React.useState<EnterpriseCompletion | null>(null);
@@ -16536,6 +16537,20 @@ function Audit({
     );
   }
 
+  function archiveProductionHandoffPacket() {
+    setHandoffArchiveNotice("Archiving production handoff packet...");
+    void apiRequest<{ document: DocumentRecord; packet: ProductionHandoffPacket }>("/api/ops/production-handoff/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "Archived from Production Handoff Board" })
+    }).then((result) => {
+      setHandoffArchiveNotice(`${result.document.name} sealed in Archive.`);
+      refreshProductionHandoff();
+      onRefreshAuditDigest();
+    }).catch((error) => {
+      setHandoffArchiveNotice(error instanceof Error ? error.message : "Unable to archive production handoff packet.");
+    });
+  }
+
   const productionChecks = launchReadiness?.checks.filter((check) => check.category === "production") ?? [];
   const productionPassed = productionChecks.filter((check) => check.ok).length;
   const restoreReady = restoreDrill?.valid || restoreDrill?.status === "restorable";
@@ -16644,6 +16659,7 @@ function Audit({
               <div className="handoff-button-pair">
                 <button onClick={refreshProductionHandoff}><RefreshCw size={15} /> Refresh</button>
                 <button onClick={() => void downloadProductionHandoffPacket()}><Download size={15} /> Packet</button>
+                <button onClick={archiveProductionHandoffPacket}><ArchiveIcon size={15} /> Archive</button>
               </div>
             </div>
             <div className="handoff-phase-list">
@@ -16680,6 +16696,7 @@ function Audit({
             </div>
           </div>
         </div>
+        {handoffArchiveNotice && <div className="handoff-archive-notice">{handoffArchiveNotice}</div>}
         <div className="handoff-blockers">
           {(productionHandoff?.blockers ?? []).map((blocker) => (
             <article key={blocker.id}>

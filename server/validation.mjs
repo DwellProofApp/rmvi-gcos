@@ -1529,6 +1529,10 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/ops/production-handoff/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/export/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
