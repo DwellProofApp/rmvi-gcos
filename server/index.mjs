@@ -135,6 +135,7 @@ const routes = {
   "GET /api/persistence/restore-drill": async () => ok(await persistenceRestoreDrill()),
   "POST /api/persistence/restore-drill": async ({ body, session }) => ok(await recordPersistenceRestoreDrill(body, session.email)),
   "GET /api/persistence/restore-command": async () => ok(await restoreCommandCenter()),
+  "POST /api/persistence/restore-command/prepare": async ({ body, session }) => createdResponse(await prepareRestoreCommandEvidence(body, session.email)),
   "POST /api/persistence/restore-command/archive": async ({ body, session }) => createdResponse(await archiveRestoreCommandPacket(body, session.email)),
   "POST /api/persistence/verify": async ({ session }) => ok(await verifyPersistence(session.email)),
   "GET /api/persistence/export": ({ session }) => ok(persistenceExport(session.email)),
@@ -2120,6 +2121,31 @@ async function restoreCommandCenter() {
     drill,
     manifest,
     nextActions: steps.filter((step) => !step.ok).map((step) => step.detail)
+  };
+}
+
+async function prepareRestoreCommandEvidence(body, actor) {
+  requirePermission(actor, "canApprove");
+  const label = body.label ?? `restore-evidence-${new Date().toISOString().slice(0, 10)}`;
+  const backupResult = await createPersistenceBackup({ label }, actor);
+  const manifestResult = await recordPersistenceBackupManifest(actor);
+  const command = await restoreCommandCenter();
+  state.persistenceMeta ??= {};
+  state.persistenceMeta.lastRestoreEvidencePrep = {
+    generatedAt: command.generatedAt,
+    actor,
+    label,
+    backupHash: backupResult.backup.hash ?? null,
+    manifestStatus: manifestResult.manifest.status,
+    restoreStatus: command.status,
+    nextAction: command.nextActions[0] ?? "Run managed restore attestation"
+  };
+  record("RestoreEvidencePrepared", actor, "Managed restore drill", `${command.ready}/${command.total} gates ready`);
+  return {
+    backup: backupResult.backup,
+    manifest: manifestResult.manifest,
+    command,
+    nextAction: command.nextActions[0] ?? "Run and attest managed provider restore drill"
   };
 }
 

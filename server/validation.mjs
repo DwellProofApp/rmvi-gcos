@@ -141,6 +141,10 @@ const validators = {
     if (body.evidence !== undefined) requireString(body.evidence, "evidence");
   },
 
+  "POST /api/persistence/restore-command/prepare": (body) => {
+    if (body.label !== undefined) requireString(body.label, "label");
+  },
+
   "POST /api/persistence/restore-command/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },

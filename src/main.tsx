@@ -16116,6 +16116,23 @@ function Audit({
     }).catch(() => undefined);
   }
 
+  function prepareRestoreCommandEvidence() {
+    const label = window.prompt("Evidence backup label", `restore-evidence-${new Date().toISOString().slice(0, 10)}`);
+    if (!label) return;
+    void apiRequest<{ backup: PersistenceBackupManifest["backups"][number]; manifest: PersistenceBackupManifest; command: RestoreCommandCenter; nextAction: string }>("/api/persistence/restore-command/prepare", {
+      method: "POST",
+      body: JSON.stringify({ label })
+    }).then((result) => {
+      setBackupManifest(result.manifest);
+      setRestoreCommand(result.command);
+      setRestoreCommandNotice(`Restore evidence prepared. ${result.nextAction}`);
+      void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
+      void apiRequest<PersistenceRestoreDrill>("/api/persistence/restore-drill").then(setRestoreDrill).catch(() => undefined);
+      void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
   function verifyPersistenceStore() {
     void apiRequest<{ status: PersistenceStatus }>("/api/persistence/verify", {
       method: "POST",
@@ -16965,9 +16982,10 @@ function Audit({
           </div>
         </div>
         <div className="restore-command-actions">
+          <button className="primary" onClick={prepareRestoreCommandEvidence}><ListChecks size={16} /> Prepare evidence</button>
           <button onClick={createPersistenceBackup}><Download size={16} /> Create backup</button>
           <button onClick={recordBackupManifest}><Files size={16} /> Record manifest</button>
-          <button className="primary" onClick={recordRestoreDrill}><ShieldCheck size={16} /> Attest restore drill</button>
+          <button onClick={recordRestoreDrill}><ShieldCheck size={16} /> Attest restore drill</button>
           <button onClick={refreshRestoreCommand}><RefreshCw size={16} /> Refresh</button>
           <button onClick={archiveRestoreCommandPacket}><ArchiveIcon size={16} /> Archive evidence</button>
         </div>
