@@ -1,0 +1,8 @@
+.github
+.tools
+.npm-cache
+node_modules
+dist
+launch-reports
+*.log
+.DS_Store

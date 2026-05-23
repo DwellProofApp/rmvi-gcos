@@ -8,7 +8,8 @@ COPY package*.json ./
 RUN npm ci
 
 COPY . .
-RUN GCOS_BUILD_COMMIT=$GCOS_BUILD_COMMIT GCOS_BUILD_BRANCH=$GCOS_BUILD_BRANCH npm run build
+RUN if [ "$GCOS_BUILD_COMMIT" = "unknown" ]; then npm run build; else GCOS_BUILD_COMMIT=$GCOS_BUILD_COMMIT GCOS_BUILD_BRANCH=$GCOS_BUILD_BRANCH npm run build; fi \
+    && rm -rf .git
 
 ENV NODE_ENV=production \
     GCOS_SERVE_WEB=1 \
