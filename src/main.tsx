@@ -258,6 +258,28 @@ type PersistenceRestoreDrill = {
   checks: { name: string; ok: boolean; detail: string }[];
   nextAction: string;
 };
+type RestoreCommandCenter = {
+  generatedAt: string;
+  status: string;
+  score: number;
+  ready: number;
+  total: number;
+  provider: string;
+  mode: string;
+  storageProvider: string;
+  latestBackup: PersistenceBackupManifest["latest"] | null;
+  backupCount: number;
+  backupBytes: number;
+  recordDelta: number;
+  backupHash: string | null;
+  liveHash: string;
+  valid: boolean;
+  launchProductionScore: number;
+  steps: { id: string; name: string; ok: boolean; detail: string }[];
+  drill: PersistenceRestoreDrill;
+  manifest: PersistenceBackupManifest;
+  nextActions: string[];
+};
 type PersistenceMigrationPlan = {
   generatedAt: string;
   source: { provider: string; mode: string; source: string };
@@ -15933,6 +15955,8 @@ function Audit({
   const [persistenceStatus, setPersistenceStatus] = React.useState<PersistenceStatus | null>(apiStatus?.persistenceStatus ?? null);
   const [backupManifest, setBackupManifest] = React.useState<PersistenceBackupManifest | null>(null);
   const [restoreDrill, setRestoreDrill] = React.useState<PersistenceRestoreDrill | null>(null);
+  const [restoreCommand, setRestoreCommand] = React.useState<RestoreCommandCenter | null>(null);
+  const [restoreCommandNotice, setRestoreCommandNotice] = React.useState("");
   const [migrationPlan, setMigrationPlan] = React.useState<PersistenceMigrationPlan | null>(null);
   const [schemaPlan, setSchemaPlan] = React.useState<PersistenceSchemaPlan | null>(null);
   const [importDryRun, setImportDryRun] = React.useState<PersistenceImportDryRun | null>(null);
@@ -15994,6 +16018,7 @@ function Audit({
     void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
     void apiRequest<PersistenceBackupManifest>("/api/persistence/backup-manifest").then(setBackupManifest).catch(() => undefined);
     void apiRequest<PersistenceRestoreDrill>("/api/persistence/restore-drill").then(setRestoreDrill).catch(() => undefined);
+    void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
     void apiRequest<PersistenceMigrationPlan>("/api/persistence/migration-plan").then(setMigrationPlan).catch(() => undefined);
     void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
     void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
@@ -16023,6 +16048,7 @@ function Audit({
     }).then((result) => {
       setPersistenceStatus(result.status);
       void apiRequest<PersistenceBackupManifest>("/api/persistence/backup-manifest").then(setBackupManifest).catch(() => undefined);
+      void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
     }).catch(() => undefined);
   }
 
@@ -16037,12 +16063,18 @@ function Audit({
     }).then((result) => {
       setBackupManifest(result.manifest);
       setPersistenceStatus(result.status);
+      void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
 
   function refreshRestoreDrill() {
     void apiRequest<PersistenceRestoreDrill>("/api/persistence/restore-drill").then(setRestoreDrill).catch(() => undefined);
+    void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
+  }
+
+  function refreshRestoreCommand() {
+    void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
   }
 
   function recordRestoreDrill() {
@@ -16063,11 +16095,23 @@ function Audit({
     }).then((result) => {
       setRestoreDrill(result.drill);
       setPersistenceStatus(result.status);
+      void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
       void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
       void apiRequest<OperationalMonitor>("/api/ops/monitor").then(setOperationalMonitor).catch(() => undefined);
       void apiRequest<ProductionHandoff>("/api/ops/production-handoff").then(setProductionHandoff).catch(() => undefined);
       void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
       void apiRequest<PersistenceCutoverChecklist>("/api/persistence/cutover-checklist").then(setCutoverChecklist).catch(() => undefined);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function archiveRestoreCommandPacket() {
+    void apiRequest<{ packet: RestoreCommandCenter; document: DocumentRecord }>("/api/persistence/restore-command/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "Managed restore drill evidence packet for launch verification" })
+    }).then((result) => {
+      setRestoreCommand(result.packet);
+      setRestoreCommandNotice(`Restore evidence archived as ${result.document.name}.`);
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16905,6 +16949,61 @@ function Audit({
               </div>
             </article>
           ))}
+        </div>
+      </div>
+      <div className="panel module-primary restore-command-board">
+        <PanelHeader icon={Database} title="Managed Restore Drill Command" action={restoreCommand?.status ?? "checking"} />
+        <div className="restore-command-hero">
+          <div>
+            <span>final production recovery gate</span>
+            <h2>{restoreCommand?.score ?? 0}% restore evidence ready</h2>
+            <p>{restoreCommand?.nextActions[0] ?? "Create backup evidence, verify the manifest, run the managed Firestore restore/export drill, then archive the administrator attestation."}</p>
+          </div>
+          <div className="restore-command-score">
+            <strong>{restoreCommand ? `${restoreCommand.ready}/${restoreCommand.total}` : "0/6"}</strong>
+            <small>launch gates ready</small>
+          </div>
+        </div>
+        <div className="restore-command-actions">
+          <button onClick={createPersistenceBackup}><Download size={16} /> Create backup</button>
+          <button onClick={recordBackupManifest}><Files size={16} /> Record manifest</button>
+          <button className="primary" onClick={recordRestoreDrill}><ShieldCheck size={16} /> Attest restore drill</button>
+          <button onClick={refreshRestoreCommand}><RefreshCw size={16} /> Refresh</button>
+          <button onClick={archiveRestoreCommandPacket}><ArchiveIcon size={16} /> Archive evidence</button>
+        </div>
+        {restoreCommandNotice && <div className="handoff-archive-notice task-notice">{restoreCommandNotice}</div>}
+        <div className="restore-command-summary">
+          <Insight label="Provider" value={restoreCommand?.provider ?? restoreDrill?.provider ?? "checking"} />
+          <Insight label="Backups" value={String(restoreCommand?.backupCount ?? backupManifest?.total ?? 0)} />
+          <Insight label="Delta" value={String(restoreCommand?.recordDelta ?? restoreDrill?.recordDelta ?? 0)} />
+          <Insight label="Valid" value={restoreCommand?.valid ? "Yes" : "Hold"} />
+          <Insight label="Production" value={`${restoreCommand?.launchProductionScore ?? launchReadiness?.productionScore ?? 0}%`} />
+          <Insight label="Storage" value={restoreCommand?.storageProvider ?? persistenceStatus?.provider ?? "checking"} />
+        </div>
+        <div className="restore-command-grid">
+          {(restoreCommand?.steps ?? []).map((step, index) => (
+            <article className={step.ok ? "ready" : "hold"} key={step.id}>
+              <span>{index + 1}</span>
+              {step.ok ? <CheckCircle2 size={18} /> : <AlertTriangle size={18} />}
+              <div>
+                <strong>{step.name}</strong>
+                <small>{step.detail}</small>
+              </div>
+            </article>
+          ))}
+          {!restoreCommand && <div className="empty-state">Loading managed restore drill command board.</div>}
+        </div>
+        <div className="restore-hash-strip">
+          <article>
+            <span>Latest backup</span>
+            <strong>{restoreCommand?.latestBackup?.hash?.slice(0, 28) ?? "No backup hash"}</strong>
+            <small>{restoreCommand?.latestBackup ? `${restoreCommand.latestBackup.label} / ${formatDateTime(restoreCommand.latestBackup.createdAt)}` : "Create a backup snapshot first."}</small>
+          </article>
+          <article>
+            <span>Live hash</span>
+            <strong>{restoreCommand?.liveHash?.slice(0, 28) ?? restoreDrill?.liveHash?.slice(0, 28) ?? "Not checked"}</strong>
+            <small>{restoreCommand?.backupBytes ?? backupManifest?.totalBytes ?? 0} backup bytes recorded</small>
+          </article>
         </div>
       </div>
       <div className="panel module-primary launch-ops-wizard">

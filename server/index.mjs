@@ -134,6 +134,8 @@ const routes = {
   "POST /api/persistence/backup-manifest": async ({ session }) => ok(await recordPersistenceBackupManifest(session.email)),
   "GET /api/persistence/restore-drill": async () => ok(await persistenceRestoreDrill()),
   "POST /api/persistence/restore-drill": async ({ body, session }) => ok(await recordPersistenceRestoreDrill(body, session.email)),
+  "GET /api/persistence/restore-command": async () => ok(await restoreCommandCenter()),
+  "POST /api/persistence/restore-command/archive": async ({ body, session }) => createdResponse(await archiveRestoreCommandPacket(body, session.email)),
   "POST /api/persistence/verify": async ({ session }) => ok(await verifyPersistence(session.email)),
   "GET /api/persistence/export": ({ session }) => ok(persistenceExport(session.email)),
   "GET /api/persistence/migration-plan": () => ok(persistenceMigrationPlan()),
@@ -2045,6 +2047,100 @@ async function recordPersistenceRestoreDrill(body, actor) {
   };
   record("PersistenceRestoreDrillRecorded", actor, "Persistence backups", `${drill.status} / delta ${drill.recordDelta}`);
   return { drill, status: await persistenceStatus() };
+}
+
+async function restoreCommandCenter() {
+  const [status, manifest, drill, launch] = await Promise.all([
+    persistenceStatus(),
+    persistenceBackupManifest(),
+    persistenceRestoreDrill(),
+    launchReadiness()
+  ]);
+  const managedGate = drill.checks?.find((check) => check.name === "managed-restore");
+  const backupGate = manifest.total > 0 && manifest.status === "protected";
+  const countGate = drill.recordDelta === 0 || drill.valid;
+  const attestationGate = drill.valid || Boolean(state.persistenceMeta?.lastRestoreDrill?.valid);
+  const steps = [
+    {
+      id: "backup",
+      name: "Create protected backup",
+      ok: backupGate,
+      detail: backupGate ? `${manifest.total} protected backups available` : manifest.nextAction
+    },
+    {
+      id: "manifest",
+      name: "Record backup manifest",
+      ok: manifest.checks?.every((check) => check.ok) ?? false,
+      detail: `${manifest.totalBytes} bytes recorded across ${manifest.total} backup item${manifest.total === 1 ? "" : "s"}`
+    },
+    {
+      id: "managed",
+      name: "Run managed restore drill",
+      ok: Boolean(managedGate?.ok) || attestationGate,
+      detail: managedGate?.detail ?? "Managed provider restore drill evidence is required"
+    },
+    {
+      id: "counts",
+      name: "Review record counts",
+      ok: countGate,
+      detail: `Live and restored record delta: ${drill.recordDelta}`
+    },
+    {
+      id: "attestation",
+      name: "Archive administrator attestation",
+      ok: attestationGate,
+      detail: attestationGate ? "Restore drill attestation is stored in persistence metadata" : "Use Attest restore drill after provider restore evidence is reviewed"
+    },
+    {
+      id: "launch",
+      name: "Clear launch restore gate",
+      ok: launch.checks.some((check) => check.name === "restore-drill" && check.ok),
+      detail: launch.checks.find((check) => check.name === "restore-drill")?.detail ?? "Launch restore gate not found"
+    }
+  ];
+  const ready = steps.filter((step) => step.ok).length;
+  return {
+    generatedAt: new Date().toISOString(),
+    status: ready === steps.length ? "restore-ready" : "restore-action-needed",
+    score: Math.round((ready / steps.length) * 100),
+    ready,
+    total: steps.length,
+    provider: drill.provider,
+    mode: drill.mode,
+    storageProvider: status.provider,
+    latestBackup: manifest.latest ?? null,
+    backupCount: manifest.total,
+    backupBytes: manifest.totalBytes,
+    recordDelta: drill.recordDelta,
+    backupHash: drill.backupHash,
+    liveHash: drill.liveHash,
+    valid: drill.valid,
+    launchProductionScore: launch.productionScore,
+    steps,
+    drill,
+    manifest,
+    nextActions: steps.filter((step) => !step.ok).map((step) => step.detail)
+  };
+}
+
+async function archiveRestoreCommandPacket(body, actor) {
+  requirePermission(actor, "canApprove");
+  const packet = await restoreCommandCenter();
+  const document = documentRecord(`RMVI GCOS restore drill evidence ${new Date().toISOString().slice(0, 10)}.json`, "Restore drill evidence packet", "Audit", actor, "JSON", "Archived");
+  document.verified = packet.valid;
+  document.verificationNote = body.reason ?? `${packet.status}: ${packet.ready}/${packet.total} gates ready`;
+  document.extractedText = [
+    `Restore status: ${packet.status}`,
+    `Score: ${packet.score}%`,
+    `Provider: ${packet.provider}/${packet.mode}`,
+    `Latest backup: ${packet.latestBackup?.hash ?? "none"}`,
+    `Record delta: ${packet.recordDelta}`,
+    `Next actions: ${packet.nextActions.join("; ") || "none"}`
+  ].join("\n");
+  document.extractedAt = new Date().toISOString();
+  state.documents.unshift(document);
+  record("RestoreCommandPacketArchived", actor, document.name, `${packet.score}% restore readiness`);
+  return { document, packet };
 }
 
 function withManagedRestoreAttestation(drill, body, actor) {
