@@ -115,6 +115,8 @@ const routes = {
   "POST /api/rollout/station-training/archive": async ({ body, session }) => createdResponse(await archiveStationTrainingPacket(body, session.email)),
   "GET /api/live-comms": () => ok(liveCommsReport()),
   "GET /api/production/secrets-plan": () => ok(productionSecretsPlan()),
+  "GET /api/production/activation-commands": () => ok(productionActivationCommands()),
+  "POST /api/production/activation-commands/archive": ({ body, session }) => createdResponse(archiveProductionActivationCommands(body, session.email)),
   "GET /api/launch/readiness": async () => ok(await launchReadiness()),
   "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
   "GET /api/launch/deployment-plan": async () => ok(await launchDeploymentPlan()),
@@ -1792,6 +1794,91 @@ function productionSecretsPlan() {
       ? missing.slice(0, 5).map((name) => productionSecretAction(name))
       : ["Run npm run launch:verify:live from Replit."]
   };
+}
+
+function productionActivationCommands() {
+  const plan = productionSecretsPlan();
+  const missing = new Set(plan.missing);
+  const commands = [
+    activationCommand({
+      id: "firebase-web-api-key",
+      title: "Connect Firebase password sign-in",
+      ready: !missing.has("GCOS_FIREBASE_WEB_API_KEY"),
+      owner: "Identity",
+      detail: "Add the Firebase web API key so Cloud Run can verify station passwords against Firebase Auth.",
+      command: "gcloud run services update rmvi-gcos-api --region us-central1 --project rmvi-gcos --update-env-vars GCOS_FIREBASE_WEB_API_KEY='<firebase-web-api-key>'",
+      verify: "Sign in at https://rmvi.org/admin, then run npm run launch:verify:firebase."
+    }),
+    activationCommand({
+      id: "resend-provider",
+      title: "Switch ChurchMail to Resend",
+      ready: !missing.has("GCOS_EMAIL_PROVIDER") && !missing.has("GCOS_RESEND_API_KEY"),
+      owner: "ChurchMail",
+      detail: "Set the live provider and API key after rmvi.org is verified in Resend.",
+      command: "gcloud run services update rmvi-gcos-api --region us-central1 --project rmvi-gcos --update-env-vars GCOS_EMAIL_PROVIDER=resend,GCOS_RESEND_API_KEY='<resend-api-key>',GCOS_EMAIL_FROM='churchmail@rmvi.org',GCOS_EMAIL_REPLY_TO='admin@rmvi.org'",
+      verify: "Open Audit > ChurchMail Email Activation and send a live delivery test."
+    }),
+    activationCommand({
+      id: "restore-attestation",
+      title: "Record managed restore drill",
+      ready: process.env.GCOS_MANAGED_RESTORE_DRILL === "1" || Boolean(state.persistenceMeta?.lastRestoreDrill?.valid),
+      owner: "Operations",
+      detail: "After a Firebase export/restore drill is reviewed, record the provider reference in GCOS.",
+      command: "GCOS_SMOKE_PASSWORD='<admin-password>' GCOS_RESTORE_DRILL_ATTESTATION=MANAGED_RESTORE_CONFIRMED GCOS_RESTORE_DRILL_REFERENCE='<provider-ticket>' npm run restore:managed:attest",
+      verify: "Run npm run launch:verify:firebase and confirm production profile no longer reports the restore drill blocker."
+    }),
+    activationCommand({
+      id: "final-verification",
+      title: "Run final launch verification",
+      ready: plan.status === "secrets-ready" && (process.env.GCOS_MANAGED_RESTORE_DRILL === "1" || Boolean(state.persistenceMeta?.lastRestoreDrill?.valid)),
+      owner: "Launch",
+      detail: "Run all production checks after email, auth, restore, hosting, and domain setup are complete.",
+      command: "npm run launch:verify:firebase",
+      verify: "Archive the final launch report and begin first-wave station onboarding."
+    })
+  ];
+  const ready = commands.filter((command) => command.ready).length;
+  return {
+    generatedAt: new Date().toISOString(),
+    targetDomain: DOMAIN,
+    status: ready === commands.length ? "activation-ready" : "activation-needed",
+    ready,
+    total: commands.length,
+    missing: plan.missing,
+    commands,
+    nextActions: commands.filter((command) => !command.ready).map((command) => command.detail)
+  };
+}
+
+function activationCommand({ id, title, ready, owner, detail, command, verify }) {
+  return {
+    id,
+    title,
+    status: ready ? "ready" : "needed",
+    ready,
+    owner,
+    detail,
+    command,
+    verify
+  };
+}
+
+function archiveProductionActivationCommands(body, actor) {
+  requirePermission(actor, "canApprove");
+  const packet = productionActivationCommands();
+  const document = documentRecord(`RMVI GCOS production activation commands ${new Date().toISOString().slice(0, 10)}.json`, "Production activation command packet", "Audit", actor, "JSON", "Archived");
+  document.verified = packet.status === "activation-ready";
+  document.verificationNote = body.reason ?? `${packet.ready}/${packet.total} activation commands ready`;
+  document.extractedText = [
+    `Activation status: ${packet.status}`,
+    `Ready: ${packet.ready}/${packet.total}`,
+    `Missing: ${packet.missing.join(", ") || "none"}`,
+    `Next actions: ${packet.nextActions.join("; ") || "none"}`
+  ].join("\n");
+  document.extractedAt = new Date().toISOString();
+  state.documents.unshift(document);
+  record("ProductionActivationCommandsArchived", actor, document.name, `${packet.ready}/${packet.total} ready`);
+  return { document, packet };
 }
 
 function productionSecretAction(name) {

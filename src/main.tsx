@@ -48,6 +48,7 @@ import {
   SlidersHorizontal,
   Sparkles,
   Smartphone,
+  Terminal,
   TimerReset,
   Upload,
   Users,
@@ -391,6 +392,25 @@ type ProductionSecretsPlan = {
     status: string;
     displayValue: string;
     nextAction: string;
+  }[];
+  nextActions: string[];
+};
+type ProductionActivationCommands = {
+  generatedAt: string;
+  targetDomain: string;
+  status: string;
+  ready: number;
+  total: number;
+  missing: string[];
+  commands: {
+    id: string;
+    title: string;
+    status: string;
+    ready: boolean;
+    owner: string;
+    detail: string;
+    command: string;
+    verify: string;
   }[];
   nextActions: string[];
 };
@@ -15964,6 +15984,8 @@ function Audit({
   const [launchReadiness, setLaunchReadiness] = React.useState<LaunchReadiness | null>(null);
   const [deploymentPlan, setDeploymentPlan] = React.useState<DeploymentPlan | null>(null);
   const [productionSecretsPlan, setProductionSecretsPlan] = React.useState<ProductionSecretsPlan | null>(null);
+  const [productionActivation, setProductionActivation] = React.useState<ProductionActivationCommands | null>(null);
+  const [activationNotice, setActivationNotice] = React.useState("");
   const [integrationReadiness, setIntegrationReadiness] = React.useState<IntegrationReadiness | null>(null);
   const [emailActivation, setEmailActivation] = React.useState<ChurchMailEmailActivation | null>(null);
   const [emailTestResult, setEmailTestResult] = React.useState<string>("");
@@ -16027,6 +16049,7 @@ function Audit({
     void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
     void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
     void apiRequest<ProductionSecretsPlan>("/api/production/secrets-plan").then(setProductionSecretsPlan).catch(() => undefined);
+    void apiRequest<ProductionActivationCommands>("/api/production/activation-commands").then(setProductionActivation).catch(() => undefined);
     void apiRequest<IntegrationReadiness>("/api/integrations/readiness").then(setIntegrationReadiness).catch(() => undefined);
     void apiRequest<ChurchMailEmailActivation>("/api/integrations/email/activation").then(setEmailActivation).catch(() => undefined);
     void apiRequest<ProductionHandoff>("/api/ops/production-handoff").then(setProductionHandoff).catch(() => undefined);
@@ -16324,6 +16347,30 @@ function Audit({
 
   function refreshProductionSecretsPlan() {
     void apiRequest<ProductionSecretsPlan>("/api/production/secrets-plan").then(setProductionSecretsPlan).catch(() => undefined);
+    void apiRequest<ProductionActivationCommands>("/api/production/activation-commands").then(setProductionActivation).catch(() => undefined);
+  }
+
+  function refreshProductionActivation() {
+    void apiRequest<ProductionActivationCommands>("/api/production/activation-commands").then(setProductionActivation).catch(() => undefined);
+  }
+
+  function archiveProductionActivationCommands() {
+    void apiRequest<{ packet: ProductionActivationCommands; document: DocumentRecord }>("/api/production/activation-commands/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "Production activation command packet for final launch setup" })
+    }).then((result) => {
+      setProductionActivation(result.packet);
+      setActivationNotice(`Activation packet archived as ${result.document.name}.`);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function copyActivationCommand(command: string) {
+    void navigator.clipboard?.writeText(command).then(() => {
+      setActivationNotice("Activation command copied with placeholders. Replace secret values before running it.");
+    }).catch(() => {
+      setActivationNotice("Copy unavailable in this browser. Select the command text manually.");
+    });
   }
 
   function refreshIntegrationReadiness() {
@@ -17623,6 +17670,42 @@ function Audit({
               {!entry.configured && <small>{entry.nextAction}</small>}
             </article>
           ))}
+        </div>
+      </div>
+      <div className="panel module-side activation-command-board">
+        <PanelHeader icon={Terminal} title="Production Activation Commands" action={productionActivation?.status ?? "checking"} />
+        <div className="activation-command-hero">
+          <div>
+            <span>safe setup commands</span>
+            <strong>{productionActivation ? `${productionActivation.ready}/${productionActivation.total}` : "0/4"}</strong>
+            <small>{productionActivation?.nextActions[0] ?? "Generate the exact final setup commands for Auth, ChurchMail, restore, and launch verification."}</small>
+          </div>
+        </div>
+        <div className="action-row">
+          <button onClick={refreshProductionActivation}><RefreshCw size={15} /> Refresh</button>
+          <button onClick={archiveProductionActivationCommands}><ArchiveIcon size={15} /> Archive</button>
+        </div>
+        {activationNotice && <div className="handoff-archive-notice task-notice">{activationNotice}</div>}
+        <div className="office-summary-grid">
+          <Insight label="Ready" value={`${productionActivation?.ready ?? 0}/${productionActivation?.total ?? 4}`} />
+          <Insight label="Missing" value={String(productionActivation?.missing.length ?? productionSecretsPlan?.missing.length ?? 0)} />
+          <Insight label="Domain" value={productionActivation?.targetDomain ?? "rmvi.org"} />
+          <Insight label="Status" value={productionActivation?.status ?? "Pending"} />
+        </div>
+        <div className="activation-command-list">
+          {(productionActivation?.commands ?? []).map((item) => (
+            <article className={item.ready ? "ready" : "hold"} key={item.id}>
+              <div>
+                <span>{item.status} / {item.owner}</span>
+                <strong>{item.title}</strong>
+                <small>{item.detail}</small>
+              </div>
+              <code>{item.command}</code>
+              <small>{item.verify}</small>
+              <button onClick={() => copyActivationCommand(item.command)}><Files size={14} /> Copy command</button>
+            </article>
+          ))}
+          {!productionActivation && <div className="empty-state">Loading activation commands.</div>}
         </div>
       </div>
       <div className="panel module-side churchmail-activation-board">

@@ -149,6 +149,10 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/production/activation-commands/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/persistence/verify": () => {},
 
   "POST /api/persistence/migration-export": (body) => {
