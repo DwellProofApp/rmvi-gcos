@@ -987,7 +987,7 @@ async function finalProductionFinishBoard(actor = "system") {
     blockers,
     commands,
     live: {
-      build: BUILD_INFO.gitCommit ?? "unknown",
+      build: publicBuildInfo().gitCommit,
       target: DEPLOYMENT_TARGET || "firebase",
       monitor: monitor.status,
       storage: monitor.storageProvider,
