@@ -12,8 +12,8 @@ const info = {
   name: "Remedy Movement International GCOS",
   version: packageJson.version,
   generatedAt: new Date().toISOString(),
-  gitCommit: process.env.GCOS_BUILD_COMMIT || buildMeta.gitCommit || readGit(["rev-parse", "--short", "HEAD"]),
-  gitBranch: process.env.GCOS_BUILD_BRANCH || buildMeta.gitBranch || readGit(["rev-parse", "--abbrev-ref", "HEAD"]),
+  gitCommit: process.env.GCOS_BUILD_COMMIT || readGit(["rev-parse", "--short", "HEAD"]) || buildMeta.gitCommit,
+  gitBranch: process.env.GCOS_BUILD_BRANCH || readGit(["rev-parse", "--abbrev-ref", "HEAD"]) || buildMeta.gitBranch,
   deploymentTarget: process.env.GCOS_DEPLOYMENT_TARGET || "firebase",
   domain: process.env.GCOS_DOMAIN || "rmvi.org"
 };
@@ -25,7 +25,7 @@ function readGit(args) {
   try {
     return execFileSync("git", args, { cwd: root }).toString().trim();
   } catch {
-    return "unknown";
+    return "";
   }
 }
 
