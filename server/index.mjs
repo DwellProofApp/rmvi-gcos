@@ -139,6 +139,7 @@ const routes = {
   "GET /api/persistence/restore-drill": async () => ok(await persistenceRestoreDrill()),
   "POST /api/persistence/restore-drill": async ({ body, session }) => ok(await recordPersistenceRestoreDrill(body, session.email)),
   "GET /api/persistence/restore-command": async () => ok(await restoreCommandCenter()),
+  "GET /api/persistence/restore-rehearsal-packet": async ({ session }) => ok(await restoreRehearsalPacket(session?.email ?? "system")),
   "POST /api/persistence/restore-command/prepare": async ({ body, session }) => createdResponse(await prepareRestoreCommandEvidence(body, session.email)),
   "POST /api/persistence/restore-command/archive": async ({ body, session }) => createdResponse(await archiveRestoreCommandPacket(body, session.email)),
   "POST /api/persistence/verify": async ({ session }) => ok(await verifyPersistence(session.email)),
@@ -2334,6 +2335,85 @@ async function prepareRestoreCommandEvidence(body, actor) {
     manifest: manifestResult.manifest,
     command,
     nextAction: command.nextActions[0] ?? "Run and attest managed provider restore drill"
+  };
+}
+
+async function restoreRehearsalPacket(actor = "system") {
+  const command = await restoreCommandCenter();
+  const launch = await launchReadiness();
+  const handoff = await productionHandoff();
+  const acceptance = {
+    backupProtected: command.backupCount > 0 && command.manifest.status === "protected",
+    manifestRecorded: command.manifest.checks?.every((check) => check.ok) ?? false,
+    recordCountsReviewed: command.recordDelta === 0 || command.valid,
+    attestationRecorded: command.valid,
+    launchGateClear: launch.checks.some((check) => check.name === "restore-drill" && check.ok)
+  };
+  const commands = [
+    {
+      id: "prepare-evidence",
+      title: "Prepare restore evidence",
+      owner: "Operations",
+      ready: acceptance.backupProtected && acceptance.manifestRecorded,
+      command: "Use Prepare evidence in Audit > Managed Restore Drill Command",
+      detail: "Creates a backup snapshot, records the backup manifest, and stores the preparation metadata."
+    },
+    {
+      id: "provider-rehearsal",
+      title: "Run provider restore rehearsal",
+      owner: "Firebase",
+      ready: acceptance.attestationRecorded,
+      command: "Run Firestore managed export/restore rehearsal in Firebase console, then capture the provider reference.",
+      detail: "This is the only manual provider step. The result should include export/restore reference, timestamp, and record-count review."
+    },
+    {
+      id: "attest-drill",
+      title: "Attest restore drill in GCOS",
+      owner: "Admin",
+      ready: acceptance.attestationRecorded,
+      command: "GCOS_RESTORE_DRILL_ATTESTATION=MANAGED_RESTORE_CONFIRMED GCOS_RESTORE_DRILL_REFERENCE='<provider-reference>' npm run restore:managed:attest",
+      detail: "Records the managed restore drill in GCOS persistence metadata and immutable audit history."
+    },
+    {
+      id: "archive-packet",
+      title: "Archive recovery packet",
+      owner: "Audit",
+      ready: command.status === "restore-ready",
+      command: "Use Archive evidence in Audit > Managed Restore Drill Command",
+      detail: "Stores the recovery packet in the GCOS archive with score, hashes, record delta, and next actions."
+    },
+    {
+      id: "verify-launch",
+      title: "Verify launch after restore",
+      owner: "Launch",
+      ready: acceptance.launchGateClear && handoff.status === "launch-ready",
+      command: "npm run launch:verify:firebase",
+      detail: "Runs the final live verification suite after restore evidence and ChurchMail email are complete."
+    }
+  ];
+  const ready = commands.filter((item) => item.ready).length;
+  return {
+    generatedAt: new Date().toISOString(),
+    generatedBy: actor,
+    organization: "Remedy Movement International",
+    product: "GCOS Recovery Rehearsal",
+    status: ready === commands.length ? "recovery-ready" : "recovery-rehearsal-needed",
+    score: Math.round((ready / commands.length) * 100),
+    ready,
+    total: commands.length,
+    command,
+    launch: {
+      status: launch.status,
+      productionScore: launch.productionScore,
+      blockers: launch.blockers
+    },
+    handoff: {
+      status: handoff.status,
+      blockers: handoff.blockers.map((blocker) => blocker.id)
+    },
+    acceptance,
+    commands,
+    nextActions: commands.filter((item) => !item.ready).map((item) => item.detail)
   };
 }
 

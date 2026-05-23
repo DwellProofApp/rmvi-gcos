@@ -282,6 +282,28 @@ type RestoreCommandCenter = {
   manifest: PersistenceBackupManifest;
   nextActions: string[];
 };
+type RestoreRehearsalPacket = {
+  generatedAt: string;
+  generatedBy: string;
+  organization: string;
+  product: string;
+  status: string;
+  score: number;
+  ready: number;
+  total: number;
+  command: RestoreCommandCenter;
+  launch: { status: string; productionScore: number; blockers: string[] };
+  handoff: { status: string; blockers: string[] };
+  acceptance: {
+    backupProtected: boolean;
+    manifestRecorded: boolean;
+    recordCountsReviewed: boolean;
+    attestationRecorded: boolean;
+    launchGateClear: boolean;
+  };
+  commands: { id: string; title: string; owner: string; ready: boolean; command: string; detail: string }[];
+  nextActions: string[];
+};
 type PersistenceMigrationPlan = {
   generatedAt: string;
   source: { provider: string; mode: string; source: string };
@@ -15995,6 +16017,7 @@ function Audit({
   const [backupManifest, setBackupManifest] = React.useState<PersistenceBackupManifest | null>(null);
   const [restoreDrill, setRestoreDrill] = React.useState<PersistenceRestoreDrill | null>(null);
   const [restoreCommand, setRestoreCommand] = React.useState<RestoreCommandCenter | null>(null);
+  const [restoreRehearsalPacket, setRestoreRehearsalPacket] = React.useState<RestoreRehearsalPacket | null>(null);
   const [restoreCommandNotice, setRestoreCommandNotice] = React.useState("");
   const [migrationPlan, setMigrationPlan] = React.useState<PersistenceMigrationPlan | null>(null);
   const [schemaPlan, setSchemaPlan] = React.useState<PersistenceSchemaPlan | null>(null);
@@ -16061,6 +16084,7 @@ function Audit({
     void apiRequest<PersistenceBackupManifest>("/api/persistence/backup-manifest").then(setBackupManifest).catch(() => undefined);
     void apiRequest<PersistenceRestoreDrill>("/api/persistence/restore-drill").then(setRestoreDrill).catch(() => undefined);
     void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
+    void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
     void apiRequest<PersistenceMigrationPlan>("/api/persistence/migration-plan").then(setMigrationPlan).catch(() => undefined);
     void apiRequest<PersistenceSchemaPlan>("/api/persistence/schema-plan").then(setSchemaPlan).catch(() => undefined);
     void apiRequest<PersistenceImportDryRun>("/api/persistence/import-dry-run").then(setImportDryRun).catch(() => undefined);
@@ -16093,6 +16117,7 @@ function Audit({
       setPersistenceStatus(result.status);
       void apiRequest<PersistenceBackupManifest>("/api/persistence/backup-manifest").then(setBackupManifest).catch(() => undefined);
       void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
+      void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
     }).catch(() => undefined);
   }
 
@@ -16108,6 +16133,7 @@ function Audit({
       setBackupManifest(result.manifest);
       setPersistenceStatus(result.status);
       void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
+      void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16115,10 +16141,12 @@ function Audit({
   function refreshRestoreDrill() {
     void apiRequest<PersistenceRestoreDrill>("/api/persistence/restore-drill").then(setRestoreDrill).catch(() => undefined);
     void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
+    void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
   }
 
   function refreshRestoreCommand() {
     void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
+    void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
   }
 
   function recordRestoreDrill() {
@@ -16140,6 +16168,7 @@ function Audit({
       setRestoreDrill(result.drill);
       setPersistenceStatus(result.status);
       void apiRequest<RestoreCommandCenter>("/api/persistence/restore-command").then(setRestoreCommand).catch(() => undefined);
+      void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
       void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
       void apiRequest<OperationalMonitor>("/api/ops/monitor").then(setOperationalMonitor).catch(() => undefined);
       void apiRequest<ProductionHandoff>("/api/ops/production-handoff").then(setProductionHandoff).catch(() => undefined);
@@ -16156,6 +16185,7 @@ function Audit({
     }).then((result) => {
       setRestoreCommand(result.packet);
       setRestoreCommandNotice(`Restore evidence archived as ${result.document.name}.`);
+      void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16172,6 +16202,7 @@ function Audit({
       setRestoreCommandNotice(`Restore evidence prepared. ${result.nextAction}`);
       void apiRequest<PersistenceStatus>("/api/persistence/status").then(setPersistenceStatus).catch(() => undefined);
       void apiRequest<PersistenceRestoreDrill>("/api/persistence/restore-drill").then(setRestoreDrill).catch(() => undefined);
+      void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
       void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
       onRefreshAuditDigest();
     }).catch(() => undefined);
@@ -17176,6 +17207,38 @@ function Audit({
           <Insight label="Valid" value={restoreCommand?.valid ? "Yes" : "Hold"} />
           <Insight label="Production" value={`${restoreCommand?.launchProductionScore ?? launchReadiness?.productionScore ?? 0}%`} />
           <Insight label="Storage" value={restoreCommand?.storageProvider ?? persistenceStatus?.provider ?? "checking"} />
+        </div>
+        <div className="restore-rehearsal-packet">
+          <div className="restore-rehearsal-head">
+            <div>
+              <span>recovery rehearsal packet</span>
+              <strong>{restoreRehearsalPacket ? `${restoreRehearsalPacket.ready}/${restoreRehearsalPacket.total} recovery gates ready` : "Loading recovery gates"}</strong>
+              <small>{restoreRehearsalPacket?.nextActions[0] ?? "Prepare evidence, run provider rehearsal, attest restore, archive packet, then verify launch."}</small>
+            </div>
+            <b>{restoreRehearsalPacket?.status ?? "pending"}</b>
+          </div>
+          <div className="restore-acceptance-grid">
+            <article className={restoreRehearsalPacket?.acceptance.backupProtected ? "ready" : "hold"}><span>Backup</span><strong>{restoreRehearsalPacket?.acceptance.backupProtected ? "protected" : "needed"}</strong></article>
+            <article className={restoreRehearsalPacket?.acceptance.manifestRecorded ? "ready" : "hold"}><span>Manifest</span><strong>{restoreRehearsalPacket?.acceptance.manifestRecorded ? "recorded" : "needed"}</strong></article>
+            <article className={restoreRehearsalPacket?.acceptance.recordCountsReviewed ? "ready" : "hold"}><span>Counts</span><strong>{restoreRehearsalPacket?.acceptance.recordCountsReviewed ? "reviewed" : "needed"}</strong></article>
+            <article className={restoreRehearsalPacket?.acceptance.attestationRecorded ? "ready" : "hold"}><span>Attest</span><strong>{restoreRehearsalPacket?.acceptance.attestationRecorded ? "recorded" : "needed"}</strong></article>
+            <article className={restoreRehearsalPacket?.acceptance.launchGateClear ? "ready" : "hold"}><span>Launch</span><strong>{restoreRehearsalPacket?.acceptance.launchGateClear ? "clear" : "hold"}</strong></article>
+          </div>
+          <div className="restore-rehearsal-list">
+            {(restoreRehearsalPacket?.commands ?? []).map((command) => (
+              <article className={command.ready ? "ready" : "hold"} key={command.id}>
+                {command.ready ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
+                <div>
+                  <span>{command.owner} / {command.ready ? "ready" : "needed"}</span>
+                  <strong>{command.title}</strong>
+                  <small>{command.detail}</small>
+                </div>
+                <code>{command.command}</code>
+                <button onClick={() => copyActivationCommand(command.command)}><Files size={14} /> Copy</button>
+              </article>
+            ))}
+            {!restoreRehearsalPacket && <div className="empty-state">Loading recovery rehearsal packet.</div>}
+          </div>
         </div>
         <div className="restore-command-grid">
           {(restoreCommand?.steps ?? []).map((step, index) => (
