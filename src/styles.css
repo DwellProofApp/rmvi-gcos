@@ -8477,6 +8477,195 @@ h1 {
   line-height: 1.4;
 }
 
+.final-blocker-board {
+  grid-column: 1 / -1;
+  border: 1px solid rgba(17, 58, 126, 0.14);
+  background:
+    radial-gradient(circle at 86% 8%, rgba(244, 197, 66, 0.18), transparent 28%),
+    linear-gradient(135deg, #ffffff, #f4f8ff 58%, #eef4ff);
+  color: #0f1d36;
+}
+
+.final-blocker-board .panel-header h2,
+.final-blocker-board .panel-header span,
+.final-blocker-board .panel-header small,
+.final-blocker-board strong,
+.final-blocker-board small,
+.final-blocker-board p {
+  color: #0f1d36;
+}
+
+.final-blocker-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 150px;
+  gap: 18px;
+  align-items: stretch;
+  padding: 18px;
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(17, 58, 126, 0.98), rgba(6, 26, 61, 0.98)),
+    #113a7e;
+  box-shadow: 0 20px 44px rgba(6, 26, 61, 0.18);
+}
+
+.final-blocker-hero span {
+  display: block;
+  color: #f4c542;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.final-blocker-hero h2 {
+  margin: 6px 0 8px;
+  color: #ffffff;
+  font-size: clamp(24px, 3vw, 38px);
+  line-height: 1.05;
+}
+
+.final-blocker-hero p {
+  margin: 0;
+  max-width: 780px;
+  color: rgba(255, 255, 255, 0.86);
+  line-height: 1.48;
+}
+
+.final-blocker-score {
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 4px;
+  min-height: 132px;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.final-blocker-score strong {
+  color: #ffffff;
+  font-size: 42px;
+  font-weight: 950;
+}
+
+.final-blocker-score small {
+  color: rgba(255, 255, 255, 0.78);
+  font-weight: 850;
+}
+
+.final-blocker-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  margin-top: 14px;
+}
+
+.final-blocker-actions button {
+  min-height: 38px;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(17, 58, 126, 0.15);
+  border-radius: 9px;
+  background: #ffffff;
+  color: #113a7e;
+  font-weight: 900;
+}
+
+.final-blocker-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.final-blocker-grid article {
+  display: grid;
+  grid-template-columns: 34px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: start;
+  padding: 14px;
+  border: 1px solid rgba(17, 58, 126, 0.12);
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 14px 32px rgba(17, 58, 126, 0.08);
+}
+
+.final-blocker-grid article.ready {
+  border-color: rgba(19, 132, 85, 0.22);
+  background: linear-gradient(180deg, #ffffff, #f4fcf8);
+}
+
+.final-blocker-grid article.hold {
+  border-color: rgba(174, 92, 0, 0.22);
+  background: linear-gradient(180deg, #ffffff, #fffaf0);
+}
+
+.final-blocker-grid svg {
+  display: grid;
+  width: 34px;
+  height: 34px;
+  padding: 8px;
+  border-radius: 10px;
+  background: #eef4ff;
+  color: #113a7e;
+}
+
+.final-blocker-grid span {
+  display: block;
+  color: #6d7890;
+  font-size: 10px;
+  font-weight: 950;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.final-blocker-grid strong {
+  display: block;
+  margin-top: 3px;
+  font-size: 14px;
+}
+
+.final-blocker-grid small {
+  display: block;
+  margin-top: 5px;
+  color: #53627c;
+  line-height: 1.42;
+}
+
+.final-blocker-grid b {
+  color: #113a7e;
+  font-size: 18px;
+}
+
+.final-blocker-grid code {
+  grid-column: 1 / -1;
+  display: block;
+  padding: 10px;
+  border-radius: 9px;
+  background: #061a3d;
+  color: #ffffff;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: normal;
+  overflow-wrap: anywhere;
+}
+
+.final-blocker-grid button {
+  grid-column: 1 / -1;
+  min-height: 34px;
+  display: inline-flex;
+  gap: 7px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(17, 58, 126, 0.16);
+  border-radius: 8px;
+  background: #f8fbff;
+  color: #113a7e;
+  font-weight: 850;
+}
+
 .activation-command-board {
   border: 1px solid rgba(17, 58, 126, 0.14);
   background:
@@ -8806,6 +8995,8 @@ h1 {
 @media (max-width: 980px) {
   .station-training-hero,
   .station-training-grid,
+  .final-blocker-hero,
+  .final-blocker-grid,
   .restore-command-hero,
   .restore-command-grid {
     grid-template-columns: 1fr;
@@ -8829,6 +9020,11 @@ h1 {
 
   .restore-command-summary,
   .restore-hash-strip {
+    grid-template-columns: 1fr;
+  }
+
+  .final-blocker-actions {
+    display: grid;
     grid-template-columns: 1fr;
   }
 

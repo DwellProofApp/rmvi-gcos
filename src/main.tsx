@@ -36,6 +36,7 @@ import {
   Plus,
   RadioTower,
   RefreshCw,
+  Rocket,
   Search,
   Send,
   Server,
@@ -16849,9 +16850,105 @@ function Audit({
   ];
   const launchWizardScore = Math.round(launchWizardSteps.reduce((sum, step) => sum + step.score, 0) / launchWizardSteps.length);
   const launchWizardReady = launchWizardSteps.filter((step) => step.score >= 90).length;
+  const finalBlockerSteps = [
+    {
+      id: "firebase-auth",
+      icon: KeyRound,
+      label: "Firebase Auth",
+      owner: "Identity",
+      ok: Boolean(integrationReadiness?.auth.passwordSignIn && !integrationReadiness?.auth.localFallback),
+      score: integrationReadiness?.auth.passwordSignIn && !integrationReadiness?.auth.localFallback ? 100 : 65,
+      detail: integrationReadiness?.auth.passwordSignIn
+        ? "Station password sign-in is routed through Firebase Auth."
+        : "Add the Firebase web API key and keep local auth fallback disabled.",
+      command: "gcloud run services update rmvi-gcos-api --update-env-vars GCOS_AUTH_PROVIDER=firebase,GCOS_AUTH_FALLBACK_LOCAL=0"
+    },
+    {
+      id: "churchmail-email",
+      icon: Mail,
+      label: "ChurchMail Email",
+      owner: "Communication",
+      ok: Boolean(integrationReadiness?.email.ready && integrationReadiness?.email.provider !== "log"),
+      score: integrationReadiness?.email.ready && integrationReadiness?.email.provider !== "log" ? 100 : (emailActivation?.score ?? 50),
+      detail: integrationReadiness?.email.ready && integrationReadiness?.email.provider !== "log"
+        ? "ChurchMail is configured for live outbound delivery."
+        : "Verify rmvi.org in Resend, set the API key, then send a live delivery test.",
+      command: "gcloud run services update rmvi-gcos-api --update-env-vars GCOS_EMAIL_PROVIDER=resend,GCOS_RESEND_API_KEY='<resend-api-key>'"
+    },
+    {
+      id: "restore-drill",
+      icon: Database,
+      label: "Restore Drill",
+      owner: "Operations",
+      ok: Boolean(restoreReady),
+      score: restoreReady ? 100 : (restoreCommand?.ready ? Math.round((restoreCommand.ready / Math.max(restoreCommand.total, 1)) * 100) : 50),
+      detail: restoreReady
+        ? "Restore evidence is recorded and ready for launch signoff."
+        : "Run a managed Firebase/Firestore restore drill and attest the provider reference.",
+      command: "GCOS_RESTORE_DRILL_ATTESTATION=MANAGED_RESTORE_CONFIRMED npm run restore:managed:attest"
+    },
+    {
+      id: "launch-verify",
+      icon: Rocket,
+      label: "Launch Verification",
+      owner: "Launch",
+      ok: Boolean((launchReadiness?.productionScore ?? 0) >= 99 && operationalMonitor?.status === "healthy"),
+      score: Math.min(100, Math.max(launchReadiness?.productionScore ?? 0, operationalMonitor?.score ?? 0)),
+      detail: "Run the live verification suite after providers and restore evidence are closed.",
+      command: "npm run launch:verify:firebase"
+    },
+    {
+      id: "handoff-signoff",
+      icon: BadgeCheck,
+      label: "Executive Signoff",
+      owner: "Admin",
+      ok: Boolean(productionHandoff?.status === "launch-ready" && (launchSignoff?.overallScore ?? 0) >= 90),
+      score: Math.max(launchSignoff?.overallScore ?? 0, productionHandoff?.scores.signoff ?? 0),
+      detail: productionHandoff?.summary ?? "Archive the production handoff packet after final blockers are closed.",
+      command: "Archive production handoff packet from Audit"
+    }
+  ];
+  const finalBlockerReady = finalBlockerSteps.filter((step) => step.ok).length;
+  const finalBlockerScore = Math.round(finalBlockerSteps.reduce((sum, step) => sum + step.score, 0) / finalBlockerSteps.length);
 
   return (
     <section className="module-grid">
+      <div className="panel module-primary final-blocker-board">
+        <PanelHeader icon={ShieldCheck} title="Final Production Blocker Board" action={`${finalBlockerReady}/${finalBlockerSteps.length} closed`} />
+        <div className="final-blocker-hero">
+          <div>
+            <span>rmvi.org final activation</span>
+            <h2>{finalBlockerScore}% toward full production signoff</h2>
+            <p>One command surface for closing the last live blockers: authentication, ChurchMail delivery, restore evidence, launch verification, and executive handoff.</p>
+          </div>
+          <div className="final-blocker-score">
+            <strong>{finalBlockerReady}</strong>
+            <small>of {finalBlockerSteps.length} closed</small>
+          </div>
+        </div>
+        <div className="final-blocker-actions">
+          <button onClick={refreshIntegrationReadiness}><RefreshCw size={15} /> Refresh providers</button>
+          <button onClick={sendEmailProviderTest}><Mail size={15} /> Test ChurchMail</button>
+          <button onClick={recordRestoreDrill}><ShieldCheck size={15} /> Attest restore</button>
+          <button onClick={recordLaunchReadiness}><Rocket size={15} /> Record launch</button>
+          <button onClick={archiveProductionHandoffPacket}><ArchiveIcon size={15} /> Archive handoff</button>
+        </div>
+        <div className="final-blocker-grid">
+          {finalBlockerSteps.map((step) => (
+            <article className={step.ok ? "ready" : "hold"} key={step.id}>
+              {React.createElement(step.icon, { size: 20 })}
+              <div>
+                <span>{step.owner} / {step.ok ? "closed" : "action needed"}</span>
+                <strong>{step.label}</strong>
+                <small>{step.detail}</small>
+              </div>
+              <b>{step.score}%</b>
+              <code>{step.command}</code>
+              <button onClick={() => copyActivationCommand(step.command)}><Files size={14} /> Copy</button>
+            </article>
+          ))}
+        </div>
+      </div>
       <div className="panel module-primary production-handoff-board">
         <PanelHeader icon={BadgeCheck} title="Production Handoff Board" action={productionHandoff?.status ?? "checking"} />
         <div className="handoff-hero">
