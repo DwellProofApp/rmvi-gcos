@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "rmvi-gcos"
+  },
+  "targets": {
+    "rmvi-gcos": {
+      "hosting": {
+        "default": [
+          "rmvi-gcos"
+        ]
+      }
+    }
+  }
+}

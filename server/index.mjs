@@ -101,6 +101,7 @@ const routes = {
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
+  "GET /api/live-comms": () => ok(liveCommsReport()),
   "GET /api/production/secrets-plan": () => ok(productionSecretsPlan()),
   "GET /api/launch/readiness": async () => ok(await launchReadiness()),
   "POST /api/launch/readiness": async ({ session }) => ok(await recordLaunchReadiness(session.email)),
@@ -1029,6 +1030,56 @@ function rolloutGateAction(trackId, gateName) {
     "live-operations:restore-drill": "Run and record a restore drill before inviting users."
   };
   return actions[`${trackId}:${gateName}`] ?? `Complete ${gateName} for ${trackId}.`;
+}
+
+function liveCommsReport() {
+  const activeMeetings = state.calendarEvents.filter((event) => event.status !== "Complete");
+  const activeTasks = state.tasks.filter((task) => task.status !== "Complete");
+  const activeReports = state.reports.filter((report) => report.state !== "Approved");
+  const activePersonnel = state.personnel.filter((person) => person.status !== "Inactive");
+  const activeMessages = state.messages.filter((message) => message.status !== "Approved");
+  return {
+    generatedAt: new Date().toISOString(),
+    status: "ready",
+    provider: process.env.GCOS_LIVE_COMMS_PROVIDER ?? "internal-prep",
+    rooms: [
+      {
+        id: "room-executive",
+        name: "Executive Briefing Room",
+        owner: "International HQ",
+        mode: "Video meeting",
+        status: "Ready",
+        linkedRecords: activeReports.slice(0, 2).map((report) => report.name)
+      },
+      {
+        id: "room-district",
+        name: "District Operations Room",
+        owner: "District HQ",
+        mode: "Screen review",
+        status: activeMeetings.length ? "Scheduled" : "Ready",
+        linkedRecords: activeTasks.slice(0, 2).map((task) => task.title)
+      },
+      {
+        id: "room-emergency",
+        name: "Emergency Broadcast Channel",
+        owner: "National HQ",
+        mode: "Broadcast",
+        status: activeMessages.some((message) => message.status === "Escalated") ? "Priority" : "Ready",
+        linkedRecords: activeMessages.slice(0, 2).map((message) => message.subject)
+      }
+    ],
+    counts: {
+      meetings: activeMeetings.length,
+      chatChannels: Math.max(3, activePersonnel.length),
+      broadcasts: activeMessages.length,
+      sharedWork: activeTasks.length + activeReports.length
+    },
+    nextActions: [
+      "Connect a production video provider before public live calling.",
+      "Keep meeting decisions linked to ChurchMail, reports, tasks, and audit records.",
+      "Use offline queue behavior when station internet is unreliable."
+    ]
+  };
 }
 
 async function recordOperationalMonitor(actor) {

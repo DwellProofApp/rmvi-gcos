@@ -14595,8 +14595,10 @@ body {
 
 .live-comms-hero p {
   margin-top: 8px;
-  color: rgba(255, 255, 255, 0.82);
+  color: #ffffff;
   line-height: 1.5;
+  font-weight: 850;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.28);
 }
 
 .live-call-controls {

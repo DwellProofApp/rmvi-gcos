@@ -154,6 +154,29 @@ Every run writes a JSON report into `launch-reports/`. The folder is ignored by 
 
 `npm run secrets:plan` writes `launch-reports/production-secrets-plan.md` and `launch-reports/production-secrets-plan.json`. Use the Markdown file as the Replit Secrets checklist.
 
+## Firebase Hosting Frontend Mirror
+
+Firebase Hosting is configured for the static GCOS web app in `firebase.json` with project `rmvi-gcos` and hosting site `rmvi-gcos`.
+
+Use Firebase Hosting only for the frontend unless the backend API is later moved to Cloud Run or Firebase Functions. The current GCOS backend is the Node server in `server/index.mjs`, so Firebase builds should point `VITE_GCOS_API_BASE` to the live Replit API host.
+
+Default Firebase commands:
+
+```bash
+npm run firebase:build
+npm run firebase:preview
+npm run firebase:deploy
+```
+
+Required before Firebase deployment:
+
+- Firebase CLI authenticated as an account with access to project `rmvi-gcos`.
+- Firebase Hosting site `rmvi-gcos` created in the Firebase console.
+- Replit backend deployed and reachable at the value used for `VITE_GCOS_API_BASE`.
+- Replit production secrets configured for Postgres and Cloudflare R2.
+
+If `rmvi.org` points to Firebase Hosting, make sure API calls use the Replit API base. If `rmvi.org` points to Replit, Firebase is optional and can be used only as a preview/static mirror.
+
 ## Final Signoff
 
 After `npm run launch:verify:live` passes:
