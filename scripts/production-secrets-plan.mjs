@@ -14,7 +14,7 @@ const entries = parseEnv(template).map((entry) => {
   const source = process.env[entry.name] ? "environment" : alternateDatabaseUrl ? "DATABASE_URL" : "template";
   const value = actual || entry.value;
   const placeholder = isPlaceholder(entry.name, value);
-  const sensitive = entry.name.includes("URL") || entry.name.includes("PASSWORD") || entry.name.includes("SECRET");
+  const sensitive = entry.name.includes("URL") || entry.name.includes("PASSWORD") || entry.name.includes("SECRET") || entry.name.includes("KEY");
   return {
     ...entry,
     source,

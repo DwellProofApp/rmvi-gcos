@@ -74,6 +74,8 @@ const rateLimitBuckets = new Map();
 const routes = {
   "GET /health": () => ok({ status: "ok", service: "gcos-api", time: new Date().toISOString(), build: publicBuildInfo() }),
   "GET /api/deployment/build-info": () => ok(deploymentBuildInfo()),
+  "GET /api/integrations/readiness": () => ok(integrationReadiness()),
+  "POST /api/integrations/email/test": async ({ body, session }) => ok(await integrations.email.sendTestEmail({ to: body.to ?? session.email, actor: session.email })),
   "GET /api/readiness": () => ok(readinessReport()),
   "GET /api/readiness/digest": () => ok(readinessDigest()),
   "POST /api/readiness/bulk/acknowledge": ({ body, session }) => ok(bulkAcknowledgeReadiness(body, session.email)),
@@ -165,9 +167,11 @@ const routes = {
   "GET /api/station-auth/digest": () => ok(services.stationAuthDigest()),
   "GET /api/hierarchy/digest": () => ok(services.hierarchyDigest()),
   "POST /api/stations/bulk/verify": ({ body }) => ok(services.bulkVerifyStations(body)),
+  "POST /api/stations/bulk/provision-auth": async ({ body }) => ok(await services.bulkProvisionStationIdentities(body)),
   "POST /api/stations/:id/level": ({ params, body }) => ok(services.updateStationLevel(params.id, body)),
   "POST /api/stations/:id/authority": ({ params, body }) => ok(services.updateStationAuthority(params.id, body)),
   "POST /api/stations/:id/verify": ({ params, body }) => ok(services.verifyStation(params.id, body)),
+  "POST /api/stations/:id/provision-auth": async ({ params, body }) => ok(await services.provisionStationIdentity(params.id, body)),
   "POST /api/stations/:id/watch": ({ params, body }) => ok(services.watchStation(params.id, body)),
   "POST /api/stations/:id/suspend": async ({ params, body }) => ok(await services.suspendStation(params.id, body)),
   "POST /api/stations/:id/activate": async ({ params, body }) => ok(await services.activateStation(params.id, body)),
@@ -627,6 +631,59 @@ function integrationStatus() {
       churchMailDelivered: state.messages.filter((message) => message.delivery?.status === "Sent" || message.delivery?.status === "Queued").length,
       liveRooms: (state.liveSessions ?? []).filter((session) => session.joinUrl).length
     }
+  };
+}
+
+function integrationReadiness() {
+  const auth = integrations.auth.status();
+  const email = integrations.email.status();
+  const video = integrations.video.status();
+  const checks = [
+    {
+      name: "Firebase Auth provider",
+      ok: auth.provider === "firebase" && auth.firebaseConfigured,
+      detail: auth.provider === "firebase" && auth.firebaseConfigured ? "Firebase Admin can provision station users" : "Set GCOS_AUTH_PROVIDER=firebase and attach Firebase project credentials"
+    },
+    {
+      name: "Firebase password sign-in",
+      ok: auth.provider === "firebase" && auth.passwordSignIn,
+      detail: auth.passwordSignIn ? "Firebase web API key is configured" : "Set GCOS_FIREBASE_WEB_API_KEY from the Firebase web app config"
+    },
+    {
+      name: "Production auth fallback",
+      ok: auth.provider !== "firebase" || auth.localFallback === false,
+      detail: auth.localFallback === false ? "Local fallback is disabled for production sign-in" : "Set GCOS_AUTH_FALLBACK_LOCAL=0 before final production rollout"
+    },
+    {
+      name: "ChurchMail email provider",
+      ok: email.ready && email.provider !== "log",
+      detail: email.ready && email.provider !== "log" ? `${email.provider} is ready from ${email.from}` : "Set GCOS_EMAIL_PROVIDER=resend and GCOS_RESEND_API_KEY"
+    },
+    {
+      name: "Video room provider",
+      ok: video.ready && video.provider !== "internal",
+      detail: video.ready ? `${video.provider} ready (${video.realtime})` : "Set GCOS_VIDEO_PROVIDER=jitsi or connect Daily"
+    },
+    {
+      name: "Durable record storage",
+      ok: ["firestore", "firebase", "database"].includes(STORAGE_PROVIDER),
+      detail: `${STORAGE_PROVIDER} selected`
+    },
+    {
+      name: "Durable object storage",
+      ok: objectStorage.configured,
+      detail: objectStorage.configured ? `${objectStorage.provider} configured` : "Configure Firebase Storage, S3, R2, or a persistent object vault"
+    }
+  ];
+  return {
+    generatedAt: new Date().toISOString(),
+    status: checks.every((check) => check.ok) ? "connected" : "needs-configuration",
+    ready: checks.filter((check) => check.ok).length,
+    total: checks.length,
+    auth,
+    email,
+    video,
+    checks
   };
 }
 
@@ -1170,6 +1227,7 @@ function productionSecretEntries() {
     { name: "GCOS_FIREBASE_NAMESPACE", value: process.env.GCOS_FIREBASE_NAMESPACE ?? "production", configured: STORAGE_PROVIDER !== "firestore" || Boolean(process.env.GCOS_FIREBASE_NAMESPACE), sensitive: false },
     { name: "GCOS_AUTH_PROVIDER", value: integrations.auth.status().provider, configured: integrations.auth.status().provider === "firebase", sensitive: false },
     { name: "GCOS_FIREBASE_WEB_API_KEY", value: integrations.auth.status().passwordSignIn ? "configured" : "required for Firebase password sign-in", configured: integrations.auth.status().provider !== "firebase" || integrations.auth.status().passwordSignIn, sensitive: true },
+    { name: "GCOS_AUTH_FALLBACK_LOCAL", value: integrations.auth.status().localFallback ? "1" : "0", configured: integrations.auth.status().provider !== "firebase" || integrations.auth.status().localFallback === false, sensitive: false },
     { name: "GCOS_EMAIL_PROVIDER", value: integrations.email.status().provider, configured: integrations.email.status().ready && integrations.email.status().provider !== "log", sensitive: false },
     { name: "GCOS_EMAIL_FROM", value: integrations.email.status().from, configured: /@rmvi\.org$/i.test(integrations.email.status().from), sensitive: false },
     { name: "GCOS_VIDEO_PROVIDER", value: integrations.video.status().provider, configured: integrations.video.status().ready && integrations.video.status().provider !== "internal", sensitive: false },
@@ -1224,6 +1282,7 @@ function productionSecretAction(name) {
   if (name === "GCOS_FIREBASE_NAMESPACE") return "Set GCOS_FIREBASE_NAMESPACE=production.";
   if (name === "GCOS_AUTH_PROVIDER") return "Set GCOS_AUTH_PROVIDER=firebase so station accounts provision into Firebase Auth.";
   if (name === "GCOS_FIREBASE_WEB_API_KEY") return "Add the Firebase web API key so server-side station password sign-in can verify Firebase Auth users.";
+  if (name === "GCOS_AUTH_FALLBACK_LOCAL") return "Set GCOS_AUTH_FALLBACK_LOCAL=0 so production station sign-in must pass Firebase Auth.";
   if (name === "GCOS_EMAIL_PROVIDER") return "Connect SendGrid or Resend, then set GCOS_EMAIL_PROVIDER plus the API key.";
   if (name === "GCOS_EMAIL_FROM") return "Set GCOS_EMAIL_FROM to an authenticated rmvi.org sender such as churchmail@rmvi.org.";
   if (name === "GCOS_VIDEO_PROVIDER") return "Set GCOS_VIDEO_PROVIDER=daily with GCOS_DAILY_API_KEY, or jitsi for provider room links.";

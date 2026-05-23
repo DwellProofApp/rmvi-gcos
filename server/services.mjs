@@ -3229,6 +3229,23 @@ export function createServices({ state, record, requirePermission, findById, int
       return item;
     },
 
+    async provisionStationIdentity(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findStationIdentity(id);
+      const officeRecord = state.offices.find((officeItem) => officeItem.email === item.email);
+      let temporaryPassword = body.password ?? stationPasswords[item.email] ?? officeRecord?.password;
+      if (!temporaryPassword) {
+        temporaryPassword = `gcos-${item.email.split("@")[0].replace(/[^a-z0-9]+/gi, "-")}-${Date.now().toString(36)}`;
+        setStationPassword(item, temporaryPassword, body.actor, "StationCredentialRotated");
+      }
+      const provider = await provisionProviderAuth(item, temporaryPassword, body.actor);
+      if (provider?.ok) {
+        item.verified = true;
+        item.status = item.status === "Suspended" ? "Suspended" : "Verified";
+      }
+      return { station: item, provider, temporaryPasswordIssued: !body.password && !stationPasswords[item.email] && !officeRecord?.password };
+    },
+
     watchStation(id, body) {
       const item = findStationIdentity(id);
       item.watchers = Array.from(new Set([...(item.watchers ?? []), body.watcher ?? body.actor ?? "System"]));
@@ -3358,6 +3375,19 @@ export function createServices({ state, record, requirePermission, findById, int
       });
       record("StationsBulkVerified", body.actor, "Hierarchy graph", `${updated.length} stations verified`);
       return { count: updated.length, updated };
+    },
+
+    async bulkProvisionStationIdentities(body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const ids = body.ids?.length ? body.ids : state.stations.map((item) => item.id);
+      const decoded = ids.map((id) => decodeURIComponent(id));
+      const targets = state.stations.filter((item) => decoded.includes(item.id) || decoded.includes(item.email));
+      const results = [];
+      for (const item of targets) {
+        results.push(await this.provisionStationIdentity(item.id, body));
+      }
+      record("StationsBulkIdentityProvisioned", body.actor, "Firebase Auth", `${results.filter((item) => item.provider?.ok).length}/${results.length} station identities synced`);
+      return { count: results.length, synced: results.filter((item) => item.provider?.ok).length, results };
     },
 
     hierarchyDigest() {
@@ -4132,7 +4162,9 @@ export function createServices({ state, record, requirePermission, findById, int
         return { unauthorized: true, error: "Station credential locked" };
       }
       const providerVerification = await integrations.auth?.verifyPassword?.(normalizedEmail, body.password);
-      const passwordVerified = providerVerification?.ok || passwordMatches(body.password, credential);
+      const authStatus = integrations.auth?.status?.() ?? { provider: "local", localFallback: true };
+      const localFallbackAllowed = authStatus.provider !== "firebase" || authStatus.localFallback;
+      const passwordVerified = providerVerification?.ok || (localFallbackAllowed && passwordMatches(body.password, credential));
       if (!passwordVerified) {
         credential.failedAttempts = (credential.failedAttempts ?? 0) + 1;
         credential.lastFailedAt = new Date().toISOString();

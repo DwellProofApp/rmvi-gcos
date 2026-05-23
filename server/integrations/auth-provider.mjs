@@ -5,6 +5,7 @@ export function createAuthProvider() {
   const provider = process.env.GCOS_AUTH_PROVIDER ?? "local";
   const firebaseReady = firebaseConfigured();
   const firebaseWebApiKey = process.env.GCOS_FIREBASE_WEB_API_KEY ?? process.env.FIREBASE_WEB_API_KEY ?? "";
+  const localFallback = process.env.GCOS_AUTH_FALLBACK_LOCAL !== "0";
 
   async function getAuth() {
     if (!firebaseReady) return null;
@@ -82,7 +83,8 @@ export function createAuthProvider() {
         provider,
         firebaseConfigured: firebaseReady,
         passwordSignIn: provider === "firebase" && Boolean(firebaseWebApiKey),
-        provisioning: provider === "firebase" && firebaseReady
+        provisioning: provider === "firebase" && firebaseReady,
+        localFallback
       };
     },
     async verifyPassword(email, password) {

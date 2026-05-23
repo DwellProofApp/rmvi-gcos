@@ -121,6 +121,21 @@ export function createEmailProvider() {
         text,
         html: `<p>Your RMVI GCOS station account has been activated.</p><p><strong>${escapeHtml(station.email)}</strong></p>`
       });
+    },
+    async sendTestEmail({ to, actor }) {
+      return send({
+        to: [to],
+        subject: "RMVI GCOS ChurchMail delivery test",
+        text: [
+          "RMVI GCOS ChurchMail delivery test.",
+          `Requested by: ${actor ?? "GCOS administrator"}`,
+          `Provider: ${provider}`,
+          `Time: ${new Date().toISOString()}`,
+          "",
+          "If you received this message, live ChurchMail email delivery is connected."
+        ].join("\n"),
+        html: `<p><strong>RMVI GCOS ChurchMail delivery test</strong></p><p>If you received this message, live ChurchMail email delivery is connected.</p>`
+      });
     }
   };
 }
