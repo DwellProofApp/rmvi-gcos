@@ -448,6 +448,24 @@ type ChurchMailEmailActivation = {
   steps: { id: string; name: string; ok: boolean; detail: string }[];
   nextActions: string[];
 };
+type ChurchMailEmailActivationPacket = {
+  generatedAt: string;
+  generatedBy: string;
+  organization: string;
+  product: string;
+  domain: string;
+  status: string;
+  score: number;
+  ready: number;
+  total: number;
+  activation: ChurchMailEmailActivation;
+  provider: IntegrationReadiness["email"];
+  deployment: { targetDomain: string; goLive: boolean; nextAction: string };
+  commands: { id: string; title: string; owner: string; ready: boolean; command: string; detail: string }[];
+  dnsRecords: ChurchMailEmailActivation["dns"];
+  acceptance: { senderUsesRmvi: boolean; providerConnected: boolean; dnsReady: boolean; liveTestPassed: boolean; finalLaunchReady: boolean };
+  nextActions: string[];
+};
 type OperationalMonitor = {
   generatedAt: string;
   status: string;
@@ -15989,6 +16007,7 @@ function Audit({
   const [activationNotice, setActivationNotice] = React.useState("");
   const [integrationReadiness, setIntegrationReadiness] = React.useState<IntegrationReadiness | null>(null);
   const [emailActivation, setEmailActivation] = React.useState<ChurchMailEmailActivation | null>(null);
+  const [emailActivationPacket, setEmailActivationPacket] = React.useState<ChurchMailEmailActivationPacket | null>(null);
   const [emailTestResult, setEmailTestResult] = React.useState<string>("");
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
   const [productionHandoff, setProductionHandoff] = React.useState<ProductionHandoff | null>(null);
@@ -16053,6 +16072,7 @@ function Audit({
     void apiRequest<ProductionActivationCommands>("/api/production/activation-commands").then(setProductionActivation).catch(() => undefined);
     void apiRequest<IntegrationReadiness>("/api/integrations/readiness").then(setIntegrationReadiness).catch(() => undefined);
     void apiRequest<ChurchMailEmailActivation>("/api/integrations/email/activation").then(setEmailActivation).catch(() => undefined);
+    void apiRequest<ChurchMailEmailActivationPacket>("/api/integrations/email/activation-packet").then(setEmailActivationPacket).catch(() => undefined);
     void apiRequest<ProductionHandoff>("/api/ops/production-handoff").then(setProductionHandoff).catch(() => undefined);
     void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
@@ -16377,11 +16397,13 @@ function Audit({
   function refreshIntegrationReadiness() {
     void apiRequest<IntegrationReadiness>("/api/integrations/readiness").then(setIntegrationReadiness).catch(() => undefined);
     void apiRequest<ChurchMailEmailActivation>("/api/integrations/email/activation").then(setEmailActivation).catch(() => undefined);
+    void apiRequest<ChurchMailEmailActivationPacket>("/api/integrations/email/activation-packet").then(setEmailActivationPacket).catch(() => undefined);
     refreshProductionHandoff();
   }
 
   function refreshEmailActivation() {
     void apiRequest<ChurchMailEmailActivation>("/api/integrations/email/activation").then(setEmailActivation).catch(() => undefined);
+    void apiRequest<ChurchMailEmailActivationPacket>("/api/integrations/email/activation-packet").then(setEmailActivationPacket).catch(() => undefined);
   }
 
   function sendEmailProviderTest() {
@@ -16397,6 +16419,19 @@ function Audit({
       refreshEmailActivation();
     }).catch((error) => {
       setEmailTestResult(error instanceof Error ? error.message : "Email provider test failed");
+    });
+  }
+
+  function archiveEmailActivationPacket() {
+    void apiRequest<{ packet: ChurchMailEmailActivationPacket; document: DocumentRecord }>("/api/integrations/email/activation-packet/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "ChurchMail live email activation packet for production signoff" })
+    }).then((result) => {
+      setEmailActivationPacket(result.packet);
+      setEmailTestResult(`Email activation packet archived as ${result.document.name}.`);
+      onRefreshAuditDigest();
+    }).catch((error) => {
+      setEmailTestResult(error instanceof Error ? error.message : "Unable to archive ChurchMail email activation packet.");
     });
   }
 
@@ -17818,6 +17853,7 @@ function Audit({
         <div className="action-row">
           <button onClick={refreshEmailActivation}><RefreshCw size={15} /> Refresh DNS</button>
           <button onClick={sendEmailProviderTest}><Send size={15} /> Test delivery</button>
+          <button onClick={archiveEmailActivationPacket}><ArchiveIcon size={15} /> Archive packet</button>
         </div>
         <div className="office-summary-grid">
           <Insight label="Provider" value={emailActivation?.provider ?? "Checking"} />
@@ -17830,6 +17866,37 @@ function Audit({
         {emailTestResult && (
           <div className={emailTestResult.toLowerCase().includes("sent") ? "login-notice" : "login-error"}>{emailTestResult}</div>
         )}
+        <div className="email-launch-packet">
+          <div className="email-launch-packet-head">
+            <div>
+              <span>production email packet</span>
+              <strong>{emailActivationPacket ? `${emailActivationPacket.ready}/${emailActivationPacket.total} gates ready` : "Checking activation gates"}</strong>
+              <small>{emailActivationPacket?.nextActions[0] ?? "Complete provider, DNS, and live test evidence before final launch verification."}</small>
+            </div>
+            <b>{emailActivationPacket?.status ?? "pending"}</b>
+          </div>
+          <div className="email-acceptance-grid">
+            <article className={emailActivationPacket?.acceptance.senderUsesRmvi ? "ready" : "hold"}><span>Sender</span><strong>{emailActivationPacket?.acceptance.senderUsesRmvi ? "rmvi.org" : "needed"}</strong></article>
+            <article className={emailActivationPacket?.acceptance.providerConnected ? "ready" : "hold"}><span>Provider</span><strong>{emailActivationPacket?.acceptance.providerConnected ? "connected" : "needed"}</strong></article>
+            <article className={emailActivationPacket?.acceptance.dnsReady ? "ready" : "hold"}><span>DNS</span><strong>{emailActivationPacket?.acceptance.dnsReady ? "ready" : "needed"}</strong></article>
+            <article className={emailActivationPacket?.acceptance.liveTestPassed ? "ready" : "hold"}><span>Live test</span><strong>{emailActivationPacket?.acceptance.liveTestPassed ? "passed" : "needed"}</strong></article>
+          </div>
+          <div className="email-command-list">
+            {(emailActivationPacket?.commands ?? []).map((command) => (
+              <article className={command.ready ? "ready" : "hold"} key={command.id}>
+                {command.ready ? <CheckCircle2 size={17} /> : <AlertTriangle size={17} />}
+                <div>
+                  <span>{command.owner} / {command.ready ? "ready" : "needed"}</span>
+                  <strong>{command.title}</strong>
+                  <small>{command.detail}</small>
+                </div>
+                <code>{command.command}</code>
+                <button onClick={() => copyActivationCommand(command.command)}><Files size={14} /> Copy</button>
+              </article>
+            ))}
+            {!emailActivationPacket && <div className="empty-state">Loading ChurchMail email activation packet.</div>}
+          </div>
+        </div>
         <div className="email-activation-steps">
           {(emailActivation?.steps ?? []).map((step, index) => (
             <article className={step.ok ? "ready" : "hold"} key={step.id}>

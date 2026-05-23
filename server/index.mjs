@@ -77,6 +77,8 @@ const routes = {
   "GET /api/deployment/build-info": () => ok(deploymentBuildInfo()),
   "GET /api/integrations/readiness": () => ok(integrationReadiness()),
   "GET /api/integrations/email/activation": async () => ok(await churchMailEmailActivation()),
+  "GET /api/integrations/email/activation-packet": async ({ session }) => ok(await churchMailEmailActivationPacket(session?.email ?? "system")),
+  "POST /api/integrations/email/activation-packet/archive": async ({ body, session }) => createdResponse(await archiveChurchMailEmailActivationPacket(body, session.email)),
   "POST /api/integrations/email/test": async ({ body, session }) => ok(await sendChurchMailProviderTest(body.to ?? session.email, session.email)),
   "GET /api/readiness": () => ok(readinessReport()),
   "GET /api/readiness/digest": () => ok(readinessDigest()),
@@ -762,6 +764,105 @@ async function churchMailEmailActivation() {
     steps,
     nextActions: steps.filter((step) => !step.ok).map((step) => step.detail)
   };
+}
+
+async function churchMailEmailActivationPacket(actor = "system") {
+  const activation = await churchMailEmailActivation();
+  const readiness = integrationReadiness();
+  const deployment = await launchDeploymentPlan();
+  const emailLive = activation.status === "email-live";
+  const commands = [
+    {
+      id: "resend-domain",
+      title: "Add rmvi.org to Resend",
+      owner: "ChurchMail",
+      ready: activation.provider === "resend",
+      command: "Open Resend > Domains > Add Domain > rmvi.org",
+      detail: "Resend provides the SPF, DKIM, and optional return-path DNS records after the domain is added."
+    },
+    {
+      id: "cloud-run-email-provider",
+      title: "Attach Resend API key to Cloud Run",
+      owner: "Platform",
+      ready: activation.steps.find((step) => step.id === "secret")?.ok ?? false,
+      command: "gcloud run services update rmvi-gcos-api --region us-central1 --project rmvi-gcos --update-env-vars GCOS_EMAIL_PROVIDER=resend,GCOS_RESEND_API_KEY='<resend-api-key>',GCOS_EMAIL_FROM='churchmail@rmvi.org',GCOS_EMAIL_REPLY_TO='admin@rmvi.org'",
+      detail: "Replace the placeholder with the live Resend key. GCOS never stores or exposes the key in the UI."
+    },
+    {
+      id: "sender-dns",
+      title: "Verify rmvi.org DNS",
+      owner: "Domain",
+      ready: activation.steps.find((step) => step.id === "dns")?.ok ?? false,
+      command: "Refresh Audit > ChurchMail Email Activation after DNS propagation",
+      detail: `SPF ${activation.dns.spf.ok ? "found" : "needed"}, DMARC ${activation.dns.dmarc.ok ? "found" : "needed"}, DKIM confirmed from provider screen.`
+    },
+    {
+      id: "delivery-test",
+      title: "Send live ChurchMail test",
+      owner: "Admin",
+      ready: activation.steps.find((step) => step.id === "test")?.ok ?? false,
+      command: "Use Test delivery in Audit > ChurchMail Email Activation",
+      detail: activation.lastTest?.ok ? `Last test sent to ${activation.lastTest.to}` : "Send the first live test after the provider key and DNS are ready."
+    },
+    {
+      id: "launch-verify",
+      title: "Rerun launch verification",
+      owner: "Launch",
+      ready: emailLive,
+      command: "npm run launch:verify:firebase",
+      detail: "Rerun the launch suite after the live provider test succeeds."
+    }
+  ];
+  const ready = commands.filter((command) => command.ready).length;
+  return {
+    generatedAt: new Date().toISOString(),
+    generatedBy: actor,
+    organization: "Remedy Movement International",
+    product: "GCOS ChurchMail",
+    domain: activation.domain,
+    status: emailLive ? "email-live" : "email-activation-needed",
+    score: activation.score,
+    ready,
+    total: commands.length,
+    activation,
+    provider: readiness.email,
+    deployment: {
+      targetDomain: deployment.targetDomain,
+      goLive: deployment.goLive,
+      nextAction: deployment.nextAction
+    },
+    commands,
+    dnsRecords: activation.dns,
+    acceptance: {
+      senderUsesRmvi: /@rmvi\.org$/i.test(activation.from),
+      providerConnected: activation.provider !== "log" && activation.deliveryMode !== "internal-log",
+      dnsReady: activation.dns.spf.ok && activation.dns.dmarc.ok,
+      liveTestPassed: Boolean(activation.lastTest?.ok && activation.lastTest.provider !== "log"),
+      finalLaunchReady: emailLive
+    },
+    nextActions: commands.filter((command) => !command.ready).map((command) => command.detail)
+  };
+}
+
+async function archiveChurchMailEmailActivationPacket(body, actor) {
+  requirePermission(actor, "canApprove");
+  const packet = await churchMailEmailActivationPacket(actor);
+  const document = documentRecord(`RMVI GCOS ChurchMail email activation ${new Date().toISOString().slice(0, 10)}.json`, "ChurchMail live email activation packet", "Audit", actor, "JSON", packet.status === "email-live" ? "Verified" : "Archived");
+  document.verified = packet.status === "email-live";
+  document.verificationNote = body.reason ?? `${packet.ready}/${packet.total} ChurchMail email activation gates ready`;
+  document.extractedText = [
+    `Activation status: ${packet.status}`,
+    `Score: ${packet.score}%`,
+    `Ready: ${packet.ready}/${packet.total}`,
+    `Provider: ${packet.activation.provider}`,
+    `Sender: ${packet.activation.from}`,
+    `Last test: ${packet.activation.lastTest ? `${packet.activation.lastTest.provider} to ${packet.activation.lastTest.to}` : "none"}`,
+    `Next actions: ${packet.nextActions.join("; ") || "none"}`
+  ].join("\n");
+  document.extractedAt = new Date().toISOString();
+  state.documents.unshift(document);
+  record("ChurchMailEmailActivationArchived", actor, document.name, `${packet.ready}/${packet.total} ready`);
+  return { document, packet };
 }
 
 async function emailDnsSignals(domain) {
