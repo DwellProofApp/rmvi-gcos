@@ -625,6 +625,39 @@ type StationTrainingRollout = {
   records: StationTrainingRecord[];
   nextActions: string[];
 };
+type FinalProductionFinish = {
+  generatedAt: string;
+  generatedBy: string;
+  organization: string;
+  product: string;
+  domain: string;
+  status: string;
+  overallScore: number;
+  ready: number;
+  total: number;
+  tracks: {
+    id: string;
+    name: string;
+    owner: string;
+    status: string;
+    score: number;
+    ready: boolean;
+    detail: string;
+    command: string;
+    blockers: string[];
+  }[];
+  blockers: string[];
+  commands: { id: string; title: string; owner: string; ready: boolean; command: string; detail: string }[];
+  live: {
+    build: string;
+    target: string;
+    monitor: string;
+    storage: string;
+    emailProvider: string;
+    restoreStatus: string;
+  };
+  nextActions: string[];
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -16042,6 +16075,8 @@ function Audit({
   const [rolloutReadiness, setRolloutReadiness] = React.useState<RolloutReadiness | null>(null);
   const [stationTraining, setStationTraining] = React.useState<StationTrainingRollout | null>(null);
   const [trainingNotice, setTrainingNotice] = React.useState("");
+  const [finalProductionFinish, setFinalProductionFinish] = React.useState<FinalProductionFinish | null>(null);
+  const [finalProductionNotice, setFinalProductionNotice] = React.useState("");
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -16103,6 +16138,7 @@ function Audit({
     void apiRequest<EnterpriseCompletion>("/api/enterprise/completion").then(setEnterpriseCompletion).catch(() => undefined);
     void apiRequest<RolloutReadiness>("/api/rollout/readiness").then(setRolloutReadiness).catch(() => undefined);
     void apiRequest<StationTrainingRollout>("/api/rollout/station-training").then(setStationTraining).catch(() => undefined);
+    void apiRequest<FinalProductionFinish>("/api/ops/final-production-finish").then(setFinalProductionFinish).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -16174,6 +16210,7 @@ function Audit({
       void apiRequest<ProductionHandoff>("/api/ops/production-handoff").then(setProductionHandoff).catch(() => undefined);
       void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
       void apiRequest<PersistenceCutoverChecklist>("/api/persistence/cutover-checklist").then(setCutoverChecklist).catch(() => undefined);
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16186,6 +16223,7 @@ function Audit({
       setRestoreCommand(result.packet);
       setRestoreCommandNotice(`Restore evidence archived as ${result.document.name}.`);
       void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16204,6 +16242,7 @@ function Audit({
       void apiRequest<PersistenceRestoreDrill>("/api/persistence/restore-drill").then(setRestoreDrill).catch(() => undefined);
       void apiRequest<RestoreRehearsalPacket>("/api/persistence/restore-rehearsal-packet").then(setRestoreRehearsalPacket).catch(() => undefined);
       void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16304,6 +16343,7 @@ function Audit({
       setOperationalMonitor(result.monitor);
       setPersistenceStatus(result.status);
       refreshProductionHandoff();
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16328,6 +16368,10 @@ function Audit({
     void apiRequest<StationTrainingRollout>("/api/rollout/station-training").then(setStationTraining).catch(() => undefined);
   }
 
+  function refreshFinalProductionFinish() {
+    void apiRequest<FinalProductionFinish>("/api/ops/final-production-finish").then(setFinalProductionFinish).catch(() => undefined);
+  }
+
   function markStationTraining(email: string) {
     const note = window.prompt("Training note", "Station completed first-use training and can operate GCOS.");
     if (note === null) return;
@@ -16338,6 +16382,7 @@ function Audit({
       setStationTraining(result.rollout);
       setTrainingNotice(`${email} marked trained and recorded in the audit ledger.`);
       refreshRolloutReadiness();
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16354,6 +16399,7 @@ function Audit({
       setStationTraining(result.rollout);
       setTrainingNotice(`${email} training scheduled for ${scheduledFor}.`);
       refreshRolloutReadiness();
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16365,6 +16411,7 @@ function Audit({
     }).then((result) => {
       setStationTraining(result.packet);
       setTrainingNotice(`Training packet archived as ${result.document.name}.`);
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16377,6 +16424,7 @@ function Audit({
       setLaunchSignoff(result.signoff);
       setPersistenceStatus(result.status);
       refreshProductionHandoff();
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16389,6 +16437,7 @@ function Audit({
       setLaunchReadiness(result.launch);
       setPersistenceStatus(result.status);
       refreshProductionHandoff();
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -16448,6 +16497,7 @@ function Audit({
       setEmailTestResult(result.ok ? `${result.provider} test sent${result.messageId ? ` (${result.messageId})` : ""}` : `${result.provider} test not sent: ${result.mode ?? "provider not ready"}`);
       refreshIntegrationReadiness();
       refreshEmailActivation();
+      refreshFinalProductionFinish();
     }).catch((error) => {
       setEmailTestResult(error instanceof Error ? error.message : "Email provider test failed");
     });
@@ -16460,9 +16510,23 @@ function Audit({
     }).then((result) => {
       setEmailActivationPacket(result.packet);
       setEmailTestResult(`Email activation packet archived as ${result.document.name}.`);
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch((error) => {
       setEmailTestResult(error instanceof Error ? error.message : "Unable to archive ChurchMail email activation packet.");
+    });
+  }
+
+  function archiveFinalProductionFinishPacket() {
+    void apiRequest<{ board: FinalProductionFinish; document: DocumentRecord }>("/api/ops/final-production-finish/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "Final 1-6 production finish packet before provider cutover and rollout" })
+    }).then((result) => {
+      setFinalProductionFinish(result.board);
+      setFinalProductionNotice(`Final production finish packet archived as ${result.document.name}.`);
+      onRefreshAuditDigest();
+    }).catch((error) => {
+      setFinalProductionNotice(error instanceof Error ? error.message : "Unable to archive final production finish packet.");
     });
   }
 
@@ -16827,6 +16891,7 @@ function Audit({
     }).then((result) => {
       setHandoffArchiveNotice(`${result.document.name} sealed in Archive.`);
       refreshProductionHandoff();
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch((error) => {
       setHandoffArchiveNotice(error instanceof Error ? error.message : "Unable to archive production handoff packet.");
@@ -16841,6 +16906,7 @@ function Audit({
     }).then((result) => {
       setProductionHandoff(result.handoff);
       setHandoffTaskNotice(result.created.length ? `${result.created.length} blocker task${result.created.length === 1 ? "" : "s"} created.` : "No new blocker tasks needed.");
+      refreshFinalProductionFinish();
       onRefreshAuditDigest();
     }).catch((error) => {
       setHandoffTaskNotice(error instanceof Error ? error.message : "Unable to create production handoff tasks.");
@@ -16979,6 +17045,53 @@ function Audit({
 
   return (
     <section className="module-grid">
+      <div className="panel module-primary final-production-finish-board">
+        <PanelHeader icon={Rocket} title="1-6 Final Production Finish Board" action={finalProductionFinish?.status ?? "checking"} />
+        <div className="finish-board-hero">
+          <div>
+            <span>rmvi.org production completion</span>
+            <h2>{finalProductionFinish?.overallScore ?? 0}% full launch finish score</h2>
+            <p>{finalProductionFinish?.nextActions[0] ?? "Checking live email, restore rehearsal, rollout, training, signoff, and design QA."}</p>
+          </div>
+          <div className="finish-score-card">
+            <strong>{finalProductionFinish ? `${finalProductionFinish.ready}/${finalProductionFinish.total}` : "0/6"}</strong>
+            <small>finish tracks ready</small>
+          </div>
+        </div>
+        <div className="finish-live-strip">
+          <article><span>Build</span><strong>{finalProductionFinish?.live.build ?? "checking"}</strong></article>
+          <article><span>Target</span><strong>{finalProductionFinish?.live.target ?? "firebase"}</strong></article>
+          <article><span>Monitor</span><strong>{finalProductionFinish?.live.monitor ?? "checking"}</strong></article>
+          <article><span>Storage</span><strong>{finalProductionFinish?.live.storage ?? "checking"}</strong></article>
+          <article><span>Email</span><strong>{finalProductionFinish?.live.emailProvider ?? "checking"}</strong></article>
+          <article><span>Restore</span><strong>{finalProductionFinish?.live.restoreStatus ?? "checking"}</strong></article>
+        </div>
+        <div className="finish-action-row">
+          <button onClick={refreshFinalProductionFinish}><RefreshCw size={15} /> Refresh 1-6</button>
+          <button onClick={sendEmailProviderTest}><Mail size={15} /> Test live email</button>
+          <button onClick={recordRestoreDrill}><Database size={15} /> Run restore attestation</button>
+          <button onClick={archiveFinalProductionFinishPacket}><ArchiveIcon size={15} /> Archive finish packet</button>
+        </div>
+        <div className="finish-track-grid">
+          {(finalProductionFinish?.tracks ?? []).map((track) => (
+            <article className={track.ready ? "ready" : "hold"} key={track.id}>
+              <div className="finish-track-icon">
+                {track.ready ? <CheckCircle2 size={20} /> : <AlertTriangle size={20} />}
+              </div>
+              <div>
+                <span>{track.owner} / {track.status}</span>
+                <strong>{track.name}</strong>
+                <small>{track.detail}</small>
+                {track.blockers[0] && <em>{track.blockers[0]}</em>}
+              </div>
+              <b>{track.score}%</b>
+              <button onClick={() => copyActivationCommand(track.command)}><Files size={14} /> Copy command</button>
+            </article>
+          ))}
+          {!finalProductionFinish && <div className="empty-state">Loading the final 1-6 production finish board.</div>}
+        </div>
+        {finalProductionNotice && <div className="handoff-archive-notice task-notice">{finalProductionNotice}</div>}
+      </div>
       <div className="panel module-primary final-blocker-board">
         <PanelHeader icon={ShieldCheck} title="Final Production Blocker Board" action={`${finalBlockerReady}/${finalBlockerSteps.length} closed`} />
         <div className="final-blocker-hero">

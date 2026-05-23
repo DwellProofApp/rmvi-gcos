@@ -108,6 +108,8 @@ const routes = {
   "GET /api/ops/production-handoff/packet": async ({ session }) => ok(await productionHandoffPacket(session.email)),
   "POST /api/ops/production-handoff/archive": async ({ body, session }) => createdResponse(await archiveProductionHandoffPacket(body, session.email)),
   "POST /api/ops/production-handoff/tasks": async ({ body, session }) => createdResponse(await createProductionHandoffTasks(body, session.email)),
+  "GET /api/ops/final-production-finish": async ({ session }) => ok(await finalProductionFinishBoard(session?.email ?? "system")),
+  "POST /api/ops/final-production-finish/archive": async ({ body, session }) => createdResponse(await archiveFinalProductionFinishBoard(body, session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
@@ -864,6 +866,158 @@ async function archiveChurchMailEmailActivationPacket(body, actor) {
   state.documents.unshift(document);
   record("ChurchMailEmailActivationArchived", actor, document.name, `${packet.ready}/${packet.total} ready`);
   return { document, packet };
+}
+
+async function finalProductionFinishBoard(actor = "system") {
+  const [
+    emailPacket,
+    restorePacket,
+    handoff,
+    signoff,
+    rollout,
+    training,
+    enterprise,
+    completion,
+    monitor
+  ] = await Promise.all([
+    churchMailEmailActivationPacket(actor),
+    restoreRehearsalPacket(actor),
+    productionHandoff(),
+    launchSignoffMatrix(),
+    rolloutReadinessReport(),
+    stationTrainingRollout(),
+    enterpriseCompletionReport(),
+    projectCompletionReport(),
+    operationalMonitor()
+  ]);
+  const handoffReady = handoff.status === "launch-ready" && signoff.overallScore >= 90;
+  const rolloutReady = rollout.overallScore >= 90 && rollout.blockers.length === 0;
+  const trainingReady = training.overallScore >= 80 && training.blocked === 0;
+  const designReady = completion.moduleScore >= 95 && enterprise.overallScore >= 80;
+  const tracks = [
+    {
+      id: "live-email",
+      name: "Live ChurchMail Email",
+      owner: "ChurchMail",
+      status: emailPacket.status,
+      score: emailPacket.score,
+      ready: emailPacket.status === "email-live",
+      detail: emailPacket.activation.lastTest?.ok ? `Last delivery test sent to ${emailPacket.activation.lastTest.to}` : "Resend API key, DNS verification, and live delivery test are still required.",
+      command: emailPacket.commands.find((command) => !command.ready)?.command ?? "npm run launch:verify:firebase",
+      blockers: emailPacket.nextActions
+    },
+    {
+      id: "restore-drill",
+      name: "Managed Restore Drill",
+      owner: "Operations",
+      status: restorePacket.status,
+      score: restorePacket.score,
+      ready: restorePacket.status === "recovery-ready",
+      detail: restorePacket.command.drill.attestation?.providerReference ? `Provider reference ${restorePacket.command.drill.attestation.providerReference}` : "Run the Firebase/Firestore managed export or restore rehearsal, then attest it in GCOS.",
+      command: restorePacket.commands.find((command) => !command.ready)?.command ?? "npm run launch:verify:firebase",
+      blockers: restorePacket.nextActions
+    },
+    {
+      id: "executive-signoff",
+      name: "Executive Launch Signoff",
+      owner: "International HQ",
+      status: handoff.status,
+      score: Math.round((handoff.scores.signoff + signoff.overallScore) / 2),
+      ready: handoffReady,
+      detail: handoff.summary,
+      command: "Archive production handoff packet from Audit",
+      blockers: handoff.blockers.map((blocker) => blocker.detail)
+    },
+    {
+      id: "user-rollout",
+      name: "User Rollout",
+      owner: "Admin",
+      status: rollout.status,
+      score: rollout.overallScore,
+      ready: rolloutReady,
+      detail: `${state.stations.length} station identities, ${rollout.blockers.length} rollout blockers.`,
+      command: "Open Audit > Rollout readiness and close remaining rollout blockers",
+      blockers: rollout.blockers
+    },
+    {
+      id: "training-policy",
+      name: "Training and Policy Pack",
+      owner: "Training",
+      status: training.status,
+      score: training.overallScore,
+      ready: trainingReady,
+      detail: `${training.trained} trained, ${training.scheduled} scheduled, ${training.pending} pending.`,
+      command: "Open Audit > Station Training Rollout and schedule remaining stations",
+      blockers: training.nextActions
+    },
+    {
+      id: "design-qa",
+      name: "Design and Internal QA",
+      owner: "Product",
+      status: designReady ? "qa-ready" : "qa-hardening",
+      score: Math.round((completion.moduleScore + enterprise.overallScore) / 2),
+      ready: designReady,
+      detail: "Final page-by-page contrast, responsive layout, route, form, and action-button verification before public rollout.",
+      command: "Run page-by-page browser QA for /, /admin, /admin/board, and /app sections",
+      blockers: [...completion.productionBlockers, ...enterprise.blockers].slice(0, 8)
+    }
+  ];
+  const ready = tracks.filter((track) => track.ready).length;
+  const overallScore = Math.round(tracks.reduce((sum, track) => sum + track.score, 0) / tracks.length);
+  const blockers = tracks.flatMap((track) => track.blockers.map((blocker) => `${track.name}: ${blocker}`)).slice(0, 12);
+  const commands = tracks.map((track) => ({
+    id: track.id,
+    title: track.name,
+    owner: track.owner,
+    ready: track.ready,
+    command: track.command,
+    detail: track.detail
+  }));
+  return {
+    generatedAt: new Date().toISOString(),
+    generatedBy: actor,
+    organization: "Remedy Movement International",
+    product: "GCOS Final Production Finish",
+    domain: DOMAIN,
+    status: ready === tracks.length ? "production-finished" : overallScore >= 90 ? "final-hardening" : "finish-build-active",
+    overallScore,
+    ready,
+    total: tracks.length,
+    tracks,
+    blockers,
+    commands,
+    live: {
+      build: BUILD_INFO.gitCommit ?? "unknown",
+      target: DEPLOYMENT_TARGET || "firebase",
+      monitor: monitor.status,
+      storage: monitor.storageProvider,
+      emailProvider: emailPacket.activation.provider,
+      restoreStatus: restorePacket.command.drill.status
+    },
+    nextActions: blockers.length ? blockers.slice(0, 6) : ["Run final launch verification and archive the production finish packet."]
+  };
+}
+
+async function archiveFinalProductionFinishBoard(body, actor) {
+  requirePermission(actor, "canApprove");
+  const board = await finalProductionFinishBoard(actor);
+  const document = documentRecord(`RMVI GCOS final production finish ${new Date().toISOString().slice(0, 10)}.json`, "Final 1-6 production finish packet", "Audit", actor, "JSON", board.status === "production-finished" ? "Verified" : "Archived");
+  document.verified = board.status === "production-finished";
+  document.verificationNote = body.reason ?? `${board.ready}/${board.total} finish tracks ready at ${board.overallScore}%`;
+  document.extractedText = [
+    `Final finish status: ${board.status}`,
+    `Overall score: ${board.overallScore}%`,
+    `Ready: ${board.ready}/${board.total}`,
+    `Live build: ${board.live.build}`,
+    `Storage: ${board.live.storage}`,
+    `Email provider: ${board.live.emailProvider}`,
+    `Restore: ${board.live.restoreStatus}`,
+    `Next actions: ${board.nextActions.join("; ") || "none"}`
+  ].join("\n");
+  document.extractedAt = new Date().toISOString();
+  state.documents.unshift(document);
+  record("FinalProductionFinishArchived", actor, document.name, `${board.ready}/${board.total} tracks ready`);
+  return { document, board };
 }
 
 async function emailDnsSignals(domain) {
