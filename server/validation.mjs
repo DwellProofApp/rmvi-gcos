@@ -1533,6 +1533,11 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/ops/production-handoff/tasks": (body) => {
+    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
   "POST /api/export/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },

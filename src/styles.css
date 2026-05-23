@@ -8051,6 +8051,12 @@ h1 {
   font-weight: 850;
 }
 
+.handoff-archive-notice.task-notice {
+  border-color: rgba(17, 58, 126, 0.18);
+  background: #f7faff;
+  color: #113a7e;
+}
+
 .handoff-blockers {
   margin-top: 16px;
 }

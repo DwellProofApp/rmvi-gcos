@@ -15895,6 +15895,7 @@ function Audit({
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
   const [productionHandoff, setProductionHandoff] = React.useState<ProductionHandoff | null>(null);
   const [handoffArchiveNotice, setHandoffArchiveNotice] = React.useState("");
+  const [handoffTaskNotice, setHandoffTaskNotice] = React.useState("");
   const [launchSignoff, setLaunchSignoff] = React.useState<LaunchSignoff | null>(null);
   const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
   const [enterpriseCompletion, setEnterpriseCompletion] = React.useState<EnterpriseCompletion | null>(null);
@@ -16551,6 +16552,20 @@ function Audit({
     });
   }
 
+  function createProductionHandoffTasks() {
+    setHandoffTaskNotice("Creating production handoff tasks...");
+    void apiRequest<{ created: GovernanceTask[]; skipped: number; handoff: ProductionHandoff }>("/api/ops/production-handoff/tasks", {
+      method: "POST",
+      body: JSON.stringify({ assignee: session.email, due: "Today" })
+    }).then((result) => {
+      setProductionHandoff(result.handoff);
+      setHandoffTaskNotice(result.created.length ? `${result.created.length} blocker task${result.created.length === 1 ? "" : "s"} created.` : "No new blocker tasks needed.");
+      onRefreshAuditDigest();
+    }).catch((error) => {
+      setHandoffTaskNotice(error instanceof Error ? error.message : "Unable to create production handoff tasks.");
+    });
+  }
+
   const productionChecks = launchReadiness?.checks.filter((check) => check.category === "production") ?? [];
   const productionPassed = productionChecks.filter((check) => check.ok).length;
   const restoreReady = restoreDrill?.valid || restoreDrill?.status === "restorable";
@@ -16658,6 +16673,7 @@ function Audit({
               <strong>Launch phases</strong>
               <div className="handoff-button-pair">
                 <button onClick={refreshProductionHandoff}><RefreshCw size={15} /> Refresh</button>
+                <button onClick={createProductionHandoffTasks}><ListChecks size={15} /> Tasks</button>
                 <button onClick={() => void downloadProductionHandoffPacket()}><Download size={15} /> Packet</button>
                 <button onClick={archiveProductionHandoffPacket}><ArchiveIcon size={15} /> Archive</button>
               </div>
@@ -16697,6 +16713,7 @@ function Audit({
           </div>
         </div>
         {handoffArchiveNotice && <div className="handoff-archive-notice">{handoffArchiveNotice}</div>}
+        {handoffTaskNotice && <div className="handoff-archive-notice task-notice">{handoffTaskNotice}</div>}
         <div className="handoff-blockers">
           {(productionHandoff?.blockers ?? []).map((blocker) => (
             <article key={blocker.id}>

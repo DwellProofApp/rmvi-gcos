@@ -103,6 +103,7 @@ const routes = {
   "GET /api/ops/production-handoff": async () => ok(await productionHandoff()),
   "GET /api/ops/production-handoff/packet": async ({ session }) => ok(await productionHandoffPacket(session.email)),
   "POST /api/ops/production-handoff/archive": async ({ body, session }) => createdResponse(await archiveProductionHandoffPacket(body, session.email)),
+  "POST /api/ops/production-handoff/tasks": async ({ body, session }) => createdResponse(await createProductionHandoffTasks(body, session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
@@ -1060,6 +1061,51 @@ async function archiveProductionHandoffPacket(body, actor) {
   state.documents.unshift(document);
   record("ProductionHandoffPacketArchived", actor, document.name, `${hash} / ${packet.handoff.status}`);
   return { document, file, packet, documents: state.documents };
+}
+
+async function createProductionHandoffTasks(body, actor) {
+  requirePermission(actor, "canApprove");
+  const handoff = await productionHandoff();
+  const blockers = handoff.blockers.filter((blocker) => {
+    const alreadyOpen = state.tasks.some((taskItem) => taskItem.handoffBlockerId === blocker.id && !["Complete", "Archived"].includes(taskItem.status));
+    return !alreadyOpen;
+  });
+  const created = blockers.map((blocker) => {
+    const taskItem = services.createTask({
+      title: blocker.title,
+      owner: "Production Handoff",
+      assignee: body.assignee ?? blocker.owner ?? actor,
+      priority: blocker.severity === "High" ? "Critical" : "High",
+      due: body.due ?? "Today",
+      status: "Queued",
+      actor
+    });
+    taskItem.handoffBlockerId = blocker.id;
+    taskItem.handoffCommand = blocker.command;
+    taskItem.handoffDetail = blocker.detail;
+    taskItem.source = "Production Handoff Board";
+    taskItem.checkpoints = [
+      {
+        label: blocker.title,
+        note: blocker.detail,
+        command: blocker.command,
+        createdAt: new Date().toISOString(),
+        createdBy: actor
+      }
+    ];
+    taskItem.watchers = Array.from(new Set([actor, blocker.owner].filter(Boolean)));
+    record("ProductionHandoffTaskLinked", actor, taskItem.title, blocker.id);
+    return taskItem;
+  });
+  if (!created.length) {
+    record("ProductionHandoffTasksChecked", actor, "Production handoff", "No new blocker tasks needed");
+  }
+  return {
+    created,
+    skipped: handoff.blockers.length - created.length,
+    tasks: state.tasks,
+    handoff: await productionHandoff()
+  };
 }
 
 async function projectCompletionReport() {
