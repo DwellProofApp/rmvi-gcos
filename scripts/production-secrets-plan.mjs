@@ -98,6 +98,7 @@ function valueFromTemplate(name) {
 
 function redact(value, source = "") {
   if (!value) return "";
+  if (/^[A-Za-z0-9_-]{16,}$/.test(value) && !value.includes("://")) return "configured";
   const redacted = value.replace(/:\/\/([^:@/]+):([^@/]+)@/, "://$1:***@");
   return source === "DATABASE_URL" ? `${redacted} via DATABASE_URL` : redacted;
 }

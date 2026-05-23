@@ -3446,6 +3446,11 @@ function startApi(dataPath, webDistPath, extraEnv = {}) {
     env: {
       ...process.env,
       GCOS_API_PORT: String(PORT),
+      GCOS_DEPLOYMENT_TARGET: "local",
+      GCOS_AUTH_PROVIDER: "local",
+      GCOS_FIREBASE_WEB_API_KEY: "",
+      GCOS_AUTH_FALLBACK_LOCAL: "1",
+      GCOS_EMAIL_PROVIDER: "log",
       GCOS_STORAGE_PROVIDER: "json",
       GCOS_OBJECT_STORAGE_PROVIDER: "filesystem",
       GCOS_OBJECT_VAULT_PATH: join(dirname(dataPath), "object-vault"),
