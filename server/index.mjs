@@ -101,6 +101,7 @@ const routes = {
   "GET /api/ops/monitor": async () => ok(await operationalMonitor()),
   "POST /api/ops/monitor": async ({ session }) => ok(await recordOperationalMonitor(session.email)),
   "GET /api/ops/production-handoff": async () => ok(await productionHandoff()),
+  "GET /api/ops/production-handoff/packet": async ({ session }) => ok(await productionHandoffPacket(session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
@@ -929,6 +930,82 @@ async function productionHandoff() {
         done: monitor.status === "healthy" && launch.productionScore >= 99
       }
     ]
+  };
+}
+
+async function productionHandoffPacket(actor = "system") {
+  const [
+    handoff,
+    launch,
+    monitor,
+    signoff,
+    project,
+    enterprise,
+    rollout,
+    integrationsReady,
+    backupManifest,
+    restoreDrill,
+    secretsPlan,
+    deployment
+  ] = await Promise.all([
+    productionHandoff(),
+    launchReadiness(),
+    operationalMonitor(),
+    launchSignoffMatrix(),
+    projectCompletionReport(),
+    enterpriseCompletionReport(),
+    rolloutReadinessReport(),
+    integrationReadiness(),
+    persistenceBackupManifest(),
+    persistenceRestoreDrill(),
+    productionSecretsPlan(),
+    launchDeploymentPlan()
+  ]);
+  return {
+    generatedAt: new Date().toISOString(),
+    generatedBy: actor,
+    organization: "Remedy Movement International",
+    product: "GCOS - Global Church Operating System",
+    domain: DOMAIN,
+    build: publicBuildInfo(),
+    handoff,
+    launch,
+    monitor,
+    signoff,
+    project,
+    enterprise,
+    rollout,
+    integrations: integrationsReady,
+    persistence: {
+      backupManifest,
+      restoreDrill
+    },
+    secrets: {
+      status: secretsPlan.status,
+      ready: secretsPlan.ready,
+      required: secretsPlan.required,
+      missing: secretsPlan.missing,
+      nextActions: secretsPlan.nextActions
+    },
+    deployment: {
+      targetDomain: deployment.targetDomain,
+      deploymentTarget: deployment.deploymentTarget,
+      goLive: deployment.goLive,
+      smokeUrls: deployment.smokeUrls,
+      nextAction: deployment.nextAction
+    },
+    acceptance: {
+      liveVerified: handoff.scores.mvp >= 95 && monitor.status !== "offline",
+      fullProductionSignoff: handoff.blockers.length === 0,
+      remainingActions: handoff.blockers.map((blocker) => ({
+        id: blocker.id,
+        severity: blocker.severity,
+        owner: blocker.owner,
+        title: blocker.title,
+        detail: blocker.detail,
+        command: blocker.command
+      }))
+    }
   };
 }
 

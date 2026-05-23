@@ -7937,6 +7937,13 @@ h1 {
   margin-bottom: 10px;
 }
 
+.handoff-button-pair {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
 .handoff-subhead strong {
   font-size: 16px;
 }

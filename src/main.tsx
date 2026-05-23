@@ -409,6 +409,20 @@ type ProductionHandoff = {
   providerStatus: { auth: string; email: string; video: string; records: string; objects: string; backup: string; restore: string };
   actionPlan: { title: string; command: string; done: boolean }[];
 };
+type ProductionHandoffPacket = {
+  generatedAt: string;
+  generatedBy: string;
+  organization: string;
+  product: string;
+  domain: string;
+  build: { gitCommit: string; gitBranch: string; deploymentTarget: string };
+  handoff: ProductionHandoff;
+  acceptance: {
+    liveVerified: boolean;
+    fullProductionSignoff: boolean;
+    remainingActions: { id: string; severity: string; owner: string; title: string; detail: string; command: string }[];
+  };
+};
 type LaunchSignoff = {
   generatedAt: string;
   targetDomain: string;
@@ -16513,6 +16527,15 @@ function Audit({
     URL.revokeObjectURL(url);
   }
 
+  async function downloadProductionHandoffPacket() {
+    const packet = await apiRequest<ProductionHandoffPacket>("/api/ops/production-handoff/packet");
+    downloadTextFile(
+      `rmvi-gcos-production-handoff-${new Date().toISOString().slice(0, 10)}.json`,
+      JSON.stringify(packet, null, 2),
+      "application/json;charset=utf-8"
+    );
+  }
+
   const productionChecks = launchReadiness?.checks.filter((check) => check.category === "production") ?? [];
   const productionPassed = productionChecks.filter((check) => check.ok).length;
   const restoreReady = restoreDrill?.valid || restoreDrill?.status === "restorable";
@@ -16618,7 +16641,10 @@ function Audit({
           <div>
             <div className="handoff-subhead">
               <strong>Launch phases</strong>
-              <button onClick={refreshProductionHandoff}><RefreshCw size={15} /> Refresh</button>
+              <div className="handoff-button-pair">
+                <button onClick={refreshProductionHandoff}><RefreshCw size={15} /> Refresh</button>
+                <button onClick={() => void downloadProductionHandoffPacket()}><Download size={15} /> Packet</button>
+              </div>
             </div>
             <div className="handoff-phase-list">
               {(productionHandoff?.phases ?? []).map((phase) => (
