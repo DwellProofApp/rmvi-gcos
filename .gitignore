@@ -1,6 +1,8 @@
 node_modules
 dist
 .npm-cache
+.tools/
+.gcos-build.json
 .firebase/
 .DS_Store
 data/*.json
