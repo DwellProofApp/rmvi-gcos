@@ -758,6 +758,21 @@ const validators = {
     if (body.audience !== undefined) requireString(body.audience, "audience");
   },
 
+  "POST /api/rollout/station-training/:email/mark": (body) => {
+    if (body.items !== undefined) requireStringArray(body.items, "items");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/rollout/station-training/:email/schedule": (body) => {
+    if (body.scheduledFor !== undefined) requireString(body.scheduledFor, "scheduledFor");
+    if (body.trainer !== undefined) requireString(body.trainer, "trainer");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/rollout/station-training/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/policies/:id/hold": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },

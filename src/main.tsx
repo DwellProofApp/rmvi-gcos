@@ -492,6 +492,34 @@ type RolloutReadiness = {
   blockers: string[];
   nextActions: string[];
 };
+type StationTrainingRecord = {
+  email: string;
+  title: string;
+  level: string;
+  authority: string;
+  status: string;
+  score: number;
+  completed: string[];
+  checklist: string[];
+  scheduledFor: string | null;
+  trainer: string | null;
+  notes: string[];
+  updatedAt: string | null;
+  updatedBy: string | null;
+};
+type StationTrainingRollout = {
+  generatedAt: string;
+  status: string;
+  overallScore: number;
+  total: number;
+  trained: number;
+  scheduled: number;
+  blocked: number;
+  pending: number;
+  checklist: string[];
+  records: StationTrainingRecord[];
+  nextActions: string[];
+};
 type ExportSnapshot = {
   exportedAt: string;
   exportedBy: string;
@@ -15900,6 +15928,8 @@ function Audit({
   const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
   const [enterpriseCompletion, setEnterpriseCompletion] = React.useState<EnterpriseCompletion | null>(null);
   const [rolloutReadiness, setRolloutReadiness] = React.useState<RolloutReadiness | null>(null);
+  const [stationTraining, setStationTraining] = React.useState<StationTrainingRollout | null>(null);
+  const [trainingNotice, setTrainingNotice] = React.useState("");
   const eventTypes = React.useMemo(() => ["All events", ...Array.from(new Set(auditRows.map((row) => row.event))).sort()], [auditRows]);
   const visibleRows = React.useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
@@ -15955,6 +15985,7 @@ function Audit({
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
     void apiRequest<EnterpriseCompletion>("/api/enterprise/completion").then(setEnterpriseCompletion).catch(() => undefined);
     void apiRequest<RolloutReadiness>("/api/rollout/readiness").then(setRolloutReadiness).catch(() => undefined);
+    void apiRequest<StationTrainingRollout>("/api/rollout/station-training").then(setStationTraining).catch(() => undefined);
   }, []);
 
   function refreshPersistenceStatus() {
@@ -16131,6 +16162,51 @@ function Audit({
 
   function refreshRolloutReadiness() {
     void apiRequest<RolloutReadiness>("/api/rollout/readiness").then(setRolloutReadiness).catch(() => undefined);
+  }
+
+  function refreshStationTraining() {
+    void apiRequest<StationTrainingRollout>("/api/rollout/station-training").then(setStationTraining).catch(() => undefined);
+  }
+
+  function markStationTraining(email: string) {
+    const note = window.prompt("Training note", "Station completed first-use training and can operate GCOS.");
+    if (note === null) return;
+    void apiRequest<{ rollout: StationTrainingRollout }>("/api/rollout/station-training/" + encodeURIComponent(email) + "/mark", {
+      method: "POST",
+      body: JSON.stringify({ note })
+    }).then((result) => {
+      setStationTraining(result.rollout);
+      setTrainingNotice(`${email} marked trained and recorded in the audit ledger.`);
+      refreshRolloutReadiness();
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function scheduleStationTraining(email: string) {
+    const scheduledFor = window.prompt("Training date", new Date(Date.now() + 86400000).toISOString().slice(0, 10));
+    if (!scheduledFor) return;
+    const trainer = window.prompt("Trainer email", session.email);
+    if (!trainer) return;
+    void apiRequest<{ rollout: StationTrainingRollout }>("/api/rollout/station-training/" + encodeURIComponent(email) + "/schedule", {
+      method: "POST",
+      body: JSON.stringify({ scheduledFor, trainer, note: "Station training session scheduled from rollout board." })
+    }).then((result) => {
+      setStationTraining(result.rollout);
+      setTrainingNotice(`${email} training scheduled for ${scheduledFor}.`);
+      refreshRolloutReadiness();
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function archiveStationTrainingPacket() {
+    void apiRequest<{ packet: StationTrainingRollout; document: DocumentRecord }>("/api/rollout/station-training/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "Station rollout training readiness packet" })
+    }).then((result) => {
+      setStationTraining(result.packet);
+      setTrainingNotice(`Training packet archived as ${result.document.name}.`);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
   }
 
   function recordLaunchSignoff() {
@@ -16842,6 +16918,72 @@ function Audit({
           <Insight label="Signoff" value={`${launchSignoff?.overallScore ?? 0}%`} />
           <Insight label="Users" value={String(apiStatus?.sessions?.stations.length ?? sessionDigest?.active ?? 0)} />
           <Insight label="Audit rows" value={String(auditRows.length)} />
+        </div>
+      </div>
+      <div className="panel module-primary station-training-board">
+        <PanelHeader icon={Users} title="Station Training Rollout" action={stationTraining ? `${stationTraining.trained}/${stationTraining.total} trained` : "checking"} />
+        <div className="station-training-hero">
+          <div>
+            <span>first-wave station onboarding</span>
+            <h2>{stationTraining?.overallScore ?? 0}% training readiness</h2>
+            <p>Track every RMVI workstation through sign-in, ChurchMail, reports, evidence upload, approvals, offline mode, and account settings before live rollout.</p>
+          </div>
+          <div className="station-training-command">
+            <strong>{stationTraining?.status ?? "Loading"}</strong>
+            <small>{stationTraining?.nextActions[0] ?? "Load station training status and prepare the first rollout class."}</small>
+          </div>
+        </div>
+        <div className="station-training-toolbar">
+          <div>
+            <span>Rollout coverage</span>
+            <strong>{stationTraining ? `${stationTraining.trained} trained, ${stationTraining.scheduled} scheduled, ${stationTraining.pending} pending` : "Loading station records"}</strong>
+          </div>
+          <div className="handoff-button-pair">
+            <button onClick={refreshStationTraining}><RefreshCw size={15} /> Refresh</button>
+            <button onClick={archiveStationTrainingPacket}><ArchiveIcon size={15} /> Archive packet</button>
+          </div>
+        </div>
+        {trainingNotice && <div className="handoff-archive-notice task-notice">{trainingNotice}</div>}
+        <div className="station-training-summary">
+          <Insight label="Stations" value={String(stationTraining?.total ?? 0)} />
+          <Insight label="Trained" value={String(stationTraining?.trained ?? 0)} />
+          <Insight label="Scheduled" value={String(stationTraining?.scheduled ?? 0)} />
+          <Insight label="Pending" value={String(stationTraining?.pending ?? 0)} />
+          <Insight label="Blocked" value={String(stationTraining?.blocked ?? 0)} />
+          <Insight label="Checklist" value={`${stationTraining?.checklist.length ?? 8} steps`} />
+        </div>
+        <div className="station-training-grid">
+          {(stationTraining?.records ?? []).map((record) => (
+            <article className={`station-training-card ${record.status.toLowerCase().replace(/\s+/g, "-")}`} key={record.email}>
+              <div className="station-training-card-head">
+                <span>{record.status}</span>
+                <strong>{record.score}%</strong>
+              </div>
+              <h3>{record.title}</h3>
+              <p>{record.email}</p>
+              <small>{record.level} / {record.authority}</small>
+              <div className="station-training-progress" style={{ "--training-progress": `${record.score}%` } as React.CSSProperties}>
+                <span />
+              </div>
+              <div className="station-training-checks">
+                {record.checklist.slice(0, 4).map((item) => (
+                  <span className={record.completed.includes(item) ? "done" : "todo"} key={item}>
+                    {record.completed.includes(item) ? <CheckCircle2 size={13} /> : <CircleDot size={13} />}
+                    {item}
+                  </span>
+                ))}
+              </div>
+              <div className="station-training-meta">
+                <small>{record.completed.length}/{record.checklist.length} complete</small>
+                <small>{record.scheduledFor ? `Training ${record.scheduledFor}` : "No training date"}</small>
+              </div>
+              <div className="compact-actions">
+                <button onClick={() => markStationTraining(record.email)}><CheckCircle2 size={14} /> Mark trained</button>
+                <button onClick={() => scheduleStationTraining(record.email)}><CalendarDays size={14} /> Schedule</button>
+              </div>
+            </article>
+          ))}
+          {!stationTraining && <div className="empty-state">Loading station training rollout board.</div>}
         </div>
       </div>
       <div className="panel module-primary">

@@ -107,6 +107,10 @@ const routes = {
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
+  "GET /api/rollout/station-training": async () => ok(await stationTrainingRollout()),
+  "POST /api/rollout/station-training/:email/mark": ({ params, body, session }) => ok(markStationTraining(params.email, body, session.email)),
+  "POST /api/rollout/station-training/:email/schedule": ({ params, body, session }) => ok(scheduleStationTraining(params.email, body, session.email)),
+  "POST /api/rollout/station-training/archive": async ({ body, session }) => createdResponse(await archiveStationTrainingPacket(body, session.email)),
   "GET /api/live-comms": () => ok(liveCommsReport()),
   "GET /api/production/secrets-plan": () => ok(productionSecretsPlan()),
   "GET /api/launch/readiness": async () => ok(await launchReadiness()),
@@ -1352,6 +1356,118 @@ async function rolloutReadinessReport() {
       ...tracks.flatMap((track) => track.nextActions)
     ].slice(0, 8)
   };
+}
+
+const STATION_TRAINING_CHECKLIST = [
+  "Sign in with station email",
+  "Read ChurchMail inbox",
+  "Send ChurchMail message",
+  "Select and submit report",
+  "Attach evidence file",
+  "Route approval request",
+  "Use offline mode",
+  "Reset password and renew session"
+];
+
+function stationTrainingRollout() {
+  state.rolloutTraining ??= {};
+  const records = state.stations.map((station) => {
+    const saved = state.rolloutTraining[station.email] ?? {};
+    const completed = Array.from(new Set(saved.completed ?? []));
+    const score = Math.round((completed.length / STATION_TRAINING_CHECKLIST.length) * 100);
+    const status = score === 100
+      ? "Trained"
+      : saved.scheduledFor
+        ? "Scheduled"
+        : saved.status ?? "Pending";
+    return {
+      email: station.email,
+      title: station.title,
+      level: station.level,
+      authority: station.authority,
+      status,
+      score,
+      completed,
+      checklist: STATION_TRAINING_CHECKLIST,
+      scheduledFor: saved.scheduledFor ?? null,
+      trainer: saved.trainer ?? null,
+      notes: saved.notes ?? [],
+      updatedAt: saved.updatedAt ?? null,
+      updatedBy: saved.updatedBy ?? null
+    };
+  });
+  const trained = records.filter((recordItem) => recordItem.score === 100).length;
+  const scheduled = records.filter((recordItem) => recordItem.status === "Scheduled").length;
+  const blocked = records.filter((recordItem) => recordItem.status === "Blocked").length;
+  const overallScore = records.length ? Math.round(records.reduce((sum, recordItem) => sum + recordItem.score, 0) / records.length) : 0;
+  return {
+    generatedAt: new Date().toISOString(),
+    status: overallScore === 100 ? "training-complete" : scheduled || trained ? "rollout-training-active" : "training-needed",
+    overallScore,
+    total: records.length,
+    trained,
+    scheduled,
+    blocked,
+    pending: records.length - trained - scheduled - blocked,
+    checklist: STATION_TRAINING_CHECKLIST,
+    records,
+    nextActions: records.filter((recordItem) => recordItem.score < 100).slice(0, 4).map((recordItem) => `Train ${recordItem.title}`)
+  };
+}
+
+function markStationTraining(email, body, actor) {
+  requirePermission(actor, "canApprove");
+  const normalized = normalizeStationEmail(decodeURIComponent(String(email ?? "")));
+  const station = state.stations.find((item) => item.email === normalized);
+  if (!station) throw new HttpError(404, "Station not found");
+  state.rolloutTraining ??= {};
+  const recordItem = state.rolloutTraining[normalized] ?? {};
+  const items = body.items?.length ? body.items : STATION_TRAINING_CHECKLIST;
+  recordItem.completed = Array.from(new Set([...(recordItem.completed ?? []), ...items.filter((item) => STATION_TRAINING_CHECKLIST.includes(item))]));
+  recordItem.status = recordItem.completed.length === STATION_TRAINING_CHECKLIST.length ? "Trained" : "In Training";
+  recordItem.updatedAt = new Date().toISOString();
+  recordItem.updatedBy = actor;
+  recordItem.notes = [...(recordItem.notes ?? []), body.note ?? `${recordItem.completed.length}/${STATION_TRAINING_CHECKLIST.length} training items completed`];
+  state.rolloutTraining[normalized] = recordItem;
+  record("StationTrainingMarked", actor, station.title, recordItem.status);
+  return { station: normalized, training: recordItem, rollout: stationTrainingRollout() };
+}
+
+function scheduleStationTraining(email, body, actor) {
+  requirePermission(actor, "canApprove");
+  const normalized = normalizeStationEmail(decodeURIComponent(String(email ?? "")));
+  const station = state.stations.find((item) => item.email === normalized);
+  if (!station) throw new HttpError(404, "Station not found");
+  state.rolloutTraining ??= {};
+  const recordItem = state.rolloutTraining[normalized] ?? {};
+  recordItem.status = "Scheduled";
+  recordItem.scheduledFor = body.scheduledFor ?? new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  recordItem.trainer = body.trainer ?? actor;
+  recordItem.updatedAt = new Date().toISOString();
+  recordItem.updatedBy = actor;
+  recordItem.notes = [...(recordItem.notes ?? []), body.note ?? `Training scheduled for ${recordItem.scheduledFor}`];
+  state.rolloutTraining[normalized] = recordItem;
+  record("StationTrainingScheduled", actor, station.title, recordItem.scheduledFor);
+  return { station: normalized, training: recordItem, rollout: stationTrainingRollout() };
+}
+
+async function archiveStationTrainingPacket(body, actor) {
+  requirePermission(actor, "canApprove");
+  const packet = await stationTrainingRollout();
+  const document = documentRecord(`RMVI GCOS station training packet ${new Date().toISOString().slice(0, 10)}.json`, "Station training packet", "Rollout", actor, "JSON", "Archived");
+  document.verified = packet.overallScore >= 80;
+  document.verificationNote = body.reason ?? `${packet.trained}/${packet.total} stations trained, ${packet.scheduled} scheduled`;
+  document.extractedText = [
+    `Training status: ${packet.status}`,
+    `Overall score: ${packet.overallScore}%`,
+    `Trained: ${packet.trained}/${packet.total}`,
+    `Scheduled: ${packet.scheduled}`,
+    `Next actions: ${packet.nextActions.join("; ")}`
+  ].join("\n");
+  document.extractedAt = new Date().toISOString();
+  state.documents.unshift(document);
+  record("StationTrainingPacketArchived", actor, document.name, `${packet.overallScore}% rollout training`);
+  return { document, packet };
 }
 
 function rolloutTrack(id, name, gates) {
