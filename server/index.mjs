@@ -647,8 +647,8 @@ function publicBuildInfo() {
     name: BUILD_INFO.name ?? "Remedy Movement International GCOS",
     version: BUILD_INFO.version ?? "0.1.0",
     generatedAt: BUILD_INFO.generatedAt ?? STARTED_AT.toISOString(),
-    gitCommit: BUILD_INFO.gitCommit ?? "unknown",
-    gitBranch: BUILD_INFO.gitBranch ?? "unknown",
+    gitCommit: process.env.GCOS_BUILD_COMMIT || BUILD_INFO.gitCommit || "unknown",
+    gitBranch: process.env.GCOS_BUILD_BRANCH || BUILD_INFO.gitBranch || "unknown",
     deploymentTarget: BUILD_INFO.deploymentTarget ?? DEPLOYMENT_TARGET ?? "unknown"
   };
 }
