@@ -372,6 +372,17 @@ type ProductionSecretsPlan = {
   }[];
   nextActions: string[];
 };
+type IntegrationReadiness = {
+  generatedAt: string;
+  status: string;
+  ready: number;
+  total: number;
+  nextActions: string[];
+  auth: { provider: string; firebaseConfigured: boolean; passwordSignIn: boolean; provisioning: boolean; localFallback: boolean };
+  email: { provider: string; from: string; replyTo: string; ready: boolean; deliveryMode: string; domain: string; missing: string[] };
+  video: { provider: string; ready: boolean; realtime: string };
+  checks: { name: string; ok: boolean; detail: string }[];
+};
 type OperationalMonitor = {
   generatedAt: string;
   status: string;
@@ -15853,6 +15864,8 @@ function Audit({
   const [launchReadiness, setLaunchReadiness] = React.useState<LaunchReadiness | null>(null);
   const [deploymentPlan, setDeploymentPlan] = React.useState<DeploymentPlan | null>(null);
   const [productionSecretsPlan, setProductionSecretsPlan] = React.useState<ProductionSecretsPlan | null>(null);
+  const [integrationReadiness, setIntegrationReadiness] = React.useState<IntegrationReadiness | null>(null);
+  const [emailTestResult, setEmailTestResult] = React.useState<string>("");
   const [operationalMonitor, setOperationalMonitor] = React.useState<OperationalMonitor | null>(null);
   const [launchSignoff, setLaunchSignoff] = React.useState<LaunchSignoff | null>(null);
   const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
@@ -15907,6 +15920,7 @@ function Audit({
     void apiRequest<LaunchReadiness>("/api/launch/readiness").then(setLaunchReadiness).catch(() => undefined);
     void apiRequest<DeploymentPlan>("/api/launch/deployment-plan").then(setDeploymentPlan).catch(() => undefined);
     void apiRequest<ProductionSecretsPlan>("/api/production/secrets-plan").then(setProductionSecretsPlan).catch(() => undefined);
+    void apiRequest<IntegrationReadiness>("/api/integrations/readiness").then(setIntegrationReadiness).catch(() => undefined);
     void apiRequest<LaunchSignoff>("/api/launch/signoff").then(setLaunchSignoff).catch(() => undefined);
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
     void apiRequest<EnterpriseCompletion>("/api/enterprise/completion").then(setEnterpriseCompletion).catch(() => undefined);
@@ -16111,6 +16125,25 @@ function Audit({
 
   function refreshProductionSecretsPlan() {
     void apiRequest<ProductionSecretsPlan>("/api/production/secrets-plan").then(setProductionSecretsPlan).catch(() => undefined);
+  }
+
+  function refreshIntegrationReadiness() {
+    void apiRequest<IntegrationReadiness>("/api/integrations/readiness").then(setIntegrationReadiness).catch(() => undefined);
+  }
+
+  function sendEmailProviderTest() {
+    const to = window.prompt("Send ChurchMail test to", session.email);
+    if (!to) return;
+    setEmailTestResult("Sending ChurchMail provider test...");
+    void apiRequest<{ ok: boolean; provider: string; mode?: string; messageId?: string; subject?: string }>("/api/integrations/email/test", {
+      method: "POST",
+      body: JSON.stringify({ to })
+    }).then((result) => {
+      setEmailTestResult(result.ok ? `${result.provider} test sent${result.messageId ? ` (${result.messageId})` : ""}` : `${result.provider} test not sent: ${result.mode ?? "provider not ready"}`);
+      refreshIntegrationReadiness();
+    }).catch((error) => {
+      setEmailTestResult(error instanceof Error ? error.message : "Email provider test failed");
+    });
   }
 
   function recordDeploymentPlan() {
@@ -17125,6 +17158,47 @@ function Audit({
               {!entry.configured && <small>{entry.nextAction}</small>}
             </article>
           ))}
+        </div>
+      </div>
+      <div className="panel module-side service-connection-board">
+        <PanelHeader icon={RadioTower} title="Service Connections" action={integrationReadiness ? `${integrationReadiness.ready}/${integrationReadiness.total} ready` : "checking"} />
+        <div className="action-row">
+          <button onClick={refreshIntegrationReadiness}><RefreshCw size={15} /> Refresh</button>
+          <button onClick={sendEmailProviderTest}><Mail size={15} /> Test ChurchMail</button>
+        </div>
+        <div className="office-summary-grid">
+          <Insight label="Status" value={integrationReadiness?.status ?? "Checking"} />
+          <Insight label="Auth" value={integrationReadiness?.auth.passwordSignIn ? "Firebase live" : "Needs setup"} />
+          <Insight label="Fallback" value={integrationReadiness?.auth.localFallback ? "On" : "Off"} />
+          <Insight label="Email" value={integrationReadiness?.email.ready && integrationReadiness.email.provider !== "log" ? "Live" : "Setup needed"} />
+          <Insight label="Sender" value={integrationReadiness?.email.from ?? "churchmail@rmvi.org"} />
+          <Insight label="Video" value={integrationReadiness?.video.provider ?? "jitsi"} />
+        </div>
+        {emailTestResult && (
+          <div className={emailTestResult.toLowerCase().includes("sent") ? "login-notice" : "login-error"}>{emailTestResult}</div>
+        )}
+        <div className="source-map-list">
+          {(integrationReadiness?.checks ?? []).map((check) => (
+            <article className={check.ok ? "source-map-item compact-check ready" : "source-map-item compact-check hold"} key={check.name}>
+              <span>{check.ok ? "Ready" : "Needed"}</span>
+              <strong>{check.name}</strong>
+              <small>{check.detail}</small>
+            </article>
+          ))}
+          {!integrationReadiness && <div className="empty-state">Checking Firebase Auth, ChurchMail email, video, database, and storage connections.</div>}
+        </div>
+        <div className="source-map-list">
+          <article className="source-map-item">
+            <span>ChurchMail email</span>
+            <strong>{integrationReadiness?.email.deliveryMode ?? "provider pending"}</strong>
+            <small>{integrationReadiness?.email.ready ? `Ready from ${integrationReadiness.email.from}` : "Add GCOS_RESEND_API_KEY after verifying rmvi.org in Resend."}</small>
+            {integrationReadiness?.email.missing?.map((name) => <small key={name}>Missing: {name}</small>)}
+          </article>
+          <article className="source-map-item">
+            <span>Final connection order</span>
+            <strong>{integrationReadiness?.nextActions[0] ?? "All core providers are connected except live email if Resend is missing."}</strong>
+            <small>After Resend is connected, send a ChurchMail test, rerun launch verification, then record the restore drill.</small>
+          </article>
         </div>
       </div>
       <div className="panel module-side">

@@ -4732,6 +4732,27 @@ h1 {
   border-left: 3px solid #d6a72f;
 }
 
+.source-map-item.compact-check.ready {
+  border-left-color: #1d7a4d;
+  background: #f4fbf7;
+}
+
+.source-map-item.compact-check.hold {
+  border-left-color: #b45309;
+  background: #fff8eb;
+}
+
+.service-connection-board {
+  border-color: rgba(14, 61, 139, 0.16);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 248, 255, 0.98));
+}
+
+.service-connection-board .login-notice,
+.service-connection-board .login-error {
+  margin: 2px 0 8px;
+}
+
 .compact-actions {
   margin-top: 4px;
 }

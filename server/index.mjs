@@ -680,6 +680,7 @@ function integrationReadiness() {
     status: checks.every((check) => check.ok) ? "connected" : "needs-configuration",
     ready: checks.filter((check) => check.ok).length,
     total: checks.length,
+    nextActions: checks.filter((check) => !check.ok).map((check) => check.detail),
     auth,
     email,
     video,

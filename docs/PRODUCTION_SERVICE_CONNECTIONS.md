@@ -12,9 +12,10 @@ Required environment:
 GCOS_AUTH_PROVIDER=firebase
 GCOS_FIREBASE_PROJECT_ID=rmvi-gcos
 GCOS_FIREBASE_WEB_API_KEY=...
+GCOS_AUTH_FALLBACK_LOCAL=0
 ```
 
-When an administrator creates or activates a station, GCOS provisions the Firebase Auth user, enables the account, and syncs password resets. If the web API key is present, station sign-in is verified through Firebase password sign-in before falling back to the local emergency credential registry.
+When an administrator creates or activates a station, GCOS provisions the Firebase Auth user, enables the account, and syncs password resets. In production, keep `GCOS_AUTH_FALLBACK_LOCAL=0` so station sign-in must pass Firebase password sign-in.
 
 ## Permanent Database And Storage
 
@@ -83,9 +84,10 @@ Admin approval now performs the production activation sequence:
 Use these endpoints after setting production secrets:
 
 ```bash
-GET /api/integrations/status
+GET /api/integrations/readiness
 GET /api/production/secrets-plan
 GET /api/launch/readiness
+POST /api/integrations/email/test
 POST /api/files/object-smoke
 POST /api/persistence/database-smoke
 ```

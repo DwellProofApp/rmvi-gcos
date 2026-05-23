@@ -82,8 +82,11 @@ export function createEmailProvider() {
       return {
         provider,
         from,
+        replyTo,
         ready: provider === "log" || (provider === "sendgrid" && Boolean(sendgridKey)) || (provider === "resend" && Boolean(resendKey)),
-        domain: from.split("@")[1] ?? "rmvi.org"
+        deliveryMode: provider === "log" ? "internal-log" : provider === "sendgrid" ? "sendgrid-api" : provider === "resend" ? "resend-api" : "unknown",
+        domain: from.split("@")[1] ?? "rmvi.org",
+        missing: provider === "resend" && !resendKey ? ["GCOS_RESEND_API_KEY"] : provider === "sendgrid" && !sendgridKey ? ["GCOS_SENDGRID_API_KEY"] : []
       };
     },
     async deliverChurchMail(message, fallbackRecipients = []) {
