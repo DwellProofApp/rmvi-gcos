@@ -96,16 +96,19 @@ export function createEmailProvider() {
         `Classification: ${message.kind}`,
         `Subject: ${message.subject}`,
         `From: ${message.from}`,
+        message.to ? `To: ${message.to}` : "",
         `Status: ${message.status}`,
         `Attachments: ${message.files ?? "No attachments"}`,
         "",
+        message.body ?? "",
+        "",
         "This message was generated from the official GCOS governance record."
-      ].join("\n");
+      ].filter((line) => line !== "").join("\n");
       return send({
         to,
         subject: `[GCOS ${message.kind}] ${message.subject}`,
         text,
-        html: `<p><strong>RMVI GCOS ChurchMail</strong></p><p>${escapeHtml(message.subject)}</p><p>Status: ${escapeHtml(message.status)}</p>`
+        html: `<p><strong>RMVI GCOS ChurchMail</strong></p><p>${escapeHtml(message.subject)}</p><p>${escapeHtml(message.body ?? "")}</p><p>Status: ${escapeHtml(message.status)}</p>`
       });
     },
     async sendAccountActivated({ station, password, actor }) {

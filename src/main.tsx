@@ -87,7 +87,7 @@ type PermissionPreset = "Reporter" | "Department Lead" | "Approver" | "Office Ad
 type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string; nodeKind?: OrgNodeKind; parentId?: string; parentName?: string; permissionPreset?: PermissionPreset; reportingRoute?: string; workflowAccess?: string[] };
 type StationAuth = { email: string; status: string; failedAttempts: number; lockedUntil?: string; mfaRequired?: boolean; forceReset?: boolean; updatedAt?: string; updatedBy?: string; lastLoginAt?: string; lastFailedAt?: string };
 type StationAuthDigest = { generatedAt: string; total: number; locked: number; mfaRequired: number; resetRequired: number; failedAttempts: number; nextCredential: string };
-type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[]; recipients?: string[]; body?: string; linkedLiveSession?: string; linkedReport?: string };
+type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; to?: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[]; recipients?: string[]; body?: string; linkedLiveSession?: string; linkedReport?: string; delivery?: { provider?: string; status?: string; mode?: string; messageId?: string; recipients?: string[]; updatedAt?: string; error?: string } };
 type Report = {
   id: string;
   name: string;
@@ -6901,7 +6901,9 @@ function App() {
       id: `msg-${Date.now()}`,
       kind: message.kind,
       subject: message.subject,
-      from: `${activeStation.email} -> ${message.to}`,
+      from: activeStation.email,
+      to: message.to,
+      route: message.to,
       age: "now",
       status,
       files: message.files || "No attachments",
@@ -23976,7 +23978,6 @@ function AdminV2Mail({
   onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
   onQuickAction: (action: string) => void;
 }) {
-  const selected = messages[0];
   const [composerOpen, setComposerOpen] = React.useState(false);
   const [composeKind, setComposeKind] = React.useState<MessageKind>("Directive");
   const [composeAudience, setComposeAudience] = React.useState("all");
@@ -23986,6 +23987,8 @@ function AdminV2Mail({
   const [composeBody, setComposeBody] = React.useState("Please review this directive and acknowledge receipt through ChurchMail.");
   const [composeFiles, setComposeFiles] = React.useState("No attachments");
   const [composeFeedback, setComposeFeedback] = React.useState("");
+  const [activeMailbox, setActiveMailbox] = React.useState("inbox");
+  const [selectedMessageId, setSelectedMessageId] = React.useState(messages[0]?.id ?? "");
   const audienceOptions = [
     { value: "all", label: "Everyone on GCOS", recipients: stationDirectory.map((item) => item.email), route: "All Active GCOS Accounts" },
     { value: "national-regional", label: "National and Regional offices", recipients: stationDirectory.filter((item) => /national|regional|international/i.test(String(item.level))).map((item) => item.email), route: "All National and Regional Offices" },
@@ -23993,6 +23996,40 @@ function AdminV2Mail({
     { value: "designated", label: "Designated office", recipients: [composeOffice].filter(Boolean), route: stationDirectory.find((item) => item.email === composeOffice)?.title ?? "Designated Office" }
   ];
   const selectedAudience = audienceOptions.find((item) => item.value === composeAudience) ?? audienceOptions[0];
+  const stationEmail = normalizeStationEmail(station.email);
+  const isSentByStation = (message: Message) => normalizeStationEmail(message.from) === stationEmail;
+  const isRecipientForStation = (message: Message) => {
+    const recipients = (message.recipients ?? message.delivery?.recipients ?? []).map(normalizeStationEmail);
+    return recipients.includes(stationEmail)
+      || /all active gcos accounts|everyone on gcos|all national and regional offices|resident pastor offices/i.test(String(message.to ?? message.route ?? ""));
+  };
+  const inboxMessages = messages.filter((message) => !message.archived && !isSentByStation(message) && (isRecipientForStation(message) || !message.recipients?.length));
+  const sentMessages = messages.filter((message) => !message.archived && isSentByStation(message));
+  const visibleMessages = messages.filter((message) => {
+    if (activeMailbox === "sent") return isSentByStation(message);
+    if (activeMailbox === "directives") return !message.archived && message.kind === "Directive";
+    if (activeMailbox === "approvals") return !message.archived && message.kind === "Approval";
+    if (activeMailbox === "transfers") return !message.archived && message.kind === "Transfer";
+    if (activeMailbox === "escalated") return !message.archived && message.status === "Escalated";
+    if (activeMailbox === "archive") return Boolean(message.archived);
+    return inboxMessages.includes(message);
+  });
+  const selected = visibleMessages.find((message) => message.id === selectedMessageId) ?? visibleMessages[0] ?? messages[0];
+  const mailboxItems = [
+    { id: "inbox", label: "Inbox", count: inboxMessages.length },
+    { id: "sent", label: "Sent", count: sentMessages.length },
+    { id: "directives", label: "Directives", count: messages.filter((item) => !item.archived && item.kind === "Directive").length },
+    { id: "approvals", label: "Approvals", count: messages.filter((item) => !item.archived && item.kind === "Approval").length },
+    { id: "transfers", label: "Transfers", count: messages.filter((item) => !item.archived && item.kind === "Transfer").length },
+    { id: "escalated", label: "Escalated", count: messages.filter((item) => !item.archived && item.status === "Escalated").length },
+    { id: "archive", label: "Archive", count: messages.filter((item) => item.archived).length }
+  ];
+
+  React.useEffect(() => {
+    if (visibleMessages.length && !visibleMessages.some((message) => message.id === selectedMessageId)) {
+      setSelectedMessageId(visibleMessages[0].id);
+    }
+  }, [selectedMessageId, visibleMessages]);
 
   function sendComposedMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -24007,6 +24044,7 @@ function AdminV2Mail({
       recipients
     });
     setComposeFeedback(`Message sent to ${recipients.length || selectedAudience.recipients.length} recipient${(recipients.length || selectedAudience.recipients.length) === 1 ? "" : "s"}.`);
+    setActiveMailbox("sent");
     setComposerOpen(false);
   }
 
@@ -24019,8 +24057,8 @@ function AdminV2Mail({
           <p>Read official directives, reports, approvals, transfers, and archive-ready communication without exposing raw system noise.</p>
         </div>
         <div className="admin-v2-stat-strip">
-          <article><strong>{messages.length}</strong><span>Messages</span></article>
-          <article><strong>{messages.filter((item) => item.kind === "Directive").length}</strong><span>Directives</span></article>
+          <article><strong>{inboxMessages.length}</strong><span>Inbox</span></article>
+          <article><strong>{sentMessages.length}</strong><span>Sent</span></article>
           <article><strong>{messages.filter((item) => item.status === "Escalated").length}</strong><span>Escalated</span></article>
           <article><strong>{stationDirectory.length}</strong><span>Recipients</span></article>
         </div>
@@ -24093,32 +24131,43 @@ function AdminV2Mail({
       {composeFeedback && <div className="admin-v2-compose-feedback">{composeFeedback}</div>}
       <div className="admin-v2-three">
       <section className="admin-v2-panel">
-        <div className="admin-v2-panel-head"><span>Mailboxes</span><strong>{messages.length} messages</strong></div>
+        <div className="admin-v2-panel-head"><span>Mailboxes</span><strong>{messages.length} records</strong></div>
         <div className="admin-v2-mini-list">
-          <span>Inbox {messages.length}</span>
-          <span>Directives {messages.filter((item) => item.kind === "Directive").length}</span>
-          <span>Approvals {messages.filter((item) => item.kind === "Approval").length}</span>
-          <span>Transfers {messages.filter((item) => item.kind === "Transfer").length}</span>
+          {mailboxItems.map((item) => (
+            <button className={activeMailbox === item.id ? "active" : ""} key={item.id} type="button" onClick={() => setActiveMailbox(item.id)}>
+              <span>{item.label}</span>
+              <strong>{item.count}</strong>
+            </button>
+          ))}
         </div>
       </section>
       <section className="admin-v2-panel wide">
-        <div className="admin-v2-panel-head"><span>Message Queue</span><strong>Secure route active</strong></div>
+        <div className="admin-v2-panel-head"><span>Message Queue</span><strong>{mailboxItems.find((item) => item.id === activeMailbox)?.label ?? "Inbox"}</strong></div>
         <div className="admin-v2-table">
-          {messages.map((message) => (
-            <article key={message.id}>
+          {visibleMessages.map((message) => (
+            <article className={selected?.id === message.id ? "selected" : ""} key={message.id} role="button" tabIndex={0} onClick={() => setSelectedMessageId(message.id)} onKeyDown={(event) => event.key === "Enter" && setSelectedMessageId(message.id)}>
               <div className="admin-v2-record-main">
                 <strong>{message.subject}</strong>
-                <span>{message.from}</span>
+                <span>{message.from}{message.to ? ` -> ${message.to}` : ""}</span>
               </div>
-              <small>{message.kind}</small>
+              <small>{message.kind} / {(message.delivery?.status ?? message.status)} / {(message.recipients ?? []).length || "station"} recipient{((message.recipients ?? []).length === 1) ? "" : "s"}</small>
               <span className={`admin-v2-status ${message.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{message.status}</span>
             </article>
           ))}
+          {visibleMessages.length === 0 && <div className="admin-v2-empty-state">No messages in this mailbox yet.</div>}
         </div>
       </section>
       <section className="admin-v2-panel">
         <div className="admin-v2-panel-head"><span>Inspector</span><strong>{selected?.kind ?? "Message"}</strong></div>
-        {selected && <div className="admin-v2-detail"><span className={`admin-v2-status ${selected.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selected.status}</span><h2>{selected.subject}</h2><p>{selected.body ?? selected.files}</p><span>{selected.route ?? "Governance communication"}</span></div>}
+        {selected && <div className="admin-v2-detail">
+          <span className={`admin-v2-status ${selected.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selected.delivery?.status ?? selected.status}</span>
+          <h2>{selected.subject}</h2>
+          <p>{selected.body ?? selected.files}</p>
+          <span>From: {selected.from}</span>
+          <span>To: {selected.to ?? selected.route ?? "Governance communication"}</span>
+          <span>Recipients: {(selected.recipients ?? selected.delivery?.recipients ?? []).join(", ") || "Station route"}</span>
+          <span>Delivery: {selected.delivery?.provider ? `${selected.delivery.provider} / ${selected.delivery.status}` : "Internal GCOS record"}</span>
+        </div>}
       </section>
       </div>
     </div>
