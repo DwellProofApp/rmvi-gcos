@@ -55,6 +55,7 @@ import {
   Users,
   Video,
   Workflow,
+  XCircle,
   Zap
 } from "lucide-react";
 import "./styles.css";
@@ -18438,6 +18439,90 @@ function AdminBoard({
     { icon: Signature, label: "Transfer queue", value: `${pendingTransfers} pending`, detail: "Identity moves are kept as a utility queue, not permanent navigation." },
     { icon: AlertTriangle, label: "Unresolved issues", value: `${openEscalations + openTasks}`, detail: "Escalations and blocked tasks require command review." }
   ];
+  const [onboardingTraining, setOnboardingTraining] = React.useState<StationTrainingRollout | null>(null);
+  const [onboardingNotice, setOnboardingNotice] = React.useState("");
+  const onboardingRecords = onboardingTraining?.records ?? officialStations.map((station) => ({
+    email: station.email,
+    title: station.title,
+    level: station.level,
+    authority: station.authority,
+    status: station.status ?? "Ready",
+    score: station.verified ? 35 : 15,
+    completed: station.verified ? ["Sign in"] : [],
+    checklist: ["Sign in", "ChurchMail", "Reports", "Evidence upload", "Approvals", "Archive", "Offline mode", "Account settings"],
+    scheduledFor: null,
+    trainer: null,
+    notes: [],
+    updatedAt: null,
+    updatedBy: null
+  }));
+  const firstWaveReady = onboardingTraining?.trained ?? onboardingRecords.filter((record) => record.score >= 100).length;
+  const firstWaveScheduled = onboardingTraining?.scheduled ?? onboardingRecords.filter((record) => record.scheduledFor).length;
+  const firstWavePending = onboardingTraining?.pending ?? Math.max(0, onboardingRecords.length - firstWaveReady);
+
+  React.useEffect(() => {
+    void apiRequest<StationTrainingRollout>("/api/rollout/station-training").then(setOnboardingTraining).catch(() => undefined);
+  }, []);
+
+  function refreshOnboardingTraining() {
+    void apiRequest<StationTrainingRollout>("/api/rollout/station-training").then(setOnboardingTraining).catch(() => undefined);
+  }
+
+  function markOnboardingTrained(email: string) {
+    const note = window.prompt("Training note", "Station completed first-use training and can operate GCOS.");
+    if (note === null) return;
+    void apiRequest<{ rollout: StationTrainingRollout }>("/api/rollout/station-training/" + encodeURIComponent(email) + "/mark", {
+      method: "POST",
+      body: JSON.stringify({ note })
+    }).then((result) => {
+      setOnboardingTraining(result.rollout);
+      setOnboardingNotice(`${email} marked trained.`);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function scheduleOnboardingTraining(email: string) {
+    const scheduledFor = window.prompt("Training date", new Date(Date.now() + 86400000).toISOString().slice(0, 10));
+    if (!scheduledFor) return;
+    const trainer = window.prompt("Trainer email", session.email);
+    if (!trainer) return;
+    void apiRequest<{ rollout: StationTrainingRollout }>("/api/rollout/station-training/" + encodeURIComponent(email) + "/schedule", {
+      method: "POST",
+      body: JSON.stringify({ scheduledFor, trainer, note: "Station training scheduled from Admin Board onboarding wizard." })
+    }).then((result) => {
+      setOnboardingTraining(result.rollout);
+      setOnboardingNotice(`${email} training scheduled for ${scheduledFor}.`);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function prepareOnboardingFirstWave() {
+    const confirmed = window.confirm("Prepare first-wave onboarding now? This creates station guides, training records, and readiness evidence for first-wave offices.");
+    if (!confirmed) return;
+    void apiRequest<FirstWaveRolloutPreparation>("/api/rollout/first-wave/prepare", {
+      method: "POST",
+      body: JSON.stringify({
+        certifyCompleted: false,
+        trainer: session.email,
+        note: "First-wave onboarding prepared from the Admin Board."
+      })
+    }).then((result) => {
+      setOnboardingTraining(result.training);
+      setOnboardingNotice(`First-wave onboarding prepared for ${result.stations.length} stations.`);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function archiveOnboardingPacket() {
+    void apiRequest<{ packet: StationTrainingRollout; document: DocumentRecord }>("/api/rollout/station-training/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "First-wave onboarding readiness packet from Admin Board" })
+    }).then((result) => {
+      setOnboardingTraining(result.packet);
+      setOnboardingNotice(`Onboarding packet archived as ${result.document.name}.`);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
 
   return (
     <section className="command-admin" aria-label="RMVI GCOS global command board">
@@ -18559,6 +18644,97 @@ function AdminBoard({
               )}
             </div>
           </aside>
+        </section>
+
+        <section className="command-layer command-onboarding" aria-label="First-wave onboarding wizard">
+          <div className="command-layer-title">
+            <span>Launch workflow</span>
+            <h2>First-Wave Onboarding Wizard</h2>
+          </div>
+          <div className="onboarding-command-grid">
+            <article className="onboarding-command-card main">
+              <div>
+                <span>Account approval path</span>
+                <strong>{pendingAccounts.filter((office) => office.status === "Pending Approval").length} pending request{pendingAccounts.filter((office) => office.status === "Pending Approval").length === 1 ? "" : "s"}</strong>
+                <small>New offices request access first. Admin approval activates the workstation and unlocks sign-in.</small>
+              </div>
+              <div className="onboarding-actions">
+                <button onClick={() => onOpenSection("Offices")}><Building2 size={15} /> Open requests</button>
+                <button onClick={prepareOnboardingFirstWave}><Rocket size={15} /> Prepare first wave</button>
+              </div>
+            </article>
+            <article className="onboarding-command-card">
+              <span>Training readiness</span>
+              <strong>{onboardingTraining?.overallScore ?? 0}%</strong>
+              <small>{firstWaveReady}/{onboardingRecords.length} stations trained</small>
+            </article>
+            <article className="onboarding-command-card">
+              <span>Scheduled sessions</span>
+              <strong>{firstWaveScheduled}</strong>
+              <small>{firstWavePending} station{firstWavePending === 1 ? "" : "s"} still pending</small>
+            </article>
+            <article className="onboarding-command-card">
+              <span>Launch evidence</span>
+              <strong>{onboardingTraining?.status ?? "checking"}</strong>
+              <small>{onboardingNotice || onboardingTraining?.nextActions?.[0] || "Prepare, train, archive packet."}</small>
+            </article>
+          </div>
+
+          <div className="onboarding-workspace">
+            <div className="onboarding-requests">
+              <div className="onboarding-section-head">
+                <strong>Pending Account Requests</strong>
+                <button onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Plus size={14} /> Manual office</button>
+              </div>
+              {pendingAccounts.length ? pendingAccounts.slice(0, 6).map((office) => (
+                <article key={office.id}>
+                  <div>
+                    <strong>{office.name}</strong>
+                    <span>{office.email} / {office.level}</span>
+                    <small>{office.department} to {office.parentName ?? office.supervisor}</small>
+                  </div>
+                  <div>
+                    <button disabled={office.status !== "Pending Approval"} onClick={() => onApproveOfficeAccount(office.id)}><CheckCircle2 size={14} /> Approve</button>
+                    <button disabled={office.status !== "Pending Approval"} onClick={() => onRejectOfficeAccount(office.id)}><XCircle size={14} /> Reject</button>
+                  </div>
+                </article>
+              )) : (
+                <article className="empty">
+                  <CheckCircle2 size={18} />
+                  <div>
+                    <strong>No pending requests</strong>
+                    <span>New station requests from the sign-up page will appear here.</span>
+                  </div>
+                </article>
+              )}
+            </div>
+
+            <div className="onboarding-training">
+              <div className="onboarding-section-head">
+                <strong>Station Training Tracker</strong>
+                <div>
+                  <button onClick={refreshOnboardingTraining}><RefreshCw size={14} /> Refresh</button>
+                  <button onClick={archiveOnboardingPacket}><ArchiveIcon size={14} /> Archive packet</button>
+                </div>
+              </div>
+              <div className="onboarding-training-list">
+                {onboardingRecords.slice(0, 8).map((record) => (
+                  <article key={record.email}>
+                    <div>
+                      <strong>{record.title}</strong>
+                      <span>{record.email}</span>
+                      <small>{record.completed.length}/{record.checklist.length} checklist steps / {record.scheduledFor ? `Scheduled ${record.scheduledFor}` : "Not scheduled"}</small>
+                    </div>
+                    <i><b style={{ width: `${Math.min(100, Math.max(0, record.score))}%` }} /></i>
+                    <div>
+                      <button onClick={() => scheduleOnboardingTraining(record.email)}><CalendarDays size={14} /> Schedule</button>
+                      <button onClick={() => markOnboardingTrained(record.email)}><CheckCircle2 size={14} /> Mark trained</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </div>
+          </div>
         </section>
 
         <section className="command-layer command-layer-infra" aria-label="Infrastructure">

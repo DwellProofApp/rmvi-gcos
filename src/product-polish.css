@@ -18,6 +18,240 @@
   --rmvi-shadow: 0 20px 54px rgba(8, 39, 92, 0.12);
 }
 
+/* First-wave onboarding wizard */
+.command-onboarding {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(247, 250, 255, 0.92)) !important;
+  border: 1px solid rgba(32, 54, 96, 0.1) !important;
+  border-radius: 22px !important;
+  box-shadow: 0 18px 50px rgba(22, 34, 58, 0.1) !important;
+  padding: 22px !important;
+  display: grid !important;
+  gap: 18px !important;
+}
+
+.onboarding-command-grid {
+  display: grid !important;
+  grid-template-columns: minmax(320px, 1.5fr) repeat(3, minmax(170px, 0.7fr)) !important;
+  gap: 14px !important;
+}
+
+.onboarding-command-card,
+.onboarding-requests,
+.onboarding-training {
+  background: #ffffff !important;
+  border: 1px solid rgba(33, 50, 82, 0.1) !important;
+  border-radius: 18px !important;
+  box-shadow: 0 12px 30px rgba(28, 41, 70, 0.08) !important;
+  color: #16223b !important;
+}
+
+.onboarding-command-card {
+  min-height: 132px !important;
+  padding: 18px !important;
+  display: flex !important;
+  flex-direction: column !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+}
+
+.onboarding-command-card.main {
+  background: linear-gradient(135deg, #10234a, #1f3f77) !important;
+  color: #ffffff !important;
+}
+
+.onboarding-command-card span,
+.onboarding-command-card small,
+.onboarding-command-card strong,
+.onboarding-requests span,
+.onboarding-requests small,
+.onboarding-requests strong,
+.onboarding-training span,
+.onboarding-training small,
+.onboarding-training strong {
+  color: inherit !important;
+}
+
+.onboarding-command-card > span,
+.onboarding-command-card div > span,
+.onboarding-section-head {
+  color: #5e6d87 !important;
+  font-size: 0.75rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+.onboarding-command-card.main div > span,
+.onboarding-command-card.main small {
+  color: rgba(255, 255, 255, 0.72) !important;
+}
+
+.onboarding-command-card strong {
+  color: #101a31 !important;
+  font-size: 1.45rem !important;
+  line-height: 1.15 !important;
+}
+
+.onboarding-command-card.main strong {
+  color: #ffffff !important;
+}
+
+.onboarding-command-card small {
+  color: #64728a !important;
+  line-height: 1.45 !important;
+}
+
+.onboarding-actions,
+.onboarding-section-head,
+.onboarding-requests article > div:last-child,
+.onboarding-training article > div:last-child,
+.onboarding-section-head > div {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  flex-wrap: wrap !important;
+}
+
+.onboarding-actions button,
+.onboarding-section-head button,
+.onboarding-requests button,
+.onboarding-training button {
+  border: 1px solid rgba(32, 54, 96, 0.14) !important;
+  border-radius: 12px !important;
+  background: #f7f9fd !important;
+  color: #17243d !important;
+  min-height: 36px !important;
+  padding: 0 12px !important;
+  font-weight: 800 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  gap: 7px !important;
+}
+
+.onboarding-command-card.main button,
+.onboarding-requests article button:first-child,
+.onboarding-training article button:last-child {
+  background: #d7a642 !important;
+  border-color: #d7a642 !important;
+  color: #101a31 !important;
+}
+
+.onboarding-actions button:hover,
+.onboarding-section-head button:hover,
+.onboarding-requests button:hover,
+.onboarding-training button:hover {
+  transform: translateY(-1px) !important;
+  box-shadow: 0 10px 22px rgba(25, 38, 64, 0.12) !important;
+}
+
+.onboarding-workspace {
+  display: grid !important;
+  grid-template-columns: minmax(300px, 0.9fr) minmax(460px, 1.35fr) !important;
+  gap: 16px !important;
+  align-items: start !important;
+}
+
+.onboarding-requests,
+.onboarding-training {
+  padding: 16px !important;
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.onboarding-section-head {
+  justify-content: space-between !important;
+  color: #1a2946 !important;
+  border-bottom: 1px solid rgba(32, 54, 96, 0.1) !important;
+  padding-bottom: 12px !important;
+}
+
+.onboarding-section-head strong {
+  color: #14213a !important;
+  font-size: 0.95rem !important;
+}
+
+.onboarding-requests article,
+.onboarding-training article {
+  border: 1px solid rgba(32, 54, 96, 0.09) !important;
+  border-radius: 15px !important;
+  background: linear-gradient(180deg, #ffffff, #f8fafc) !important;
+  padding: 14px !important;
+  display: grid !important;
+  gap: 12px !important;
+}
+
+.onboarding-requests article {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+}
+
+.onboarding-requests article.empty {
+  grid-template-columns: auto 1fr !important;
+  color: #66758c !important;
+}
+
+.onboarding-requests article strong,
+.onboarding-training article strong {
+  color: #111d33 !important;
+  font-size: 0.94rem !important;
+}
+
+.onboarding-requests article span,
+.onboarding-training article span {
+  display: block !important;
+  color: #52627c !important;
+  font-size: 0.83rem !important;
+  margin-top: 3px !important;
+}
+
+.onboarding-requests article small,
+.onboarding-training article small {
+  display: block !important;
+  color: #7a879c !important;
+  font-size: 0.78rem !important;
+  margin-top: 5px !important;
+}
+
+.onboarding-training-list {
+  display: grid !important;
+  gap: 12px !important;
+  max-height: 540px !important;
+  overflow: auto !important;
+  min-height: 0 !important;
+  padding-right: 4px !important;
+}
+
+.onboarding-training article {
+  grid-template-columns: minmax(0, 1fr) 120px auto !important;
+  align-items: center !important;
+}
+
+.onboarding-training article > i {
+  height: 8px !important;
+  border-radius: 999px !important;
+  background: #e7ecf4 !important;
+  overflow: hidden !important;
+  display: block !important;
+}
+
+.onboarding-training article > i > b {
+  height: 100% !important;
+  border-radius: inherit !important;
+  background: linear-gradient(90deg, #d7a642, #2f69c9) !important;
+  display: block !important;
+}
+
+@media (max-width: 1180px) {
+  .onboarding-command-grid,
+  .onboarding-workspace {
+    grid-template-columns: 1fr !important;
+  }
+
+  .onboarding-training article {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 /* ChurchMail rebuilt as a viewport-managed enterprise inbox. */
 html body #root .app-shell.section-churchmail:not(.admin-shell) > .workspace {
   height: 100vh !important;
