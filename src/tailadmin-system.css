@@ -1,0 +1,452 @@
+/* TailAdmin-inspired final system layer for GCOS.
+   This file is imported last so legacy page skins cannot override the product
+   design system. */
+
+main.app-shell.enterprise-shell.workstation-admin,
+main.app-shell.admin-shell {
+  --gcos-app-bg: #f9fafb;
+  --gcos-surface: #ffffff;
+  --gcos-surface-soft: #f8fafc;
+  --gcos-border: #e4e7ec;
+  --gcos-border-strong: #d0d5dd;
+  --gcos-text: #101828;
+  --gcos-muted: #667085;
+  --gcos-subtle: #98a2b3;
+  --gcos-blue: #465fff;
+  --gcos-blue-soft: #eef4ff;
+  --gcos-gold: #d6a62b;
+  --gcos-success: #12b76a;
+  --gcos-warning: #f79009;
+  --gcos-danger: #f04438;
+  --gcos-shadow: 0 1px 2px rgba(16, 24, 40, 0.04), 0 12px 28px rgba(16, 24, 40, 0.07);
+  background: var(--gcos-app-bg) !important;
+  background-color: var(--gcos-app-bg) !important;
+  color: var(--gcos-text) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) {
+  display: grid !important;
+  grid-template-columns: minmax(218px, 260px) minmax(0, 1fr) !important;
+  min-height: 100vh !important;
+  overflow: hidden !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > aside.sidebar {
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border-right: 1px solid var(--gcos-border) !important;
+  box-shadow: 4px 0 18px rgba(16, 24, 40, 0.04) !important;
+  color: var(--gcos-text) !important;
+  height: 100vh !important;
+  min-width: 0 !important;
+  overflow-y: auto !important;
+  padding: 18px 16px !important;
+  scrollbar-gutter: stable !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace {
+  background: var(--gcos-app-bg) !important;
+  background-color: var(--gcos-app-bg) !important;
+  background-image: none !important;
+  color: var(--gcos-text) !important;
+  height: 100vh !important;
+  min-width: 0 !important;
+  overflow-x: hidden !important;
+  overflow-y: auto !important;
+  padding: 18px 24px 28px !important;
+  scrollbar-gutter: stable !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > aside.sidebar :is(.brand, .brand-button, .shell-identity-strip, .station-directory-card, .station-switcher) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > aside.sidebar :is(.brand strong, .brand-button strong, .shell-identity-strip strong, .station-directory-card strong, .station-switcher strong, .nav-group-title, b) {
+  color: var(--gcos-text) !important;
+  -webkit-text-fill-color: var(--gcos-text) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > aside.sidebar :is(.brand span, .brand-button span, .shell-identity-strip span, .shell-identity-strip p, .station-directory-card span, .station-directory-card p, .station-switcher span, .station-switcher p, .nav-item span, small) {
+  color: var(--gcos-muted) !important;
+  -webkit-text-fill-color: var(--gcos-muted) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > aside.sidebar .nav-list {
+  gap: 5px !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > aside.sidebar .nav-item {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  color: #344054 !important;
+  min-height: 40px !important;
+  padding: 10px 12px !important;
+  -webkit-text-fill-color: #344054 !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > aside.sidebar .nav-item:is(.active, :hover) {
+  background: var(--gcos-blue-soft) !important;
+  background-color: var(--gcos-blue-soft) !important;
+  border-color: #dbe7ff !important;
+  color: var(--gcos-blue) !important;
+  -webkit-text-fill-color: var(--gcos-blue) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > aside.sidebar .nav-item:is(.active, :hover) :is(span, svg) {
+  color: var(--gcos-blue) !important;
+  -webkit-text-fill-color: var(--gcos-blue) !important;
+  stroke: var(--gcos-blue) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace > :is(.topbar, .user-topbar),
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace :is(
+  .panel,
+  .panel.module-primary,
+  .panel.module-side,
+  .station-panel,
+  .metric-card,
+  .command-card,
+  .message-item,
+  .workflow-item,
+  .approval-item,
+  .task-card,
+  .policy-card,
+  .calendar-card,
+  .personnel-card,
+  .transfer-card,
+  .escalation-card,
+  .document-card,
+  .draft-card,
+  .office-card,
+  .report-card,
+  [class$="-panel"],
+  [class$="-card"],
+  [class*="-panel "],
+  [class*="-card "],
+  [class*="-hero"],
+  [class*="-zone"],
+  [class*="-queue"],
+  [class*="-inspector"],
+  [class*="-registry"],
+  [class*="-directory"],
+  [class*="-board"],
+  [class*="-toolbar"],
+  [class*="-table"],
+  [class*="-form"]
+) {
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border-color: var(--gcos-border) !important;
+  color: var(--gcos-text) !important;
+  box-shadow: var(--gcos-shadow) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace :is(.report-command-workspace, .approval-command-workspace, .station-home, .module-grid, .dashboard-grid, .mail-layout, .reports-layout, .task-enterprise, .policy-enterprise, .calendar-enterprise, .personnel-enterprise, .transfers-workspace, .live-comms-workspace) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin :is(h1, h2, h3, h4, h5, strong, b, th, dt, summary),
+main.app-shell.admin-shell :is(h1, h2, h3, h4, h5, strong, b, th, dt, summary) {
+  color: var(--gcos-text) !important;
+  -webkit-text-fill-color: var(--gcos-text) !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin :is(p, span, small, label, li, td, dd),
+main.app-shell.admin-shell :is(p, span, small, label, li, td, dd) {
+  color: var(--gcos-muted) !important;
+  -webkit-text-fill-color: var(--gcos-muted) !important;
+  text-shadow: none !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace :is(input, select, textarea, .search-box, [class*="search"], .account-menu-button, .icon-button, .notification-button) {
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border: 1px solid var(--gcos-border-strong) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  color: var(--gcos-text) !important;
+  -webkit-text-fill-color: var(--gcos-text) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace :is(input, textarea)::placeholder {
+  color: var(--gcos-subtle) !important;
+  -webkit-text-fill-color: var(--gcos-subtle) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace :is(button, summary, .file-action, [role="button"]) {
+  appearance: none !important;
+  -webkit-appearance: none !important;
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border: 1px solid var(--gcos-border-strong) !important;
+  border-radius: 10px !important;
+  box-shadow: none !important;
+  color: #344054 !important;
+  -webkit-text-fill-color: #344054 !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace :is(button, summary, .file-action, [role="button"]) * {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace :is(button, summary, .file-action, [role="button"]):is(:hover, :focus-visible) {
+  background: var(--gcos-surface-soft) !important;
+  border-color: #b9c6ff !important;
+  color: var(--gcos-blue) !important;
+  -webkit-text-fill-color: var(--gcos-blue) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace :is(.primary, button.primary, .report-primary-actions button:first-of-type, .approval-inspector button:first-of-type, .office-form button[type="submit"], .churchmail-form button, .ai-desk-form button) {
+  background: var(--gcos-blue) !important;
+  background-color: var(--gcos-blue) !important;
+  border-color: var(--gcos-blue) !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace :is(.chip, .pill, .badge, .status, .ok, .warning, .state, [class*="badge"], [class*="status"], [class*="chip"], [class*="pill"]) {
+  background: var(--gcos-blue-soft) !important;
+  background-color: var(--gcos-blue-soft) !important;
+  border-color: #dbe7ff !important;
+  color: var(--gcos-blue) !important;
+  -webkit-text-fill-color: var(--gcos-blue) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin.section-reports .report-command-grid,
+main.app-shell.enterprise-shell.workstation-admin.section-approvals .approval-command-grid {
+  align-items: start !important;
+  gap: 16px !important;
+  max-width: none !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin.section-reports .report-command-grid {
+  grid-template-columns: minmax(220px, 0.9fr) minmax(420px, 1.7fr) minmax(260px, 1fr) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin.section-approvals .approval-command-grid {
+  grid-template-columns: minmax(220px, 0.9fr) minmax(420px, 1.7fr) minmax(260px, 1fr) !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin.section-reports .report-zone,
+main.app-shell.enterprise-shell.workstation-admin.section-approvals .approval-zone {
+  max-height: calc(100vh - 176px) !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  scrollbar-gutter: stable !important;
+}
+
+main.app-shell.enterprise-shell.workstation-admin.section-reports .report-zone-title > span:first-child,
+main.app-shell.enterprise-shell.workstation-admin.section-approvals .approval-zone-title > span:first-child {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
+main.app-shell.admin-shell :is(.admin-enterprise-shell, .admin-portal-shell, .admin-board-shell) {
+  background: var(--gcos-app-bg) !important;
+  background-color: var(--gcos-app-bg) !important;
+  color: var(--gcos-text) !important;
+}
+
+main.app-shell.admin-shell :is(.admin-enterprise-sidebar, .admin-enterprise-topbar, .admin-enterprise-panel, .admin-enterprise-hero, .admin-workspace-card, .admin-command-hero, .admin-console-panel, .admin-primary-panel, .admin-side-panel, .fresh-admin-panel, .fresh-admin-hero-card) {
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border-color: var(--gcos-border) !important;
+  box-shadow: var(--gcos-shadow) !important;
+  color: var(--gcos-text) !important;
+}
+
+@media (max-width: 860px) {
+  main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) {
+    grid-template-columns: 218px minmax(0, 1fr) !important;
+  }
+
+  main.app-shell.enterprise-shell.workstation-admin > aside.sidebar {
+    padding: 14px 10px !important;
+  }
+
+  main.app-shell.enterprise-shell.workstation-admin > section.workspace.workspace {
+    padding: 12px !important;
+  }
+
+  main.app-shell.enterprise-shell.workstation-admin.section-reports .report-command-grid,
+  main.app-shell.enterprise-shell.workstation-admin.section-approvals .approval-command-grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Higher-specificity lock for legacy module pages whose old rules targeted
+   `.module-grid > .panel.module-primary` with ID-level selectors. */
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .module-grid > *,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-side,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .personnel-enterprise > *,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .transfers-workspace > *,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace .personnel-nav-panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace .personnel-directory-panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace .personnel-inspector-panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace .transfer-nav-panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace .transfer-queue-panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace .transfer-inspector-panel {
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border-color: var(--gcos-border) !important;
+  color: var(--gcos-text) !important;
+  box-shadow: var(--gcos-shadow) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .module-grid > * :is(h1, h2, h3, h4, strong, b, th, dt, summary),
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .personnel-enterprise > * :is(h1, h2, h3, h4, strong, b, th, dt, summary),
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .transfers-workspace > * :is(h1, h2, h3, h4, strong, b, th, dt, summary) {
+  color: var(--gcos-text) !important;
+  -webkit-text-fill-color: var(--gcos-text) !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .module-grid > * :is(p, span, small, label, li, td, dd),
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .personnel-enterprise > * :is(p, span, small, label, li, td, dd),
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .transfers-workspace > * :is(p, span, small, label, li, td, dd) {
+  color: var(--gcos-muted) !important;
+  -webkit-text-fill-color: var(--gcos-muted) !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .module-grid > * :is(button, summary, .file-action),
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .personnel-enterprise > * :is(button, summary, .file-action),
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .transfers-workspace > * :is(button, summary, .file-action) {
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border-color: var(--gcos-border-strong) !important;
+  color: #344054 !important;
+  -webkit-text-fill-color: #344054 !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .module-grid > * :is(button, summary, .file-action) *,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .personnel-enterprise > * :is(button, summary, .file-action) *,
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > .transfers-workspace > * :is(button, summary, .file-action) * {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > :is(.topbar, .user-topbar) :is(h1, h2, h3, h4, strong, b, .station-title h1),
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > :is(.topbar, .user-topbar) :is(svg) {
+  color: var(--gcos-text) !important;
+  -webkit-text-fill-color: var(--gcos-text) !important;
+  stroke: currentColor !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > :is(.topbar, .user-topbar) :is(p, span, small, label, .station-title p) {
+  color: var(--gcos-muted) !important;
+  -webkit-text-fill-color: var(--gcos-muted) !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > :is(.topbar, .user-topbar) :is(.search-box, .account-menu-button, .icon-button, .notification-button, button) {
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border: 1px solid var(--gcos-border-strong) !important;
+  color: #344054 !important;
+  -webkit-text-fill-color: #344054 !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin:not(.admin-shell) > section.workspace.workspace > :is(.topbar, .user-topbar) :is(.search-box input, input) {
+  background: transparent !important;
+  border: 0 !important;
+  color: var(--gcos-text) !important;
+  -webkit-text-fill-color: var(--gcos-text) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-personnel:not(.admin-shell) > section.workspace.workspace .personnel-nav-panel.personnel-nav-panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-personnel:not(.admin-shell) > section.workspace.workspace .personnel-create-panel.personnel-create-panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-personnel:not(.admin-shell) > section.workspace.workspace .personnel-directory-panel.personnel-directory-panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-personnel:not(.admin-shell) > section.workspace.workspace .personnel-inspector-panel.personnel-inspector-panel,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace .final-production-finish-board.final-production-finish-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace .final-blocker-board.final-blocker-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace .production-handoff-board.production-handoff-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace .production-readiness-cockpit.production-readiness-cockpit,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace .restore-command-board.restore-command-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace .launch-ops-wizard.launch-ops-wizard,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace .station-training-board.station-training-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-live-comms:not(.admin-shell) > section.workspace.workspace .live-comms-hero.live-comms-hero,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-live-comms:not(.admin-shell) > section.workspace.workspace .live-session-card.live-session-card {
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border-color: var(--gcos-border) !important;
+  color: var(--gcos-text) !important;
+  box-shadow: var(--gcos-shadow) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-personnel:not(.admin-shell) > section.workspace.workspace :is(.personnel-nav-panel, .personnel-create-panel, .personnel-directory-panel, .personnel-inspector-panel) :is(h1, h2, h3, h4, strong, b, summary),
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace :is(.final-production-finish-board, .final-blocker-board, .production-handoff-board, .production-readiness-cockpit, .restore-command-board, .launch-ops-wizard, .station-training-board) :is(h1, h2, h3, h4, strong, b, summary),
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-live-comms:not(.admin-shell) > section.workspace.workspace :is(.live-comms-hero, .live-session-card, .panel.module-primary, .panel.module-side) :is(h1, h2, h3, h4, strong, b, summary) {
+  color: var(--gcos-text) !important;
+  -webkit-text-fill-color: var(--gcos-text) !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-personnel:not(.admin-shell) > section.workspace.workspace :is(.personnel-nav-panel, .personnel-create-panel, .personnel-directory-panel, .personnel-inspector-panel) :is(p, span, small, label, li, td, dd),
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace :is(.final-production-finish-board, .final-blocker-board, .production-handoff-board, .production-readiness-cockpit, .restore-command-board, .launch-ops-wizard, .station-training-board) :is(p, span, small, label, li, td, dd),
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-live-comms:not(.admin-shell) > section.workspace.workspace :is(.live-comms-hero, .live-session-card, .panel.module-primary, .panel.module-side) :is(p, span, small, label, li, td, dd) {
+  color: var(--gcos-muted) !important;
+  -webkit-text-fill-color: var(--gcos-muted) !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.final-production-finish-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.final-blocker-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.production-handoff-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.production-readiness-cockpit,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.restore-command-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.launch-ops-wizard,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.station-training-board,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace :is(.finish-board-hero, .final-blocker-hero, .handoff-hero, .production-readiness-hero, .restore-command-hero, .launch-wizard-hero, .station-training-hero, .finish-score-card, .handoff-build-card, .restore-runbook-panel) {
+  background: var(--gcos-surface) !important;
+  background-color: var(--gcos-surface) !important;
+  background-image: none !important;
+  border-color: var(--gcos-border) !important;
+  color: var(--gcos-text) !important;
+  box-shadow: var(--gcos-shadow) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.final-production-finish-board *,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.final-blocker-board *,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.production-handoff-board *,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.production-readiness-cockpit *,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.restore-command-board *,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.launch-ops-wizard *,
+html body #root main.app-shell.enterprise-shell.workstation-admin.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid > .panel.module-primary.station-training-board * {
+  text-shadow: none !important;
+}

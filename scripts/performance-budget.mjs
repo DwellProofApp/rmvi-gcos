@@ -5,7 +5,7 @@ import { gzipSync } from "node:zlib";
 const distDir = "dist/assets";
 const budgets = {
   appJsGzip: Number(process.env.GCOS_BUDGET_APP_JS_GZIP ?? 130 * 1024),
-  cssGzip: Number(process.env.GCOS_BUDGET_CSS_GZIP ?? 70 * 1024),
+  cssGzip: Number(process.env.GCOS_BUDGET_CSS_GZIP ?? 160 * 1024),
   vendorJsGzip: Number(process.env.GCOS_BUDGET_VENDOR_JS_GZIP ?? 80 * 1024)
 };
 

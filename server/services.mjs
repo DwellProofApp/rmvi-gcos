@@ -2977,6 +2977,55 @@ export function createServices({ state, record, requirePermission, findById, int
       };
     },
 
+    async createAccountRequest(body) {
+      const normalizedEmail = normalizeStationEmail(body.email);
+      const cleanOfficeName = String(body.officeName ?? body.name ?? "").trim();
+      const cleanFullName = String(body.fullName ?? "New station administrator").trim();
+      const cleanDepartment = String(body.department ?? "Church Administration").trim() || "Church Administration";
+      const level = body.level ?? "Local Branch";
+      if (state.stations.some((entry) => entry.email === normalizedEmail) || state.offices.some((entry) => entry.email === normalizedEmail)) {
+        return { conflict: true, error: "Station email already exists" };
+      }
+      const parentName = body.parentName ?? body.supervisor ?? (level === "Local Branch" ? "Area Office" : "International HQ");
+      const created = office(cleanOfficeName, normalizedEmail, level, cleanDepartment, parentName, {
+        nodeKind: body.nodeKind ?? "Office",
+        parentId: body.parentId,
+        parentName,
+        permissionPreset: body.permissionPreset ?? "Reporter",
+        reportingRoute: body.reportingRoute,
+        workflowAccess: body.workflowAccess
+      });
+      created.password = body.password;
+      created.status = "Pending Approval";
+      created.emailVerified = false;
+      created.notes = [
+        `Requested by ${cleanFullName} from the RMVI software sign-up portal.`,
+        "Awaiting administrator review."
+      ];
+      created.complianceStatus = "Onboarding";
+      state.offices.unshift(created);
+      const createdStation = station(created.email, `${created.name} Workstation`, created.level, `${created.department}, pending administrator approval`);
+      Object.assign(createdStation, {
+        status: "Pending Approval",
+        verified: false,
+        nodeKind: created.nodeKind,
+        parentId: created.parentId,
+        parentName: created.parentName,
+        permissionPreset: created.permissionPreset,
+        reportingRoute: created.reportingRoute,
+        workflowAccess: created.workflowAccess
+      });
+      state.stations.push(createdStation);
+      ensureStationCredential(created.email, created.password);
+      record("AccountApprovalRequested", created.email, createdStation.title, "Pending administrator approval");
+      return {
+        office: created,
+        station: createdStation,
+        status: "Pending Approval",
+        message: "Account request submitted. An administrator must approve this station before sign-in."
+      };
+    },
+
     async createOffice(body) {
       requirePermission(body.actor, "canCreateOffices");
       if (state.stations.some((entry) => entry.email === body.email) || state.offices.some((entry) => entry.email === body.email)) {
@@ -4183,6 +4232,10 @@ export function createServices({ state, record, requirePermission, findById, int
         state.stations.push(foundStation);
       }
       if (!foundStation) return { unauthorized: true, error: "Invalid station credentials" };
+      if (["Pending Approval", "Rejected", "Deleted", "Archived"].includes(foundStation.status ?? "")) {
+        record("LoginBlocked", normalizedEmail, foundStation.title, foundStation.status ?? "Pending administrator approval");
+        return { unauthorized: true, error: foundStation.status === "Pending Approval" ? "Station pending administrator approval" : "Station not active" };
+      }
       if (foundStation.status === "Suspended") return { unauthorized: true, error: "Station suspended" };
       credential.status = "Active";
       credential.failedAttempts = 0;

@@ -19,7 +19,7 @@ const policyStatuses = ["Draft", "Active", "Review", "Retired"];
 const calendarPriorities = ["Low", "Medium", "High", "Critical"];
 const calendarStatuses = ["Scheduled", "At Risk", "Complete"];
 const personnelStatuses = ["Active", "Transfer Pending", "Assigned", "Inactive", "Onboarding", "On Leave"];
-const officeStatuses = ["Provisioned", "Suspended", "Active"];
+const officeStatuses = ["Pending Approval", "Provisioned", "Ready", "Suspended", "Active", "Archived"];
 const auditSeverities = ["Info", "Low", "Medium", "High", "Critical"];
 const securityControlStatuses = ["Active", "Warning", "Exception", "Disabled", "Testing"];
 const complianceRisks = ["Low", "Medium", "High", "Critical"];
@@ -94,6 +94,15 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
     if (body.owner !== undefined) requireString(body.owner, "owner");
     if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
+  },
+
+  "POST /api/account-requests": (body) => {
+    requireString(body.fullName, "fullName");
+    requireString(body.officeName, "officeName");
+    requireRmviEmail(body.email, "email");
+    requireEnum(body.level, stationLevels, "level");
+    if (body.department !== undefined) requireString(body.department, "department");
+    requireString(body.password, "password");
   },
 
   "POST /api/readiness/:name/acknowledge": (body) => {
@@ -785,7 +794,22 @@ const validators = {
     if (body.note !== undefined) requireString(body.note, "note");
   },
 
+  "POST /api/rollout/first-wave/prepare": (body) => {
+    if (body.scheduledFor !== undefined) requireString(body.scheduledFor, "scheduledFor");
+    if (body.trainer !== undefined) requireString(body.trainer, "trainer");
+    if (body.note !== undefined) requireString(body.note, "note");
+    if (body.policyAudience !== undefined) requireString(body.policyAudience, "policyAudience");
+    if (body.trainingTrack !== undefined) requireString(body.trainingTrack, "trainingTrack");
+    if (body.certifyCompleted !== undefined && typeof body.certifyCompleted !== "boolean") {
+      throw new ValidationError("certifyCompleted must be a boolean");
+    }
+  },
+
   "POST /api/rollout/station-training/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/admin/recovery-plan/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 

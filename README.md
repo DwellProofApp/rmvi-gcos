@@ -94,6 +94,8 @@ npm run production:check
 npm run database:smoke
 npm run object:smoke
 npm run runtime:smoke
+npm run product:smoke
+npm run rollout:finish
 npm run deployment:align
 npm run preaws:check
 npm run internal:audit
@@ -101,7 +103,18 @@ npm run release:check
 npm run secrets:plan
 npm run launch:verify
 npm run launch:signoff:live
+npm run restore:evidence
 ```
+
+Final product workflow verification:
+
+```bash
+npm run product:smoke
+GCOS_PRODUCT_SMOKE_MUTATE=1 npm run product:smoke
+GCOS_ROLLOUT_FINISH_MUTATE=1 npm run rollout:finish
+```
+
+Use `docs/FINAL_PRODUCT_LAUNCH_PLAN.md` for the full 1-10 launch sequence covering permissions, account activation, ChurchMail, reports, approvals, restore drill, publication, rollout, and week-one monitoring.
 
 Frontend:
 

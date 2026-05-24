@@ -62,6 +62,12 @@ import "./signin-overrides.css";
 import "./admin-board-overrides.css";
 import "./interior-overrides.css";
 import "./product-polish.css";
+import "./enterprise-system.css";
+import "./admin-board-reset.css";
+import "./app-board-reset.css";
+import "./gcos-final-layout.css";
+import "./tailadmin-system.css";
+import "./admin-v2.css";
 
 type StationLevel =
   | "International HQ"
@@ -625,6 +631,35 @@ type StationTrainingRollout = {
   records: StationTrainingRecord[];
   nextActions: string[];
 };
+type FirstWaveRolloutPreparation = {
+  preparedAt: string;
+  certifyCompleted: boolean;
+  stations: string[];
+  policyIds: string[];
+  personnelIds: string[];
+  guides: DocumentRecord[];
+  rollout: RolloutReadiness;
+  training: StationTrainingRollout;
+};
+type AdminRecoveryPlan = {
+  generatedAt: string;
+  generatedBy: string;
+  organization: string;
+  product: string;
+  status: string;
+  score: number;
+  ready: number;
+  total: number;
+  primaryAdmin: string;
+  recoveryEmail: string;
+  secondaryAdmin: string;
+  backupStatus: string;
+  restoreStatus: string;
+  checks: { id: string; label: string; ok: boolean; required: boolean; detail: string }[];
+  blockers: string[];
+  nextActions: string[];
+  policy: string[];
+};
 type FinalProductionFinish = {
   generatedAt: string;
   generatedBy: string;
@@ -1090,13 +1125,25 @@ const navItems: { icon: React.ElementType; label: Section }[] = [
   { icon: Settings, label: "Account Settings" }
 ];
 
+function sectionClassName(section: Section) {
+  return `section-${section.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")}`;
+}
+
+function navGroupFor(section: Section) {
+  if (["Control Center", "ChurchMail", "Admin Board"].includes(section)) return "Home";
+  if (["Approvals", "Escalations", "Reports"].includes(section)) return "Governance";
+  if (["Personnel", "Offices", "Hierarchy"].includes(section)) return "Organization";
+  if (["AI Desk", "Live Comms"].includes(section)) return "Operations";
+  return "System";
+}
+
 const sectionProfiles: Record<Section, { icon: React.ElementType; eyebrow: string; title: string; description: string; signal: string }> = {
   "Control Center": {
     icon: LayoutDashboard,
-    eyebrow: "Executive operations",
-    title: "Global Governance Control Center",
-    description: "A command view for workflow risk, reporting health, approvals, escalations, offline queue, and station performance.",
-    signal: "Command ready"
+    eyebrow: "Executive administration",
+    title: "Governance Operations Home",
+    description: "A clear overview of reports, approvals, communication, office activity, and system readiness across GCOS.",
+    signal: "Ready"
   },
   "Admin Board": {
     icon: KeyRound,
@@ -1109,8 +1156,8 @@ const sectionProfiles: Record<Section, { icon: React.ElementType; eyebrow: strin
     icon: Mail,
     eyebrow: "Governance communication",
     title: "ChurchMail Governance Inbox",
-    description: "Classified official communication for directives, reports, approvals, notifications, transfers, routing, and archival traceability.",
-    signal: "Classified routing"
+    description: "Official communication for directives, reports, approvals, notifications, transfers, routing, and records archive.",
+    signal: "Inbox ready"
   },
   Reports: {
     icon: FileCheck2,
@@ -1156,37 +1203,37 @@ const sectionProfiles: Record<Section, { icon: React.ElementType; eyebrow: strin
   },
   Escalations: {
     icon: AlertTriangle,
-    eyebrow: "Executive attention",
-    title: "Escalation Command Queue",
-    description: "Triage urgent matters, ownership, severity, SLA, evidence, impact scoring, linked work, resolution notes, and executive routing.",
-    signal: "Priority watch"
+    eyebrow: "Leadership review",
+    title: "Escalation Review Queue",
+    description: "Review items needing leadership attention, assign ownership, track timing, attach evidence, and close matters with a clear record.",
+    signal: "Review active"
   },
   "AI Desk": {
     icon: Sparkles,
     eyebrow: "AI administration",
     title: "AI Administrative Desk",
-    description: "Generate briefs, memos, report summaries, delay insights, source-bound drafts, readiness checks, and administrative recommendations.",
+    description: "Prepare briefs, memos, report summaries, follow-up notes, readiness checks, and administrative recommendations from approved GCOS records.",
     signal: "Assist ready"
   },
   "Live Comms": {
     icon: Video,
     eyebrow: "Real-time communication",
     title: "Live Communication Center",
-    description: "Run office-to-office video meetings, department chats, broadcasts, screen sharing, document collaboration, and approval discussions tied to office nodes.",
+    description: "Coordinate office meetings, department chats, broadcasts, shared records, and approval discussions tied to official offices.",
     signal: "Meetings ready"
   },
   Hierarchy: {
     icon: GitBranch,
     eyebrow: "Station graph",
     title: "Organizational Hierarchy",
-    description: "Verify station levels, authority, reporting lines, suspension, activation, mirrors, bulk verification, and graph integrity.",
-    signal: "Graph live"
+    description: "Review station levels, reporting lines, authority, active offices, and the structure that routes reports upward and instructions downward.",
+    signal: "Structure ready"
   },
   Offices: {
     icon: Building2,
     eyebrow: "Office provisioning",
     title: "Office Creation and Workstations",
-    description: "Create offices, assign levels, departments, supervisors, credentials, station capacity, compliance status, and access readiness.",
+    description: "Create offices, assign reporting lines, set departments, supervisors, station capacity, compliance status, and access readiness.",
     signal: "Provisioning"
   },
   Transfers: {
@@ -1198,17 +1245,17 @@ const sectionProfiles: Record<Section, { icon: React.ElementType; eyebrow: strin
   },
   Archive: {
     icon: Files,
-    eyebrow: "Evidence vault",
-    title: "Document Archive Vault",
-    description: "Register, classify, seal, verify, retain, export, upload, index, and link documents to reports, approvals, and audit records.",
-    signal: "Vault integrity"
+    eyebrow: "Records archive",
+    title: "Records Archive",
+    description: "Organize official documents, evidence, exports, uploads, retention notes, and links to reports, approvals, and audit records.",
+    signal: "Records ready"
   },
   Audit: {
     icon: ShieldCheck,
-    eyebrow: "Immutable audit",
-    title: "Audit and Session Monitor",
-    description: "Inspect audit rows, event severity, session safety, evidence chain, readiness checks, incident review, and immutable records.",
-    signal: "Audit locked"
+    eyebrow: "Audit review",
+    title: "Audit and Session Review",
+    description: "Review audit rows, session safety, evidence history, readiness checks, incident notes, and official activity records.",
+    signal: "Review ready"
   },
   "Account Settings": {
     icon: Settings,
@@ -2395,6 +2442,10 @@ const initialEvents = [
   "OfficeCreated: Riverbend Area Office"
 ];
 
+function isUserVisibleEvent(event: string) {
+  return !event.toLowerCase().includes("apiunavailable");
+}
+
 function isSection(value: string | null): value is Section {
   return navItems.some((item) => item.label === value);
 }
@@ -3176,6 +3227,7 @@ function App() {
   const [activeSection, setActiveSection] = React.useState<Section>(getInitialSection);
   const [searchQuery, setSearchQuery] = React.useState("");
   const [notificationsOpen, setNotificationsOpen] = React.useState(false);
+  const [shellCollapsed, setShellCollapsed] = React.useState(false);
   const [offlineMode, setOfflineMode] = React.useState(false);
   const pwa = usePwaInstallPrompt();
   const networkOnline = useNetworkStatus();
@@ -3215,6 +3267,7 @@ function App() {
   const [eventDigest, setEventDigest] = React.useState<EventDigest | null>(null);
   const [readinessDigest, setReadinessDigest] = React.useState<ReadinessDigest | null>(null);
   const [sessionDigest, setSessionDigest] = React.useState<SessionDigest | null>(null);
+  const [adminRecoveryPlan, setAdminRecoveryPlan] = React.useState<AdminRecoveryPlan | null>(null);
   const [taskDigest, setTaskDigest] = React.useState<TaskDigest | null>(null);
   const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
   const [calendarDigest, setCalendarDigest] = React.useState<CalendarDigest | null>(null);
@@ -3485,6 +3538,7 @@ function App() {
       void apiRequest<EventDigest>("/api/events/digest").then(setEventDigest).catch(() => undefined);
       void apiRequest<ReadinessDigest>("/api/readiness/digest").then(setReadinessDigest).catch(() => undefined);
       void apiRequest<SessionDigest>("/api/sessions/digest").then(setSessionDigest).catch(() => undefined);
+      void apiRequest<AdminRecoveryPlan>("/api/admin/recovery-plan").then(setAdminRecoveryPlan).catch(() => undefined);
       void apiRequest<TaskDigest>("/api/tasks/digest").then(setTaskDigest).catch(() => undefined);
       void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
       void apiRequest<CalendarDigest>("/api/calendar-events/digest").then(setCalendarDigest).catch(() => undefined);
@@ -3499,7 +3553,6 @@ function App() {
       }
     } catch {
       setApiStatusError("API unavailable");
-      setEvents((items) => ["ApiUnavailable: using local workstation cache", ...items].slice(0, 8));
     }
   }
 
@@ -5063,10 +5116,25 @@ function App() {
       ...rows
     ]);
     setEvents((items) => [`${approvedAtSignup ? "AccountCreated" : "AccountApprovalRequested"}: ${normalizedEmail}`, ...items].slice(0, 8));
-    if (approvedAtSignup && !offlineMode && networkOnline) {
-      void apiRequest<Office>("/api/offices", {
+    if (!offlineMode && networkOnline) {
+      const requestBody = approvedAtSignup
+        ? { ...createdOffice, actor: normalizedEmail }
+        : {
+            fullName: cleanFullName,
+            officeName: cleanOfficeName,
+            email: normalizedEmail,
+            level: account.level,
+            department: cleanDepartment,
+            password: account.password,
+            parentName,
+            supervisor: parentName,
+            permissionPreset,
+            reportingRoute,
+            workflowAccess
+          };
+      void apiRequest<Office | { office: Office; status: string; message: string }>(approvedAtSignup ? "/api/offices" : "/api/account-requests", {
         method: "POST",
-        body: JSON.stringify({ ...createdOffice, actor: normalizedEmail })
+        body: JSON.stringify(requestBody)
       }).then(refreshFromApi).catch(() => undefined);
     }
     return { ok: true, message: approvedAtSignup ? "Workstation opened." : "Account request submitted. An administrator must approve this station before sign-in." };
@@ -9042,6 +9110,27 @@ function App() {
     }
   }
 
+  function archiveAdminRecoveryPlan() {
+    if (offlineMode) {
+      archiveDocument({
+        name: `Admin recovery plan ${new Date().toISOString().slice(0, 10)}.json`,
+        classification: "Recovery readiness",
+        source: "Admin Board",
+        owner: activeStation.email,
+        fileType: "JSON",
+        status: "Queued"
+      });
+      return;
+    }
+    void apiRequest<{ document: DocumentRecord; plan: AdminRecoveryPlan }>("/api/admin/recovery-plan/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "Archived from administrator recovery readiness panel" })
+    }).then(({ plan }) => {
+      setAdminRecoveryPlan(plan);
+      void refreshFromApi();
+    }).catch(() => undefined);
+  }
+
   function refreshCommandBriefing() {
     if (offlineMode) {
       recordAudit("CommandBriefingRefreshed", "Control Center", "Local command briefing refreshed");
@@ -9376,55 +9465,442 @@ function App() {
       .catch(() => undefined);
   }
 
+  const primaryShellSections: Section[] = [
+    "Control Center",
+    "ChurchMail",
+    "Admin Board",
+    "Approvals",
+    "Escalations",
+    "Reports",
+    "Personnel",
+    "Offices",
+    "Hierarchy",
+    "AI Desk",
+    "Live Comms",
+    "Audit",
+    "Archive"
+  ];
+  const shellNavGroups = navItems
+    .filter((item) => allowedSections.includes(item.label) && primaryShellSections.includes(item.label))
+    .reduce((groups, item) => {
+      const group = navGroupFor(item.label);
+      return { ...groups, [group]: [...(groups[group] ?? []), item] };
+    }, {} as Record<string, { icon: React.ElementType; label: Section }[]>);
+  const shellNavOrder = ["Command", "Governance", "Organization", "Operations", "System"];
+
+  function scrollOperationalPane(event: Pick<KeyboardEvent | React.KeyboardEvent<HTMLElement>, "key" | "preventDefault">, scrollTarget: HTMLElement) {
+    const horizontalStep = Math.max(90, Math.round(scrollTarget.clientWidth * 0.18));
+    const verticalStep = Math.max(90, Math.round(scrollTarget.clientHeight * 0.18));
+    const pageStep = Math.max(180, Math.round(scrollTarget.clientHeight * 0.82));
+    if (event.key === "ArrowRight") {
+      event.preventDefault();
+      scrollTarget.scrollBy({ left: horizontalStep, behavior: "smooth" });
+    } else if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      scrollTarget.scrollBy({ left: -horizontalStep, behavior: "smooth" });
+    } else if (event.key === "ArrowDown") {
+      event.preventDefault();
+      scrollTarget.scrollBy({ top: verticalStep, behavior: "smooth" });
+    } else if (event.key === "ArrowUp") {
+      event.preventDefault();
+      scrollTarget.scrollBy({ top: -verticalStep, behavior: "smooth" });
+    } else if (event.key === "PageDown" || event.key === " ") {
+      event.preventDefault();
+      scrollTarget.scrollBy({ top: pageStep, behavior: "smooth" });
+    } else if (event.key === "PageUp") {
+      event.preventDefault();
+      scrollTarget.scrollBy({ top: -pageStep, behavior: "smooth" });
+    } else if (event.key === "Home") {
+      event.preventDefault();
+      scrollTarget.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+    } else if (event.key === "End") {
+      event.preventDefault();
+      scrollTarget.scrollTo({ top: scrollTarget.scrollHeight, behavior: "smooth" });
+    }
+  }
+
+  function handlePaneKeyDown(event: React.KeyboardEvent<HTMLElement>) {
+    const target = event.target as HTMLElement;
+    if (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable) return;
+    scrollOperationalPane(event, event.currentTarget);
+  }
+
+  React.useEffect(() => {
+    function handleGlobalScrollKeys(event: KeyboardEvent) {
+      const target = event.target as HTMLElement | null;
+      if (target && (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable)) return;
+      if (!["ArrowRight", "ArrowLeft", "ArrowDown", "ArrowUp", "PageDown", "PageUp", "Home", "End", " "].includes(event.key)) return;
+      const focused = document.activeElement as HTMLElement | null;
+      const sidebar = document.querySelector<HTMLElement>(".admin-v2-sidebar, main.app-shell.enterprise-shell > aside.sidebar");
+      const workspace = document.querySelector<HTMLElement>(".admin-v2-main, main.app-shell.enterprise-shell > section.workspace");
+      const pane = focused && sidebar?.contains(focused) ? sidebar : workspace;
+      if (pane) scrollOperationalPane(event, pane);
+    }
+    window.addEventListener("keydown", handleGlobalScrollKeys);
+    return () => window.removeEventListener("keydown", handleGlobalScrollKeys);
+  }, [effectiveSection]);
+
+  function handleAdminV2QuickAction(action: string) {
+    const validLevels: StationLevel[] = ["International HQ", "Regional HQ", "National HQ", "County/State HQ", "District HQ", "Area HQ", "Local Branch"];
+    const stationLevel = validLevels.includes(activeStation.level as StationLevel) ? activeStation.level as StationLevel : "National HQ";
+    const reportingRoute = buildReportingRoute(stationLevel, activeStation.parentName ?? "Supervising Office");
+    const firstMessage = scopedMessages[0];
+    const firstReport = scopedReports[0];
+    const firstApproval = scopedApprovals[0];
+    const firstTask = scopedTasks.find((item) => item.status !== "Complete") ?? scopedTasks[0];
+    const firstPerson = scopedPersonnel[0];
+    const firstTransfer = scopedTransfers[0];
+    const firstDocument = scopedDocuments[0];
+    const today = new Date().toISOString().slice(0, 10);
+
+    switch (action) {
+      case "Compose":
+      case "Send message":
+      case "Send broadcast":
+        sendChurchMail({
+          kind: action === "Send broadcast" ? "Notification" : "Directive",
+          to: action === "Send broadcast" ? "Assigned governance stations" : workstationProfile.defaultMessageTo,
+          subject: action === "Send broadcast" ? `${activeStation.title} broadcast` : workstationProfile.defaultMessageSubject,
+          files: workstationProfile.defaultFiles
+        });
+        setActiveSection("ChurchMail");
+        return;
+      case "Route message":
+        firstMessage ? updateMessageRoute(firstMessage.id) : handleAdminV2QuickAction("Compose");
+        return;
+      case "Archive selected":
+        firstMessage ? archiveMessage(firstMessage.id) : recordAudit("ChurchMailArchiveSkipped", activeStation.email, "No message selected");
+        return;
+      case "Create report":
+        createReportDraft({
+          name: workstationProfile.defaultReportName,
+          owner: activeStation.title,
+          due: "Today",
+          period: "Current",
+          path: reportingRoute,
+          type: workstationProfile.defaultReportType,
+          evidenceStatus: "Evidence pending",
+          routingStage: "Drafting",
+          approvalLimit: "Supervisor review",
+          reviewNote: `${activeStation.title} report prepared for the current governance cycle.`,
+          templateChecklist: ["Executive summary", "Activity notes", "Evidence", "Attestation"]
+        });
+        setActiveSection("Reports");
+        return;
+      case "Save draft":
+        firstReport ? updateReportScore(firstReport.id, Math.max(firstReport.score, 35)) : handleAdminV2QuickAction("Create report");
+        return;
+      case "Build packet":
+        firstReport ? buildReportGovernancePacket(firstReport.id) : handleAdminV2QuickAction("Create report");
+        return;
+      case "Create approval":
+        createApprovalRequest({
+          request: `${activeStation.title} approval request`,
+          route: reportingRoute,
+          limit: "Delegated authority review",
+          delegate: activeStation.email
+        });
+        setActiveSection("Approvals");
+        return;
+      case "Digest":
+        refreshWorkflowDigest();
+        refreshApprovalDigest();
+        return;
+      case "Review signatures":
+        firstApproval ? signApproval(firstApproval.id) : handleAdminV2QuickAction("Create approval");
+        return;
+      case "Create task":
+        createTask({
+          title: workstationProfile.defaultTaskTitle,
+          owner: activeStation.title,
+          assignee: activeStation.email,
+          priority: "Medium",
+          due: "Today"
+        });
+        setActiveSection("Tasks");
+        return;
+      case "Assign owner":
+        firstTask ? updateTaskAssignee(firstTask.id, activeStation.email) : handleAdminV2QuickAction("Create task");
+        return;
+      case "Review blockers":
+        if (firstTask) {
+          firstTask.status === "Blocked" ? unblockTask(firstTask.id) : blockTask(firstTask.id);
+        } else {
+          handleAdminV2QuickAction("Create task");
+        }
+        return;
+      case "Publish policy":
+        createPolicy({
+          title: `${activeStation.title} operating policy`,
+          category: "Governance",
+          owner: activeStation.title,
+          status: "Review",
+          summary: "Draft policy created from the GCOS policy registry for administrative review."
+        });
+        setActiveSection("Policies");
+        return;
+      case "Review queue":
+        refreshPolicyDigest();
+        return;
+      case "Export registry":
+        archiveDocument({
+          name: `Policy registry export ${today}.json`,
+          classification: "Policy registry export",
+          source: "Policies",
+          owner: activeStation.email,
+          fileType: "JSON",
+          status: offlineMode ? "Queued" : "Archived"
+        });
+        setActiveSection("Archive");
+        return;
+      case "Create event":
+        createCalendarEvent({
+          title: `${activeStation.title} governance review`,
+          category: "Review",
+          owner: activeStation.title,
+          date: today,
+          priority: "Medium",
+          status: "Scheduled"
+        });
+        setActiveSection("Calendar");
+        return;
+      case "Week view":
+      case "Review deadlines":
+        refreshCalendarDigest();
+        recordAudit("CalendarViewOpened", action, activeStation.email);
+        return;
+      case "Create person":
+        createPerson({
+          name: "New station member",
+          role: stationDepartment(activeStation),
+          currentStation: activeStation.level,
+          assignedStation: activeStation.title,
+          status: "Onboarding",
+          credentialStatus: "Provisioning",
+          trainingStatus: "Pending"
+        });
+        setActiveSection("Personnel");
+        return;
+      case "Verify access":
+        if (effectiveSection === "Personnel" && firstPerson) updatePersonStatus(firstPerson.id, "Active");
+        else if (firstTransfer) verifyTransfer(firstTransfer.id);
+        else recordAudit("AccessReviewOpened", activeStation.email, "No pending access record");
+        return;
+      case "Review transfers":
+        setActiveSection("Transfers");
+        return;
+      case "Create transfer":
+        createTransferRequest({
+          person: firstPerson?.name ?? "New transfer recipient",
+          from: activeStation.title,
+          to: activeStation.parentName ?? "Supervising Office"
+        });
+        setActiveSection("Transfers");
+        return;
+      case "Archive letter":
+        firstTransfer ? archiveTransfer(firstTransfer.id) : handleAdminV2QuickAction("Create transfer");
+        return;
+      case "Create office":
+        if (permissions.canCreateOffices) {
+          createOffice({
+            name: `New ${stationDepartment(activeStation)} Office`,
+            email: `office-${Date.now()}@rmvi.org`,
+            level: stationLevel,
+            department: stationDepartment(activeStation),
+            supervisor: activeStation.title,
+            parentName: activeStation.title,
+            permissionPreset: "Reporter"
+          });
+        } else {
+          recordAudit("OfficeCreateDenied", activeStation.email, "Permission required");
+        }
+        setActiveSection("Offices");
+        return;
+      case "Open registry":
+      case "Review permissions":
+        setActiveSection("Offices");
+        return;
+      case "View graph":
+      case "Validate routes":
+        refreshHierarchyDigest();
+        setActiveSection("Hierarchy");
+        return;
+      case "Open escalation":
+        triggerEscalation("Control Center", "Governance review", "Administrator opened a priority review from the workspace", activeStation.email, "High");
+        setActiveSection("Escalations");
+        return;
+      case "Review risk":
+        refreshEscalationDigest();
+        return;
+      case "Draft brief":
+        generateAiDraft("Executive Summary", `${activeStation.title} governance briefing`);
+        setActiveSection("AI Desk");
+        return;
+      case "Summarize reports":
+        generateAiDraft("Report Brief", `${scopedReports.length} assigned reports`);
+        setActiveSection("AI Desk");
+        return;
+      case "Review delays":
+        generateAiDraft("Memo", "Workflow delays and follow-up recommendations");
+        setActiveSection("AI Desk");
+        return;
+      case "Start meeting":
+        createLiveSession({
+          title: `${activeStation.title} governance meeting`,
+          host: activeStation.email,
+          sessionType: "Video Meeting",
+          status: "Queued",
+          linkedRecord: firstReport?.name ?? firstApproval?.request ?? "Governance review",
+          route: reportingRoute,
+          purpose: "Coordinate official governance work and record follow-up actions.",
+          participants: [activeStation.email, workstationProfile.defaultMessageTo]
+        });
+        setActiveSection("Live Comms");
+        return;
+      case "Share document":
+      case "Upload record":
+      case "Export packet":
+      case "Archive packet":
+        archiveDocument({
+          name: `${activeStation.title} governance packet ${today}.pdf`,
+          classification: action === "Share document" ? "Shared meeting record" : "Governance record",
+          source: effectiveSection,
+          owner: activeStation.email,
+          fileType: "PDF",
+          status: offlineMode ? "Queued" : "Archived"
+        });
+        setActiveSection("Archive");
+        return;
+      case "Verify custody":
+        firstDocument ? verifyDocument(firstDocument.id) : handleAdminV2QuickAction("Upload record");
+        return;
+      case "Export audit":
+        refreshAuditDigest();
+        archiveGovernanceSnapshot();
+        setActiveSection("Audit");
+        return;
+      case "Review sessions":
+        refreshEventDigest();
+        setActiveSection("Audit");
+        return;
+      case "Reset password":
+      case "Review access":
+      case "Open recovery":
+        recordAudit("AccountSettingsAction", activeStation.email, action);
+        setActiveSection("Account Settings");
+        return;
+      default:
+        recordAudit("WorkspaceQuickAction", action, effectiveSection);
+    }
+  }
+
+  const pageOwnsOperationalHeader =
+    effectiveSection !== "Admin Board" &&
+    effectiveSection !== "Control Center";
+
+  const adminV2Enabled = true;
+  if (adminV2Enabled) {
+    return (
+      <AdminV2Shell
+        section={effectiveSection}
+        openSection={openSection}
+        station={activeStation}
+        permissions={permissions}
+        allowedSections={allowedSections}
+        workstationProfile={workstationProfile}
+        stationDirectory={visibleStationDirectory}
+        messages={scopedMessages}
+        reports={scopedReports}
+        approvals={scopedApprovals}
+        tasks={scopedTasks}
+        policies={policies}
+        calendarEvents={calendarEvents}
+        personnel={scopedPersonnel}
+        escalations={scopedEscalations}
+        transfers={scopedTransfers}
+        documents={scopedDocuments}
+        liveSessions={liveSessions}
+        events={events}
+        apiStatus={apiStatus}
+        offlineMode={offlineMode}
+        networkOnline={networkOnline}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        onLogout={handleLogout}
+        onSubmitReport={submitReport}
+        onReviewReport={reviewReport}
+        onVerifyReport={verifyReport}
+        onArchiveReport={archiveReportRecord}
+        onApprove={approveRequest}
+        onSign={signApproval}
+        onReject={rejectApproval}
+        onQuickAction={handleAdminV2QuickAction}
+        onOpenSearchResult={openSearchResult}
+        searchResults={searchResults}
+      />
+    );
+  }
+
   return (
-    <main className={`${effectiveSection === "Admin Board" ? "app-shell admin-shell" : "app-shell"} workstation-${workstationProfile.key}`}>
-      <aside className="sidebar">
+    <main className={`${effectiveSection === "Admin Board" ? "app-shell admin-shell" : "app-shell"} workstation-${workstationProfile.key} ${sectionClassName(effectiveSection)} enterprise-shell ${shellCollapsed ? "shell-collapsed" : ""}`}>
+      <aside className="sidebar" tabIndex={0} onKeyDown={handlePaneKeyDown} aria-label="GCOS navigation pane">
         <button className="brand brand-button" type="button" aria-label="Open workstation home" title="Open workstation home" onClick={() => openSection("Control Center")}>
           <div className="brand-mark">
             <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
           </div>
           <div>
-            <strong>{CHURCH_NAME}</strong>
-            <span>{PLATFORM_NAME} Administrative OS</span>
+            <strong>RMVI GCOS</strong>
+            <span>Administrative OS</span>
           </div>
         </button>
 
+        <div className="shell-identity-strip" aria-label="Current workstation identity">
+          <strong>{activeStation.email}</strong>
+          <span>{activeStation.level}</span>
+        </div>
+
+        <button className="shell-collapse-button" type="button" aria-label={shellCollapsed ? "Expand navigation" : "Collapse navigation"} title={shellCollapsed ? "Expand navigation" : "Collapse navigation"} onClick={() => setShellCollapsed((collapsed) => !collapsed)}>
+          <PanelLeft size={16} />
+          <span>{shellCollapsed ? "Expand" : "Collapse"}</span>
+        </button>
+
         <nav className="nav-list" aria-label="Primary">
-          {navItems.filter((item) => allowedSections.includes(item.label)).map(({ icon: Icon, label }) => (
-            <button
-              className={label === effectiveSection ? "nav-item active" : "nav-item"}
-              key={label}
-              aria-label={label}
-              title={label}
-              onClick={() => openSection(label)}
-            >
-              <Icon size={18} />
-              <span>{label}</span>
-            </button>
+          {shellNavOrder.filter((group) => shellNavGroups[group]?.length).map((group) => (
+            <div className="nav-group" key={group}>
+              <span className="nav-group-label">{group}</span>
+              {shellNavGroups[group].map(({ icon: Icon, label }) => (
+                <button
+                  className={label === effectiveSection ? "nav-item active" : "nav-item"}
+                  key={label}
+                  aria-label={label}
+                  title={label}
+                  onClick={() => openSection(label)}
+                >
+                  <Icon size={18} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
           ))}
         </nav>
 
         <section className="station-switcher" aria-label="Station switcher">
-          <p>{permissions.canOverride ? "Station Identity" : "Signed-in Station"}</p>
-          {visibleStationDirectory.map((station) => {
-            const Icon = resolveStationIcon(station);
-            return (
-              <button
-                key={station.email}
-                className={station.email === activeStation.email ? "station-option selected" : "station-option"}
-                aria-label={station.email}
-                title={permissions.canOverride ? `Switch to ${station.title}` : station.title}
-                onClick={() => permissions.canOverride && setActiveStation(station)}
-              >
-                <Icon size={16} />
-                <span>{station.email}</span>
-              </button>
-            );
-          })}
+          <p>{permissions.canOverride ? "Station Directory" : "Signed-in Station"}</p>
+          <button
+            className="station-directory-card"
+            type="button"
+            onClick={() => openSection(permissions.canOverride ? "Offices" : "Account Settings")}
+          >
+            <div>
+              <strong>{permissions.canOverride ? `${visibleStationDirectory.length} Active Governance Stations` : activeStation.title}</strong>
+              <span>{permissions.canOverride ? "Open Registry" : activeStation.email}</span>
+            </div>
+            <ChevronRight size={16} />
+          </button>
         </section>
       </aside>
 
-      <section className="workspace">
+      <section className="workspace" tabIndex={0} onKeyDown={handlePaneKeyDown} aria-label="GCOS workspace canvas">
         <header className={permissions.canOverride ? "topbar" : "topbar user-topbar"}>
           <div className="station-title">
             <button className="icon-button" aria-label="Open workstation home" title="Open workstation home" onClick={() => openSection("Control Center")}>
@@ -9441,6 +9917,11 @@ function App() {
           </div>
 
           <div className="topbar-actions">
+            <div className="system-status-cluster" aria-label="System status">
+              <span className={networkOnline && !offlineMode ? "sync-dot live" : "sync-dot"} />
+              <strong>{apiStatus?.status.toUpperCase() ?? (apiStatusError ? "LOCAL" : "READY")}</strong>
+              <small>{offlineMode ? "Offline queue" : networkOnline ? "Sync active" : "Local record mode"}</small>
+            </div>
             <label className="search-box">
               <Search size={16} />
               <input
@@ -9499,7 +9980,7 @@ function App() {
           </div>
         </header>
 
-        {effectiveSection !== "Admin Board" && permissions.canOverride && (
+        {!pageOwnsOperationalHeader && effectiveSection !== "Admin Board" && effectiveSection !== "Control Center" && permissions.canOverride && (
           <>
             <SectionBanner section={effectiveSection} station={activeStation} offlineMode={offlineMode} />
             <Metrics metrics={operatingMetrics} />
@@ -9963,6 +10444,7 @@ function App() {
             auditDigest={auditDigest}
             readinessDigest={readinessDigest}
             sessionDigest={sessionDigest}
+            adminRecoveryPlan={adminRecoveryPlan}
             onRefreshApi={refreshFromApi}
             onOpenSection={openSection}
             onCreateOffice={createOffice}
@@ -9978,6 +10460,7 @@ function App() {
             onCreateAuditNote={createAuditNote}
             onArchiveGovernanceSnapshot={archiveGovernanceSnapshot}
             onRefreshAuditDigest={refreshAuditDigest}
+            onArchiveAdminRecoveryPlan={archiveAdminRecoveryPlan}
             onApproveOfficeAccount={approveOfficeAccount}
             onRejectOfficeAccount={rejectOfficeAccount}
             onResetOfficeAccess={resetOfficeAccess}
@@ -10564,7 +11047,7 @@ function SectionBanner({ section, station, offlineMode }: { section: Section; st
         </div>
         <div>
           <span>Mode</span>
-          <strong>{offlineMode ? "Offline queue" : "Live sync"}</strong>
+          <strong>{offlineMode ? "Local queue" : "Sync active"}</strong>
         </div>
         <div>
           <span>Status</span>
@@ -10597,6 +11080,8 @@ function CommandDeck({
   apiStatusError: string;
   station: StationCard;
   permissions: Permissions;
+  allowedSections: Section[];
+  workstationProfile: WorkstationProfile;
   stationDirectory: StationCard[];
   messages: Message[];
   reports: Report[];
@@ -10674,7 +11159,7 @@ function CommandDeck({
       icon: Workflow,
       label: "Approval Load",
       value: String(pendingApprovals.length),
-      detail: `${approvals.length} total chains`,
+      detail: `${approvals.length} approval reviews`,
       tone: pendingApprovals.length > 3 ? "queued" : "ok"
     },
     {
@@ -10688,7 +11173,7 @@ function CommandDeck({
       icon: FileCheck2,
       label: "Report Coverage",
       value: `${reportCoverage}%`,
-      detail: `${reports.length} report packets`,
+      detail: `${reports.length} report records`,
       tone: reportCoverage < 70 ? "risk" : "ok"
     },
     {
@@ -10742,20 +11227,50 @@ function CommandDeck({
     }
   ];
 
+  const priorityCards = cards.slice(0, 4);
+  const healthCards = cards.slice(4);
+
   return (
-    <div className="panel command-deck">
-      <PanelHeader icon={LayoutDashboard} title="Command Operations Layer" action="14 systems" />
-      <div className="command-grid">
-        {cards.map(({ icon: Icon, label, value, detail, tone }) => (
-          <article className={`command-card ${tone}`} key={label}>
+    <div className="panel command-deck command-deck-redesigned">
+      <div className="command-deck-hero">
+        <div>
+          <span className="eyebrow">Command operations</span>
+          <h2>Global Governance Control Center</h2>
+          <p>One organized view for platform status, station authority, workflow risk, report health, approvals, tasks, and offline readiness.</p>
+        </div>
+        <div className="command-deck-status">
+          <span>{apiStatusError ? "Needs attention" : "Operational"}</span>
+          <strong>{apiStatusError || apiStatus?.status.toUpperCase() || "LOCAL"}</strong>
+          <small>{apiStatus ? `${formatUptime(apiStatus.uptimeSeconds)} uptime` : "Local record mode"}</small>
+        </div>
+      </div>
+      <div className="command-priority-grid">
+        {priorityCards.map(({ icon: Icon, label, value, detail, tone }) => (
+          <article className={`command-card command-card-priority ${tone}`} key={label}>
             <div className="command-icon">
-              <Icon size={17} />
+              <Icon size={18} />
             </div>
             <span>{label}</span>
             <strong>{value}</strong>
             <small>{detail}</small>
           </article>
         ))}
+      </div>
+      <div className="command-health-section">
+        <div>
+          <span className="eyebrow">System health</span>
+          <strong>{healthCards.length} supporting controls</strong>
+        </div>
+        <div className="command-compact-grid">
+          {healthCards.map(({ icon: Icon, label, value, detail, tone }) => (
+            <article className={`command-compact-card ${tone}`} key={label}>
+              <Icon size={15} />
+              <span>{label}</span>
+              <strong>{value}</strong>
+              <small>{detail}</small>
+            </article>
+          ))}
+        </div>
       </div>
     </div>
   );
@@ -10890,6 +11405,8 @@ function ControlCenter({
   installReady: boolean;
   station: StationCard;
   permissions: Permissions;
+  allowedSections: Section[];
+  workstationProfile: WorkstationProfile;
   stationDirectory: StationCard[];
   apiStatus: ApiStatus | null;
   apiStatusError: string;
@@ -10901,47 +11418,413 @@ function ControlCenter({
   onCreateCommandTask: () => void;
   onOpenCommandEscalation: () => void;
 }) {
+  const openEscalations = escalations.filter((item) => item.status !== "Resolved");
+  const pendingApprovals = approvals.filter((item) => item.state !== "Approved");
+  const pendingReports = reports.filter((item) => item.state !== "Approved");
+  const openTasks = tasks.filter((item) => item.status !== "Complete");
+  const blockedTasks = tasks.filter((item) => item.status === "Blocked");
+  const readyTransfers = transfers.filter((item) => item.step === "New station login ready");
+  const activePolicies = policies.filter((item) => item.status === "Active");
+  const atRiskEvents = calendarEvents.filter((item) => item.status === "At Risk");
+  const authorityFlags = [
+    permissions.canCreateOffices && "Office admin",
+    permissions.canApprove && "Approver",
+    permissions.canExecuteTransfers && "Transfers",
+    permissions.canOverride && "Override"
+  ].filter(Boolean).join(" / ") || "Reporter";
+  const workflowTotal = Math.max(1, reports.length + approvals.length + tasks.length + escalations.length + transfers.length);
+  const riskScore = commandBriefing?.riskScore ?? Math.min(100, Math.round(((openEscalations.length * 18) + (pendingApprovals.length * 9) + (pendingReports.length * 7) + (blockedTasks.length * 12) + (offlineQueue.length * 10)) / workflowTotal));
+  const deploymentReady = [
+    Boolean(apiStatus && !apiStatusError),
+    Boolean(apiStatus?.serveWeb),
+    Boolean(apiStatus?.persistence),
+    networkOnline,
+    offlineConflicts.length === 0
+  ].filter(Boolean).length;
+  const primaryDirectives = messages.filter((item) => ["Directive", "Approval", "Report"].includes(item.kind)).slice(0, 4);
+  const priorityItems = commandBriefing?.priorities ?? [
+    openEscalations[0]?.item ?? "No critical escalation",
+    pendingApprovals[0]?.request ?? "No pending approval",
+    pendingReports[0]?.name ?? "No report waiting",
+    blockedTasks[0]?.title ?? "No blocked station task"
+  ];
+  const slaForecast = Math.max(0, 100 - Math.min(45, riskScore));
+  const commandMetrics = [
+    { icon: Server, label: "Platform Status", value: apiStatusError ? "Local" : apiStatus?.status.toUpperCase() ?? "Local", trend: apiStatus ? formatUptime(apiStatus.uptimeSeconds) : "Local workstation", tone: apiStatusError ? "warning" : "good", chart: [72, 78, 83, 88, 91, apiStatusError ? 58 : 96] },
+    { icon: AlertTriangle, label: "Workflow Review", value: `${riskScore}%`, trend: `${openEscalations.length} needs review`, tone: riskScore > 55 ? "critical" : riskScore > 24 ? "warning" : "good", chart: [18, 25, 22, 34, 28, riskScore] },
+    { icon: TimerReset, label: "Readiness", value: `${slaForecast}%`, trend: `${blockedTasks.length} delayed`, tone: slaForecast > 85 ? "good" : "warning", chart: [81, 84, 86, 88, 87, slaForecast] },
+    { icon: RadioTower, label: "Escalations", value: String(openEscalations.length), trend: "review queue", tone: openEscalations.length ? "critical" : "good", chart: [0, 1, 2, 1, 2, openEscalations.length * 22] },
+    { icon: Workflow, label: "Approvals", value: String(pendingApprovals.length), trend: `${approvals.length} workflows`, tone: pendingApprovals.length > 3 ? "warning" : "good", chart: [2, 3, 2, 4, 3, pendingApprovals.length * 18] },
+    { icon: FileCheck2, label: "Reports", value: String(pendingReports.length), trend: `${reports.length} records`, tone: pendingReports.length > 4 ? "warning" : "good", chart: [3, 4, 5, 4, 6, pendingReports.length * 12] },
+    { icon: Rocket, label: "Deployment", value: `${deploymentReady}/5`, trend: `${stationDirectory.length} stations`, tone: deploymentReady >= 4 ? "good" : "warning", chart: [60, 68, 73, 81, 86, deploymentReady * 20] },
+    { icon: CloudOff, label: "Offline Queue", value: String(offlineQueue.length), trend: offlineConflicts.length ? `${offlineConflicts.length} conflicts` : "clear", tone: offlineConflicts.length || offlineQueue.length ? "warning" : "good", chart: [0, 1, 0, 2, 1, offlineQueue.length * 18] }
+  ];
+  const riskAlerts = [
+    ...openEscalations.slice(0, 3).map((item) => ({ label: item.item, detail: item.reason, tag: item.severity, owner: item.owner })),
+    ...blockedTasks.slice(0, 2).map((task) => ({ label: task.title, detail: `${task.assignee} / ${task.due}`, tag: task.priority, owner: task.owner })),
+    ...atRiskEvents.slice(0, 1).map((event) => ({ label: event.title, detail: `${event.owner} / ${event.date}`, tag: event.priority, owner: event.category }))
+  ].slice(0, 5);
+  const commandActions = [
+    { icon: Send, label: "Issue directive", detail: "Route executive instruction", action: onIssueCommandDirective },
+    { icon: SquareCheckBig, label: "Create task", detail: "Assign station work", action: onCreateCommandTask },
+    { icon: AlertTriangle, label: "Open escalation", detail: "Raise urgent item", action: onOpenCommandEscalation },
+    { icon: ArchiveIcon, label: "Archive Brief", detail: "Archive governance record", action: onArchiveCommandBriefing }
+  ];
+  const activeOperations = [
+    ...pendingReports.slice(0, 3).map((report) => ({ type: "Report", title: report.name, meta: report.path, status: report.state, value: report.due, icon: FileCheck2 })),
+    ...pendingApprovals.slice(0, 3).map((approval) => ({ type: "Approval", title: approval.request, meta: approval.route, status: approval.state, value: approval.limit, icon: BadgeCheck })),
+    ...openTasks.slice(0, 3).map((task) => ({ type: "Task", title: task.title, meta: task.assignee, status: task.status, value: task.due, icon: SquareCheckBig }))
+  ].slice(0, 7);
+  const workflowPipelines = approvals.slice(0, 4).map((approval) => {
+    const [doneRaw, totalRaw] = approval.signatures.split("/").map((part) => Number(part) || 0);
+    const total = Math.max(1, totalRaw || 3);
+    const done = Math.min(total, doneRaw);
+    return { ...approval, done, total, percent: Math.round((done / total) * 100) };
+  });
+  const operationalEvents = events.filter(isUserVisibleEvent);
+  const activityGroups = operationalEvents.slice(0, 8).map((event, index) => ({
+    group: event.includes(":") ? event.split(":")[0] : "System event",
+    detail: event,
+    time: `${index + 1}m`,
+    tone: event.toLowerCase().includes("escalation") ? "critical" : event.toLowerCase().includes("login") ? "good" : "neutral"
+  }));
+  const governanceOverview = [
+    { value: openEscalations.length, label: "Escalations requiring attention" },
+    { value: blockedTasks.length, label: "Workflow blocked" },
+    { value: pendingApprovals.length, label: "Active approval requests" },
+    { value: pendingReports.length, label: "Governance reports open" },
+    { value: stationDirectory.length, label: "Operational stations" }
+  ];
+  const riskNarrative = [
+    `${openEscalations.length} escalation${openEscalations.length === 1 ? "" : "s"} under executive watch`,
+    `${blockedTasks.length} delayed workflow${blockedTasks.length === 1 ? "" : "s"}`,
+    `${atRiskEvents.length} calendar conflict${atRiskEvents.length === 1 ? "" : "s"} detected`
+  ];
+  const riskLabel = riskScore > 55 ? "High Review Priority" : riskScore > 24 ? "Moderate Review Priority" : "Stable Review Status";
+  const readinessScore = Math.max(0, Math.min(100, slaForecast));
+
   return (
-    <section className="dashboard-grid">
-      <CommandDeck
-        apiStatus={apiStatus}
-        apiStatusError={apiStatusError}
-        station={station}
-        permissions={permissions}
-        stationDirectory={stationDirectory}
-        messages={messages}
-        reports={reports}
-        approvals={approvals}
-        tasks={tasks}
-        policies={policies}
-        calendarEvents={calendarEvents}
-        personnel={personnel}
-        escalations={escalations}
-        transfers={transfers}
-        documents={documents}
-        offlineQueue={offlineQueue}
-      />
-      <CommandDispatchPanel
-        briefing={commandBriefing}
-        reports={reports}
-        approvals={approvals}
-        tasks={tasks}
-        calendarEvents={calendarEvents}
-        personnel={personnel}
-        escalations={escalations}
-        onRefresh={onRefreshCommandBriefing}
-        onArchive={onArchiveCommandBriefing}
-        onDirective={onIssueCommandDirective}
-        onTask={onCreateCommandTask}
-        onEscalation={onOpenCommandEscalation}
-      />
-      <HierarchyPanel compact />
-      <AiPanel />
-      <ChurchMailPanel messages={messages} />
-      <WorkflowPanel />
-      <ApprovalPanel approvals={approvals} />
-      <EventBusPanel events={events} />
-      <OfflinePanel offlineMode={offlineMode} networkOnline={networkOnline} offlineQueue={offlineQueue} offlineConflicts={offlineConflicts} syncHistory={offlineSyncHistory} installReady={installReady} onSync={onSync} />
+    <section className="executive-command" aria-label="RMVI GCOS executive command interface">
+      <header className="executive-command-hero">
+        <div className="executive-command-identity">
+          <span>RMVI GCOS Administrative OS</span>
+          <h1>International HQ</h1>
+          <p>System Administrator / {station.email}</p>
+        </div>
+        <div className="executive-command-state">
+          <strong>Operational</strong>
+          <span>{offlineMode || apiStatusError ? "Local Environment" : "Sync Active"}</span>
+          <b>{readinessScore}%</b>
+          <small>Governance Readiness</small>
+        </div>
+      </header>
+
+      <div className="executive-command-grid">
+        <section className="executive-zone executive-zone-primary">
+          <div className="executive-zone-title">
+            <span>Zone 1</span>
+            <h2>Executive Intelligence</h2>
+          </div>
+          <div className="executive-overview-list">
+            {governanceOverview.map((item) => (
+              <article key={item.label}>
+                <strong>{item.value}</strong>
+                <span>{item.label}</span>
+              </article>
+            ))}
+          </div>
+          <div className="executive-brief">
+            <Sparkles size={18} />
+            <div>
+              <strong>AI Executive Briefing</strong>
+              <p>{priorityItems.filter((item) => !item.toLowerCase().startsWith("no ")).slice(0, 2).join(" / ") || "No urgent governance item requires intervention right now."}</p>
+            </div>
+          </div>
+        </section>
+
+        <section className="executive-zone executive-zone-risk">
+          <div className="executive-zone-title">
+            <span>Zone 2</span>
+            <h2>Review Status</h2>
+          </div>
+          <div className={`executive-risk-status ${riskScore > 55 ? "high" : riskScore > 24 ? "medium" : "low"}`}>
+            <strong>{riskLabel}</strong>
+            <span>{riskScore}% review signal</span>
+          </div>
+          <ul className="executive-risk-list">
+            {riskNarrative.map((item) => <li key={item}>{item}</li>)}
+          </ul>
+        </section>
+
+        <section className="executive-zone executive-zone-actions">
+          <div className="executive-zone-title">
+            <span>Zone 3</span>
+            <h2>Primary Actions</h2>
+          </div>
+          <div className="executive-action-list">
+            <button onClick={onIssueCommandDirective}>
+              <Send size={18} />
+              <strong>Issue Directive</strong>
+              <span>Send executive instruction</span>
+            </button>
+            <button onClick={onCreateCommandTask}>
+              <SquareCheckBig size={18} />
+              <strong>Create Task</strong>
+              <span>Assign operational work</span>
+            </button>
+            <button onClick={onOpenCommandEscalation}>
+              <AlertTriangle size={18} />
+              <strong>Open Review</strong>
+              <span>Send item for leadership attention</span>
+            </button>
+            <button onClick={onArchiveCommandBriefing}>
+              <ArchiveIcon size={18} />
+              <strong>Archive Brief</strong>
+              <span>Archive governance record</span>
+            </button>
+          </div>
+        </section>
+      </div>
+
+      <section className="executive-secondary">
+        <article>
+          <span>Communication</span>
+          <strong>{messages.length} ChurchMail items</strong>
+          <small>Secure governance communication is routed through ChurchMail.</small>
+        </article>
+        <article>
+          <span>Approvals</span>
+          <strong>{pendingApprovals.length} awaiting action</strong>
+          <small>Authorization requests are grouped by governance priority.</small>
+        </article>
+        <article>
+          <span>Reports</span>
+          <strong>{pendingReports.length} open reports</strong>
+          <small>Reports move upward through the organizational hierarchy.</small>
+        </article>
+      </section>
+    </section>
+  );
+
+  return (
+    <section className="global-command-center" aria-label="GCOS global operations command center">
+      <header className="global-command-header">
+        <div className="global-command-brand">
+          <img src={CHURCH_LOGO_SRC} alt="Remedy Movement International logo" />
+          <div>
+            <span>GCOS Administrative OS</span>
+            <strong>Remedy Movement International</strong>
+          </div>
+        </div>
+        <label className="global-command-search">
+          <Search size={17} />
+          <input placeholder="Search directives, reports, approvals, offices, activity" />
+        </label>
+        <div className="global-command-tools">
+          <span className={apiStatusError ? "warning" : "good"}><CircleDot size={10} /> {apiStatusError ? "Local record mode" : "Sync active"}</span>
+          <span><Server size={13} /> {apiStatus ? formatUptime(apiStatus.uptimeSeconds) : "Preview"}</span>
+          <span><Rocket size={13} /> Deploy {deploymentReady}/5</span>
+          <button onClick={onRefreshCommandBriefing}><RefreshCw size={15} /></button>
+          <button><Bell size={15} /><b>{openEscalations.length + pendingApprovals.length}</b></button>
+          <button className="profile"><KeyRound size={15} /> {station.email}</button>
+        </div>
+      </header>
+
+      <div className="global-kpi-strip">
+        {commandMetrics.map(({ icon: Icon, label, value, trend, tone, chart }) => (
+          <article className={`global-kpi ${tone}`} key={label}>
+            <div><Icon size={15} /><span>{label}</span></div>
+            <strong>{value}</strong>
+            <small>{trend}</small>
+            <figure aria-hidden="true">{chart.map((point, index) => <i key={`${label}-${index}`} style={{ height: `${Math.max(16, Math.min(92, point))}%` }} />)}</figure>
+          </article>
+        ))}
+      </div>
+
+      <div className="global-command-grid">
+        <aside className="global-risk-rail" aria-label="Risk and alerts">
+          <div className="global-column-title">
+            <span>Risk + Alerts</span>
+            <strong>{riskScore}% governance readiness</strong>
+          </div>
+
+          <div className="risk-radar-card">
+            <div className="risk-radar">
+              <span>{riskScore}%</span>
+              <i style={{ transform: `rotate(${Math.min(320, riskScore * 3.2)}deg)` }} />
+            </div>
+            <div>
+              <strong>{openEscalations.length} escalations watched</strong>
+              <small>{blockedTasks.length} blocked tasks, {atRiskEvents.length} at-risk calendar items</small>
+            </div>
+          </div>
+
+          <div className="risk-alert-list">
+            {(riskAlerts.length ? riskAlerts : [{ label: "No urgent operational risk", detail: "The queue is currently stable.", tag: "Clear", owner: station.level }]).map((alert) => (
+              <article className={`risk-alert ${alert.tag.toLowerCase()}`} key={`${alert.label}-${alert.tag}`}>
+                <span>{alert.tag}</span>
+                <strong>{alert.label}</strong>
+                <small>{alert.detail}</small>
+                <b>{alert.owner}</b>
+              </article>
+            ))}
+          </div>
+
+          <section className="command-module compact-analytics">
+            <div className="module-title"><Workflow size={15} /><span>Workflow Monitor</span><b>SLA watch</b></div>
+            {workflows.map((item) => (
+              <article className="workflow-analytic" key={item.label}>
+                <div><strong>{item.label}</strong><span>{item.status}</span></div>
+                <b>{item.count}</b>
+                <i><em className={item.tone} style={{ width: `${item.progress}%` }} /></i>
+              </article>
+            ))}
+          </section>
+
+          <section className="command-module ai-warning-panel">
+            <div className="module-title"><Sparkles size={15} /><span>AI Warnings</span><b>assist</b></div>
+            <article><strong>Predicted bottleneck</strong><span>County audit review</span></article>
+            <article><strong>Recommended escalation</strong><span>{openEscalations[0]?.item ?? "No escalation needed"}</span></article>
+            <article><strong>Voice reports queued</strong><span>14 awaiting transcription</span></article>
+          </section>
+        </aside>
+
+        <main className="global-ops-core" aria-label="Primary command operations">
+          <section className="ops-command-hero">
+            <div>
+              <span>{station.level} workstation</span>
+              <h1>Global Governance Control Center</h1>
+              <p>Route reports, approvals, directives, tasks, transfers, evidence, and executive decisions through the RMVI hierarchy from one operational surface.</p>
+            </div>
+            <div className="ops-command-score">
+              <strong>{slaForecast}%</strong>
+              <span>governance SLA forecast</span>
+            </div>
+          </section>
+
+          <section className="command-action-deck">
+            {commandActions.map(({ icon: Icon, label, detail, action }) => (
+              <button key={label} onClick={action}>
+                <Icon size={17} />
+                <strong>{label}</strong>
+                <span>{detail}</span>
+              </button>
+            ))}
+          </section>
+
+          <section className="command-module operations-workbench">
+            <div className="module-title"><LayoutDashboard size={15} /><span>Primary Operations</span><b>{activeOperations.length} active</b></div>
+            <div className="operation-list">
+              {activeOperations.map(({ type, title, meta, status, value, icon: Icon }) => (
+                <article key={`${type}-${title}`}>
+                  <div className="operation-icon"><Icon size={16} /></div>
+                  <div>
+                    <span>{type}</span>
+                    <strong>{title}</strong>
+                    <small>{meta}</small>
+                  </div>
+                  <b>{status}</b>
+                  <em>{value}</em>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="command-module approval-pipelines">
+            <div className="module-title"><BadgeCheck size={15} /><span>Approval Chains</span><b>{pendingApprovals.length} pending</b></div>
+            <div className="pipeline-grid">
+              {workflowPipelines.map((approval) => (
+                <article className={approval.state.toLowerCase().includes("escalated") ? "escalated" : ""} key={approval.id}>
+                  <span>{approval.state}</span>
+                  <strong>{approval.request}</strong>
+                  <small>{approval.route}</small>
+                  <div className="pipeline-flow">
+                    {Array.from({ length: approval.total }).map((_, index) => <i className={index < approval.done ? "done" : ""} key={`${approval.id}-${index}`} />)}
+                  </div>
+                  <footer><b>{approval.limit}</b><em>{approval.percent}% signed</em></footer>
+                </article>
+              ))}
+            </div>
+          </section>
+
+          <section className="command-module hierarchy-compact">
+            <div className="module-title"><GitBranch size={15} /><span>Organizational Hierarchy</span><b>{hierarchy.length} levels</b></div>
+            <div className="hierarchy-flow">
+              {hierarchy.map((node, index) => (
+                <article key={node.level}>
+                  <span>L{index + 1}</span>
+                  <strong>{node.level}</strong>
+                  <small>{node.node}</small>
+                  <i style={{ width: `${node.command}%` }} />
+                </article>
+              ))}
+            </div>
+          </section>
+        </main>
+
+        <aside className="global-intel-rail" aria-label="Intelligence and communication">
+          <div className="global-column-title">
+            <span>Intelligence + Comms</span>
+            <strong>{messages.length} ChurchMail records</strong>
+          </div>
+
+          <section className="command-module churchmail-command">
+            <div className="module-title"><Mail size={15} /><span>ChurchMail Inbox</span><b>classified</b></div>
+            {messages.slice(0, 4).map((message) => (
+              <article key={message.id}>
+                <span>{message.kind}</span>
+                <strong>{message.subject}</strong>
+                <small>{message.from} / {message.age}</small>
+                <b>{message.status}</b>
+              </article>
+            ))}
+          </section>
+
+          <section className="command-module intelligence-brief">
+            <div className="module-title"><Sparkles size={15} /><span>AI Intelligence</span><b>live</b></div>
+            {priorityItems.map((priority) => (
+              <article key={priority}>
+                <Sparkles size={13} />
+                <span>{priority}</span>
+              </article>
+            ))}
+          </section>
+
+          <section className="command-module live-comms-summary">
+            <div className="module-title"><Video size={15} /><span>Live Communications</span><b>{transfers.length} routed</b></div>
+            <div className="live-comms-grid">
+              <span><strong>3</strong>active rooms</span>
+              <span><strong>14</strong>voice reports</span>
+              <span><strong>{transfers.length}</strong>transfer files</span>
+            </div>
+          </section>
+
+          <section className="command-module activity-stream">
+            <div className="module-title"><Activity size={15} /><span>Activity Center</span><b>{activityGroups.length} recent</b></div>
+            {activityGroups.map((event) => (
+              <article className={event.tone} key={`${event.detail}-${event.time}`}>
+                <i />
+                <div>
+                  <span>{event.group}</span>
+                  <strong>{event.detail}</strong>
+                  <small>{event.time} ago</small>
+                </div>
+              </article>
+            ))}
+          </section>
+
+          <section className="command-module sync-diagnostics">
+            <div className="module-title"><CloudOff size={15} /><span>Offline Sync</span><b>{networkOnline ? "online" : "offline"}</b></div>
+            <div className="sync-grid">
+              <span><strong>{installReady ? "Ready" : "Setup"}</strong>install shell</span>
+              <span><strong>{offlineQueue.length}</strong>local queue</span>
+              <span><strong>{offlineConflicts.length}</strong>conflicts</span>
+              <span><strong>{offlineSyncHistory.length}</strong>sync events</span>
+            </div>
+            <button onClick={onSync}><RefreshCw size={14} /> Sync queued work</button>
+          </section>
+        </aside>
+      </div>
     </section>
   );
 }
@@ -11287,15 +12170,44 @@ function ChurchMail({
   const [composeFeedback, setComposeFeedback] = React.useState("");
   const [kindFilter, setKindFilter] = React.useState<MessageKind | "All kinds">("All kinds");
   const [statusFilter, setStatusFilter] = React.useState<Status | "All statuses">("All statuses");
+  const [mailSearch, setMailSearch] = React.useState("");
+  const [mailSort, setMailSort] = React.useState<"Newest" | "Priority" | "Status">("Newest");
   const visibleMessages = React.useMemo(() => messages.filter((message) => (
     (kindFilter === "All kinds" || message.kind === kindFilter)
     && (statusFilter === "All statuses" || message.status === statusFilter)
-  )), [kindFilter, messages, statusFilter]);
+    && (!mailSearch.trim()
+      || message.subject.toLowerCase().includes(mailSearch.toLowerCase())
+      || message.from.toLowerCase().includes(mailSearch.toLowerCase())
+      || message.files.toLowerCase().includes(mailSearch.toLowerCase()))
+  )).sort((a, b) => {
+    if (mailSort === "Priority") {
+      const weight = { Critical: 5, High: 4, Medium: 3, Low: 2 };
+      return (weight[b.priority ?? "Medium"] ?? 3) - (weight[a.priority ?? "Medium"] ?? 3);
+    }
+    if (mailSort === "Status") return a.status.localeCompare(b.status);
+    return messages.indexOf(a) - messages.indexOf(b);
+  }), [kindFilter, mailSearch, mailSort, messages, statusFilter]);
   const selected = visibleMessages.find((message) => message.id === selectedId) ?? visibleMessages[0] ?? messages[0];
   const readyCount = messages.filter((message) => message.status === "Ready").length;
   const reviewCount = messages.filter((message) => message.status === "In Review").length;
   const escalatedCount = messages.filter((message) => message.status === "Escalated").length;
   const watchedCount = messages.filter((message) => message.watchers?.length).length;
+  const archivedCount = messages.filter((message) => message.archived).length;
+  const navItems = [
+    { label: "Inbox", icon: Inbox, count: messages.filter((message) => !message.archived).length, kind: "All kinds" as const, status: "All statuses" as const },
+    { label: "Directives", icon: Send, count: messages.filter((message) => message.kind === "Directive").length, kind: "Directive" as const, status: "All statuses" as const },
+    { label: "Reports", icon: FileCheck2, count: messages.filter((message) => message.kind === "Report").length, kind: "Report" as const, status: "All statuses" as const },
+    { label: "Approvals", icon: Signature, count: messages.filter((message) => message.kind === "Approval").length, kind: "Approval" as const, status: "All statuses" as const },
+    { label: "Escalations", icon: AlertTriangle, count: escalatedCount, kind: "All kinds" as const, status: "Escalated" as const },
+    { label: "Transfers", icon: GitBranch, count: messages.filter((message) => message.kind === "Transfer").length, kind: "Transfer" as const, status: "All statuses" as const },
+    { label: "Archive", icon: ArchiveIcon, count: archivedCount, kind: "All kinds" as const, status: "All statuses" as const }
+  ];
+  const messageMetrics = [
+    { label: "Ready", value: digest?.ready ?? readyCount, icon: Inbox },
+    { label: "Review", value: digest?.review ?? reviewCount, icon: FileClock },
+    { label: "Escalated", value: digest?.escalated ?? escalatedCount, icon: AlertTriangle },
+    { label: "Archived", value: digest?.archived ?? archivedCount, icon: ArchiveIcon }
+  ];
 
   function submitMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -11310,185 +12222,200 @@ function ChurchMail({
   }
 
   return (
-    <section className="churchmail-app">
-      <div className="churchmail-hero">
+    <section className="churchmail-enterprise" aria-label="ChurchMail enterprise governance inbox">
+      <header className="mail-executive-header">
         <div>
           <span>ChurchMail</span>
-          <h2>Official RMVI governance communication.</h2>
-          <p>Receive directives, submit reports, request approvals, acknowledge transfers, and archive every official message into the audit record.</p>
+          <h1>Secure Governance Communication Network</h1>
+          <p>{station.level} / {station.email} / {offlineMode ? "Local queue active" : "Operational"}</p>
         </div>
-        <div className="churchmail-live-card">
-          <Mail size={22} />
-          <strong>{visibleMessages.length}</strong>
-          <span>visible messages</span>
-          <small>{offlineMode ? "Offline queue active" : "Live routing active"}</small>
+        <div className="mail-overview-strip" aria-label="Inbox overview">
+          <article><strong>{readyCount}</strong><span>Ready</span></article>
+          <article><strong>{reviewCount}</strong><span>Under Review</span></article>
+          <article className={escalatedCount ? "attention" : ""}><strong>{escalatedCount}</strong><span>Escalated</span></article>
+          <article><strong>{archivedCount}</strong><span>Archived</span></article>
         </div>
-      </div>
-
-      <div className="churchmail-status-grid">
-        <article><Inbox size={17} /><span>Ready</span><strong>{digest?.ready ?? readyCount}</strong></article>
-        <article><FileClock size={17} /><span>Review</span><strong>{digest?.review ?? reviewCount}</strong></article>
-        <article><AlertTriangle size={17} /><span>Escalated</span><strong>{digest?.escalated ?? escalatedCount}</strong></article>
-        <article><ArchiveIcon size={17} /><span>Archived</span><strong>{digest?.archived ?? messages.filter((message) => message.archived).length}</strong></article>
-        <article><Bell size={17} /><span>Watched</span><strong>{digest?.watched ?? watchedCount}</strong></article>
-        <article><Send size={17} /><span>Next</span><strong>{digest?.nextMessage ?? selected?.subject ?? "None"}</strong></article>
-      </div>
-
-      <div className="churchmail-workspace">
-        <aside className="churchmail-sidebar">
-          <div className="churchmail-panel">
-            <div className="churchmail-panel-title">
-              <div>
-                <span>Inbox filters</span>
-                <h3>Message Queue</h3>
-              </div>
-              <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Refresh</button>
-            </div>
-            <div className="churchmail-filter-grid">
-              <label>
-                <span>Classification</span>
-                <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as MessageKind | "All kinds")}>
-                  {["All kinds", "Directive", "Report", "Approval", "Notification", "Transfer"].map((kind) => <option key={kind} value={kind}>{kind}</option>)}
-                </select>
-              </label>
-              <label>
-                <span>Status</span>
-                <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Status | "All statuses")}>
-                  {["All statuses", "Ready", "In Review", "Escalated", "Approved", "Queued"].map((status) => <option key={status} value={status}>{status}</option>)}
-                </select>
-              </label>
-            </div>
-            <div className="churchmail-list">
-              {visibleMessages.map((message) => (
-                <button
-                  className={message.id === selected?.id ? "churchmail-list-item selected" : "churchmail-list-item"}
-                  key={message.id}
-                  aria-label={message.subject}
-                  onClick={() => setSelectedId(message.id)}
-                >
-                  <div className="churchmail-kind-chip">{message.kind}</div>
-                  <strong>{message.subject}</strong>
-                  <span>{message.from} - {message.age}</span>
-                  <small>{message.files}</small>
-                  <StatusPill status={message.status} />
-                </button>
-              ))}
-              {visibleMessages.length === 0 && <div className="empty-state">No ChurchMail messages match the current filters.</div>}
-            </div>
+      </header>
+      <aside className="mail-nav-panel">
+        <div className="mail-brand-block">
+          <Mail size={20} />
+          <div>
+            <strong>ChurchMail</strong>
+            <span>{offlineMode ? "Local queue active" : "Secure route active"}</span>
           </div>
-        </aside>
-
-        <main className="churchmail-reading-pane">
-          {selected ? (
-            <article className="churchmail-message-detail">
-              <div className="churchmail-detail-head">
-                <div className={`churchmail-message-icon ${selected.kind.toLowerCase()}`}>
-                  {selected.kind === "Report" ? <FileCheck2 size={22} /> : selected.kind === "Approval" ? <Signature size={22} /> : selected.kind === "Transfer" ? <GitBranch size={22} /> : <Mail size={22} />}
-                </div>
-                <div>
-                  <span>{selected.kind} / {selected.status}</span>
-                  <h3>{selected.subject}</h3>
-                  <p>{selected.from} sent this official communication {selected.age} ago with attached governance records: {selected.files}.</p>
-                </div>
-              </div>
-              <div className="churchmail-route-card">
-                <div>
-                  <span>Routing chain</span>
-                  <strong>{selected.route ?? "Origin station -> Current station -> Supervising authority -> Archive vault"}</strong>
-                </div>
-                <Workflow size={22} />
-              </div>
-              <div className="churchmail-meta-grid">
-                <div><span>Priority</span><strong>{selected.priority ?? "Medium"}</strong></div>
-                <div><span>Watchers</span><strong>{selected.watchers?.length ?? 0}</strong></div>
-                <div><span>Archive</span><strong>{selected.archived ? "Archived" : "Live record"}</strong></div>
-              </div>
-              <div className="churchmail-action-groups">
-                <div>
-                  <span>Review</span>
-                  <button onClick={() => onUpdateStatus(selected.id, "In Review")}><FileClock size={15} /> Review</button>
-                  <button onClick={() => onAcknowledge(selected.id)}><Send size={15} /> Acknowledge</button>
-                  <button onClick={() => onApproveMessage(selected.id)}><CheckCircle2 size={15} /> Approve</button>
-                </div>
-                <div>
-                  <span>Routing</span>
-                  <button onClick={() => onUpdateRoute(selected.id)}><Workflow size={15} /> Route</button>
-                  <button onClick={() => onUpdatePriority(selected.id)}><TimerReset size={15} /> Priority</button>
-                  <button onClick={() => onEscalateMessage(selected.id)}><AlertTriangle size={15} /> Escalate</button>
-                </div>
-                <div>
-                  <span>Records</span>
-                  <button onClick={() => onWatchMessage(selected.id)}><Bell size={15} /> Watch</button>
-                  <button onClick={() => onDuplicateMessage(selected.id)}><Files size={15} /> Duplicate</button>
-                  <button onClick={() => onArchiveMessage(selected.id)}><LockKeyhole size={15} /> Archive</button>
-                </div>
-                <div>
-                  <span>Convert</span>
-                  <button onClick={() => onClassify(selected.id, selected.kind === "Directive" ? "Notification" : "Directive")}><SlidersHorizontal size={15} /> Classify</button>
-                  <button onClick={() => onCreateReport(selected.id)}><FileCheck2 size={15} /> Create report</button>
-                  <button onClick={() => onRequestApproval(selected.id)}><Signature size={15} /> Request approval</button>
-                  <button onClick={() => onArchiveAttachments(selected.id)}><ArchiveIcon size={15} /> Vault</button>
-                </div>
-              </div>
-            </article>
-          ) : (
-            <div className="empty-state">Select a message to review its route, attachments, and workflow actions.</div>
-          )}
-        </main>
-
-        <aside className="churchmail-compose-pane">
-          <div className="churchmail-panel">
-            <div className="churchmail-panel-title">
-              <div>
-                <span>{offlineMode ? "Offline queue" : "Live route"}</span>
-                <h3>Compose ChurchMail</h3>
-              </div>
-              <Send size={18} />
-            </div>
-            <form className="churchmail-form" onSubmit={submitMessage}>
-              <label>
-                <span>Sender station</span>
-                <input value={station.email} readOnly />
-              </label>
-              <label>
-                <span>Classification</span>
-                <select value={composeKind} onChange={(event) => setComposeKind(event.target.value as MessageKind)}>
-                  {["Directive", "Report", "Approval", "Notification", "Transfer"].map((kind) => (
-                    <option key={kind} value={kind}>{kind}</option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                <span>Recipient / route</span>
-                <input value={composeTo} onChange={(event) => setComposeTo(event.target.value)} />
-              </label>
-              <label>
-                <span>Subject</span>
-                <input value={composeSubject} onChange={(event) => setComposeSubject(event.target.value)} />
-              </label>
-              <label>
-                <span>Attachments</span>
-                <input value={composeFiles} onChange={(event) => setComposeFiles(event.target.value)} />
-              </label>
-              {composeFeedback && <div className="compose-feedback">{composeFeedback}</div>}
-              <button type="submit"><Send size={15} /> Send ChurchMail</button>
-            </form>
-          </div>
-          <div className="churchmail-panel">
-            <div className="churchmail-panel-title">
-              <div>
-                <span>Bulk operations</span>
-                <h3>Queue Control</h3>
-              </div>
-              <CheckCircle2 size={18} />
-            </div>
-            <button className="churchmail-wide-action" disabled={!visibleMessages.length} onClick={() => onBulkApprove(visibleMessages.slice(0, 3).map((message) => message.id))}>
-              <CheckCircle2 size={15} /> Bulk approve first 3 visible
+        </div>
+        <nav className="mail-folder-list" aria-label="ChurchMail folders">
+          {navItems.map(({ label, icon: Icon, count, kind, status }) => (
+            <button
+              key={label}
+              className={(kindFilter === kind && statusFilter === status) || (label === "Inbox" && kindFilter === "All kinds" && statusFilter === "All statuses") ? "active" : ""}
+              onClick={() => {
+                setKindFilter(kind);
+                setStatusFilter(status);
+              }}
+            >
+              <Icon size={16} />
+              <span>{label}</span>
+              <b>{count}</b>
             </button>
+          ))}
+        </nav>
+        <div className="mail-nav-metrics">
+          {messageMetrics.map(({ label, value, icon: Icon }) => (
+            <article key={label}>
+              <Icon size={14} />
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </article>
+          ))}
+        </div>
+        <form className="mail-quick-compose" onSubmit={submitMessage}>
+          <span>Quick Compose</span>
+          <select value={composeKind} onChange={(event) => setComposeKind(event.target.value as MessageKind)}>
+            {["Directive", "Report", "Approval", "Notification", "Transfer"].map((kind) => <option key={kind} value={kind}>{kind}</option>)}
+          </select>
+          <input value={composeTo} onChange={(event) => setComposeTo(event.target.value)} aria-label="Recipient route" />
+          <input value={composeSubject} onChange={(event) => setComposeSubject(event.target.value)} aria-label="Message subject" />
+          <button type="submit"><Send size={14} /> Send</button>
+          {composeFeedback && <small>{composeFeedback}</small>}
+        </form>
+      </aside>
+
+      <main className="mail-queue-panel">
+        <header className="mail-queue-toolbar">
+          <div>
+            <span>Governance Inbox</span>
+            <strong>{visibleMessages.length} messages</strong>
           </div>
-          <EventBusPanel events={events} />
-        </aside>
-      </div>
+          <label>
+            <Search size={15} />
+            <input value={mailSearch} onChange={(event) => setMailSearch(event.target.value)} placeholder="Search messages, offices, attachments" />
+          </label>
+          <select value={kindFilter} onChange={(event) => setKindFilter(event.target.value as MessageKind | "All kinds")}>
+            {["All kinds", "Directive", "Report", "Approval", "Notification", "Transfer"].map((kind) => <option key={kind} value={kind}>{kind}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Status | "All statuses")}>
+            {["All statuses", "Ready", "In Review", "Escalated", "Approved", "Queued"].map((status) => <option key={status} value={status}>{status}</option>)}
+          </select>
+          <select value={mailSort} onChange={(event) => setMailSort(event.target.value as "Newest" | "Priority" | "Status")}>
+            {["Newest", "Priority", "Status"].map((sort) => <option key={sort} value={sort}>{sort}</option>)}
+          </select>
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /></button>
+          <button type="button" disabled={!visibleMessages.length} onClick={() => onBulkApprove(visibleMessages.slice(0, 3).map((message) => message.id))}><CheckCircle2 size={14} /> Bulk</button>
+        </header>
+
+        <div className="mail-message-list" role="list" aria-label="ChurchMail message queue">
+          {visibleMessages.map((message) => (
+            <button
+              className={`mail-message-row ${message.id === selected?.id ? "selected" : ""} ${message.status.toLowerCase().replace(/\s+/g, "-")}`}
+              key={message.id}
+              aria-label={message.subject}
+              onClick={() => setSelectedId(message.id)}
+            >
+              <span className={`mail-kind ${message.kind.toLowerCase()}`}>{message.kind}</span>
+              <div className="mail-row-title">
+                <strong>{message.subject}</strong>
+                <small>{message.from}</small>
+              </div>
+              <span className="mail-row-time">{message.age}</span>
+              <span className="mail-attachment"><Files size={13} /> {message.files}</span>
+              <b className={`mail-priority ${(message.priority ?? "Medium").toLowerCase()}`}>{message.priority ?? "Medium"}</b>
+              <StatusPill status={message.status} />
+              {message.status === "Escalated" && <AlertTriangle className="mail-escalation-marker" size={15} />}
+            </button>
+          ))}
+          {visibleMessages.length === 0 && (
+            <div className="mail-empty-state">
+              <Inbox size={24} />
+              <strong>No messages match these filters.</strong>
+              <span>Change the folder, classification, status, or search term.</span>
+            </div>
+          )}
+        </div>
+      </main>
+
+      <aside className="mail-inspector-panel">
+        {selected ? (
+          <>
+            <header className="mail-inspector-header">
+              <div className={`mail-inspector-icon ${selected.kind.toLowerCase()}`}>
+                {selected.kind === "Report" ? <FileCheck2 size={22} /> : selected.kind === "Approval" ? <Signature size={22} /> : selected.kind === "Transfer" ? <GitBranch size={22} /> : <Mail size={22} />}
+              </div>
+              <div>
+                <span>{selected.kind} / {selected.status}</span>
+                <h2>{selected.subject}</h2>
+                <p>{selected.from} sent this official communication {selected.age} ago.</p>
+              </div>
+            </header>
+
+            <section className="mail-inspector-card">
+              <div className="mail-section-title"><Workflow size={15} /><span>Governance Path</span></div>
+              <strong>{selected.route ?? "Origin station -> Current station -> Supervising authority -> Records Archive"}</strong>
+            </section>
+
+            <section className="mail-inspector-grid">
+              <article><span>Priority</span><strong>{selected.priority ?? "Medium"}</strong></article>
+              <article><span>Observers</span><strong>{selected.watchers?.length ?? 0}</strong></article>
+              <article><span>Records Archive</span><strong>{selected.archived ? "Archived" : "Live"}</strong></article>
+              <article><span>Files</span><strong>{selected.files}</strong></article>
+            </section>
+
+            <section className="mail-inspector-card">
+              <div className="mail-section-title"><Sparkles size={15} /><span>AI Summary</span></div>
+              <p>{selected.kind === "Approval" ? "This message requires authorization review and may need a budget or delegated authority check." : selected.kind === "Report" ? "This message contains a report packet that can be converted into a review workflow and archived as evidence." : "This communication is ready for acknowledgement, routing, and audit capture."}</p>
+            </section>
+
+            <section className="mail-action-board">
+              <div className="mail-section-title"><SlidersHorizontal size={15} /><span>Workflow Actions</span></div>
+              <button onClick={() => onUpdateStatus(selected.id, "In Review")}><FileClock size={14} /> Review</button>
+              <button onClick={() => onApproveMessage(selected.id)}><CheckCircle2 size={14} /> Approve</button>
+              <button onClick={() => onUpdateRoute(selected.id)}><Workflow size={14} /> Route</button>
+              <details className="mail-more-actions">
+                <summary>More actions</summary>
+                <div>
+                  <button onClick={() => onAcknowledge(selected.id)}><Send size={14} /> Acknowledge</button>
+                  <button onClick={() => onUpdatePriority(selected.id)}><TimerReset size={14} /> Priority</button>
+                  <button onClick={() => onEscalateMessage(selected.id)}><AlertTriangle size={14} /> Escalate</button>
+                  <button onClick={() => onWatchMessage(selected.id)}><Bell size={14} /> Observe</button>
+                  <button onClick={() => onDuplicateMessage(selected.id)}><Files size={14} /> Duplicate</button>
+                  <button onClick={() => onArchiveMessage(selected.id)}><LockKeyhole size={14} /> Archive</button>
+                  <button onClick={() => onClassify(selected.id, selected.kind === "Directive" ? "Notification" : "Directive")}><SlidersHorizontal size={14} /> Classify</button>
+                  <button onClick={() => onCreateReport(selected.id)}><FileCheck2 size={14} /> Create report</button>
+                  <button onClick={() => onRequestApproval(selected.id)}><Signature size={14} /> Request approval</button>
+                  <button onClick={() => onArchiveAttachments(selected.id)}><ArchiveIcon size={14} /> Records evidence</button>
+                </div>
+              </details>
+            </section>
+
+            <section className="mail-inspector-card">
+              <div className="mail-section-title"><Activity size={15} /><span>Audit Trail</span></div>
+              <div className="mail-audit-feed">
+                {events.filter(isUserVisibleEvent).slice(0, 5).map((event, index) => (
+                  <article key={`${event}-${index}`}>
+                    <i />
+                    <span>{event.includes(":") ? event.split(":")[0] : "Event"}</span>
+                    <strong>{event}</strong>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <form className="mail-inspector-compose" onSubmit={submitMessage}>
+              <div className="mail-section-title"><Send size={15} /><span>Reply / Compose</span></div>
+              <input value={composeTo} onChange={(event) => setComposeTo(event.target.value)} aria-label="Recipient route" />
+              <input value={composeSubject} onChange={(event) => setComposeSubject(event.target.value)} aria-label="Subject" />
+              <input value={composeFiles} onChange={(event) => setComposeFiles(event.target.value)} aria-label="Attachments" />
+              <button type="submit"><Send size={14} /> Send ChurchMail</button>
+            </form>
+          </>
+        ) : (
+          <div className="mail-empty-state">
+            <Mail size={24} />
+            <strong>Select a message</strong>
+            <span>Message routing, attachments, actions, AI summary, and audit trail will open here.</span>
+          </div>
+        )}
+      </aside>
     </section>
   );
 }
@@ -11701,6 +12628,364 @@ function Reports({
     });
     setDetailFeedback(`Report sent to ${routeTo} through ChurchMail.`);
   }
+
+  const templatePreview = filteredTemplates.slice(0, 8);
+  const selectedQueue = visibleReports.slice(0, 6);
+
+  return (
+    <section className="report-command-workspace" aria-label="GCOS governance reporting workspace">
+      <header className="report-command-hero">
+        <div>
+          <span>Reporting Center</span>
+          <h1>Governance Reporting Workspace</h1>
+          <p>{station.level} / {station.email} / structured reports, evidence, and upward routing.</p>
+        </div>
+        <div className="report-command-status">
+          <article><strong>{openCount}</strong><span>Open reports</span></article>
+          <article><strong>{overdueCount}</strong><span>Overdue</span></article>
+          <article><strong>{reports.filter((report) => report.state === "Escalated").length}</strong><span>Escalated</span></article>
+          <article><strong>{evidenceReadyCount}</strong><span>Evidence ready</span></article>
+        </div>
+      </header>
+
+      <div className="report-command-grid">
+        <aside className="report-zone report-zone-library">
+          <div className="report-zone-title">
+            <span>Zone 1</span>
+            <h2>Template Library</h2>
+          </div>
+          <label className="report-search">
+            <Search size={15} />
+            <input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search report templates" />
+          </label>
+          <div className="report-category-tabs">
+            {featuredTemplateTypes.slice(0, 8).map((category) => (
+              <button
+                type="button"
+                key={category}
+                className={templateTypeFilter === category ? "active" : ""}
+                onClick={() => setTemplateTypeFilter(category)}
+              >
+                <span>{category}</span>
+                <b>{category === "All templates" ? churchReportTemplates.length : churchReportTemplates.filter((template) => template.type === category).length}</b>
+              </button>
+            ))}
+          </div>
+          <div className="report-template-compact-list">
+            {templatePreview.map((template) => (
+              <button key={template.id} className={selectedTemplate.id === template.id ? "selected" : ""} onClick={() => applyTemplate(template)}>
+                <span>{template.type}</span>
+                <strong>{template.name}</strong>
+                <small>{template.path}</small>
+              </button>
+            ))}
+            {filteredTemplates.length > templatePreview.length && (
+              <div className="report-more-note">{filteredTemplates.length - templatePreview.length} more templates are available through search or category filters.</div>
+            )}
+            {filteredTemplates.length === 0 && <div className="report-more-note">No templates match this search.</div>}
+          </div>
+        </aside>
+
+        <main className="report-zone report-zone-builder">
+          <div className="report-zone-title">
+            <span>Zone 2</span>
+            <h2>Active Report Builder</h2>
+          </div>
+          <div className="report-active-template">
+            <div>
+              <span>{selectedTemplate.type} Template</span>
+              <strong>{name}</strong>
+              <p>{selectedTemplate.description}</p>
+            </div>
+            <FlowMeter label={`${reportCompletion}% draft`} value={reportCompletion} />
+          </div>
+          <form className="report-calm-form" onSubmit={submit}>
+            <div className="report-form-meta">
+              <label><span>Period</span><input value={period} onChange={(event) => setPeriod(event.target.value)} /></label>
+              <label><span>Prepared by</span><input value={preparedBy} onChange={(event) => setPreparedBy(event.target.value)} /></label>
+              <label><span>Governance path</span><input value={path} onChange={(event) => setPath(event.target.value)} /></label>
+            </div>
+            <label className="report-title-field">
+              <span>Report title</span>
+              <input value={name} onChange={(event) => setName(event.target.value)} />
+            </label>
+            <div className="report-section-cards">
+              {selectedSections.map((section, index) => (
+                <details key={section} open={index < 2}>
+                  <summary>
+                    <b>{String(index + 1).padStart(2, "0")}</b>
+                    <strong>{section}</strong>
+                    <span>{reportFields[section]?.trim() ? "Complete" : "Draft"}</span>
+                  </summary>
+                  <textarea
+                    value={reportFields[section] ?? ""}
+                    onChange={(event) => updateReportField(section, event.target.value)}
+                    placeholder={`Enter ${section.toLowerCase()}`}
+                  />
+                </details>
+              ))}
+            </div>
+            <label className="report-attestation-field">
+              <span>Attestation / signature line</span>
+              <textarea value={attestation} onChange={(event) => setAttestation(event.target.value)} />
+            </label>
+            {feedback && <div className="compose-feedback">{feedback}</div>}
+            <div className="report-primary-actions">
+              <div><strong>{completedReportFields(reportFields)}/{selectedSections.length}</strong><span>sections complete</span></div>
+              <button type="submit"><FileCheck2 size={15} /> Save draft</button>
+              <button type="button" onClick={exportReports}><Download size={15} /> Export</button>
+            </div>
+          </form>
+        </main>
+
+        <aside className="report-zone report-zone-submission">
+          <div className="report-zone-title">
+            <span>Zone 3</span>
+            <h2>Submission</h2>
+          </div>
+          {selectedReport ? (
+            <section className="report-submit-focus">
+              <span>{selectedReport.type ?? "Report"} / {selectedReport.state}</span>
+              <strong>{selectedReport.name}</strong>
+              <p>{selectedReport.path}</p>
+              <div className="report-submit-metrics">
+                <article><span>Progress</span><strong>{selectedReportComplete}%</strong></article>
+                <article><span>Evidence</span><strong>{selectedReport.evidenceStatus ?? "Pending"}</strong></article>
+                <article><span>Due</span><strong>{selectedReport.due}</strong></article>
+              </div>
+              <label>
+                <span>Send to inbox / office</span>
+                <input value={routeTo} onChange={(event) => setRouteTo(event.target.value)} />
+              </label>
+              <div className="report-submit-actions">
+                <button onClick={saveSelectedReportDetails}><FileCheck2 size={14} /> Save</button>
+                <button onClick={sendSelectedReport}><Send size={14} /> Send</button>
+                <button onClick={() => onSubmitReport(selectedReport.id)}><CheckCircle2 size={14} /> Submit</button>
+                <details className="report-more-actions">
+                  <summary>More actions</summary>
+                  <div>
+                    <button onClick={() => onReviewReport(selectedReport.id)}>Review</button>
+                    <button onClick={() => onVerifyReport(selectedReport.id)}>Verify</button>
+                    <button onClick={() => onRequestCorrection(selectedReport.id)}>Correction</button>
+                    <button onClick={() => onArchiveEvidence(selectedReport.id)}>Archive evidence</button>
+                    <button onClick={() => onBuildGovernancePacket(selectedReport.id)}>Build packet</button>
+                  </div>
+                </details>
+              </div>
+            </section>
+          ) : (
+            <div className="report-more-note">Select a report to prepare submission.</div>
+          )}
+          <section className="report-work-queue">
+            <div>
+              <span>Work Queue</span>
+              <strong>{visibleReports.length} reports</strong>
+            </div>
+            {selectedQueue.map((report) => (
+              <button key={report.id} className={selectedReport?.id === report.id ? "active" : ""} onClick={() => setSelectedReportId(report.id)}>
+                <strong>{report.name}</strong>
+                <span>{report.type ?? "Administrative"} / {report.owner}</span>
+                <b>{report.state}</b>
+              </button>
+            ))}
+          </section>
+        </aside>
+      </div>
+    </section>
+  );
+
+  return (
+    <section className="reports-enterprise" aria-label="GCOS enterprise reporting workspace">
+      <header className="report-command-bar">
+        <div>
+          <span>Reporting Center</span>
+          <strong>Governance Reporting Workspace</strong>
+        </div>
+        <label className="report-command-search">
+          <Search size={15} />
+          <input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search templates, reports, evidence" />
+        </label>
+        <select value={templateTypeFilter} onChange={(event) => setTemplateTypeFilter(event.target.value)}>
+          <option>All templates</option>
+          {templateTypes.map((option) => <option key={option}>{option}</option>)}
+        </select>
+        <select value={stateFilter} onChange={(event) => setStateFilter(event.target.value)}>
+          {stateOptions.map((option) => <option key={option}>{option}</option>)}
+        </select>
+        <button onClick={onRefreshDigest} type="button"><RefreshCw size={14} /> Sync</button>
+        <button className="primary" type="button" onClick={() => {
+          setFeedback("Template is loaded. Complete the active section and save draft.");
+        }}><Plus size={14} /> Create report</button>
+        <div className="report-command-counters">
+          <span><FileClock size={13} /> Drafts {openCount}</span>
+          <span><AlertTriangle size={13} /> Escalated {reports.filter((report) => report.state === "Escalated").length}</span>
+        </div>
+      </header>
+
+      <aside className="report-template-rail">
+        <div className="report-rail-title">
+          <span>Template Explorer</span>
+          <strong>{filteredTemplates.length} available</strong>
+        </div>
+        <div className="report-category-list">
+          {["All templates", ...templateTypes].map((category) => (
+            <button key={category} className={templateTypeFilter === category ? "active" : ""} onClick={() => setTemplateTypeFilter(category)}>
+              <FileText size={14} />
+              <span>{category}</span>
+              <b>{category === "All templates" ? churchReportTemplates.length : churchReportTemplates.filter((template) => template.type === category).length}</b>
+            </button>
+          ))}
+        </div>
+        <div className="report-template-rows">
+          {filteredTemplates.map((template) => (
+            <button key={template.id} className={selectedTemplate.id === template.id ? "selected" : ""} onClick={() => applyTemplate(template)}>
+              <span>{template.type}</span>
+              <strong>{template.name}</strong>
+              <small>{template.path}</small>
+            </button>
+          ))}
+          {filteredTemplates.length === 0 && <div className="report-empty">No templates match the current filters.</div>}
+        </div>
+      </aside>
+
+      <main className="report-builder-panel">
+        <div className="report-builder-head">
+          <div>
+            <span>{selectedTemplate.type} template</span>
+            <h2>{name}</h2>
+            <p>{selectedTemplate.description}</p>
+          </div>
+          <FlowMeter label={`${reportCompletion}% draft`} value={reportCompletion} />
+        </div>
+
+        <div className="report-builder-meta">
+          <label><span>Period</span><input value={period} onChange={(event) => setPeriod(event.target.value)} /></label>
+          <label><span>Prepared by</span><input value={preparedBy} onChange={(event) => setPreparedBy(event.target.value)} /></label>
+          <label><span>Route</span><input value={path} onChange={(event) => setPath(event.target.value)} /></label>
+        </div>
+
+        <div className="report-section-tabs" aria-label="Report section navigator">
+          {selectedSections.map((section, index) => (
+            <a key={section} href={`#report-section-${index}`}>{String(index + 1).padStart(2, "0")} {section}</a>
+          ))}
+        </div>
+
+        <form className="report-progressive-form" onSubmit={submit}>
+          <label className="report-title-input">
+            <span>Report title</span>
+            <input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+          <div className="report-accordion-list">
+            {selectedSections.map((section, index) => (
+              <details className="report-accordion" key={section} id={`report-section-${index}`} open={index < 2}>
+                <summary>
+                  <span>{String(index + 1).padStart(2, "0")}</span>
+                  <strong>{section}</strong>
+                  <b>{reportFields[section]?.trim() ? "Complete" : "Draft"}</b>
+                </summary>
+                <textarea
+                  value={reportFields[section] ?? ""}
+                  onChange={(event) => updateReportField(section, event.target.value)}
+                  placeholder={`Enter ${section.toLowerCase()}`}
+                />
+              </details>
+            ))}
+          </div>
+          <label className="report-attestation">
+            <span>Attestation / signature line</span>
+            <textarea value={attestation} onChange={(event) => setAttestation(event.target.value)} />
+          </label>
+          {feedback && <div className="compose-feedback">{feedback}</div>}
+          <div className="report-builder-actions">
+            <div><strong>{completedReportFields(reportFields)}/{selectedSections.length}</strong><span>sections complete</span></div>
+            <button type="submit"><FileCheck2 size={15} /> Save draft</button>
+            <button type="button" onClick={exportReports}><Download size={15} /> Export CSV</button>
+          </div>
+        </form>
+      </main>
+
+      <aside className="report-workflow-panel">
+        <section className="report-workflow-card active-report">
+          <div className="report-panel-title">
+            <span>Workflow + Submission</span>
+            <strong>{selectedReport?.name ?? "No report selected"}</strong>
+          </div>
+          {selectedReport && (
+            <>
+              <div className="report-workflow-progress">
+                <article><span>Progress</span><strong>{selectedReportComplete}%</strong></article>
+                <article><span>Evidence</span><strong>{selectedReport.evidenceStatus ?? "Pending"}</strong></article>
+                <article><span>Status</span><strong>{selectedReport.state}</strong></article>
+                <article><span>Due</span><strong>{selectedReport.due}</strong></article>
+              </div>
+              <div className="report-route-card-mini">
+                <GitBranch size={16} />
+                <div><span>Route</span><strong>{selectedReport.path}</strong></div>
+              </div>
+              <label className="report-route-input">
+                <span>Send to inbox / office</span>
+                <input value={routeTo} onChange={(event) => setRouteTo(event.target.value)} />
+              </label>
+              <div className="report-workflow-actions">
+                <button onClick={saveSelectedReportDetails}><FileCheck2 size={14} /> Save</button>
+                <button onClick={sendSelectedReport}><Send size={14} /> Inbox</button>
+                <button onClick={() => onSubmitReport(selectedReport.id)}><CheckCircle2 size={14} /> Submit</button>
+                <button onClick={() => onReviewReport(selectedReport.id)}><FileClock size={14} /> Review</button>
+                <button onClick={() => onVerifyReport(selectedReport.id)}><ShieldCheck size={14} /> Verify</button>
+                <button onClick={() => onRequestCorrection(selectedReport.id)}><AlertTriangle size={14} /> Correct</button>
+                <button onClick={() => onArchiveEvidence(selectedReport.id)}><ArchiveIcon size={14} /> Vault</button>
+                <button onClick={() => onBuildGovernancePacket(selectedReport.id)}><Workflow size={14} /> Packet</button>
+              </div>
+              <label className="report-upload-action">
+                <Upload size={14} />
+                <span>Attach evidence</span>
+                <input
+                  type="file"
+                  onChange={(event) => {
+                    const file = event.currentTarget.files?.[0];
+                    if (file) void onUploadReportEvidence(selectedReport.id, file);
+                    event.currentTarget.value = "";
+                  }}
+                />
+              </label>
+            </>
+          )}
+        </section>
+
+        <section className="report-workflow-card">
+          <div className="report-panel-title">
+            <span>Work Queue</span>
+            <strong>{visibleReports.length} reports</strong>
+          </div>
+          <div className="report-queue-list">
+            {visibleReports.map((report) => (
+              <button key={report.id} className={selectedReport?.id === report.id ? "active" : ""} onClick={() => setSelectedReportId(report.id)}>
+                <div>
+                  <strong>{report.name}</strong>
+                  <span>{report.type ?? "Administrative"} / {report.owner}</span>
+                </div>
+                <b>{report.state}</b>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="report-workflow-card">
+          <div className="report-panel-title">
+            <span>AI Review</span>
+            <strong>Readiness check</strong>
+          </div>
+          <p>{selectedReportComplete >= 80 ? "This report is near submission readiness. Verify evidence and route upward." : "Complete more sections before final submission. Evidence and attestation should be checked."}</p>
+          <div className="report-ai-grid">
+            <span><strong>{approvalReadyCount}</strong> approval ready</span>
+            <span><strong>{evidenceReadyCount}</strong> evidence ready</span>
+            <span><strong>{watchedCount}</strong> watched</span>
+            <span><strong>{correctionCount}</strong> corrections</span>
+          </div>
+        </section>
+      </aside>
+    </section>
+  );
 
   return (
     <section className="reports-app">
@@ -12071,6 +13356,9 @@ function Approvals({
   const [route, setRoute] = React.useState(`${station.level} -> Delegated Authority`);
   const [limit, setLimit] = React.useState("$5,000");
   const [feedback, setFeedback] = React.useState("");
+  const [selectedApprovalId, setSelectedApprovalId] = React.useState(approvals[0]?.id ?? "");
+  const [approvalFilter, setApprovalFilter] = React.useState("Open");
+  const [approvalSearch, setApprovalSearch] = React.useState("");
 
   React.useEffect(() => {
     setRoute(`${station.level} -> Delegated Authority`);
@@ -12079,6 +13367,55 @@ function Approvals({
   const heldCount = approvals.filter((approval) => approval.state === "On Hold").length;
   const delegatedCount = approvals.filter((approval) => approval.state === "Delegated").length;
   const watchedCount = approvals.filter((approval) => approval.watchers?.length).length;
+  const signedCount = approvals.filter((approval) => approval.signatures !== "0/2" && approval.signatures !== "0/3").length;
+  const escalatedCount = approvals.filter((approval) => approval.state === "Escalated").length;
+  const archivedCount = approvals.filter((approval) => approval.archived).length;
+  const executedCount = approvals.filter((approval) => approval.executionStatus === "Executed").length;
+  const visibleApprovals = React.useMemo(() => approvals.filter((approval) => {
+    const matchesFilter = approvalFilter === "Open"
+      ? approval.state !== "Approved" && approval.state !== "Rejected" && !approval.archived
+      : approvalFilter === "Delegated"
+        ? approval.state === "Delegated" || Boolean(approval.delegate)
+        : approvalFilter === "Held"
+          ? approval.state === "On Hold" || Boolean(approval.holdReason)
+          : approvalFilter === "Escalated"
+            ? approval.state === "Escalated"
+            : approvalFilter === "Signed"
+              ? approval.signatures !== "0/2" && approval.signatures !== "0/3"
+              : approvalFilter === "Archived"
+                ? Boolean(approval.archived)
+                : approvalFilter === "Executed"
+                  ? approval.executionStatus === "Executed"
+                  : approvalFilter === "Watched"
+                    ? Boolean(approval.watchers?.length)
+                    : true;
+    const haystack = [approval.request, approval.route, approval.limit, approval.state, approval.delegate, approval.linkedReport].join(" ").toLowerCase();
+    return matchesFilter && (!approvalSearch.trim() || haystack.includes(approvalSearch.toLowerCase()));
+  }), [approvalFilter, approvalSearch, approvals]);
+  const selectedApproval = approvals.find((approval) => approval.id === selectedApprovalId) ?? visibleApprovals[0] ?? approvals[0];
+  const workflowNav = [
+    { label: "Open", icon: Inbox, count: digest?.open ?? openCount, tone: "normal" },
+    { label: "Delegated", icon: Users, count: digest?.delegated ?? delegatedCount, tone: "normal" },
+    { label: "Held", icon: LockKeyhole, count: digest?.held ?? heldCount, tone: "warning" },
+    { label: "Escalated", icon: AlertTriangle, count: escalatedCount, tone: "danger" },
+    { label: "Signed", icon: Signature, count: digest?.signed ?? signedCount, tone: "good" },
+    { label: "Archived", icon: ArchiveIcon, count: digest?.archived ?? archivedCount, tone: "normal" },
+    { label: "Executed", icon: FileCheck2, count: digest?.executed ?? executedCount, tone: "good" },
+    { label: "Watched", icon: Bell, count: digest?.watched ?? watchedCount, tone: "normal" }
+  ];
+  const approvalAnalytics = [
+    { label: "Open", value: digest?.open ?? openCount, icon: Workflow },
+    { label: "Escalated", value: escalatedCount, icon: AlertTriangle },
+    { label: "Pending signatures", value: approvals.filter((approval) => approval.state !== "Approved" && !approval.signatures.startsWith("2/")).length, icon: Signature },
+    { label: "Authority load", value: approvals.length, icon: Landmark }
+  ];
+
+  function approvalProgress(approval: Approval) {
+    const [doneRaw, totalRaw] = approval.signatures.split("/").map((part) => Number(part) || 0);
+    const total = Math.max(1, totalRaw || 3);
+    const done = Math.min(total, doneRaw);
+    return { done, total, percent: Math.round((done / total) * 100) };
+  }
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -12086,6 +13423,415 @@ function Approvals({
     setFeedback(`${request} has entered validation.`);
     setRequest("New authorization request");
   }
+
+  const approvalNav = workflowNav.filter((item) => item.label !== "Watched");
+  const selectedProgress = selectedApproval ? approvalProgress(selectedApproval) : { done: 0, total: 3, percent: 0 };
+  const selectedRouteNodes = selectedApproval?.route.split("->").map((node) => node.trim()).filter(Boolean) ?? [];
+  const pendingSignatureCount = approvals.filter((approval) => approval.state !== "Approved" && !approval.signatures.startsWith("2/")).length;
+  const queueApprovals = visibleApprovals.slice(0, 8);
+
+  return (
+    <section className="approval-command-workspace" aria-label="GCOS approval governance workspace">
+      <header className="approval-command-hero">
+        <div>
+          <span className="approval-eyebrow">Approval Governance</span>
+          <h1>Delegation and Signature Review</h1>
+          <p>
+            A focused approval workspace for authority limits, signature chains, delegated review,
+            escalation decisions, and execution readiness.
+          </p>
+          <div className="approval-identity-line">
+            <span>{station.level}</span>
+            <i />
+            <span>{station.email}</span>
+            <i />
+            <span>Operational Sync Active</span>
+          </div>
+        </div>
+        <div className="approval-hero-metrics" aria-label="Approval summary">
+          <article>
+            <span>Open Reviews</span>
+            <strong>{digest?.open ?? openCount}</strong>
+            <small>Awaiting authority action</small>
+          </article>
+          <article className={escalatedCount ? "attention" : ""}>
+            <span>Escalations</span>
+            <strong>{escalatedCount}</strong>
+            <small>Executive attention</small>
+          </article>
+          <article>
+            <span>Signatures</span>
+            <strong>{pendingSignatureCount}</strong>
+            <small>Still pending</small>
+          </article>
+          <article>
+            <span>Signed</span>
+            <strong>{signedCount}</strong>
+            <small>Ready for next stage</small>
+          </article>
+        </div>
+      </header>
+
+      <div className="approval-command-grid">
+        <aside className="approval-zone approval-zone-nav">
+          <div className="approval-zone-title">
+            <span>Workflow View</span>
+            <strong>{visibleApprovals.length} visible</strong>
+          </div>
+          <label className="approval-clean-search">
+            <Search size={15} />
+            <input
+              value={approvalSearch}
+              onChange={(event) => setApprovalSearch(event.target.value)}
+              placeholder="Search request, office, amount"
+            />
+          </label>
+          <nav className="approval-clean-nav">
+            {approvalNav.map(({ label, icon: Icon, count, tone }) => (
+              <button
+                key={label}
+                className={`${approvalFilter === label ? "active" : ""} ${tone}`}
+                onClick={() => setApprovalFilter(label)}
+                type="button"
+              >
+                <Icon size={15} />
+                <span>{label === "Archived" ? "Archive" : label}</span>
+                <b>{count}</b>
+              </button>
+            ))}
+          </nav>
+          <form className="approval-create-compact" onSubmit={submit}>
+            <div className="approval-zone-title">
+              <span>New Approval</span>
+              <strong>Create</strong>
+            </div>
+            <label>
+              <span>Request</span>
+              <input value={request} onChange={(event) => setRequest(event.target.value)} />
+            </label>
+            <label>
+              <span>Governance Path</span>
+              <input value={route} onChange={(event) => setRoute(event.target.value)} />
+            </label>
+            <label>
+              <span>Authority Limit</span>
+              <input value={limit} onChange={(event) => setLimit(event.target.value)} />
+            </label>
+            {feedback && <small>{feedback}</small>}
+            <button disabled={!permissions.canApprove} type="submit"><Plus size={14} /> Create approval</button>
+          </form>
+        </aside>
+
+        <main className="approval-zone approval-zone-queue">
+          <div className="approval-zone-title">
+            <span>Approval Queue</span>
+            <strong>{approvalFilter} work</strong>
+          </div>
+          <div className="approval-queue-toolbar-clean">
+            <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Refresh</button>
+            <button
+              disabled={!permissions.canApprove || !visibleApprovals.length}
+              type="button"
+              onClick={() => onBulkSign(visibleApprovals.map((approval) => approval.id))}
+            >
+              <Signature size={14} /> Sign visible
+            </button>
+          </div>
+          <div className="approval-clean-list">
+            {queueApprovals.map((approval) => {
+              const progress = approvalProgress(approval);
+              const routeNodes = approval.route.split("->").map((node) => node.trim()).filter(Boolean);
+              return (
+                <article
+                  className={`approval-clean-row ${selectedApproval?.id === approval.id ? "selected" : ""}`}
+                  key={approval.id}
+                  onClick={() => setSelectedApprovalId(approval.id)}
+                >
+                  <div className="approval-row-status">
+                    <span className={`approval-state-dot ${approval.state.toLowerCase().replace(/\s+/g, "-")}`} />
+                    <div>
+                      <b>{approval.state}</b>
+                      <small>{progress.percent}% signed</small>
+                    </div>
+                  </div>
+                  <div className="approval-row-copy">
+                    <strong>{approval.request}</strong>
+                    <span>{routeNodes.slice(0, 4).join(" -> ")}</span>
+                  </div>
+                  <div className="approval-row-progress" aria-label={`${progress.percent}% signed`}>
+                    {Array.from({ length: progress.total }).map((_, index) => (
+                      <i className={index < progress.done ? "done" : ""} key={`${approval.id}-clean-${index}`} />
+                    ))}
+                  </div>
+                  <strong className="approval-row-limit">{approval.limit}</strong>
+                  <div className="approval-row-controls">
+                    <button
+                      disabled={!permissions.canApprove}
+                      onClick={(event) => { event.stopPropagation(); onApprove(approval.id); }}
+                      type="button"
+                    >
+                      Approve
+                    </button>
+                    <details onClick={(event) => event.stopPropagation()}>
+                      <summary>More</summary>
+                      <div>
+                        <button disabled={!permissions.canApprove} onClick={() => onSign(approval.id)} type="button">Sign</button>
+                        <button disabled={!permissions.canApprove} onClick={() => onDelegate(approval.id)} type="button">Delegate</button>
+                        <button onClick={() => onEscalateApproval("Approval", approval.request, `${approval.state} approval needs routing review`, approval.route, approval.state === "Escalated" ? "Critical" : "High")} type="button">Escalate</button>
+                        <button disabled={!permissions.canApprove} onClick={() => onUpdateRoute(approval.id, `${station.level} -> Executive Review`)} type="button">Route</button>
+                        <button disabled={!permissions.canApprove} onClick={() => onHold(approval.id)} type="button">Hold</button>
+                        <button disabled={!permissions.canApprove} onClick={() => onReleaseHold(approval.id)} type="button">Release</button>
+                        <button disabled={!permissions.canApprove} onClick={() => onExecute(approval.id)} type="button">Execute</button>
+                        <button disabled={!permissions.canApprove} onClick={() => onReject(approval.id)} type="button">Reject</button>
+                        <button disabled={!permissions.canApprove} onClick={() => onDuplicate(approval.id)} type="button">Duplicate</button>
+                        <button disabled={!permissions.canApprove} onClick={() => onArchive(approval.id)} type="button">Archive</button>
+                      </div>
+                    </details>
+                  </div>
+                </article>
+              );
+            })}
+            {visibleApprovals.length > queueApprovals.length && (
+              <div className="approval-list-note">{visibleApprovals.length - queueApprovals.length} more approvals available through search and filters.</div>
+            )}
+            {visibleApprovals.length === 0 && <div className="approval-empty">No approvals match the current filter.</div>}
+          </div>
+        </main>
+
+        <aside className="approval-zone approval-zone-review">
+          <div className="approval-zone-title">
+            <span>Approval Review</span>
+            <strong>{selectedApproval?.state ?? "No selection"}</strong>
+          </div>
+          {selectedApproval ? (
+            <>
+              <section className="approval-review-card primary">
+                <span>{selectedApproval.state}</span>
+                <h2>{selectedApproval.request}</h2>
+                <p>{selectedApproval.route}</p>
+                <FlowMeter label={`${selectedProgress.percent}% signed`} value={selectedProgress.percent} />
+              </section>
+              <section className="approval-review-grid">
+                <article><span>Authority Limit</span><strong>{selectedApproval.limit}</strong></article>
+                <article><span>Signatures</span><strong>{selectedApproval.signatures}</strong></article>
+                <article><span>Delegate</span><strong>{selectedApproval.delegate ?? "Not assigned"}</strong></article>
+                <article><span>Execution</span><strong>{selectedApproval.executionStatus ?? "Pending"}</strong></article>
+              </section>
+              <section className="approval-review-card">
+                <span>Governance Path</span>
+                <div className="approval-path-clean">
+                  {selectedRouteNodes.map((node, index) => (
+                    <React.Fragment key={`${selectedApproval.id}-${node}-review`}>
+                      <b>{node}</b>
+                      {index < selectedRouteNodes.length - 1 && <ChevronRight size={13} />}
+                    </React.Fragment>
+                  ))}
+                </div>
+              </section>
+              <section className="approval-review-card">
+                <span>AI Recommendation</span>
+                <p>
+                  {selectedApproval.state === "Escalated"
+                    ? "Escalated approval should be reviewed by executive authority before execution."
+                    : "Validate the authority limit, confirm signature readiness, and route to the next office."}
+                </p>
+              </section>
+              <section className="approval-review-actions">
+                <button disabled={!permissions.canApprove} onClick={() => onApprove(selectedApproval.id)} type="button">Approve</button>
+                <button disabled={!permissions.canApprove} onClick={() => onSign(selectedApproval.id)} type="button">Sign</button>
+                <button disabled={!permissions.canApprove} onClick={() => onUpdateRoute(selectedApproval.id, `${station.level} -> Executive Review`)} type="button">Route</button>
+                <details>
+                  <summary>More actions</summary>
+                  <div>
+                    <button disabled={!permissions.canApprove} onClick={() => onDelegate(selectedApproval.id)} type="button">Delegate</button>
+                    <button onClick={() => onEscalateApproval("Approval", selectedApproval.request, `${selectedApproval.state} approval needs routing review`, selectedApproval.route, selectedApproval.state === "Escalated" ? "Critical" : "High")} type="button">Escalate</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onExecute(selectedApproval.id)} type="button">Execute</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onReject(selectedApproval.id)} type="button">Reject</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onArchive(selectedApproval.id)} type="button">Archive</button>
+                  </div>
+                </details>
+              </section>
+              <section className="approval-review-card audit">
+                <span>Audit Timeline</span>
+                {(selectedApproval.auditTrail?.length ? selectedApproval.auditTrail : [`${selectedApproval.state}: ${selectedApproval.request}`, `Path: ${selectedApproval.route}`, `Signatures: ${selectedApproval.signatures}`]).slice(-3).map((event) => (
+                  <p key={event}>{event}</p>
+                ))}
+              </section>
+            </>
+          ) : (
+            <div className="approval-empty">Select an approval to inspect workflow details.</div>
+          )}
+        </aside>
+      </div>
+    </section>
+  );
+
+  return (
+    <section className="approvals-enterprise" aria-label="GCOS enterprise approval engine">
+      <header className="approval-command-bar">
+        <div>
+          <span>Approval Engine</span>
+          <strong>Delegation + Signature Control</strong>
+        </div>
+        <label className="approval-search">
+          <Search size={15} />
+          <input value={approvalSearch} onChange={(event) => setApprovalSearch(event.target.value)} placeholder="Search approvals, routes, limits" />
+        </label>
+        <select value={approvalFilter} onChange={(event) => setApprovalFilter(event.target.value)}>
+          {workflowNav.map((item) => <option key={item.label}>{item.label}</option>)}
+        </select>
+        <button onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
+        <button disabled={!permissions.canApprove} onClick={() => onBulkSign(visibleApprovals.map((approval) => approval.id))}><Signature size={14} /> Sign visible</button>
+        <button className="primary" onClick={() => setFeedback("Create approval panel is ready. Enter the request and authority limit.")}><Plus size={14} /> Create approval</button>
+        <div className="approval-command-counts">
+          <span><AlertTriangle size={13} /> Escalated {escalatedCount}</span>
+          <span><Signature size={13} /> Signed {signedCount}</span>
+        </div>
+      </header>
+
+      <aside className="approval-nav-panel">
+        <div className="approval-nav-title">
+          <span>Workflow Navigation</span>
+          <strong>{visibleApprovals.length} visible</strong>
+        </div>
+        <nav className="approval-nav-list">
+          {workflowNav.map(({ label, icon: Icon, count, tone }) => (
+            <button key={label} className={`${approvalFilter === label ? "active" : ""} ${tone}`} onClick={() => setApprovalFilter(label)}>
+              <Icon size={15} />
+              <span>{label}</span>
+              <b>{count}</b>
+            </button>
+          ))}
+        </nav>
+        <div className="approval-analytics-mini">
+          {approvalAnalytics.map(({ label, value, icon: Icon }) => (
+            <article key={label}>
+              <Icon size={14} />
+              <span>{label}</span>
+              <strong>{value}</strong>
+            </article>
+          ))}
+        </div>
+        <form className="approval-create-card" onSubmit={submit}>
+          <span>Create Approval</span>
+          <input value={request} onChange={(event) => setRequest(event.target.value)} aria-label="Request" />
+          <input value={route} onChange={(event) => setRoute(event.target.value)} aria-label="Approval route" />
+          <input value={limit} onChange={(event) => setLimit(event.target.value)} aria-label="Authority limit" />
+          {feedback && <small>{feedback}</small>}
+          <button type="submit"><Plus size={14} /> Create</button>
+        </form>
+      </aside>
+
+      <main className="approval-queue-panel">
+        <div className="approval-queue-head">
+          <div><span>Workflow Queue</span><strong>{approvalFilter} approvals</strong></div>
+          <div className="approval-stage-key">
+            {["Request", "Validation", "Delegation", "Approval", "Execute", "Audit"].map((step) => <span key={step}>{step}</span>)}
+          </div>
+        </div>
+        <div className="approval-row-list">
+          {visibleApprovals.map((approval) => {
+            const progress = approvalProgress(approval);
+            const routeNodes = approval.route.split("->").map((item) => item.trim()).filter(Boolean);
+            return (
+              <article className={`approval-workflow-row ${selectedApproval?.id === approval.id ? "selected" : ""}`} key={approval.id} onClick={() => setSelectedApprovalId(approval.id)}>
+                <div className="approval-row-main">
+                  <span className={`approval-state ${approval.state.toLowerCase().replace(/\s+/g, "-")}`}>{approval.state}</span>
+                  <div>
+                    <strong>{approval.request}</strong>
+                    <small>{approval.route}</small>
+                  </div>
+                </div>
+                <div className="approval-route-flow">
+                  {routeNodes.slice(0, 4).map((node, index) => (
+                    <React.Fragment key={`${approval.id}-${node}`}>
+                      <span>{node}</span>
+                      {index < Math.min(3, routeNodes.length - 1) && <ChevronRight size={13} />}
+                    </React.Fragment>
+                  ))}
+                </div>
+                <div className="approval-signature-flow">
+                  {Array.from({ length: progress.total }).map((_, index) => <i className={index < progress.done ? "done" : ""} key={`${approval.id}-${index}`} />)}
+                </div>
+                <b className="approval-limit">{approval.limit}</b>
+                <span className="approval-delegate">{approval.delegate ?? "No delegate"}</span>
+                <span className="approval-linked">{approval.linkedReport ?? approval.linkedTask ?? "No linked record"}</span>
+                <div className="approval-row-actions">
+                  <button disabled={!permissions.canApprove} onClick={(event) => { event.stopPropagation(); onApprove(approval.id); }}><CheckCircle2 size={14} /> Approve</button>
+                  <details onClick={(event) => event.stopPropagation()}>
+                    <summary>More</summary>
+                    <button disabled={!permissions.canApprove} onClick={() => onSign(approval.id)}><Signature size={13} /> Sign</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onDelegate(approval.id)}><Users size={13} /> Delegate</button>
+                    <button onClick={() => onEscalateApproval("Approval", approval.request, `${approval.state} approval needs routing review`, approval.route, approval.state === "Escalated" ? "Critical" : "High")}><AlertTriangle size={13} /> Escalate</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onHold(approval.id)}><LockKeyhole size={13} /> Hold</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onReleaseHold(approval.id)}><TimerReset size={13} /> Release</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onUpdateRoute(approval.id, `${station.level} -> Executive Review`)}><GitBranch size={13} /> Route</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onUpdateLimit(approval.id)}><Landmark size={13} /> Limit</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onExecute(approval.id)}><FileCheck2 size={13} /> Execute</button>
+                    <button onClick={() => onWatch(approval.id)}><Bell size={13} /> Watch</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onDuplicate(approval.id)}><Files size={13} /> Duplicate</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onArchive(approval.id)}><ArchiveIcon size={13} /> Archive</button>
+                    <button disabled={!permissions.canApprove} onClick={() => onReject(approval.id)}><AlertTriangle size={13} /> Reject</button>
+                  </details>
+                </div>
+              </article>
+            );
+          })}
+          {visibleApprovals.length === 0 && <div className="approval-empty">No approvals match the current workflow filter.</div>}
+        </div>
+      </main>
+
+      <aside className="approval-inspector-panel">
+        {selectedApproval ? (
+          <>
+            <section className="approval-inspector-card hero">
+              <div>
+                <span>{selectedApproval.state}</span>
+                <h2>{selectedApproval.request}</h2>
+                <p>{selectedApproval.route}</p>
+              </div>
+              <FlowMeter label={`${approvalProgress(selectedApproval).percent}% signed`} value={approvalProgress(selectedApproval).percent} />
+            </section>
+            <section className="approval-inspector-grid">
+              <article><span>Authority limit</span><strong>{selectedApproval.limit}</strong></article>
+              <article><span>Signatures</span><strong>{selectedApproval.signatures}</strong></article>
+              <article><span>Delegate</span><strong>{selectedApproval.delegate ?? "Not assigned"}</strong></article>
+              <article><span>Execution</span><strong>{selectedApproval.executionStatus ?? "Pending"}</strong></article>
+            </section>
+            <section className="approval-inspector-card">
+              <div className="approval-section-title"><GitBranch size={15} /><span>Authority Chain</span></div>
+              <div className="approval-inspector-route">
+                {selectedApproval.route.split("->").map((node) => <span key={node}>{node.trim()}</span>)}
+              </div>
+            </section>
+            <section className="approval-inspector-card">
+              <div className="approval-section-title"><Sparkles size={15} /><span>AI Recommendation</span></div>
+              <p>{selectedApproval.state === "Escalated" ? "Escalated approval should be reviewed by executive authority before execution." : "Validate authority limit, confirm signatures, and route to the next approving office."}</p>
+            </section>
+            <section className="approval-inspector-actions">
+              <div className="approval-section-title"><SlidersHorizontal size={15} /><span>Workflow Commands</span></div>
+              <button disabled={!permissions.canApprove} onClick={() => onApprove(selectedApproval.id)}><CheckCircle2 size={14} /> Approve</button>
+              <button disabled={!permissions.canApprove} onClick={() => onSign(selectedApproval.id)}><Signature size={14} /> Sign</button>
+              <button disabled={!permissions.canApprove} onClick={() => onDelegate(selectedApproval.id)}><Users size={14} /> Delegate</button>
+              <button onClick={() => onEscalateApproval("Approval", selectedApproval.request, `${selectedApproval.state} approval needs routing review`, selectedApproval.route, selectedApproval.state === "Escalated" ? "Critical" : "High")}><AlertTriangle size={14} /> Escalate</button>
+              <button disabled={!permissions.canApprove} onClick={() => onExecute(selectedApproval.id)}><FileCheck2 size={14} /> Execute</button>
+              <button disabled={!permissions.canApprove} onClick={() => onReject(selectedApproval.id)}><AlertTriangle size={14} /> Reject</button>
+            </section>
+            <section className="approval-inspector-card">
+              <div className="approval-section-title"><Activity size={15} /><span>Audit Timeline</span></div>
+              <div className="approval-audit-feed">
+                {(selectedApproval.auditTrail?.length ? selectedApproval.auditTrail : [`${selectedApproval.state}: ${selectedApproval.request}`, `Route: ${selectedApproval.route}`, `Signatures: ${selectedApproval.signatures}`]).slice(-5).map((event) => (
+                  <article key={event}><i /><span>{event}</span></article>
+                ))}
+              </div>
+            </section>
+          </>
+        ) : (
+          <div className="approval-empty">Select an approval to inspect workflow details.</div>
+        )}
+      </aside>
+    </section>
+  );
 
   return (
     <section className="module-grid">
@@ -12288,6 +14034,11 @@ function Tasks({
   const [due, setDue] = React.useState("Today");
   const [statusFilter, setStatusFilter] = React.useState<GovernanceTask["status"] | "All statuses">("All statuses");
   const [priorityFilter, setPriorityFilter] = React.useState<GovernanceTask["priority"] | "All priorities">("All priorities");
+  const [selectedTaskId, setSelectedTaskId] = React.useState(tasks[0]?.id ?? "");
+  const [taskSearch, setTaskSearch] = React.useState("");
+  const [taskView, setTaskView] = React.useState("All Tasks");
+  const [assigneeFilter, setAssigneeFilter] = React.useState("All assignees");
+  const [dueFilter, setDueFilter] = React.useState("All due");
   const [feedback, setFeedback] = React.useState("");
 
   React.useEffect(() => {
@@ -12295,14 +14046,50 @@ function Tasks({
     setAssignee(station.email);
   }, [station.email, station.level]);
 
+  React.useEffect(() => {
+    if (!selectedTaskId && tasks[0]?.id) {
+      setSelectedTaskId(tasks[0].id);
+    }
+  }, [selectedTaskId, tasks]);
+
   const visibleTasks = React.useMemo(() => (
-    tasks.filter((task) => (
-      !task.archived
-      &&
-      (statusFilter === "All statuses" || task.status === statusFilter)
-      && (priorityFilter === "All priorities" || task.priority === priorityFilter)
-    ))
-  ), [priorityFilter, statusFilter, tasks]);
+    tasks.filter((task) => {
+      const isArchivedView = taskView === "Archived";
+      const searchable = [
+        task.title,
+        task.owner,
+        task.assignee,
+        task.priority,
+        task.status,
+        task.due,
+        task.evidence,
+        task.linkedReport,
+        task.linkedApproval,
+        task.approvalRoute
+      ].filter(Boolean).join(" ").toLowerCase();
+      const searchMatches = !taskSearch.trim() || searchable.includes(taskSearch.trim().toLowerCase());
+      const viewMatches =
+        taskView === "All Tasks"
+        || (taskView === "My Tasks" && (task.assignee === station.email || task.assignee.includes(station.title)))
+        || (taskView === "Open" && task.status !== "Complete")
+        || (taskView === "In Progress" && task.status === "In Progress")
+        || (taskView === "Blocked" && task.status === "Blocked")
+        || (taskView === "Critical" && task.priority === "Critical")
+        || (taskView === "Overdue" && (task.due === "Overdue" || task.slaStatus === "Breached"))
+        || (taskView === "Completed" && task.status === "Complete")
+        || (taskView === "Archived" && task.archived);
+
+      return (
+        (isArchivedView ? task.archived : !task.archived)
+        && viewMatches
+        && searchMatches
+        && (statusFilter === "All statuses" || task.status === statusFilter)
+        && (priorityFilter === "All priorities" || task.priority === priorityFilter)
+        && (assigneeFilter === "All assignees" || task.assignee === assigneeFilter)
+        && (dueFilter === "All due" || task.due === dueFilter)
+      );
+    })
+  ), [assigneeFilter, dueFilter, priorityFilter, station.email, station.title, statusFilter, taskSearch, taskView, tasks]);
   const activeTasks = tasks.filter((task) => !task.archived);
   const blockedCount = activeTasks.filter((task) => task.status === "Blocked").length;
   const completeCount = activeTasks.filter((task) => task.status === "Complete").length;
@@ -12321,6 +14108,33 @@ function Tasks({
   const linkedCount = activeTasks.filter((task) => task.linkedReport || task.linkedApproval).length;
   const archivedCount = tasks.filter((task) => task.archived).length;
   const completionRate = activeTasks.length ? Math.round((completeCount / activeTasks.length) * 100) : 100;
+  const selectedTask = tasks.find((task) => task.id === selectedTaskId) ?? visibleTasks[0] ?? tasks[0];
+  const kanbanStatuses: GovernanceTask["status"][] = ["Queued", "In Progress", "Blocked", "Complete"];
+  const assigneeOptions = ["All assignees", ...Array.from(new Set(activeTasks.map((task) => task.assignee)))];
+  const dueOptions = ["All due", ...Array.from(new Set(activeTasks.map((task) => task.due)))];
+  const taskNav = [
+    { label: "All Tasks", value: activeTasks.length, icon: ListChecks },
+    { label: "My Tasks", value: activeTasks.filter((task) => task.assignee === station.email || task.assignee.includes(station.title)).length, icon: Users },
+    { label: "Open", value: activeTasks.filter((task) => task.status !== "Complete").length, icon: SquareCheckBig },
+    { label: "In Progress", value: activeTasks.filter((task) => task.status === "In Progress").length, icon: TimerReset },
+    { label: "Blocked", value: blockedCount, icon: LockKeyhole },
+    { label: "Critical", value: criticalCount, icon: AlertTriangle },
+    { label: "Overdue", value: slaBreachCount, icon: CalendarDays },
+    { label: "Completed", value: completeCount, icon: CheckCircle2 },
+    { label: "Archived", value: archivedCount, icon: ArchiveIcon }
+  ];
+  const taskKpis = [
+    { label: "Open", value: String(digest?.open ?? activeTasks.length - completeCount), tone: "info", icon: SquareCheckBig },
+    { label: "Blocked", value: String(digest?.blocked ?? blockedCount), tone: blockedCount ? "danger" : "good", icon: LockKeyhole },
+    { label: "Critical", value: String(digest?.critical ?? criticalCount), tone: criticalCount ? "danger" : "good", icon: AlertTriangle },
+    { label: "Overdue", value: String(digest?.slaBreaches ?? slaBreachCount), tone: slaBreachCount ? "warning" : "good", icon: CalendarDays },
+    { label: "Scheduled", value: String(digest?.scheduled ?? scheduledCount), tone: "info", icon: CalendarDays }
+  ];
+  const selectedVisibleIds = visibleTasks.slice(0, 3).map((task) => task.id);
+  const primaryTaskAction = (task: GovernanceTask) => task.status === "Queued" ? "Start" : task.status === "Complete" ? "Reopen" : "Complete";
+  const runPrimaryTaskAction = (task: GovernanceTask) => {
+    onAdvanceTask(task.id, task.status === "Queued" ? "In Progress" : task.status === "Complete" ? "In Progress" : "Complete");
+  };
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -12328,6 +14142,259 @@ function Tasks({
     setFeedback(offlineMode ? "Task queued locally for sync." : "Task assigned into the governance queue.");
     setTitle("New administrative task");
   }
+
+  return (
+    <section className="tasks-enterprise">
+      <header className="task-command-bar">
+        <div className="task-title-block">
+          <span>Operations work</span>
+          <h1>Station Task Center</h1>
+          <p>{station.title} - {station.level} task routing, evidence, SLA, approvals, and field follow-up.</p>
+        </div>
+        <label className="task-search">
+          <Search size={16} />
+          <input value={taskSearch} onChange={(event) => setTaskSearch(event.target.value)} placeholder="Search tasks, owners, evidence, approvals" />
+        </label>
+        <div className="task-filters">
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as GovernanceTask["status"] | "All statuses")}>
+            {["All statuses", "Queued", "In Progress", "Blocked", "Complete"].map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value as GovernanceTask["priority"] | "All priorities")}>
+            {["All priorities", "Low", "Medium", "High", "Critical"].map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={assigneeFilter} onChange={(event) => setAssigneeFilter(event.target.value)}>
+            {assigneeOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={dueFilter} onChange={(event) => setDueFilter(event.target.value)}>
+            {dueOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div className="task-command-actions">
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={15} /> Refresh</button>
+          <details>
+            <summary><SlidersHorizontal size={15} /> Bulk</summary>
+            <div>
+              <button type="button" disabled={!selectedVisibleIds.length} onClick={() => onBulkCompleteTasks(selectedVisibleIds)}>Complete top 3</button>
+              <button type="button" disabled={!selectedVisibleIds.length} onClick={() => onBulkEscalateTasks(selectedVisibleIds)}>Escalate top 3</button>
+              <button type="button" disabled={!selectedVisibleIds.length} onClick={() => onBulkScheduleTasks(selectedVisibleIds)}>Schedule top 3</button>
+            </div>
+          </details>
+          <button type="submit" form="task-create-form" className="task-create-button"><Plus size={15} /> Create task</button>
+        </div>
+        <div className="task-kpi-strip">
+          {taskKpis.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <article className={`task-kpi ${metric.tone}`} key={metric.label}>
+                <Icon size={15} />
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+              </article>
+            );
+          })}
+        </div>
+      </header>
+
+      <aside className="task-nav-panel">
+        <div className="task-panel-heading">
+          <span>Task views</span>
+          <strong>{visibleTasks.length} visible</strong>
+        </div>
+        <nav className="task-view-list" aria-label="Task views">
+          {taskNav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button type="button" key={item.label} className={taskView === item.label ? "active" : ""} onClick={() => setTaskView(item.label)}>
+                <Icon size={16} />
+                <span>{item.label}</span>
+                <b>{item.value}</b>
+              </button>
+            );
+          })}
+        </nav>
+        <form id="task-create-form" className="task-create-panel" onSubmit={submit}>
+          <div>
+            <span>New task</span>
+            <strong>{offlineMode ? "Queued locally" : "Live assignment"}</strong>
+          </div>
+          <label>
+            <span>Title</span>
+            <input value={title} onChange={(event) => setTitle(event.target.value)} />
+          </label>
+          <label>
+            <span>Assignee</span>
+            <input value={assignee} onChange={(event) => setAssignee(event.target.value)} />
+          </label>
+          <div className="task-create-split">
+            <label>
+              <span>Priority</span>
+              <select value={priority} onChange={(event) => setPriority(event.target.value as GovernanceTask["priority"])}>
+                {["Low", "Medium", "High", "Critical"].map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Due</span>
+              <select value={due} onChange={(event) => setDue(event.target.value)}>
+                <option>Today</option>
+                <option>Tomorrow</option>
+                <option>This week</option>
+                <option>Overdue</option>
+              </select>
+            </label>
+          </div>
+          {feedback && <div className="task-feedback">{feedback}</div>}
+        </form>
+      </aside>
+
+      <main className="task-board-panel">
+        <div className="task-board-toolbar">
+          <div>
+            <span>Operational board</span>
+            <strong>{completionRate}% complete</strong>
+          </div>
+          <div>
+            <span>{dependencyCount} dependencies</span>
+            <span>{approvalCount} approval gates</span>
+            <span>{evidenceCount} evidence packets</span>
+          </div>
+        </div>
+        <div className="task-kanban-board">
+          {kanbanStatuses.map((status) => {
+            const columnTasks = visibleTasks.filter((task) => task.status === status);
+            return (
+              <section className="task-kanban-column" key={status}>
+                <header>
+                  <span>{status}</span>
+                  <b>{columnTasks.length}</b>
+                </header>
+                <div className="task-column-scroll">
+                  {columnTasks.map((task) => (
+                    <article
+                      className={`task-card-compact ${selectedTask?.id === task.id ? "selected" : ""} ${task.priority.toLowerCase()}`}
+                      key={task.id}
+                      onClick={() => setSelectedTaskId(task.id)}
+                    >
+                      <div className="task-card-topline">
+                        <StatusPill status={task.status} />
+                        <span className={`task-priority ${task.priority.toLowerCase()}`}>{task.priority}</span>
+                      </div>
+                      <h2>{task.title}</h2>
+                      <dl>
+                        <div><dt>Owner</dt><dd>{task.owner}</dd></div>
+                        <div><dt>Assignee</dt><dd>{task.assignee}</dd></div>
+                        <div><dt>Due</dt><dd>{task.due}</dd></div>
+                      </dl>
+                      <div className="task-link-row">
+                        {task.linkedReport && <span><FileCheck2 size={13} /> Report</span>}
+                        {task.linkedApproval && <span><Signature size={13} /> Approval</span>}
+                        {task.evidence && <span><Files size={13} /> Evidence</span>}
+                        {task.slaStatus === "Breached" && <span className="danger"><AlertTriangle size={13} /> SLA</span>}
+                      </div>
+                      <div className="task-card-actions" onClick={(event) => event.stopPropagation()}>
+                        <button type="button" onClick={() => runPrimaryTaskAction(task)}>
+                          {task.status === "Complete" ? <TimerReset size={14} /> : <CheckCircle2 size={14} />}
+                          {primaryTaskAction(task)}
+                        </button>
+                        <details>
+                          <summary>More</summary>
+                          <div>
+                            <button type="button" onClick={() => onScheduleTask(task.id)}>Schedule</button>
+                            <button type="button" onClick={() => onDispatchTask(task.id)}>Dispatch</button>
+                            <button type="button" onClick={() => onLogTime(task.id)}>Time</button>
+                            <button type="button" onClick={() => onQaReview(task.id)}>QA review</button>
+                            <button type="button" onClick={() => onAcceptRisk(task.id)}>Accept risk</button>
+                            <button type="button" onClick={() => onSaveTemplate(task.id)}>Save template</button>
+                            <button type="button" onClick={() => onLinkReport(task.id)}>Link report</button>
+                            <button type="button" onClick={() => onLinkApproval(task.id)}>Link approval</button>
+                            <button type="button" onClick={() => onBlockTask(task.id)}>Block</button>
+                            <button type="button" onClick={() => onUnblockTask(task.id)}>Unblock</button>
+                            <button type="button" onClick={() => onUpdateTaskDue(task.id)}>Change due date</button>
+                            <button type="button" onClick={() => onUpdateTaskAssignee(task.id, station.email)}>Assign to me</button>
+                            <button type="button" onClick={() => onUpdateTaskOwner(task.id)}>Change owner</button>
+                            <button type="button" onClick={() => onUpdateTaskPriority(task.id, task.priority === "Critical" ? "High" : "Critical")}>Change priority</button>
+                            <button type="button" onClick={() => onAddDependency(task.id)}>Add dependency</button>
+                            <button type="button" onClick={() => onRequestApproval(task.id)}>Request approval</button>
+                            <button type="button" onClick={() => onUpdateSla(task.id)}>Update SLA</button>
+                            <button type="button" onClick={() => onAttachEvidence(task.id)}>Add evidence</button>
+                            <button type="button" onClick={() => onHandoffTask(task.id)}>Handoff</button>
+                            <button type="button" onClick={() => onCommentTask(task.id)}>Comment</button>
+                            <button type="button" onClick={() => onCheckpointTask(task.id)}>Add checkpoint</button>
+                            <button type="button" onClick={() => onWatchTask(task.id)}>Watch</button>
+                            <button type="button" onClick={() => onDuplicateTask(task.id)}>Duplicate</button>
+                            <button type="button" onClick={() => onEscalateOperation(task.id)}>Ops escalate</button>
+                            <button type="button" onClick={() => onEscalateTask("Task", task.title, `${task.due} task is ${task.status.toLowerCase()}`, task.owner, task.priority === "Critical" ? "Critical" : "High")}>Escalate</button>
+                            <button type="button" onClick={() => onArchiveTask(task.id)}>Archive</button>
+                          </div>
+                        </details>
+                      </div>
+                    </article>
+                  ))}
+                  {columnTasks.length === 0 && (
+                    <div className="task-empty-column">
+                      <SquareCheckBig size={18} />
+                      <span>No {status.toLowerCase()} tasks</span>
+                    </div>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </main>
+
+      <aside className="task-inspector-panel">
+        {selectedTask ? (
+          <>
+            <div className="task-inspector-hero">
+              <span>Selected task</span>
+              <h2>{selectedTask.title}</h2>
+              <div>
+                <StatusPill status={selectedTask.status} />
+                <span className={`task-priority ${selectedTask.priority.toLowerCase()}`}>{selectedTask.priority}</span>
+              </div>
+            </div>
+            <div className="task-inspector-grid">
+              <span><b>Owner</b>{selectedTask.owner}</span>
+              <span><b>Assignee</b>{selectedTask.assignee}</span>
+              <span><b>Due date</b>{selectedTask.due}</span>
+              <span><b>SLA</b>{selectedTask.sla ?? "Not set"} {selectedTask.slaStatus ?? ""}</span>
+              <span><b>Evidence</b>{selectedTask.evidence ?? "No evidence attached"}</span>
+              <span><b>Approval</b>{selectedTask.approvalRequired ? selectedTask.approvalRoute ?? "Approval required" : "No approval gate"}</span>
+              <span><b>Linked report</b>{selectedTask.linkedReport ?? "None"}</span>
+              <span><b>Linked approval</b>{selectedTask.linkedApproval ?? "None"}</span>
+            </div>
+            <div className="task-inspector-section">
+              <div><span>Operational notes</span><b>{(selectedTask.comments?.length ?? 0) + (selectedTask.checkpoints?.length ?? 0)} records</b></div>
+              <ul>
+                {(selectedTask.checkpoints ?? []).slice(0, 4).map((item) => <li key={`checkpoint-${item}`}><FileCheck2 size={14} /> {item}</li>)}
+                {(selectedTask.comments ?? []).slice(0, 4).map((item) => <li key={`comment-${item}`}><MessageSquareText size={14} /> {item}</li>)}
+                {!selectedTask.comments?.length && !selectedTask.checkpoints?.length && <li><MessageSquareText size={14} /> No comments or checkpoints yet.</li>}
+              </ul>
+            </div>
+            <div className="task-inspector-section">
+              <div><span>Dependencies</span><b>{selectedTask.dependencies?.length ?? 0}</b></div>
+              <ul>
+                {(selectedTask.dependencies ?? []).map((item) => <li key={item}><GitBranch size={14} /> {item}</li>)}
+                {!selectedTask.dependencies?.length && <li><GitBranch size={14} /> No dependency blocks recorded.</li>}
+              </ul>
+            </div>
+            <div className="task-inspector-actions">
+              <button type="button" onClick={() => runPrimaryTaskAction(selectedTask)}><CheckCircle2 size={15} /> {primaryTaskAction(selectedTask)}</button>
+              <button type="button" onClick={() => onAttachEvidence(selectedTask.id)}><Files size={15} /> Evidence</button>
+              <button type="button" onClick={() => onCommentTask(selectedTask.id)}><MessageSquareText size={15} /> Comment</button>
+              <button type="button" onClick={() => onEscalateTask("Task", selectedTask.title, `${selectedTask.due} task is ${selectedTask.status.toLowerCase()}`, selectedTask.owner, selectedTask.priority === "Critical" ? "Critical" : "High")}><AlertTriangle size={15} /> Escalate</button>
+            </div>
+          </>
+        ) : (
+          <div className="task-empty-inspector">
+            <SquareCheckBig size={22} />
+            <h2>Select a task</h2>
+            <p>Choose a task from the board to review details, evidence, comments, dependencies, and approval links.</p>
+          </div>
+        )}
+      </aside>
+    </section>
+  );
 
   return (
     <section className="module-grid">
@@ -12545,21 +14612,62 @@ function Policies({
   const [summary, setSummary] = React.useState("Local branch reports must include evidence packets before upward submission.");
   const [categoryFilter, setCategoryFilter] = React.useState("All categories");
   const [statusFilter, setStatusFilter] = React.useState<Policy["status"] | "All statuses">("All statuses");
+  const [policySearch, setPolicySearch] = React.useState("");
+  const [policyView, setPolicyView] = React.useState("Active");
+  const [ownerFilter, setOwnerFilter] = React.useState("All owners");
+  const [selectedPolicyId, setSelectedPolicyId] = React.useState(policies[0]?.id ?? "");
   const [feedback, setFeedback] = React.useState("");
 
   React.useEffect(() => {
     setOwner(String(station.level));
   }, [station.level]);
 
+  React.useEffect(() => {
+    if (!selectedPolicyId && policies[0]?.id) {
+      setSelectedPolicyId(policies[0].id);
+    }
+  }, [policies, selectedPolicyId]);
+
   const categoryOptions = React.useMemo(() => ["All categories", ...Array.from(new Set(policies.map((policy) => policy.category))).sort()], [policies]);
+  const ownerOptions = React.useMemo(() => ["All owners", ...Array.from(new Set(policies.map((policy) => policy.owner))).sort()], [policies]);
   const visiblePolicies = React.useMemo(() => (
-    policies.filter((policy) => (
-      !policy.archived
-      &&
-      (categoryFilter === "All categories" || policy.category === categoryFilter)
-      && (statusFilter === "All statuses" || policy.status === statusFilter)
-    ))
-  ), [categoryFilter, policies, statusFilter]);
+    policies.filter((policy) => {
+      const isArchivedView = policyView === "Archived";
+      const searchable = [
+        policy.title,
+        policy.category,
+        policy.owner,
+        policy.status,
+        policy.summary,
+        policy.version,
+        policy.complianceStatus,
+        policy.distributedTo,
+        policy.trainingAudience,
+        policy.linkedTask,
+        policy.linkedApproval
+      ].filter(Boolean).join(" ").toLowerCase();
+      const viewMatches =
+        policyView === "All Policies"
+        || (policyView === "Active" && policy.status === "Active")
+        || (policyView === "Review" && policy.status === "Review")
+        || (policyView === "Draft" && policy.status === "Draft")
+        || (policyView === "Archived" && policy.archived)
+        || (policyView === "Compliance" && policy.complianceStatus !== "Compliant")
+        || (policyView === "Training" && policy.trainingAssigned)
+        || (policyView === "Exceptions" && policy.exceptionNote)
+        || (policyView === "Holds" && policy.hold)
+        || (policyView === "Linked Policies" && (policy.linkedTask || policy.linkedApproval));
+
+      return (
+        (isArchivedView ? policy.archived : !policy.archived)
+        && viewMatches
+        && (!policySearch.trim() || searchable.includes(policySearch.trim().toLowerCase()))
+        && (categoryFilter === "All categories" || policy.category === categoryFilter)
+        && (statusFilter === "All statuses" || policy.status === statusFilter)
+        && (ownerFilter === "All owners" || policy.owner === ownerFilter)
+      );
+    })
+  ), [categoryFilter, ownerFilter, policies, policySearch, policyView, statusFilter]);
   const activePolicies = policies.filter((policy) => !policy.archived);
   const activeCount = activePolicies.filter((policy) => policy.status === "Active").length;
   const reviewCount = activePolicies.filter((policy) => policy.status === "Review").length;
@@ -12574,6 +14682,29 @@ function Policies({
   const linkedCount = activePolicies.filter((policy) => policy.linkedTask || policy.linkedApproval).length;
   const archivedCount = policies.filter((policy) => policy.archived).length;
   const acknowledgementTotal = activePolicies.reduce((total, policy) => total + policy.acknowledgements, 0);
+  const selectedPolicy = policies.find((policy) => policy.id === selectedPolicyId) ?? visiblePolicies[0] ?? policies[0];
+  const selectedPolicyIds = visiblePolicies.slice(0, 3).map((policy) => policy.id);
+  const policyNav = [
+    { label: "Active", value: activeCount, icon: BadgeCheck },
+    { label: "Review", value: reviewCount, icon: ClipboardCheck },
+    { label: "Draft", value: draftCount, icon: FileText },
+    { label: "Archived", value: archivedCount, icon: ArchiveIcon },
+    { label: "Compliance", value: activePolicies.length - compliantCount, icon: ShieldCheck },
+    { label: "Training", value: trainingCount, icon: Users },
+    { label: "Exceptions", value: exceptionCount, icon: AlertTriangle },
+    { label: "Holds", value: holdCount, icon: LockKeyhole },
+    { label: "Linked Policies", value: linkedCount, icon: GitBranch }
+  ];
+  const policyKpis = [
+    { label: "Active", value: String(digest?.active ?? activeCount), icon: BadgeCheck, tone: "good" },
+    { label: "Review queue", value: String(digest?.review ?? reviewCount), icon: ClipboardCheck, tone: reviewCount ? "warning" : "good" },
+    { label: "Compliance alerts", value: String(activePolicies.length - compliantCount), icon: ShieldCheck, tone: activePolicies.length - compliantCount ? "danger" : "good" },
+    { label: "Training", value: String(digest?.training ?? trainingCount), icon: Users, tone: "info" },
+    { label: "Exceptions", value: String(digest?.exceptions ?? exceptionCount), icon: AlertTriangle, tone: exceptionCount ? "warning" : "good" }
+  ];
+  const acknowledgementPercent = selectedPolicy ? Math.min(100, Math.round((selectedPolicy.acknowledgements / Math.max(1, acknowledgementTotal || selectedPolicy.acknowledgements || 1)) * 100)) : 0;
+  const compliancePercent = selectedPolicy?.complianceScore ?? (selectedPolicy?.complianceStatus === "Compliant" ? 100 : 42);
+  const distributionPercent = selectedPolicy?.distributedTo ? 100 : 35;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -12581,6 +14712,262 @@ function Policies({
     setFeedback(offlineMode ? "Policy draft queued locally." : "Policy registered and audit logged.");
     setTitle("New governance policy");
   }
+
+  return (
+    <section className="policies-enterprise">
+      <header className="policy-command-bar">
+        <div className="policy-title-block">
+          <span>Governance registry</span>
+          <h1>Policy Registry</h1>
+          <p>Authority-gated policy lifecycle, compliance evidence, acknowledgements, exceptions, training, and audit controls.</p>
+        </div>
+        <label className="policy-search">
+          <Search size={16} />
+          <input value={policySearch} onChange={(event) => setPolicySearch(event.target.value)} placeholder="Search policies, owners, evidence, approvals" />
+        </label>
+        <div className="policy-filters">
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as Policy["status"] | "All statuses")}>
+            {["All statuses", "Draft", "Active", "Review", "Retired"].map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={ownerFilter} onChange={(event) => setOwnerFilter(event.target.value)}>
+            {ownerOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div className="policy-command-actions">
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={15} /> Refresh</button>
+          <details>
+            <summary><SlidersHorizontal size={15} /> Export</summary>
+            <div>
+              <button type="button">Export registry</button>
+              <button type="button">Export compliance</button>
+              <button type="button" disabled={!permissions.canApprove || !selectedPolicyIds.length} onClick={() => onBulkActivatePolicies(selectedPolicyIds)}>Activate top 3</button>
+              <button type="button" disabled={!permissions.canApprove || !selectedPolicyIds.length} onClick={() => onBulkReviewPolicies(selectedPolicyIds)}>Review top 3</button>
+            </div>
+          </details>
+          <button type="submit" form="policy-publish-form" className="policy-publish-button" disabled={!permissions.canApprove}><Plus size={15} /> Publish</button>
+        </div>
+        <div className="policy-kpi-strip">
+          {policyKpis.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <article className={`policy-kpi ${metric.tone}`} key={metric.label}>
+                <Icon size={15} />
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+              </article>
+            );
+          })}
+        </div>
+      </header>
+
+      <aside className="policy-nav-panel">
+        <div className="policy-panel-heading">
+          <span>Registry views</span>
+          <strong>{visiblePolicies.length} visible</strong>
+        </div>
+        <nav className="policy-view-list" aria-label="Policy registry views">
+          {policyNav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button type="button" className={policyView === item.label ? "active" : ""} key={item.label} onClick={() => setPolicyView(item.label)}>
+                <Icon size={16} />
+                <span>{item.label}</span>
+                <b>{item.value}</b>
+              </button>
+            );
+          })}
+        </nav>
+        <form id="policy-publish-form" className="policy-publish-panel" onSubmit={submit}>
+          <div>
+            <span>Publish policy</span>
+            <strong>{offlineMode ? "Queue draft" : "Registry write"}</strong>
+          </div>
+          {!permissions.canApprove && (
+            <div className="policy-permission-note">
+              <LockKeyhole size={14} />
+              <span>Publishing requires delegated approval authority.</span>
+            </div>
+          )}
+          <label>
+            <span>Policy title</span>
+            <input value={title} onChange={(event) => setTitle(event.target.value)} />
+          </label>
+          <div className="policy-publish-split">
+            <label>
+              <span>Category</span>
+              <input value={category} onChange={(event) => setCategory(event.target.value)} />
+            </label>
+            <label>
+              <span>Status</span>
+              <select value={status} onChange={(event) => setStatus(event.target.value as Policy["status"])}>
+                {["Draft", "Active", "Review", "Retired"].map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+          </div>
+          <label>
+            <span>Summary</span>
+            <textarea value={summary} onChange={(event) => setSummary(event.target.value)} />
+          </label>
+          {feedback && <div className="policy-feedback">{feedback}</div>}
+        </form>
+      </aside>
+
+      <main className="policy-registry-panel">
+        <div className="policy-registry-toolbar">
+          <div>
+            <span>Governance table</span>
+            <strong>{digest?.nextPolicy ?? selectedPolicy?.title ?? "No policy selected"}</strong>
+          </div>
+          <div>
+            <span>{acknowledgementTotal} acknowledgements</span>
+            <span>{distributedCount} distributed</span>
+            <span>{evidenceCount} evidence-linked</span>
+          </div>
+        </div>
+        <div className="policy-table">
+          <div className="policy-table-head">
+            <span>Policy</span>
+            <span>Category</span>
+            <span>Owner</span>
+            <span>Status</span>
+            <span>Compliance</span>
+            <span>Ack</span>
+            <span>Distribution</span>
+            <span>Actions</span>
+          </div>
+          <div className="policy-table-body">
+            {visiblePolicies.map((policy) => {
+              const policyCompliance = policy.complianceScore ?? (policy.complianceStatus === "Compliant" ? 100 : 42);
+              return (
+                <article className={`policy-row ${selectedPolicy?.id === policy.id ? "selected" : ""}`} key={policy.id} onClick={() => setSelectedPolicyId(policy.id)}>
+                  <div className="policy-main-cell">
+                    <strong>{policy.title}</strong>
+                    <small>{policy.summary}</small>
+                  </div>
+                  <span>{policy.category}</span>
+                  <span>{policy.owner}</span>
+                  <StatusPill status={policy.status} />
+                  <div className="policy-progress-cell">
+                    <b>{policyCompliance}%</b>
+                    <i style={{ width: `${Math.min(100, policyCompliance)}%` }} />
+                  </div>
+                  <span>{policy.acknowledgements}</span>
+                  <span>{policy.distributedTo ? "Distributed" : "Pending"}</span>
+                  <div className="policy-row-actions" onClick={(event) => event.stopPropagation()}>
+                    <button type="button" onClick={() => setSelectedPolicyId(policy.id)}>Open</button>
+                    <details>
+                      <summary>More</summary>
+                      <div>
+                        <button type="button" onClick={() => onAcknowledgePolicy(policy.id)}>Acknowledge</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onBindEvidence(policy.id)}>Add evidence</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onDistributePolicy(policy.id)}>Distribute</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onGrantException(policy.id)}>Create exception</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onAssignTraining(policy.id)}>Training</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onHoldPolicy(policy.id)}>Hold</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onLinkTask(policy.id)}>Link task</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onLinkApproval(policy.id)}>Link approval</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onUpdatePolicyStatus(policy.id, policy.status === "Active" ? "Review" : "Active")}>Review/status</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onBumpPolicyVersion(policy.id)}>Version</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onSchedulePolicyReview(policy.id)}>Schedule review</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onUpdatePolicyOwner(policy.id)}>Owner</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onUpdatePolicyCategory(policy.id)}>Category</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onUpdatePolicySummary(policy.id)}>Summary</button>
+                        <button type="button" onClick={() => onWatchPolicy(policy.id)}>Watch</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onDuplicatePolicy(policy.id)}>Duplicate</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onRetirePolicy(policy.id)}>Retire</button>
+                        <button type="button" disabled={!permissions.canApprove} onClick={() => onArchivePolicy(policy.id)}>Archive</button>
+                      </div>
+                    </details>
+                  </div>
+                </article>
+              );
+            })}
+            {visiblePolicies.length === 0 && (
+              <div className="policy-empty-state">
+                <ScrollText size={20} />
+                <strong>No policies match this view</strong>
+                <span>Change the registry view, filters, or search term to review more policies.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+
+      <aside className="policy-inspector-panel">
+        {selectedPolicy ? (
+          <>
+            <div className="policy-inspector-hero">
+              <span>Policy inspector</span>
+              <h2>{selectedPolicy.title}</h2>
+              <div>
+                <StatusPill status={selectedPolicy.status} />
+                <b>{selectedPolicy.version ?? "v1"}</b>
+                <b>{selectedPolicy.category}</b>
+              </div>
+            </div>
+            <div className="policy-lifecycle">
+              {[
+                { label: "Draft", active: true },
+                { label: "Review", active: selectedPolicy.status === "Review" || selectedPolicy.status === "Active" },
+                { label: "Active", active: selectedPolicy.status === "Active" },
+                { label: "Distributed", active: Boolean(selectedPolicy.distributedTo) }
+              ].map((step) => (
+                <span className={step.active ? "active" : ""} key={step.label}>{step.label}</span>
+              ))}
+            </div>
+            <div className="policy-inspector-grid">
+              <span><b>Authority</b>{selectedPolicy.owner}</span>
+              <span><b>Acknowledgements</b>{selectedPolicy.acknowledgements}</span>
+              <span><b>Evidence</b>{selectedPolicy.evidence ?? "No evidence linked"}</span>
+              <span><b>Review by</b>{selectedPolicy.reviewBy ?? "Not scheduled"}</span>
+              <span><b>Task link</b>{selectedPolicy.linkedTask ?? "None"}</span>
+              <span><b>Approval link</b>{selectedPolicy.linkedApproval ?? "None"}</span>
+            </div>
+            <div className="policy-meter-stack">
+              {[
+                { label: "Acknowledgement completion", value: acknowledgementPercent },
+                { label: "Compliance score", value: compliancePercent },
+                { label: "Distribution readiness", value: distributionPercent }
+              ].map((meter) => (
+                <div className="policy-meter" key={meter.label}>
+                  <div><span>{meter.label}</span><b>{meter.value}%</b></div>
+                  <i><em style={{ width: `${meter.value}%` }} /></i>
+                </div>
+              ))}
+            </div>
+            <div className="policy-inspector-section">
+              <div><span>Governance summary</span><b>{selectedPolicy.complianceStatus ?? "Pending"}</b></div>
+              <p>{selectedPolicy.summary}</p>
+            </div>
+            <div className="policy-inspector-section">
+              <div><span>Controls</span><b>{selectedPolicy.hold ? "Hold applied" : "Open"}</b></div>
+              <ul>
+                <li><ShieldCheck size={14} /> {selectedPolicy.complianceStatus ? `${selectedPolicy.complianceStatus} ${selectedPolicy.complianceScore ?? ""}` : "Compliance check pending"}</li>
+                <li><Send size={14} /> {selectedPolicy.distributedTo ? `Distributed to ${selectedPolicy.distributedTo}` : "Distribution pending"}</li>
+                <li><AlertTriangle size={14} /> {selectedPolicy.exceptionNote ? `${selectedPolicy.exceptionNote} until ${selectedPolicy.exceptionExpires ?? "open"}` : "No exception"}</li>
+                <li><Users size={14} /> {selectedPolicy.trainingAssigned ? `Training: ${selectedPolicy.trainingAudience}` : "No training assigned"}</li>
+              </ul>
+            </div>
+            <div className="policy-inspector-actions">
+              <button type="button" onClick={() => onAcknowledgePolicy(selectedPolicy.id)}><CheckCircle2 size={15} /> Acknowledge</button>
+              <button type="button" disabled={!permissions.canApprove} onClick={() => onUpdatePolicyStatus(selectedPolicy.id, selectedPolicy.status === "Active" ? "Review" : "Active")}><ShieldCheck size={15} /> Status</button>
+              <button type="button" disabled={!permissions.canApprove} onClick={() => onBindEvidence(selectedPolicy.id)}><Files size={15} /> Evidence</button>
+              <button type="button" disabled={!permissions.canApprove} onClick={() => onDistributePolicy(selectedPolicy.id)}><Send size={15} /> Distribute</button>
+            </div>
+          </>
+        ) : (
+          <div className="policy-empty-state">
+            <ScrollText size={22} />
+            <strong>Select a policy</strong>
+            <span>Open a registry row to inspect compliance, distribution, evidence, exceptions, training, and audit links.</span>
+          </div>
+        )}
+      </aside>
+    </section>
+  );
 
   return (
     <section className="module-grid">
@@ -12782,21 +15169,62 @@ function GovernanceCalendar({
   const [status, setStatus] = React.useState<CalendarEvent["status"]>("Scheduled");
   const [categoryFilter, setCategoryFilter] = React.useState("All categories");
   const [statusFilter, setStatusFilter] = React.useState<CalendarEvent["status"] | "All statuses">("All statuses");
+  const [calendarSearch, setCalendarSearch] = React.useState("");
+  const [calendarView, setCalendarView] = React.useState("Week");
+  const [calendarLane, setCalendarLane] = React.useState("Scheduled");
+  const [priorityFilter, setPriorityFilter] = React.useState<CalendarEvent["priority"] | "All priorities">("All priorities");
+  const [selectedEventId, setSelectedEventId] = React.useState(calendarEvents[0]?.id ?? "");
   const [feedback, setFeedback] = React.useState("");
 
   React.useEffect(() => {
     setOwner(String(station.level));
   }, [station.level]);
 
+  React.useEffect(() => {
+    if (!selectedEventId && calendarEvents[0]?.id) {
+      setSelectedEventId(calendarEvents[0].id);
+    }
+  }, [calendarEvents, selectedEventId]);
+
   const categoryOptions = React.useMemo(() => ["All categories", ...Array.from(new Set(calendarEvents.map((event) => event.category))).sort()], [calendarEvents]);
   const visibleEvents = React.useMemo(() => (
-    calendarEvents.filter((event) => (
-      !event.archived
-      &&
-      (categoryFilter === "All categories" || event.category === categoryFilter)
-      && (statusFilter === "All statuses" || event.status === statusFilter)
-    ))
-  ), [calendarEvents, categoryFilter, statusFilter]);
+    calendarEvents.filter((event) => {
+      const isArchivedView = calendarLane === "Archived";
+      const searchable = [
+        event.title,
+        event.category,
+        event.owner,
+        event.date,
+        event.priority,
+        event.status,
+        event.venue,
+        event.agenda,
+        event.readiness,
+        event.linkedTask,
+        event.linkedReport
+      ].filter(Boolean).join(" ").toLowerCase();
+      const laneMatches =
+        calendarLane === "All Events"
+        || (calendarLane === "Scheduled" && event.status === "Scheduled")
+        || (calendarLane === "At Risk" && event.status === "At Risk")
+        || (calendarLane === "Critical" && event.priority === "Critical")
+        || (calendarLane === "Completed" && event.status === "Complete")
+        || (calendarLane === "Archived" && event.archived)
+        || (calendarLane === "Meetings" && /meeting|conference|briefing/i.test(event.category + event.title))
+        || (calendarLane === "Reviews" && /review|audit|compliance/i.test(event.category + event.title))
+        || (calendarLane === "Deadlines" && /deadline|due|report/i.test(event.category + event.title + event.date))
+        || (calendarLane === "Executive Events" && /executive|national|international|hq/i.test(event.owner + event.title));
+
+      return (
+        (isArchivedView ? event.archived : !event.archived)
+        && laneMatches
+        && (!calendarSearch.trim() || searchable.includes(calendarSearch.trim().toLowerCase()))
+        && (categoryFilter === "All categories" || event.category === categoryFilter)
+        && (statusFilter === "All statuses" || event.status === statusFilter)
+        && (priorityFilter === "All priorities" || event.priority === priorityFilter)
+      );
+    })
+  ), [calendarEvents, calendarLane, calendarSearch, categoryFilter, priorityFilter, statusFilter]);
   const activeEvents = calendarEvents.filter((event) => !event.archived);
   const atRiskCount = activeEvents.filter((event) => event.status === "At Risk").length;
   const scheduledCount = activeEvents.filter((event) => event.status === "Scheduled").length;
@@ -12811,6 +15239,30 @@ function GovernanceCalendar({
   const readyCount = activeEvents.filter((event) => event.readiness === "Ready").length;
   const linkedCount = activeEvents.filter((event) => event.linkedTask || event.linkedReport).length;
   const archivedCount = calendarEvents.filter((event) => event.archived).length;
+  const selectedEvent = calendarEvents.find((event) => event.id === selectedEventId) ?? visibleEvents[0] ?? calendarEvents[0];
+  const selectedEventIds = visibleEvents.slice(0, 3).map((event) => event.id);
+  const calendarNav = [
+    { label: "Scheduled", value: scheduledCount, icon: CalendarDays },
+    { label: "At Risk", value: atRiskCount, icon: AlertTriangle },
+    { label: "Critical", value: criticalCount, icon: Zap },
+    { label: "Completed", value: completeCount, icon: CheckCircle2 },
+    { label: "Archived", value: archivedCount, icon: ArchiveIcon },
+    { label: "Meetings", value: activeEvents.filter((event) => /meeting|conference|briefing/i.test(event.category + event.title)).length, icon: Users },
+    { label: "Reviews", value: activeEvents.filter((event) => /review|audit|compliance/i.test(event.category + event.title)).length, icon: ClipboardCheck },
+    { label: "Deadlines", value: activeEvents.filter((event) => /deadline|due|report/i.test(event.category + event.title + event.date)).length, icon: TimerReset },
+    { label: "Executive Events", value: activeEvents.filter((event) => /executive|national|international|hq/i.test(event.owner + event.title)).length, icon: Landmark }
+  ];
+  const calendarKpis = [
+    { label: "Scheduled", value: String(digest?.scheduled ?? scheduledCount), icon: CalendarDays, tone: "info" },
+    { label: "At risk", value: String(digest?.atRisk ?? atRiskCount), icon: AlertTriangle, tone: atRiskCount ? "danger" : "good" },
+    { label: "Critical", value: String(digest?.critical ?? criticalCount), icon: Zap, tone: criticalCount ? "warning" : "good" },
+    { label: "Overdue", value: String(activeEvents.filter((event) => event.date < "2026-05-23" && event.status !== "Complete").length), icon: TimerReset, tone: "warning" },
+    { label: "Ready", value: String(digest?.ready ?? readyCount), icon: ShieldCheck, tone: "good" }
+  ];
+  const calendarDays = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+  const readinessPercent = selectedEvent ? (selectedEvent.readiness === "Ready" ? 100 : selectedEvent.agenda && selectedEvent.venue ? 72 : selectedEvent.agenda || selectedEvent.venue ? 45 : 20) : 0;
+  const attendancePercent = selectedEvent?.attendance !== undefined ? Math.min(100, Math.round(selectedEvent.attendance / 2)) : 18;
+  const linkagePercent = selectedEvent?.linkedTask && selectedEvent.linkedReport ? 100 : selectedEvent?.linkedTask || selectedEvent?.linkedReport ? 55 : 18;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -12818,6 +15270,239 @@ function GovernanceCalendar({
     setFeedback(offlineMode ? "Calendar item queued locally." : "Calendar item scheduled and audit logged.");
     setTitle("New governance calendar item");
   }
+
+  return (
+    <section className="calendar-enterprise">
+      <header className="calendar-command-bar">
+        <div className="calendar-title-block">
+          <span>Governance scheduling</span>
+          <h1>Operations Calendar</h1>
+          <p>Executive meetings, review windows, reporting deadlines, reminders, readiness checks, and linked workflow coordination.</p>
+        </div>
+        <label className="calendar-search">
+          <Search size={16} />
+          <input value={calendarSearch} onChange={(event) => setCalendarSearch(event.target.value)} placeholder="Search events, owners, venue, agenda" />
+        </label>
+        <div className="calendar-filters">
+          <select value={calendarView} onChange={(event) => setCalendarView(event.target.value)}>
+            {["Day", "Week", "Month", "Agenda"].map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={categoryFilter} onChange={(event) => setCategoryFilter(event.target.value)}>
+            {categoryOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={priorityFilter} onChange={(event) => setPriorityFilter(event.target.value as CalendarEvent["priority"] | "All priorities")}>
+            {["All priorities", "Low", "Medium", "High", "Critical"].map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as CalendarEvent["status"] | "All statuses")}>
+            {["All statuses", "Scheduled", "At Risk", "Complete"].map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div className="calendar-command-actions">
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={15} /> Sync</button>
+          <details>
+            <summary><SlidersHorizontal size={15} /> Bulk</summary>
+            <div>
+              <button type="button" disabled={!selectedEventIds.length} onClick={() => onBulkCompleteCalendarEvents(selectedEventIds)}>Complete top 3</button>
+              <button type="button" disabled={!selectedEventIds.length} onClick={() => onBulkRescheduleEvents(selectedEventIds)}>Reschedule top 3</button>
+            </div>
+          </details>
+          <button type="submit" form="calendar-create-form" className="calendar-create-button"><Plus size={15} /> Create event</button>
+        </div>
+        <div className="calendar-kpi-strip">
+          {calendarKpis.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <article className={`calendar-kpi ${metric.tone}`} key={metric.label}>
+                <Icon size={15} />
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+              </article>
+            );
+          })}
+        </div>
+      </header>
+
+      <aside className="calendar-nav-panel">
+        <div className="calendar-panel-heading">
+          <span>Calendar views</span>
+          <strong>{visibleEvents.length} visible</strong>
+        </div>
+        <div className="mini-month">
+          <div><b>May 2026</b><span>RMVI schedule</span></div>
+          {["S", "M", "T", "W", "T", "F", "S"].map((day) => <small key={day}>{day}</small>)}
+          {Array.from({ length: 35 }, (_, index) => (
+            <button type="button" className={[19, 21, 24, 31].includes(index + 1) ? "has-event" : ""} key={index}>{index + 1 <= 31 ? index + 1 : ""}</button>
+          ))}
+        </div>
+        <nav className="calendar-view-list" aria-label="Calendar views">
+          {calendarNav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button type="button" className={calendarLane === item.label ? "active" : ""} key={item.label} onClick={() => setCalendarLane(item.label)}>
+                <Icon size={16} />
+                <span>{item.label}</span>
+                <b>{item.value}</b>
+              </button>
+            );
+          })}
+        </nav>
+        <form id="calendar-create-form" className="calendar-create-panel" onSubmit={submit}>
+          <div>
+            <span>Quick schedule</span>
+            <strong>{offlineMode ? "Queue locally" : "Live calendar"}</strong>
+          </div>
+          <label>
+            <span>Title</span>
+            <input value={title} onChange={(event) => setTitle(event.target.value)} />
+          </label>
+          <div className="calendar-create-split">
+            <label>
+              <span>Date</span>
+              <input type="date" value={date} onChange={(event) => setDate(event.target.value)} />
+            </label>
+            <label>
+              <span>Priority</span>
+              <select value={priority} onChange={(event) => setPriority(event.target.value as CalendarEvent["priority"])}>
+                {["Low", "Medium", "High", "Critical"].map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+          </div>
+          {feedback && <div className="calendar-feedback">{feedback}</div>}
+        </form>
+      </aside>
+
+      <main className="calendar-workspace-panel">
+        <div className="calendar-workspace-toolbar">
+          <div>
+            <span>{calendarView} view</span>
+            <strong>{digest?.nextEvent ?? selectedEvent?.title ?? "No event selected"}</strong>
+          </div>
+          <div>
+            <span>{agendaCount} agendas</span>
+            <span>{venueCount} venues</span>
+            <span>{linkedCount} linked workflows</span>
+          </div>
+        </div>
+        <div className={`calendar-schedule-grid view-${calendarView.toLowerCase()}`}>
+          {calendarDays.map((day, index) => {
+            const dayEvents = visibleEvents.filter((event, eventIndex) => eventIndex % 7 === index);
+            return (
+              <section className="calendar-day-column" key={day}>
+                <header><span>{day}</span><b>{dayEvents.length}</b></header>
+                <div className="calendar-day-scroll">
+                  {dayEvents.map((event) => (
+                    <article
+                      className={`calendar-event-chip ${selectedEvent?.id === event.id ? "selected" : ""} ${event.priority.toLowerCase()}`}
+                      key={event.id}
+                      onClick={() => setSelectedEventId(event.id)}
+                    >
+                      <div>
+                        <StatusPill status={event.status} />
+                        <span className={`calendar-priority ${event.priority.toLowerCase()}`}>{event.priority}</span>
+                      </div>
+                      <h2>{event.title}</h2>
+                      <p>{event.date} / {event.owner}</p>
+                      <div className="calendar-chip-meta">
+                        <span>{event.category}</span>
+                        {event.linkedTask && <span><SquareCheckBig size={12} /> Task</span>}
+                        {event.linkedReport && <span><FileCheck2 size={12} /> Report</span>}
+                      </div>
+                      <div className="calendar-row-actions" onClick={(clickEvent) => clickEvent.stopPropagation()}>
+                        <button type="button" onClick={() => setSelectedEventId(event.id)}>Open</button>
+                        <details>
+                          <summary>More</summary>
+                          <div>
+                            <button type="button" onClick={() => onCheckInEvent(event.id)}>Check in</button>
+                            <button type="button" onClick={() => onUpdateVenue(event.id)}>Add venue</button>
+                            <button type="button" onClick={() => onAttachAgenda(event.id)}>Add agenda</button>
+                            <button type="button" onClick={() => onLogAttendance(event.id)}>Add attendance</button>
+                            <button type="button" onClick={() => onSendReminder(event.id)}>Reminder</button>
+                            <button type="button" onClick={() => onMarkReadiness(event.id)}>Readiness</button>
+                            <button type="button" onClick={() => onLinkTask(event.id)}>Link task</button>
+                            <button type="button" onClick={() => onLinkReport(event.id)}>Link report</button>
+                            <button type="button" onClick={() => onRescheduleCalendarEvent(event.id)}>Reschedule</button>
+                            <button type="button" onClick={() => onUpdateCalendarEventPriority(event.id, event.priority === "Critical" ? "High" : "Critical")}>Change priority</button>
+                            <button type="button" onClick={() => onMarkCalendarEventAtRisk(event.id)}>Mark risk</button>
+                            <button type="button" onClick={() => onUpdateCalendarEventOwner(event.id)}>Owner</button>
+                            <button type="button" onClick={() => onUpdateCalendarEventCategory(event.id)}>Category</button>
+                            <button type="button" onClick={() => onWatchCalendarEvent(event.id)}>Watch</button>
+                            <button type="button" onClick={() => onDuplicateCalendarEvent(event.id)}>Duplicate</button>
+                            <button type="button" onClick={() => onEscalateCalendarEvent("Calendar", event.title, `${event.date} calendar item is ${event.status.toLowerCase()}`, event.owner, event.priority === "Critical" ? "Critical" : "High")}>Escalate</button>
+                            <button type="button" onClick={() => onArchiveEvent(event.id)}>Archive</button>
+                          </div>
+                        </details>
+                      </div>
+                    </article>
+                  ))}
+                  {dayEvents.length === 0 && <div className="calendar-empty-slot">No events</div>}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+      </main>
+
+      <aside className="calendar-inspector-panel">
+        {selectedEvent ? (
+          <>
+            <div className="calendar-inspector-hero">
+              <span>Event inspector</span>
+              <h2>{selectedEvent.title}</h2>
+              <div>
+                <StatusPill status={selectedEvent.status} />
+                <span className={`calendar-priority ${selectedEvent.priority.toLowerCase()}`}>{selectedEvent.priority}</span>
+                <b>{selectedEvent.category}</b>
+              </div>
+            </div>
+            <div className="calendar-inspector-grid">
+              <span><b>Date</b>{selectedEvent.date}</span>
+              <span><b>Owner</b>{selectedEvent.owner}</span>
+              <span><b>Venue</b>{selectedEvent.venue ?? "No venue assigned"}</span>
+              <span><b>Attendance</b>{selectedEvent.attendance !== undefined ? `${selectedEvent.attendance} recorded` : "Pending"}</span>
+              <span><b>Task link</b>{selectedEvent.linkedTask ?? "None"}</span>
+              <span><b>Report link</b>{selectedEvent.linkedReport ?? "None"}</span>
+            </div>
+            <div className="calendar-meter-stack">
+              {[
+                { label: "Readiness", value: readinessPercent },
+                { label: "Attendance tracking", value: attendancePercent },
+                { label: "Workflow linkage", value: linkagePercent }
+              ].map((meter) => (
+                <div className="calendar-meter" key={meter.label}>
+                  <div><span>{meter.label}</span><b>{meter.value}%</b></div>
+                  <i><em style={{ width: `${meter.value}%` }} /></i>
+                </div>
+              ))}
+            </div>
+            <div className="calendar-inspector-section">
+              <div><span>Agenda</span><b>{selectedEvent.agenda ? "Attached" : "Pending"}</b></div>
+              <p>{selectedEvent.agenda ?? "No agenda is attached yet. Add an agenda before the event is routed for executive readiness."}</p>
+            </div>
+            <div className="calendar-inspector-section">
+              <div><span>Operational controls</span><b>{selectedEvent.reminderSent ? "Reminder sent" : "Reminder pending"}</b></div>
+              <ul>
+                <li><ClipboardCheck size={14} /> {selectedEvent.checkInStatus ? `${selectedEvent.checkInStatus} by ${selectedEvent.checkInBy ?? "station"}` : "Check-in pending"}</li>
+                <li><ShieldCheck size={14} /> {selectedEvent.readiness ?? "Readiness pending"}</li>
+                <li><Bell size={14} /> {selectedEvent.reminderSent ? `Reminder sent to ${selectedEvent.reminderAudience}` : "No reminder sent"}</li>
+              </ul>
+            </div>
+            <div className="calendar-inspector-actions">
+              <button type="button" onClick={() => onCompleteCalendarEvent(selectedEvent.id)}><CheckCircle2 size={15} /> Complete</button>
+              <button type="button" onClick={() => onAttachAgenda(selectedEvent.id)}><ScrollText size={15} /> Agenda</button>
+              <button type="button" onClick={() => onSendReminder(selectedEvent.id)}><Bell size={15} /> Reminder</button>
+              <button type="button" onClick={() => onEscalateCalendarEvent("Calendar", selectedEvent.title, `${selectedEvent.date} calendar item is ${selectedEvent.status.toLowerCase()}`, selectedEvent.owner, selectedEvent.priority === "Critical" ? "Critical" : "High")}><AlertTriangle size={15} /> Escalate</button>
+            </div>
+          </>
+        ) : (
+          <div className="calendar-empty-state">
+            <CalendarDays size={22} />
+            <strong>Select an event</strong>
+            <span>Choose an event to review venue, agenda, attendees, reminders, readiness, and linked workflows.</span>
+          </div>
+        )}
+      </aside>
+    </section>
+  );
 
   return (
     <section className="module-grid">
@@ -13010,18 +15695,63 @@ function PersonnelDirectory({
   const [assignedStation, setAssignedStation] = React.useState("Riverbend Area Office");
   const [status, setStatus] = React.useState<PersonRecord["status"]>("Active");
   const [statusFilter, setStatusFilter] = React.useState<PersonRecord["status"] | "All statuses">("All statuses");
+  const [personnelSearch, setPersonnelSearch] = React.useState("");
+  const [personnelView, setPersonnelView] = React.useState("Active");
+  const [roleFilter, setRoleFilter] = React.useState("All roles");
+  const [stationFilter, setStationFilter] = React.useState("All stations");
+  const [selectedPersonId, setSelectedPersonId] = React.useState(personnel[0]?.id ?? "");
   const [feedback, setFeedback] = React.useState("");
 
   React.useEffect(() => {
     setCurrentStation(String(station.level));
   }, [station.level]);
 
+  React.useEffect(() => {
+    if (!selectedPersonId && personnel[0]?.id) {
+      setSelectedPersonId(personnel[0].id);
+    }
+  }, [personnel, selectedPersonId]);
+
   const visiblePersonnel = React.useMemo(() => (
-    personnel.filter((person) => (
-      !person.archived
-      && (statusFilter === "All statuses" || person.status === statusFilter)
-    ))
-  ), [personnel, statusFilter]);
+    personnel.filter((person) => {
+      const isArchivedView = personnelView === "Archived";
+      const searchable = [
+        person.name,
+        person.role,
+        person.currentStation,
+        person.assignedStation,
+        person.status,
+        person.clearance,
+        person.credentialStatus,
+        person.trainingStatus,
+        person.trainingTrack,
+        person.stationAccess,
+        person.accessStatus,
+        person.incidentFlag,
+        person.linkedTask
+      ].filter(Boolean).join(" ").toLowerCase();
+      const viewMatches =
+        personnelView === "All Personnel"
+        || (personnelView === "Active" && person.status === "Active")
+        || (personnelView === "Transfers" && person.status === "Transfer Pending")
+        || (personnelView === "Pending Verification" && person.credentialStatus !== "Verified")
+        || (personnelView === "Training" && person.trainingStatus)
+        || (personnelView === "Access Control" && person.accessStatus)
+        || (personnelView === "Leadership" && /pastor|secretariat|executive|coordinator|liaison|leader/i.test(person.role))
+        || (personnelView === "Service Groups" && /service group|choir|media|usher|protocol|census|sanitation|harvester|technical/i.test(person.role))
+        || (personnelView === "Archived" && person.archived)
+        || (personnelView === "Incidents" && person.incidentFlag);
+
+      return (
+        (isArchivedView ? person.archived : !person.archived)
+        && viewMatches
+        && (!personnelSearch.trim() || searchable.includes(personnelSearch.trim().toLowerCase()))
+        && (statusFilter === "All statuses" || person.status === statusFilter)
+        && (roleFilter === "All roles" || person.role === roleFilter)
+        && (stationFilter === "All stations" || person.currentStation === stationFilter || person.assignedStation === stationFilter)
+      );
+    })
+  ), [personnel, personnelSearch, personnelView, roleFilter, stationFilter, statusFilter]);
   const activePersonnel = personnel.filter((person) => !person.archived);
   const activeCount = activePersonnel.filter((person) => person.status === "Active").length;
   const transferPendingCount = activePersonnel.filter((person) => person.status === "Transfer Pending").length;
@@ -13033,6 +15763,36 @@ function PersonnelDirectory({
   const linkedCount = activePersonnel.filter((person) => person.linkedTask).length;
   const reviewedCount = activePersonnel.filter((person) => person.reviewStatus).length;
   const archivedCount = personnel.filter((person) => person.archived).length;
+  const selectedPerson = personnel.find((person) => person.id === selectedPersonId) ?? visiblePersonnel[0] ?? personnel[0];
+  const roleOptions = React.useMemo(() => ["All roles", ...Array.from(new Set(personnel.map((person) => person.role))).sort()], [personnel]);
+  const stationOptions = React.useMemo(() => ["All stations", ...Array.from(new Set(personnel.flatMap((person) => [person.currentStation, person.assignedStation]))).sort()], [personnel]);
+  const selectedPersonIds = visiblePersonnel.slice(0, 3).map((person) => person.id);
+  const onboardingCount = activePersonnel.filter((person) => person.status === "Onboarding").length;
+  const leadershipCount = activePersonnel.filter((person) => /pastor|secretariat|executive|coordinator|liaison|leader/i.test(person.role)).length;
+  const serviceGroupCount = activePersonnel.filter((person) => /service group|choir|media|usher|protocol|census|sanitation|harvester|technical/i.test(person.role)).length;
+  const pendingVerificationCount = activePersonnel.filter((person) => person.credentialStatus !== "Verified").length;
+  const personnelNav = [
+    { label: "Active", value: activeCount, icon: Users },
+    { label: "Transfers", value: transferPendingCount, icon: Signature },
+    { label: "Pending Verification", value: pendingVerificationCount, icon: ShieldCheck },
+    { label: "Training", value: trainingCount, icon: FileCheck2 },
+    { label: "Access Control", value: accessCount, icon: KeyRound },
+    { label: "Leadership", value: leadershipCount, icon: Landmark },
+    { label: "Service Groups", value: serviceGroupCount, icon: Workflow },
+    { label: "Archived", value: archivedCount, icon: ArchiveIcon },
+    { label: "Incidents", value: incidentCount, icon: AlertTriangle }
+  ];
+  const personnelKpis = [
+    { label: "Active", value: String(digest?.active ?? activeCount), icon: Users, tone: "good" },
+    { label: "Transfers", value: String(digest?.transferPending ?? transferPendingCount), icon: Signature, tone: transferPendingCount ? "warning" : "good" },
+    { label: "Onboarding", value: String(onboardingCount), icon: ClipboardCheck, tone: onboardingCount ? "info" : "good" },
+    { label: "Verified", value: String(digest?.verified ?? verifiedCount), icon: ShieldCheck, tone: "good" },
+    { label: "Incidents", value: String(digest?.incidents ?? incidentCount), icon: AlertTriangle, tone: incidentCount ? "danger" : "good" }
+  ];
+  const initials = (value: string) => value.split(" ").filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join("") || "RM";
+  const trainingPercent = selectedPerson?.trainingStatus ? 86 : 22;
+  const accessPercent = selectedPerson?.accessStatus === "Granted" ? 100 : selectedPerson?.accessStatus ? 58 : 20;
+  const readinessPercent = selectedPerson?.credentialStatus === "Verified" && selectedPerson?.accessStatus === "Granted" ? 96 : selectedPerson?.credentialStatus === "Verified" ? 72 : 38;
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -13048,6 +15808,274 @@ function PersonnelDirectory({
       to: person.assignedStation
     });
   }
+
+  return (
+    <section className="personnel-enterprise">
+      <header className="personnel-command-bar">
+        <div className="personnel-title-block">
+          <span>Workforce operations</span>
+          <h1>Personnel Directory</h1>
+          <p>Identity, roles, transfers, training, credential verification, access governance, incidents, and personnel audit readiness.</p>
+        </div>
+        <label className="personnel-search">
+          <Search size={16} />
+          <input value={personnelSearch} onChange={(event) => setPersonnelSearch(event.target.value)} placeholder="Search personnel, role, station, access, training" />
+        </label>
+        <div className="personnel-filters">
+          <select value={roleFilter} onChange={(event) => setRoleFilter(event.target.value)}>
+            {roleOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={stationFilter} onChange={(event) => setStationFilter(event.target.value)}>
+            {stationOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+          <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as PersonRecord["status"] | "All statuses")}>
+            {["All statuses", "Active", "Transfer Pending", "Assigned", "Onboarding", "On Leave", "Inactive"].map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </div>
+        <div className="personnel-command-actions">
+          <button type="button" onClick={onRefreshDigest}><RefreshCw size={15} /> Refresh</button>
+          <details>
+            <summary><SlidersHorizontal size={15} /> Export</summary>
+            <div>
+              <button type="button">Export directory</button>
+              <button type="button">Export access audit</button>
+              <button type="button" disabled={!permissions.canExecuteTransfers || !selectedPersonIds.length} onClick={() => onBulkCredentialReview(selectedPersonIds)}>Credential review</button>
+            </div>
+          </details>
+          <button type="submit" form="personnel-create-form" className="personnel-create-button" disabled={!permissions.canExecuteTransfers}><Plus size={15} /> Create person</button>
+        </div>
+        <div className="personnel-kpi-strip">
+          {personnelKpis.map((metric) => {
+            const Icon = metric.icon;
+            return (
+              <article className={`personnel-kpi ${metric.tone}`} key={metric.label}>
+                <Icon size={15} />
+                <span>{metric.label}</span>
+                <strong>{metric.value}</strong>
+              </article>
+            );
+          })}
+        </div>
+      </header>
+
+      <aside className="personnel-nav-panel">
+        <div className="personnel-panel-heading">
+          <span>Workforce views</span>
+          <strong>{visiblePersonnel.length} visible</strong>
+        </div>
+        <div className="workforce-summary-card">
+          <span>Workforce summary</span>
+          <strong>{activePersonnel.length} active records</strong>
+          <div>
+            <b>{transferPendingCount}</b><small>transfer alerts</small>
+            <b>{pendingVerificationCount}</b><small>verification</small>
+            <b>{onboardingCount}</b><small>onboarding</small>
+          </div>
+        </div>
+        <nav className="personnel-view-list" aria-label="Personnel views">
+          {personnelNav.map((item) => {
+            const Icon = item.icon;
+            return (
+              <button type="button" className={personnelView === item.label ? "active" : ""} key={item.label} onClick={() => setPersonnelView(item.label)}>
+                <Icon size={16} />
+                <span>{item.label}</span>
+                <b>{item.value}</b>
+              </button>
+            );
+          })}
+        </nav>
+        <form id="personnel-create-form" className="personnel-create-panel" onSubmit={submit}>
+          <div>
+            <span>Register person</span>
+            <strong>{offlineMode ? "Queue locally" : "Live directory"}</strong>
+          </div>
+          {!permissions.canExecuteTransfers && (
+            <div className="personnel-permission-note">
+              <LockKeyhole size={14} />
+              <span>Registration requires personnel or transfer authority.</span>
+            </div>
+          )}
+          <label>
+            <span>Name</span>
+            <input value={name} onChange={(event) => setName(event.target.value)} />
+          </label>
+          <label>
+            <span>Role</span>
+            <select value={role} onChange={(event) => setRole(event.target.value)}>
+              {missionStationRoleOptions.map((option) => <option key={option}>{option}</option>)}
+            </select>
+          </label>
+          <div className="personnel-create-split">
+            <label>
+              <span>Status</span>
+              <select value={status} onChange={(event) => setStatus(event.target.value as PersonRecord["status"])}>
+                {["Active", "Transfer Pending", "Assigned", "Onboarding", "On Leave", "Inactive"].map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Assigned</span>
+              <input value={assignedStation} onChange={(event) => setAssignedStation(event.target.value)} />
+            </label>
+          </div>
+          {feedback && <div className="personnel-feedback">{feedback}</div>}
+        </form>
+      </aside>
+
+      <main className="personnel-directory-panel">
+        <div className="personnel-directory-toolbar">
+          <div>
+            <span>Workforce table</span>
+            <strong>{digest?.nextPerson ?? selectedPerson?.name ?? "No person selected"}</strong>
+          </div>
+          <div>
+            <span>{verifiedCount} verified</span>
+            <span>{trainingCount} training</span>
+            <span>{accessCount} access granted</span>
+          </div>
+        </div>
+        <div className="personnel-table">
+          <div className="personnel-table-head">
+            <span>Profile</span>
+            <span>Role</span>
+            <span>Current station</span>
+            <span>Assigned station</span>
+            <span>Status</span>
+            <span>Training</span>
+            <span>Access</span>
+            <span>Verify</span>
+            <span>Actions</span>
+          </div>
+          <div className="personnel-table-body">
+            {visiblePersonnel.map((person) => (
+              <article className={`personnel-row ${selectedPerson?.id === person.id ? "selected" : ""}`} key={person.id} onClick={() => setSelectedPersonId(person.id)}>
+                <div className="person-profile-cell">
+                  <span>{initials(person.name)}</span>
+                  <div><strong>{person.name}</strong><small>{person.clearance ?? "Standard clearance"}</small></div>
+                </div>
+                <span>{person.role}</span>
+                <span>{person.currentStation}</span>
+                <span>{person.assignedStation}</span>
+                <StatusPill status={person.status} />
+                <span>{person.trainingStatus ?? "Pending"}</span>
+                <span>{person.accessStatus ?? "Not granted"}</span>
+                <span>{person.credentialStatus ?? "Pending"}</span>
+                <div className="personnel-row-actions" onClick={(event) => event.stopPropagation()}>
+                  <button type="button" onClick={() => setSelectedPersonId(person.id)}>Open</button>
+                  <details>
+                    <summary>More</summary>
+                    <div>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onOnboardPerson(person.id)}>Onboard</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onResetCredentials(person.id)}>Credentials</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onVerifyCredentials(person.id)}>Verify</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onAssignTraining(person.id)}>Training</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onGrantAccess(person.id)}>Access</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onFlagIncident(person.id)}>Incident</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onLinkTask(person.id)}>Link task</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onReviewPerson(person.id)}>Review</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onPlaceLeave(person.id)}>Leave</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onUpdateClearance(person.id)}>Clearance</button>
+                      <button type="button" onClick={() => onUpdatePersonStatus(person.id, "Assigned")}>Mark assigned</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onUpdatePersonRole(person.id, person.role === "Governance Liaison" ? "Area Coordinator" : "Governance Liaison")}>Assign role</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onUpdatePersonAssignment(person.id, station.level)}>Reassign</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onDeactivatePerson(person.id)}>Deactivate</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => createTransfer(person)}>Create transfer</button>
+                      <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onArchivePerson(person.id)}>Archive</button>
+                    </div>
+                  </details>
+                </div>
+              </article>
+            ))}
+            {visiblePersonnel.length === 0 && (
+              <div className="personnel-empty-state">
+                <Users size={20} />
+                <strong>No personnel match this view</strong>
+                <span>Change the view, station, role, status, or search term to review more records.</span>
+              </div>
+            )}
+          </div>
+        </div>
+      </main>
+
+      <aside className="personnel-inspector-panel">
+        {selectedPerson ? (
+          <>
+            <div className="personnel-inspector-hero">
+              <span>Personnel inspector</span>
+              <div className="personnel-inspector-profile">
+                <b>{initials(selectedPerson.name)}</b>
+                <div>
+                  <h2>{selectedPerson.name}</h2>
+                  <p>{selectedPerson.role}</p>
+                </div>
+              </div>
+              <div>
+                <StatusPill status={selectedPerson.status} />
+                <span>{selectedPerson.clearance ?? "Standard clearance"}</span>
+              </div>
+            </div>
+            <div className="personnel-inspector-grid">
+              <span><b>Current station</b>{selectedPerson.currentStation}</span>
+              <span><b>Assigned station</b>{selectedPerson.assignedStation}</span>
+              <span><b>Credentials</b>{selectedPerson.credentialStatus ?? "Pending"}</span>
+              <span><b>Access</b>{selectedPerson.accessStatus ?? "Not granted"}</span>
+              <span><b>Training</b>{selectedPerson.trainingStatus ?? "Not assigned"}</span>
+              <span><b>Linked task</b>{selectedPerson.linkedTask ?? "None"}</span>
+            </div>
+            <div className="personnel-meter-stack">
+              {[
+                { label: "Onboarding readiness", value: readinessPercent },
+                { label: "Training progress", value: trainingPercent },
+                { label: "Access governance", value: accessPercent }
+              ].map((meter) => (
+                <div className="personnel-meter" key={meter.label}>
+                  <div><span>{meter.label}</span><b>{meter.value}%</b></div>
+                  <i><em style={{ width: `${meter.value}%` }} /></i>
+                </div>
+              ))}
+            </div>
+            <div className="personnel-inspector-section">
+              <div><span>Transfer workflow</span><b>{selectedPerson.status === "Transfer Pending" ? "Pending" : "Stable"}</b></div>
+              <p>{selectedPerson.currentStation} to {selectedPerson.assignedStation}. {selectedPerson.reviewNote ?? "No review note has been recorded yet."}</p>
+            </div>
+            <div className="personnel-inspector-section">
+              <div><span>Identity controls</span><b>{selectedPerson.incidentFlag ? "Incident" : "Clear"}</b></div>
+              <ul>
+                <li><ShieldCheck size={14} /> {selectedPerson.credentialStatus ?? "Credentials pending"}</li>
+                <li><FileCheck2 size={14} /> {selectedPerson.trainingStatus ? `${selectedPerson.trainingStatus}: ${selectedPerson.trainingTrack}` : "Training not assigned"}</li>
+                <li><KeyRound size={14} /> {selectedPerson.accessStatus ? `${selectedPerson.accessStatus}: ${selectedPerson.stationAccess}` : "No station access"}</li>
+                <li><AlertTriangle size={14} /> {selectedPerson.incidentFlag ? `${selectedPerson.incidentSeverity}: ${selectedPerson.incidentFlag}` : "No incidents"}</li>
+              </ul>
+            </div>
+            <div className="role-explorer">
+              <div><span>Mission station role explorer</span><b>{missionStationRoleOptions.length} roles</b></div>
+              <details open>
+                <summary>Executive Leadership</summary>
+                <span>International Secretariat</span>
+                <span>National Secretariat</span>
+                <span>Governance Liaison</span>
+              </details>
+              <details>
+                <summary>Service Groups</summary>
+                {missionStationRoleOptions.filter((option) => /service group|choir|media|usher|protocol|census|sanitation|harvester|technical/i.test(option)).map((option) => <span key={option}>{option}</span>)}
+              </details>
+            </div>
+            <div className="personnel-inspector-actions">
+              <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onOnboardPerson(selectedPerson.id)}><ClipboardCheck size={15} /> Onboard</button>
+              <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onVerifyCredentials(selectedPerson.id)}><ShieldCheck size={15} /> Verify</button>
+              <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => onGrantAccess(selectedPerson.id)}><KeyRound size={15} /> Access</button>
+              <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => createTransfer(selectedPerson)}><Signature size={15} /> Transfer</button>
+            </div>
+          </>
+        ) : (
+          <div className="personnel-empty-state">
+            <Users size={22} />
+            <strong>Select personnel</strong>
+            <span>Choose a record to inspect assignments, transfer workflow, training, access, credentials, incidents, and audit history.</span>
+          </div>
+        )}
+      </aside>
+    </section>
+  );
 
   return (
     <section className="module-grid">
@@ -14542,6 +17570,18 @@ function Transfers({
   const visibleTransfers = React.useMemo(() => (
     transfers.filter((transfer) => !transfer.archived && (stepFilter === "All steps" || transfer.step === stepFilter))
   ), [stepFilter, transfers]);
+  const [selectedTransferId, setSelectedTransferId] = React.useState<string>("");
+  const selectedTransfer = React.useMemo(
+    () => visibleTransfers.find((transfer) => transfer.id === selectedTransferId) ?? visibleTransfers[0] ?? null,
+    [selectedTransferId, visibleTransfers]
+  );
+  const transferStats = React.useMemo(() => {
+    const ready = transfers.filter((transfer) => transfer.step === "New station login ready").length;
+    const pending = transfers.filter((transfer) => !transfer.archived && transfer.step !== "New station login ready").length;
+    const risky = transfers.filter((transfer) => /pending|required|waiting|risk/i.test(`${transfer.step} ${transfer.risk}`)).length;
+    const scheduled = transfers.filter((transfer) => transfer.scheduledFor).length;
+    return { ready, pending, risky, scheduled };
+  }, [transfers]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -14555,136 +17595,171 @@ function Transfers({
   }
 
   return (
-    <section className="module-grid">
-      <div className="panel module-primary">
-        <PanelHeader icon={Signature} title="Transfer Identity Migration" action={`${visibleTransfers.length} visible`} />
-        {!permissions.canExecuteTransfers && (
-          <div className="permission-warning">
-            <LockKeyhole size={16} />
-            <span>This station can view transfers, but cannot execute identity migration.</span>
-          </div>
-        )}
-        <div className="archive-toolbar">
-          <label>
-            <span>Step</span>
-            <select value={stepFilter} onChange={(event) => setStepFilter(event.target.value)}>
-              {stepOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>
+    <section className="transfers-workspace">
+      <div className="transfer-command-bar">
+        <div>
+          <span>Identity Migration</span>
+          <h2>Transfer Management</h2>
+          <p>Control reassignment, acknowledgement, access revocation, station activation, verification, and archive routing from one workflow.</p>
+        </div>
+        <label>
+          <Search size={15} />
+          <select value={stepFilter} onChange={(event) => setStepFilter(event.target.value)} aria-label="Filter transfers by workflow step">
+            {stepOptions.map((option) => <option key={option} value={option}>{option}</option>)}
+          </select>
+        </label>
+        <div className="transfer-command-actions">
           <button type="button" onClick={onRefreshDigest}><RefreshCw size={14} /> Digest</button>
           <button disabled={!permissions.canExecuteTransfers || !visibleTransfers.length} type="button" onClick={() => onBulkVerify(visibleTransfers.slice(0, 3).map((transfer) => transfer.id))}><ShieldCheck size={14} /> Bulk verify</button>
         </div>
-        {digest && (
-          <div className="workflow-digest">
-            <Insight label="Ready" value={String(digest.ready)} />
-            <Insight label="Pending" value={String(digest.pending)} />
-            <Insight label="Letters" value={String(digest.letters ?? 0)} />
-            <Insight label="Scheduled" value={String(digest.scheduled ?? 0)} />
-            <Insight label="Noted" value={String(digest.noted ?? 0)} />
-            <Insight label="Watched" value={String(digest.watched ?? 0)} />
-            <Insight label="Linked" value={String(digest.linked ?? 0)} />
-            <Insight label="Archived" value={String(digest.archived ?? 0)} />
-            <Insight label="Next transfer" value={digest.nextTransfer} />
+      </div>
+
+      <div className="transfer-stat-strip">
+        <Insight label="Visible" value={String(visibleTransfers.length)} />
+        <Insight label="Pending" value={String(digest?.pending ?? transferStats.pending)} />
+        <Insight label="Ready" value={String(digest?.ready ?? transferStats.ready)} />
+        <Insight label="Risk Watch" value={String(transferStats.risky)} />
+        <Insight label="Scheduled" value={String(digest?.scheduled ?? transferStats.scheduled)} />
+        <Insight label="Watched" value={String(digest?.watched ?? 0)} />
+      </div>
+
+      <div className="transfer-shell">
+        <aside className="transfer-nav-panel">
+          <div className="transfer-panel-head">
+            <strong>Workflow</strong>
+            <span>{visibleTransfers.length} active</span>
           </div>
-        )}
-        <div className="transfer-list">
-          {visibleTransfers.map((transfer) => (
-            <article className="transfer-card" key={transfer.person}>
-              <h2>{transfer.person}</h2>
-              <div className="route-box">
-                <strong>{transfer.from}</strong>
-                <ChevronRight size={16} />
-                <strong>{transfer.to}</strong>
+          {stepOptions.map((option) => {
+            const count = option === "All steps" ? transfers.filter((transfer) => !transfer.archived).length : transfers.filter((transfer) => !transfer.archived && transfer.step === option).length;
+            return (
+              <button className={stepFilter === option ? "active" : ""} type="button" key={option} onClick={() => setStepFilter(option)}>
+                <span>{option}</span>
+                <b>{count}</b>
+              </button>
+            );
+          })}
+          {!permissions.canExecuteTransfers && (
+            <div className="transfer-permission-note">
+              <LockKeyhole size={16} />
+              <span>View-only station. Transfer execution requires delegated authority.</span>
+            </div>
+          )}
+        </aside>
+
+        <main className="transfer-queue-panel">
+          <div className="transfer-panel-head">
+            <strong>Transfer Queue</strong>
+            <span>{digest?.nextTransfer ? `Next: ${digest.nextTransfer}` : "Identity migration queue"}</span>
+          </div>
+          <div className="transfer-table">
+            <div className="transfer-table-head">
+              <span>Person</span>
+              <span>Route</span>
+              <span>Step</span>
+              <span>Risk</span>
+              <span>Action</span>
+            </div>
+            {visibleTransfers.map((transfer) => (
+              <button className={selectedTransfer?.id === transfer.id ? "transfer-row active" : "transfer-row"} type="button" key={transfer.id} onClick={() => setSelectedTransferId(transfer.id)}>
+                <span>
+                  <strong>{transfer.person}</strong>
+                  <small>{transfer.letterStatus ? `${transfer.letterStatus}: ${transfer.letterRef}` : "Letter not recorded"}</small>
+                </span>
+                <span>
+                  <b>{transfer.from}</b>
+                  <small>to {transfer.to}</small>
+                </span>
+                <span><em>{transfer.step}</em></span>
+                <span><small>{transfer.risk}</small></span>
+                <span className="transfer-row-actions">
+                  <CheckCircle2 size={14} />
+                  Open
+                </span>
+              </button>
+            ))}
+            {visibleTransfers.length === 0 && <div className="empty-state">No transfers match the current workflow filter.</div>}
+          </div>
+        </main>
+
+        <aside className="transfer-inspector-panel">
+          <div className="transfer-panel-head">
+            <strong>Transfer Inspector</strong>
+            <span>{selectedTransfer ? selectedTransfer.step : "No record selected"}</span>
+          </div>
+          {selectedTransfer ? (
+            <>
+              <div className="transfer-profile-card">
+                <div>
+                  <span>Recipient</span>
+                  <h2>{selectedTransfer.person}</h2>
+                  <p>{selectedTransfer.from} to {selectedTransfer.to}</p>
+                </div>
+                <b>{selectedTransfer.risk}</b>
               </div>
-              <span>{transfer.step}</span>
-              <p>{transfer.risk}</p>
-              <div className="approval-meta">
-                <small>{transfer.letterStatus ? `${transfer.letterStatus}: ${transfer.letterRef}` : "No letter"}</small>
-                <small>{transfer.scheduledFor ? `Scheduled ${transfer.scheduledFor}` : "Unscheduled"}</small>
-                <small>{transfer.notes?.length ?? 0} notes</small>
-                <small>{transfer.watchers?.length ?? 0} watchers</small>
-                <small>{transfer.personnelRecord ? `Personnel ${transfer.personnelRecord}` : "No personnel link"}</small>
-                <small>{transfer.linkedTask ? `Task ${transfer.linkedTask}` : "No task link"}</small>
-                <small>{transfer.linkedReport ? `Report ${transfer.linkedReport}` : "No report link"}</small>
+              <div className="transfer-route-map">
+                <article>
+                  <span>Current station</span>
+                  <strong>{selectedTransfer.from}</strong>
+                </article>
+                <ChevronRight size={18} />
+                <article>
+                  <span>New station</span>
+                  <strong>{selectedTransfer.to}</strong>
+                </article>
               </div>
-              <div className="pipeline mini">
-                {["Letter", "Acknowledge", "Revoke", "Activate", "Audit"].map((step) => (
-                  <div className="pipeline-step" key={step}>{step}</div>
+              <div className="transfer-progress">
+                {["Letter", "Acknowledge", "Revoke", "Activate", "Verify"].map((step, index) => (
+                  <span className={index === 0 || selectedTransfer.step.toLowerCase().includes(step.toLowerCase().slice(0, 5)) ? "ready" : ""} key={step}>{step}</span>
                 ))}
               </div>
-              <div className="action-row">
-                <button disabled={!permissions.canExecuteTransfers} onClick={() => onRecordLetter(transfer.id)}><FileCheck2 size={15} /> Letter</button>
-                <button disabled={!permissions.canExecuteTransfers} onClick={() => onScheduleTransfer(transfer.id)}><CalendarDays size={15} /> Schedule</button>
-                <button disabled={!permissions.canExecuteTransfers} onClick={() => onNoteTransfer(transfer.id)}><MessageSquareText size={15} /> Note</button>
-                <button onClick={() => onWatchTransfer(transfer.id)}><Bell size={15} /> Watch</button>
-                <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkPersonnel(transfer.id)}><Users size={15} /> Personnel</button>
-                <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkTask(transfer.id)}><SquareCheckBig size={15} /> Task link</button>
-                <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkReport(transfer.id)}><FileCheck2 size={15} /> Report link</button>
-                <button
-                  aria-label={`Prepare transfer for ${transfer.person}`}
-                  disabled={!permissions.canExecuteTransfers}
-                  onClick={() => onPrepareTransfer(transfer.id)}
-                >
-                  <ClipboardCheck size={15} /> Prepare
-                </button>
-                <button
-                  aria-label={`Acknowledge transfer for ${transfer.person}`}
-                  disabled={!permissions.canExecuteTransfers}
-                  onClick={() => onAcknowledgeTransfer(transfer.id)}
-                >
-                  <CheckCircle2 size={15} /> Acknowledge
-                </button>
-                <button
-                  aria-label={`Flag risk for ${transfer.person}`}
-                  disabled={!permissions.canExecuteTransfers}
-                  onClick={() => onUpdateTransferRisk(transfer.id, transfer.risk === "Supervisor review required" ? "Session switch pending" : "Supervisor review required")}
-                >
-                  <AlertTriangle size={15} /> Risk
-                </button>
-                <button
-                  aria-label={`Revoke old access for ${transfer.person}`}
-                  disabled={!permissions.canExecuteTransfers}
-                  onClick={() => onRevokeAccess(transfer.id)}
-                >
-                  <LockKeyhole size={15} /> Revoke access
-                </button>
-                <button
-                  aria-label={`Activate station for ${transfer.person}`}
-                  disabled={!permissions.canExecuteTransfers}
-                  onClick={() => onActivateStation(transfer.id)}
-                >
-                  <RadioTower size={15} /> Activate
-                </button>
-                <button
-                  aria-label={`Execute transfer for ${transfer.person}`}
-                  disabled={!permissions.canExecuteTransfers}
-                  onClick={() => onExecuteTransfer(transfer.id)}
-                >
-                  <RefreshCw size={15} /> Execute switch
-                </button>
-                <button
-                  aria-label={`Verify transfer for ${transfer.person}`}
-                  disabled={!permissions.canExecuteTransfers}
-                  onClick={() => onVerifyTransfer(transfer.id)}
-                >
-                  <CheckCircle2 size={15} /> Verify
-                </button>
-                <button disabled={!permissions.canExecuteTransfers} onClick={() => onArchiveTransfer(transfer.id)}><ArchiveIcon size={15} /> Archive</button>
+              <div className="transfer-detail-grid">
+                <Insight label="Letter" value={selectedTransfer.letterStatus ? `${selectedTransfer.letterStatus}` : "Needed"} />
+                <Insight label="Schedule" value={selectedTransfer.scheduledFor ?? "Unscheduled"} />
+                <Insight label="Notes" value={String(selectedTransfer.notes?.length ?? 0)} />
+                <Insight label="Watchers" value={String(selectedTransfer.watchers?.length ?? 0)} />
+                <Insight label="Personnel" value={selectedTransfer.personnelRecord ?? "Not linked"} />
+                <Insight label="Task" value={selectedTransfer.linkedTask ?? "Not linked"} />
+                <Insight label="Report" value={selectedTransfer.linkedReport ?? "Not linked"} />
               </div>
-            </article>
-          ))}
-          {visibleTransfers.length === 0 && <div className="empty-state">No transfers match the current step filter.</div>}
-        </div>
+              <div className="transfer-primary-actions">
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onPrepareTransfer(selectedTransfer.id)}><ClipboardCheck size={15} /> Prepare</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onAcknowledgeTransfer(selectedTransfer.id)}><CheckCircle2 size={15} /> Acknowledge</button>
+                <button disabled={!permissions.canExecuteTransfers} onClick={() => onExecuteTransfer(selectedTransfer.id)}><RefreshCw size={15} /> Execute switch</button>
+              </div>
+              <details className="transfer-more-actions">
+                <summary>More actions</summary>
+                <div>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onRecordLetter(selectedTransfer.id)}><FileCheck2 size={15} /> Letter</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onScheduleTransfer(selectedTransfer.id)}><CalendarDays size={15} /> Schedule</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onNoteTransfer(selectedTransfer.id)}><MessageSquareText size={15} /> Note</button>
+                  <button onClick={() => onWatchTransfer(selectedTransfer.id)}><Bell size={15} /> Watch</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkPersonnel(selectedTransfer.id)}><Users size={15} /> Personnel</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkTask(selectedTransfer.id)}><SquareCheckBig size={15} /> Task link</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onLinkReport(selectedTransfer.id)}><FileCheck2 size={15} /> Report link</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onUpdateTransferRisk(selectedTransfer.id, selectedTransfer.risk === "Supervisor review required" ? "Session switch pending" : "Supervisor review required")}><AlertTriangle size={15} /> Risk</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onRevokeAccess(selectedTransfer.id)}><LockKeyhole size={15} /> Revoke access</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onActivateStation(selectedTransfer.id)}><RadioTower size={15} /> Activate</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onVerifyTransfer(selectedTransfer.id)}><CheckCircle2 size={15} /> Verify</button>
+                  <button disabled={!permissions.canExecuteTransfers} onClick={() => onArchiveTransfer(selectedTransfer.id)}><ArchiveIcon size={15} /> Archive</button>
+                </div>
+              </details>
+            </>
+          ) : (
+            <div className="empty-state">Select a transfer to inspect routing, access state, risk, and migration actions.</div>
+          )}
+        </aside>
       </div>
-      <div className="panel module-side">
-        <PanelHeader icon={Plus} title="Create Transfer" action="Mission" />
+
+      <div className="transfer-lower-grid">
+        <div className="transfer-create-panel">
+          <PanelHeader icon={Plus} title="Create Transfer" action="Mission" />
         {!permissions.canExecuteTransfers && (
           <div className="permission-warning">
             <LockKeyhole size={16} />
             <span>Transfer creation requires delegated transfer authority.</span>
           </div>
         )}
-        <form className="office-form" onSubmit={submit}>
+          <form className="office-form" onSubmit={submit}>
           <label>
             <span>Recipient</span>
             <input value={person} onChange={(event) => setPerson(event.target.value)} />
@@ -14699,9 +17774,10 @@ function Transfers({
           </label>
           {feedback && <div className="compose-feedback">{feedback}</div>}
           <button disabled={!permissions.canExecuteTransfers} type="submit"><Plus size={15} /> Create transfer</button>
-        </form>
+          </form>
+        </div>
+        <OfflinePanel offlineMode networkOnline={navigator.onLine} offlineQueue={offlineQueue} offlineConflicts={buildOfflineConflicts(offlineQueue)} syncHistory={[]} installReady onSync={onSync} />
       </div>
-      <OfflinePanel offlineMode networkOnline={navigator.onLine} offlineQueue={offlineQueue} offlineConflicts={buildOfflineConflicts(offlineQueue)} syncHistory={[]} installReady onSync={onSync} />
     </section>
   );
 }
@@ -15063,7 +18139,7 @@ function AccountSettings({
         <div className="account-card">
           <PanelHeader icon={Settings} title="System Access" action="moved from header" />
           <div className="account-status-list">
-            <div><span>Sync mode</span><strong>{offlineMode ? "Offline queue" : "Live sync"}</strong></div>
+            <div><span>Sync mode</span><strong>{offlineMode ? "Offline queue" : "Sync active"}</strong></div>
             <div><span>API</span><strong>{apiStatusError || (apiStatus?.serveWeb ? "API + web" : "API live")}</strong></div>
             <div><span>Web app</span><strong>{pwa.installed ? "Installed" : pwa.canInstall ? "Install available" : "Web ready"}</strong></div>
             <div><span>Session</span><strong>{session.startedAt}</strong></div>
@@ -15148,6 +18224,7 @@ function AdminBoard({
   auditDigest,
   readinessDigest,
   sessionDigest,
+  adminRecoveryPlan,
   onRefreshApi,
   onOpenSection,
   onCreateOffice,
@@ -15163,6 +18240,7 @@ function AdminBoard({
   onCreateAuditNote,
   onArchiveGovernanceSnapshot,
   onRefreshAuditDigest,
+  onArchiveAdminRecoveryPlan,
   onApproveOfficeAccount,
   onRejectOfficeAccount,
   onResetOfficeAccess
@@ -15184,6 +18262,7 @@ function AdminBoard({
   auditDigest: AuditDigest | null;
   readinessDigest: ReadinessDigest | null;
   sessionDigest: SessionDigest | null;
+  adminRecoveryPlan: AdminRecoveryPlan | null;
   onRefreshApi: () => void;
   onOpenSection: (section: Section) => void;
   onCreateOffice: () => void;
@@ -15199,6 +18278,7 @@ function AdminBoard({
   onCreateAuditNote: () => void;
   onArchiveGovernanceSnapshot: () => void;
   onRefreshAuditDigest: () => void;
+  onArchiveAdminRecoveryPlan: () => void;
   onApproveOfficeAccount: (id: string) => void;
   onRejectOfficeAccount: (id: string) => void;
   onResetOfficeAccess: (id: string) => void;
@@ -15234,11 +18314,15 @@ function AdminBoard({
     { label: "Reports", icon: FileCheck2, detail: "Review report templates, submissions, approvals, evidence" }
   ];
   const storageMode = apiStatus?.storageProvider ?? (apiStatus?.persistence ? "json" : "local");
-  const productionGate = storageMode === "database" ? "Production database" : "Database secret needed";
+  const productionGate = storageMode === "database"
+    ? "Production database"
+    : ["firestore", "firebase"].includes(storageMode)
+      ? "Managed Firestore"
+      : "Local cache";
   const operatingStatus = apiConnected ? "Live" : "Needs API";
   const queueItems = [
     { icon: AlertTriangle, label: "Escalations", value: openEscalations, detail: "Executive attention queue", section: "Escalations" as Section },
-    { icon: Workflow, label: "Approvals", value: openApprovals, detail: "Pending approval chains", section: "Approvals" as Section },
+    { icon: Workflow, label: "Approvals", value: openApprovals, detail: "Pending approval reviews", section: "Approvals" as Section },
     { icon: SquareCheckBig, label: "Tasks", value: openTasks, detail: "Open administrative work", section: "Tasks" as Section },
     { icon: Signature, label: "Transfers", value: pendingTransfers, detail: "Identity migration queue", section: "Transfers" as Section }
   ];
@@ -15255,7 +18339,7 @@ function AdminBoard({
     { label: "Locked", value: officialStations.filter((station) => station.status === "Locked").length }
   ];
   const recentAdminEvents = [
-    ...events.slice(0, 3).map((event) => ({ label: event.includes(":") ? event.split(":")[0] : "Event", detail: event })),
+    ...events.filter(isUserVisibleEvent).slice(0, 3).map((event) => ({ label: event.includes(":") ? event.split(":")[0] : "Event", detail: event })),
     ...auditRows.slice(0, 3).map((row) => ({ label: row.event, detail: `${row.actor} - ${row.object}` }))
   ].slice(0, 5);
   const adminGroups: { label: string; items: { label: Section; icon: React.ElementType; detail: string }[] }[] = [
@@ -15264,27 +18348,38 @@ function AdminBoard({
       items: [
         { label: "Admin Board", icon: KeyRound, detail: "Administrator home" },
         { label: "Control Center", icon: LayoutDashboard, detail: "Global operating picture" },
-        { label: "ChurchMail", icon: Mail, detail: "Governance communications" },
-        { label: "Reports", icon: FileCheck2, detail: "Templates and submissions" }
+        { label: "AI Desk", icon: Sparkles, detail: "Intelligence support" },
+        { label: "Live Comms", icon: Video, detail: "Command communications" }
       ]
     },
     {
-      label: "Governance Work",
+      label: "Governance",
       items: [
+        { label: "Reports", icon: FileCheck2, detail: "Templates and submissions" },
         { label: "Approvals", icon: BadgeCheck, detail: "Delegated authorization" },
-        { label: "Tasks", icon: SquareCheckBig, detail: "Station assignments" },
         { label: "Escalations", icon: AlertTriangle, detail: "Executive attention" },
-        { label: "Transfers", icon: Signature, detail: "Identity migration" }
+        { label: "Audit", icon: ShieldCheck, detail: "Compliance ledger" }
       ]
     },
     {
-      label: "System Controls",
+      label: "Organization",
       items: [
         { label: "Offices", icon: Building2, detail: "Station provisioning" },
-        { label: "Hierarchy", icon: GitBranch, detail: "Authority graph" },
         { label: "Personnel", icon: Users, detail: "Access and people" },
-        { label: "Archive", icon: Files, detail: "Vault and evidence" },
-        { label: "Audit", icon: ShieldCheck, detail: "Security ledger" }
+        { label: "Hierarchy", icon: GitBranch, detail: "Authority graph" }
+      ]
+    },
+    {
+      label: "Communication",
+      items: [
+        { label: "ChurchMail", icon: Mail, detail: "Official inbox" },
+        { label: "Calendar", icon: CalendarDays, detail: "Meetings and directives" }
+      ]
+    },
+    {
+      label: "System",
+      items: [
+        { label: "Archive", icon: Files, detail: "Vault and evidence" }
       ]
     }
   ];
@@ -15308,6 +18403,852 @@ function AdminBoard({
     { label: "AI Desk", section: "AI Desk" as Section, icon: Sparkles, detail: "Drafts and summaries", tone: "gold" },
     { label: "Live Comms", section: "Live Comms" as Section, icon: Video, detail: "Meetings, chat, broadcasts", tone: "blue" }
   ];
+  const recoveryChecks = adminRecoveryPlan?.checks ?? [];
+  const recoveryMissing = recoveryChecks.filter((check) => check.required && !check.ok);
+  const recoveryReady = recoveryChecks.filter((check) => check.ok);
+  const recoveryRecommended = recoveryChecks.filter((check) => !check.required && !check.ok);
+  const recoveryScore = adminRecoveryPlan?.score ?? Math.round((recoveryReady.length / Math.max(1, recoveryChecks.length || 5)) * 100);
+  const openWorkItems = openEscalations + openApprovals + openTasks + pendingTransfers;
+  const executiveCards = [
+    { icon: Server, label: "Service", value: apiStatus?.status?.toUpperCase() ?? "LOCAL", detail: apiStatus ? `${formatUptime(apiStatus.uptimeSeconds)} uptime` : "Preview cache", tone: apiConnected ? "good" : "warn", progress: apiConnected ? 94 : 42 },
+    { icon: LockKeyhole, label: "Current admin", value: session.email, detail: permissions.canOverride ? "Full authority" : "Limited view", tone: "neutral", progress: permissions.canOverride ? 100 : 56 },
+    { icon: Rocket, label: "Launch readiness", value: systemReadiness, detail: "tracked launch checks", tone: "good", progress: readinessDigest ? Math.round((readinessDigest.ready / Math.max(1, readinessDigest.ready + readinessDigest.attention)) * 100) : 80 },
+    { icon: RadioTower, label: "Open work", value: String(openWorkItems), detail: "items need routing", tone: openWorkItems > 8 ? "warn" : "neutral", progress: Math.min(100, openWorkItems * 8) },
+    { icon: KeyRound, label: "Station identities", value: String(officialStations.length), detail: `${readyStations} ready`, tone: "neutral", progress: Math.round((readyStations / Math.max(1, officialStations.length)) * 100) },
+    { icon: Files, label: "Vault documents", value: String(documents.length), detail: `${sealedAuditRows} sealed audit rows`, tone: "good", progress: Math.min(100, documents.length * 18 + 20) },
+    { icon: Database, label: "Firestore", value: productionGate, detail: storageMode, tone: ["firestore", "firebase", "database"].includes(storageMode) ? "good" : "warn", progress: ["firestore", "firebase", "database"].includes(storageMode) ? 95 : 35 },
+    { icon: ShieldCheck, label: "Recovery", value: `${recoveryScore}%`, detail: adminRecoveryPlan?.status ?? "checking", tone: recoveryMissing.length ? "warn" : "good", progress: recoveryScore }
+  ];
+  const architectureTiles = [
+    { icon: GitBranch, label: "Parent route", detail: "Reports move upward and directives move downward through parent_id." },
+    { icon: Building2, label: "Create node", detail: "Type, level, parent office, and permission preset define each station." },
+    { icon: Mail, label: "Generated tools", detail: "Dashboard, inbox, reports, approvals, archive, and audit routing." },
+    { icon: Video, label: "Real-time work", detail: "Meetings, chat, broadcasts, and decision-linked records." },
+    { icon: Sparkles, label: "AI layer", detail: "Summaries, missing data, bottlenecks, draft memos, and forecasts." }
+  ];
+  const strategicPanels = [
+    { label: "Governance Status", icon: Landmark, value: `${openApprovals} approvals`, detail: `${openEscalations} escalations / ${pendingTransfers} transfers`, tone: openEscalations ? "urgent" : "gold", section: "Approvals" as Section },
+    { label: "Organization Status", icon: Building2, value: `${readyStations} active`, detail: `${officialStations.length} station identities / ${pendingAccounts.length} requests`, tone: "blue", section: "Offices" as Section },
+    { label: "Security Status", icon: ShieldCheck, value: `${activeSessions.length} session${activeSessions.length === 1 ? "" : "s"}`, detail: `${recoveryScore}% recovery readiness / ${sealedAuditRows} sealed`, tone: recoveryMissing.length ? "warning" : "green", section: "Audit" as Section },
+    { label: "System Health", icon: Server, value: apiStatus?.status?.toUpperCase() ?? "LOCAL", detail: `${productionGate} / ${storageMode}`, tone: apiConnected ? "green" : "warning", section: "Archive" as Section }
+  ];
+  const intelligencePanels = [
+    { icon: Sparkles, label: "AI executive briefing", value: "Governance risk watch", detail: `Prioritize ${openApprovals} approvals, ${openEscalations} escalations, and ${pendingTransfers} transfer actions.` },
+    { icon: Workflow, label: "Workflow bottleneck", value: openApprovals ? "Approval chain" : "No major bottleneck", detail: openApprovals ? "Delegated authorization needs executive review." : "Workflow pressure is low." },
+    { icon: Signature, label: "Transfer queue", value: `${pendingTransfers} pending`, detail: "Identity moves are kept as a utility queue, not permanent navigation." },
+    { icon: AlertTriangle, label: "Unresolved issues", value: `${openEscalations + openTasks}`, detail: "Escalations and blocked tasks require command review." }
+  ];
+
+  return (
+    <section className="command-admin" aria-label="RMVI GCOS global command board">
+      <aside className="command-admin-sidebar">
+        <div className="command-admin-brand">
+          <img src={CHURCH_LOGO_SRC} alt="Remedy Movement International logo" />
+          <div>
+            <strong>RMVI GCOS</strong>
+            <span>Administrative OS</span>
+          </div>
+        </div>
+        <nav className="command-admin-nav" aria-label="Command navigation">
+          {adminGroups.map((group) => (
+            <div key={group.label}>
+              <p>{group.label}</p>
+              {group.items.map(({ label, icon: Icon }) => (
+                <button key={label} className={label === "Admin Board" ? "active" : ""} onClick={() => onOpenSection(label)}>
+                  <Icon size={17} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      <main className="command-admin-main">
+        <header className="command-admin-topbar">
+          <div>
+            <span>{apiConnected ? "Operational" : "Local Environment"}</span>
+            <strong>{session.email}</strong>
+          </div>
+          <div className="command-admin-top-actions">
+            <button onClick={onRefreshApi}><RefreshCw size={15} /> Refresh</button>
+            <button onClick={() => onOpenSection("Audit")}><ShieldCheck size={15} /> Security</button>
+            <button className="primary" onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Plus size={15} /> Create office</button>
+          </div>
+        </header>
+
+        <section className="command-hero" aria-label="Identity and command posture">
+          <div className="command-hero-identity">
+            <span>RMVI GCOS Administrative OS</span>
+            <h1>International HQ Workstation</h1>
+            <p>{permissions.canOverride ? "Full system authority" : "Restricted administrator authority"} / {productionGate}</p>
+          </div>
+          <div className="command-hero-state">
+            <span className={apiConnected ? "live" : "local"}><CircleDot size={11} /> {apiConnected ? "Operational" : "Local Environment"}</span>
+            <strong>{systemReadiness}</strong>
+            <small>Governance readiness</small>
+          </div>
+        </section>
+
+        <section className="command-layer command-layer-status" aria-label="Mission status">
+          <div className="command-layer-title">
+            <span>Level 2</span>
+            <h2>Mission Status</h2>
+          </div>
+          <div className="command-status-grid">
+            {strategicPanels.map(({ icon: Icon, label, value, detail, tone, section }) => (
+              <button className={`command-status-card ${tone}`} key={label} onClick={() => onOpenSection(section)}>
+                <Icon size={19} />
+                <span>{label}</span>
+                <strong>{value}</strong>
+                <small>{detail}</small>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        <section className="command-operations-grid" aria-label="Operations">
+          <div className="command-panel command-intelligence-panel">
+            <div className="command-layer-title">
+              <span>Level 3</span>
+              <h2>Operational Intelligence</h2>
+            </div>
+            <div className="command-intel-list">
+              {intelligencePanels.map(({ icon: Icon, label, value, detail }) => (
+                <article key={label}>
+                  <Icon size={18} />
+                  <div>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                    <small>{detail}</small>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </div>
+
+          <div className="command-panel command-action-panel">
+            <div className="command-layer-title">
+              <span>Actions</span>
+              <h2>Command Actions</h2>
+            </div>
+            <div className="command-actions-grid">
+              <button onClick={() => onOpenSection("ChurchMail")}><Mail size={17} /> Issue directive</button>
+              <button onClick={() => onOpenSection("Approvals")}><BadgeCheck size={17} /> Review approvals</button>
+              <button onClick={() => onOpenSection("Escalations")}><AlertTriangle size={17} /> Open escalation</button>
+              <button onClick={() => onOpenSection("Reports")}><FileCheck2 size={17} /> Review reports</button>
+              <button onClick={() => onOpenSection("Archive")}><Files size={17} /> Archive brief</button>
+              <button onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Building2 size={17} /> Create office</button>
+            </div>
+          </div>
+
+          <aside className="command-panel command-live-panel">
+            <div className="command-layer-title">
+              <span>Live</span>
+              <h2>Activity</h2>
+            </div>
+            <div className="command-live-feed">
+              {recentAdminEvents.length ? recentAdminEvents.map((event, index) => (
+                <article key={`${event.label}-${index}`}>
+                  <i />
+                  <span>{event.label}</span>
+                  <strong>{event.detail}</strong>
+                </article>
+              )) : (
+                <article><i /><span>No activity</span><strong>Command activity will appear here.</strong></article>
+              )}
+            </div>
+          </aside>
+        </section>
+
+        <section className="command-layer command-layer-infra" aria-label="Infrastructure">
+          <div className="command-layer-title">
+            <span>Level 4</span>
+            <h2>Infrastructure</h2>
+          </div>
+          <div className="command-infra-grid">
+            <button onClick={() => onOpenSection("Offices")}>
+              <KeyRound size={18} />
+              <span>Station Directory</span>
+              <strong>{officialStations.length} Active Stations</strong>
+              <small>Open registry</small>
+            </button>
+            <button onClick={() => onOpenSection("Audit")}>
+              <ShieldCheck size={18} />
+              <span>Security</span>
+              <strong>{activeSessions.length} Active Session{activeSessions.length === 1 ? "" : "s"}</strong>
+              <small>{recoveryScore}% recovery readiness</small>
+            </button>
+            <button onClick={() => onOpenSection("Archive")}>
+              <Files size={18} />
+              <span>Evidence</span>
+              <strong>{documents.length} Vault Records</strong>
+              <small>{sealedAuditRows} sealed audit rows</small>
+            </button>
+            <button onClick={() => onOpenSection("Hierarchy")}>
+              <GitBranch size={18} />
+              <span>Office Node Model</span>
+              <strong>Directives Down / Reports Up</strong>
+              <small>Open governance map</small>
+            </button>
+          </div>
+        </section>
+      </main>
+    </section>
+  );
+
+  return (
+    <section className="fresh-admin" aria-label="Remedy Movement International administrator board">
+      <aside className="fresh-admin-rail" aria-label="Admin navigation">
+        <div className="fresh-admin-brand">
+          <img src={CHURCH_LOGO_SRC} alt="Remedy Movement International logo" />
+          <div>
+            <strong>RMVI GCOS</strong>
+            <span>Administration</span>
+          </div>
+        </div>
+        <div className="fresh-admin-profile">
+          <span>Signed in</span>
+          <strong>{session.email}</strong>
+          <small>{permissions.canOverride ? "Full administrator access" : "Limited administrator access"}</small>
+        </div>
+        <nav className="fresh-admin-nav">
+          {adminGroups.map((group) => (
+            <div key={group.label}>
+              <p>{group.label}</p>
+              {group.items.map(({ label, icon: Icon }) => (
+                <button key={label} className={label === "Admin Board" ? "active" : ""} onClick={() => onOpenSection(label)}>
+                  <Icon size={17} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      <main className="fresh-admin-main">
+        <header className="fresh-admin-topbar">
+          <label className="fresh-admin-search">
+            <Search size={18} />
+            <input type="search" placeholder="Search users, offices, reports, sessions, audit records" />
+          </label>
+          <div className="fresh-admin-top-actions">
+            <span className={apiConnected ? "is-good" : "is-warning"}><CircleDot size={10} /> {apiConnected ? "Live service" : "Local cache"}</span>
+            <span><Database size={14} /> {productionGate}</span>
+            <button onClick={onRefreshApi}><RefreshCw size={15} /> Refresh</button>
+            <button className="primary" onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Plus size={15} /> New office</button>
+          </div>
+        </header>
+
+        <section className="fresh-admin-hero">
+          <div>
+            <span>System Administration</span>
+            <h1>Admin Board</h1>
+            <p>One clean workspace for user approval, office creation, station registry, sessions, security recovery, platform health, and audit activity.</p>
+          </div>
+          <div className="fresh-admin-hero-card">
+            <span>Current admin</span>
+            <strong>{session.email}</strong>
+            <small>{permissions.canOverride ? "International HQ authority" : "Restricted authority"}</small>
+          </div>
+        </section>
+
+        <section className="fresh-admin-command-mode" aria-label="Command center mode">
+          <div className="command-mode-seal">
+            <img src={CHURCH_LOGO_SRC} alt="Remedy Movement International logo" />
+            <span>Administrative Overview</span>
+            <strong>Operational authority active</strong>
+          </div>
+          <div className="command-mode-brief">
+            <span>AI Executive Briefing</span>
+            <p>{openEscalations ? `${openEscalations} escalation channels need review before launch confidence improves.` : "No critical escalation spike detected. Continue monitoring approvals, recovery, and station identity readiness."}</p>
+          </div>
+          <div className="command-mode-readiness">
+            <span>Readiness</span>
+            <strong>{systemReadiness}</strong>
+            <small>{productionGate}</small>
+          </div>
+        </section>
+
+        <section className="fresh-admin-strategic" aria-label="Executive status">
+          {strategicPanels.map(({ icon: Icon, label, value, detail, tone, section }) => (
+            <button className={`fresh-admin-strategic-card ${tone}`} key={label} onClick={() => onOpenSection(section)}>
+              <Icon size={17} />
+              <span>{label}</span>
+              <strong>{value}</strong>
+              <small>{detail}</small>
+            </button>
+          ))}
+        </section>
+
+        <section className="fresh-admin-layout">
+          <div className="fresh-admin-content">
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>Layer 2</span>
+                  <h2>Operational Intelligence</h2>
+                </div>
+                <small>live movement across governance</small>
+              </div>
+              <div className="fresh-admin-intel-grid">
+                {intelligencePanels.map(({ icon: Icon, label, value, detail }) => (
+                  <article key={label}>
+                    <Icon size={18} />
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                    <small>{detail}</small>
+                  </article>
+                ))}
+              </div>
+            </section>
+
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>Priority groups</span>
+                  <h2>Governance Queues</h2>
+                </div>
+                <small>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</small>
+              </div>
+              <div className="fresh-admin-focus">
+                <button className="urgent" onClick={() => onOpenSection("Escalations")}><AlertTriangle size={17} /><strong>{openEscalations}</strong><span>Escalations</span></button>
+                <button className="warning" onClick={() => onOpenSection("Approvals")}><Workflow size={17} /><strong>{openApprovals}</strong><span>Approvals</span></button>
+                <button onClick={() => onOpenSection("Transfers")}><Signature size={17} /><strong>{pendingTransfers}</strong><span>Transfer utility</span></button>
+                <button onClick={() => onOpenSection("Tasks")}><SquareCheckBig size={17} /><strong>{openTasks}</strong><span>Task utility</span></button>
+              </div>
+            </section>
+
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>Layer 3</span>
+                  <h2>Infrastructure Console</h2>
+                </div>
+                <button onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Plus size={15} /> Create office</button>
+              </div>
+              <div className="fresh-admin-apps infrastructure">
+                {adminAppTiles.filter((item) => ["Users", "Offices", "Mail", "Reports", "Approvals", "Audit", "Archive", "AI Desk", "Live Comms"].includes(item.label)).map(({ label, section, icon: Icon, detail }) => (
+                  <button key={label} onClick={() => onOpenSection(section)}>
+                    <Icon size={20} />
+                    <strong>{label}</strong>
+                    <small>{detail}</small>
+                    <ChevronRight size={16} />
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>Accounts</span>
+                  <h2>Station Registry</h2>
+                </div>
+                <button onClick={onBulkVerifyStations}><ShieldCheck size={15} /> Bulk verify</button>
+              </div>
+              <div className="fresh-admin-station-stats">
+                {stationGroups.map((group) => (
+                  <span key={group.label}><strong>{group.value}</strong>{group.label}</span>
+                ))}
+              </div>
+              <div className="fresh-admin-node-grid">
+                {officialStations.map((station) => {
+                  const stationId = station.id ?? station.email;
+                  const stationStatus = station.status ?? (station.verified ? "Verified" : "Ready");
+                  return (
+                    <article className="fresh-admin-node-card" key={station.email}>
+                      <div className="fresh-admin-node-top">
+                        <span className="fresh-admin-node-emblem">{station.level.slice(0, 2).toUpperCase()}</span>
+                        <b className={stationStatus === "Suspended" || stationStatus === "Locked" ? "danger" : station.verified ? "good" : "warning"}>{stationStatus}</b>
+                      </div>
+                      <div className="fresh-admin-node-body">
+                        <strong>{station.title}</strong>
+                        <span>{station.email}</span>
+                        <small>{station.level}</small>
+                      </div>
+                      <div className="fresh-admin-node-meta">
+                        {station.authority.split(",").slice(0, 3).map((capability) => (
+                          <span key={capability.trim()}><RadioTower size={13} /> {capability.trim()}</span>
+                        ))}
+                        <span><ShieldCheck size={13} /> {station.verified ? "Cleared" : "Identity Pending"}</span>
+                      </div>
+                      <details className="fresh-admin-menu">
+                        <summary>Manage station</summary>
+                        <button disabled={stationStatus !== "Pending Approval"} onClick={() => onApproveOfficeAccount(stationId)}>Approve</button>
+                        <button onClick={() => onVerifyStation(stationId)}>Verify</button>
+                        <button onClick={() => onSuspendStation(stationId)}>Suspend</button>
+                        <button onClick={() => onActivateStation(stationId)}>Activate</button>
+                        <button onClick={() => onResetOfficeAccess(stationId)}>Reset</button>
+                      </details>
+                    </article>
+                  );
+                })}
+              </div>
+            </section>
+
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>Architecture</span>
+                  <h2>Office Node Model</h2>
+                </div>
+              </div>
+              <div className="fresh-admin-flow-map" aria-label="Governance flow map">
+                <div className="flow-node root"><Landmark size={18} /><strong>International HQ</strong><span>Global command</span></div>
+                <i className="flow-line down" />
+                <div className="flow-row">
+                  <div className="flow-node"><Globe2 size={17} /><strong>Regional</strong><span>Directives down</span></div>
+                  <div className="flow-node"><Building2 size={17} /><strong>National</strong><span>Reports up</span></div>
+                  <div className="flow-node"><GitBranch size={17} /><strong>District</strong><span>Parent route</span></div>
+                </div>
+                <i className="flow-line up" />
+                <div className="flow-node branch"><Users size={18} /><strong>Local Branches + Units</strong><span>Reports, approvals, ChurchMail, evidence</span></div>
+              </div>
+              <div className="fresh-admin-architecture">
+                {architectureTiles.map(({ icon: Icon, label, detail }) => (
+                  <article key={label}>
+                    <Icon size={18} />
+                    <strong>{label}</strong>
+                    <span>{detail}</span>
+                  </article>
+                ))}
+              </div>
+            </section>
+          </div>
+
+          <aside className="fresh-admin-aside">
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>Queue</span>
+                  <h2>Live Work</h2>
+                </div>
+                <small>{openWorkItems} open</small>
+              </div>
+              <div className="fresh-admin-queue">
+                {queueItems.map(({ icon: Icon, label, value, detail, section }) => (
+                  <button key={label} onClick={() => onOpenSection(section)}>
+                    <Icon size={17} />
+                    <span><strong>{label}</strong><small>{detail}</small></span>
+                    <b>{value}</b>
+                  </button>
+                ))}
+              </div>
+            </section>
+
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>System</span>
+                  <h2>Platform Health</h2>
+                </div>
+                <small>{apiStatus?.status ?? "local"}</small>
+              </div>
+              <div className="fresh-admin-health">
+                <span><small>API status</small><strong>{apiStatus?.status?.toUpperCase() ?? "LOCAL"}</strong></span>
+                <span><small>Uptime</small><strong>{apiStatus ? formatUptime(apiStatus.uptimeSeconds) : "Preview"}</strong></span>
+                <span><small>Storage</small><strong>{storageMode}</strong></span>
+                <span><small>Build</small><strong>{buildInfo?.gitCommit ?? "checking"}</strong></span>
+                <span><small>Audit rows</small><strong>{auditRows.length}</strong></span>
+                <span><small>Documents</small><strong>{documents.length}</strong></span>
+              </div>
+            </section>
+
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>Approvals</span>
+                  <h2>Account Requests</h2>
+                </div>
+                <small>{pendingAccounts.length} pending</small>
+              </div>
+              <div className="fresh-admin-request-list">
+                {pendingAccounts.length ? pendingAccounts.slice(0, 4).map((office) => (
+                  <article key={office.id}>
+                    <strong>{office.name}</strong>
+                    <span>{office.workstationEmail ?? office.email} / {office.level}</span>
+                    <div>
+                      <button disabled={office.status !== "Pending Approval"} onClick={() => onApproveOfficeAccount(office.id)}>Approve</button>
+                      <button disabled={office.status !== "Pending Approval"} onClick={() => onRejectOfficeAccount(office.id)}>Reject</button>
+                    </div>
+                  </article>
+                )) : (
+                  <article className="empty">
+                    <CheckCircle2 size={18} />
+                    <strong>No account requests</strong>
+                    <span>New requests will appear here.</span>
+                  </article>
+                )}
+              </div>
+            </section>
+
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>Security</span>
+                  <h2>Sessions</h2>
+                </div>
+                <small>{activeSessions.length} active</small>
+              </div>
+              <div className="fresh-admin-session-list">
+                {activeSessions.slice(0, 3).map((item) => (
+                  <article key={`${item.email}-${item.startedAt}`}>
+                    <strong>{item.email}</strong>
+                    <span>{item.status ?? "Active"} / {item.minutesRemaining} minutes remaining</span>
+                    <div>
+                      <button disabled={!item.id} onClick={() => item.id && onTrustSession(item.id)}>Trust</button>
+                      <button disabled={!item.id} onClick={() => item.id && onRequireSessionMfa(item.id)}>MFA</button>
+                      <button disabled={!item.id || item.id === session.token} onClick={() => item.id && onRevokeSession(item.id)}>Revoke</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="fresh-admin-actions">
+                <button onClick={onRenewSession}><RefreshCw size={14} /> Renew</button>
+                <button onClick={() => onRevokeStationSessions(session.email)}><LockKeyhole size={14} /> Revoke station</button>
+              </div>
+            </section>
+
+            <section className="fresh-admin-panel">
+              <div className="fresh-admin-panel-head">
+                <div>
+                  <span>Audit</span>
+                  <h2>Recent Activity</h2>
+                </div>
+                <small>{sealedAuditRows} sealed</small>
+              </div>
+              <div className="fresh-admin-timeline">
+                {recentAdminEvents.length ? recentAdminEvents.map((event, index) => (
+                  <article key={`${event.label}-${index}`}>
+                    <i />
+                    <span>{event.label}</span>
+                    <strong>{event.detail}</strong>
+                  </article>
+                )) : (
+                  <article><i /><span>No events</span><strong>Audit stream is waiting for activity.</strong></article>
+                )}
+              </div>
+              <div className="fresh-admin-actions">
+                <button onClick={onCreateAuditNote}><FileText size={14} /> Note</button>
+                <button onClick={onArchiveGovernanceSnapshot}><Files size={14} /> Snapshot</button>
+              </div>
+            </section>
+          </aside>
+        </section>
+      </main>
+    </section>
+  );
+
+  return (
+    <section className="admin-enterprise-shell" aria-label="Remedy Movement International enterprise admin board">
+      <aside className="admin-enterprise-sidebar">
+        <div className="admin-enterprise-brand">
+          <img src={CHURCH_LOGO_SRC} alt="Remedy Movement International logo" />
+          <div>
+            <strong>RMVI GCOS</strong>
+            <span>Admin Command</span>
+          </div>
+        </div>
+        <div className="admin-sidebar-profile">
+          <span>International HQ</span>
+          <strong>{session.email}</strong>
+          <small>{permissions.canOverride ? "Full system authority" : "Limited administrator"}</small>
+        </div>
+        <nav className="admin-enterprise-nav" aria-label="Administrator navigation">
+          {adminGroups.map((group) => (
+            <div key={group.label}>
+              <p>{group.label}</p>
+              {group.items.map(({ label, icon: Icon, detail }) => (
+                <button key={label} onClick={() => onOpenSection(label)} className={label === "Admin Board" ? "active" : ""}>
+                  <Icon size={17} />
+                  <span>{label}<small>{detail}</small></span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+      </aside>
+
+      <div className="admin-enterprise-workspace">
+        <header className="admin-enterprise-topbar">
+          <div className="admin-command-search">
+            <Search size={18} />
+            <input type="search" placeholder="Search users, offices, reports, audit records" aria-label="Search admin board" />
+          </div>
+          <div className="admin-topbar-actions">
+            <span className={`admin-status-pill ${apiConnected ? "good" : "warn"}`}><CircleDot size={10} /> {apiConnected ? "Live service" : "Local cache"}</span>
+            <span className="admin-status-pill"><Database size={13} /> {productionGate}</span>
+            <button onClick={onRefreshApi} aria-label="Refresh admin data"><RefreshCw size={16} /></button>
+            <button onClick={() => onOpenSection("Audit")} aria-label="Open notifications"><Bell size={16} /><strong>{openEscalations + openApprovals}</strong></button>
+            <button className="primary" onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Plus size={16} /> New office</button>
+          </div>
+        </header>
+
+        <main className="admin-enterprise-grid">
+          <section className="admin-enterprise-hero">
+            <div>
+              <span>System Administration</span>
+              <h1>RMVI Admin Workspace</h1>
+              <p>Central command for account approvals, office nodes, station lifecycle, reports, sessions, audit integrity, recovery, and deployment health.</p>
+            </div>
+            <div className="admin-hero-chips">
+              <span><ShieldCheck size={14} /> International HQ authority</span>
+              <span><RadioTower size={14} /> {openWorkItems} open work items</span>
+              <span><Rocket size={14} /> {systemReadiness} readiness</span>
+            </div>
+          </section>
+
+          <section className="admin-executive-strip" aria-label="Executive summary">
+            {executiveCards.map(({ icon: Icon, label, value, detail, tone, progress }) => (
+              <article className={`admin-exec-card ${tone}`} key={label}>
+                <div>
+                  <Icon size={16} />
+                  <span>{label}</span>
+                </div>
+                <strong>{value}</strong>
+                <small>{detail}</small>
+                <i><b style={{ width: `${Math.min(100, Math.max(0, progress))}%` }} /></i>
+              </article>
+            ))}
+          </section>
+
+          <section className="admin-primary-stack">
+            <div className="admin-enterprise-panel focus">
+              <div className="admin-panel-title">
+                <span><Zap size={16} /> Today&apos;s Focus</span>
+                <small>{new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}</small>
+              </div>
+              <div className="admin-focus-strip">
+                {focusCards.map(({ label, value, icon: Icon, section, tone }) => (
+                  <button className={`admin-focus-mini ${tone}`} key={label} onClick={() => onOpenSection(section)}>
+                    <Icon size={16} />
+                    <strong>{value}</strong>
+                    <span>{label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="admin-enterprise-panel apps">
+              <div className="admin-panel-title">
+                <span><LayoutDashboard size={16} /> Admin Apps</span>
+                <small>Open the major GCOS work areas</small>
+              </div>
+              <div className="admin-launcher-grid">
+                {adminAppTiles.map(({ label, section, icon: Icon, detail, tone }) => (
+                  <button className={`admin-launcher-card ${tone}`} key={label} onClick={() => onOpenSection(section)}>
+                    <span><Icon size={21} /></span>
+                    <strong>{label}</strong>
+                    <small>{detail}</small>
+                    <ChevronRight size={15} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="admin-enterprise-panel station-table-panel">
+              <div className="admin-panel-title">
+                <span><KeyRound size={16} /> Station Registry</span>
+                <small>{officialStations.length} identities, {readyStations} ready</small>
+              </div>
+              <div className="admin-station-stats">
+                {stationGroups.map((group) => (
+                  <span key={group.label}><strong>{group.value}</strong>{group.label}</span>
+                ))}
+              </div>
+              <div className="admin-enterprise-table" role="table" aria-label="Station registry">
+                <div className="admin-table-row head" role="row">
+                  <span>Station</span><span>Email</span><span>Level</span><span>Status</span><span>Actions</span>
+                </div>
+                {officialStations.map((station) => {
+                  const stationId = station.id ?? station.email;
+                  return (
+                    <div className="admin-table-row" role="row" key={station.email}>
+                      <strong>{station.title}<small>{station.authority}</small></strong>
+                      <span>{station.email}</span>
+                      <span>{station.level}</span>
+                      <span><b className={`admin-badge ${station.status === "Suspended" || station.status === "Locked" ? "danger" : station.verified ? "good" : "warn"}`}>{station.status ?? (station.verified ? "Verified" : "Ready")}</b></span>
+                      <span>
+                        <details className="admin-action-menu">
+                          <summary>Actions</summary>
+                          <button onClick={() => onVerifyStation(stationId)}><ShieldCheck size={14} /> Verify</button>
+                          <button onClick={() => onSuspendStation(stationId)}><LockKeyhole size={14} /> Suspend</button>
+                          <button onClick={() => onActivateStation(stationId)}><CheckCircle2 size={14} /> Activate</button>
+                          <button onClick={() => onResetOfficeAccess(stationId)}><TimerReset size={14} /> Reset</button>
+                        </details>
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+              <div className="admin-panel-actions">
+                <button onClick={onCreateOffice} disabled={!permissions.canCreateOffices}><Plus size={15} /> Create office</button>
+                <button onClick={onBulkVerifyStations}><ShieldCheck size={15} /> Bulk verify stations</button>
+              </div>
+            </div>
+
+            <div className="admin-lower-grid">
+              <div className="admin-enterprise-panel recovery">
+                <div className="admin-panel-title">
+                  <span><ShieldCheck size={16} /> Admin Recovery Plan</span>
+                  <small>{adminRecoveryPlan?.status ?? "checking controls"}</small>
+                </div>
+                <div className="admin-recovery-layout">
+                  <article className="admin-recovery-score">
+                    <strong>{recoveryScore}%</strong>
+                    <span>Recovery readiness</span>
+                    <i><b style={{ width: `${recoveryScore}%` }} /></i>
+                    <small>{recoveryMissing.length ? `${recoveryMissing.length} critical controls missing` : "Required controls ready"}</small>
+                  </article>
+                  <div className="admin-recovery-lists">
+                    <div><span>Critical missing</span>{(recoveryMissing.length ? recoveryMissing : [{ label: "No critical blockers", detail: "Required controls are clear." }]).slice(0, 3).map((item) => <p key={item.label}><AlertTriangle size={13} /> {item.label}</p>)}</div>
+                    <div><span>Completed controls</span>{(recoveryReady.length ? recoveryReady : [{ label: "Awaiting recovery check", detail: "Run recovery verification." }]).slice(0, 3).map((item) => <p key={item.label}><CheckCircle2 size={13} /> {item.label}</p>)}</div>
+                    <div><span>Recommended</span>{(recoveryRecommended.length ? recoveryRecommended : [{ label: "Add second recovery admin", detail: "Leadership-approved backup admin." }]).slice(0, 3).map((item) => <p key={item.label}><Sparkles size={13} /> {item.label}</p>)}</div>
+                  </div>
+                </div>
+                <div className="admin-panel-actions">
+                  <button onClick={onArchiveAdminRecoveryPlan}><ArchiveIcon size={15} /> Archive recovery packet</button>
+                  <button onClick={() => onOpenSection("Audit")}><ShieldCheck size={15} /> Open security audit</button>
+                </div>
+              </div>
+
+              <div className="admin-enterprise-panel architecture">
+                <div className="admin-panel-title">
+                  <span><GitBranch size={16} /> Core Architecture</span>
+                  <small>Office as node model</small>
+                </div>
+                <div className="admin-architecture-grid">
+                  {architectureTiles.map(({ icon: Icon, label, detail }) => (
+                    <article key={label}>
+                      <Icon size={17} />
+                      <strong>{label}</strong>
+                      <small>{detail}</small>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          <aside className="admin-intel-stack">
+            <div className="admin-enterprise-panel queue">
+              <div className="admin-panel-title">
+                <span><RadioTower size={16} /> Live Queue</span>
+                <small>{openWorkItems} open</small>
+              </div>
+              <div className="admin-live-queue">
+                {queueItems.map(({ icon: Icon, label, value, detail, section }) => (
+                  <button key={label} onClick={() => onOpenSection(section)}>
+                    <Icon size={17} />
+                    <span><strong>{label}</strong><small>{detail}</small></span>
+                    <b>{value}</b>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="admin-enterprise-panel health">
+              <div className="admin-panel-title">
+                <span><Activity size={16} /> Platform Health</span>
+                <small>{apiStatus?.status ?? "local"}</small>
+              </div>
+              <div className="admin-health-monitor">
+                <div><span>API status</span><strong>{apiStatus?.status?.toUpperCase() ?? "LOCAL"}</strong></div>
+                <div><span>Uptime</span><strong>{apiStatus ? formatUptime(apiStatus.uptimeSeconds) : "Preview"}</strong></div>
+                <div><span>Storage</span><strong>{storageMode}</strong></div>
+                <div><span>Build</span><strong>{buildInfo?.gitCommit ?? "checking"}</strong></div>
+                <div><span>Deploy time</span><strong>{buildInfo ? new Date(buildInfo.generatedAt).toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "checking"}</strong></div>
+                <div><span>Target</span><strong>{buildInfo?.deploymentTarget ?? "firebase"}</strong></div>
+                <div><span>Production gate</span><strong>{productionGate}</strong></div>
+                <div><span>Audit rows</span><strong>{auditRows.length}</strong></div>
+                <div><span>Documents</span><strong>{documents.length}</strong></div>
+              </div>
+              <button className="admin-wide-button" onClick={onRefreshApi}><RefreshCw size={15} /> Refresh health</button>
+            </div>
+
+            <div className="admin-enterprise-panel approvals">
+              <div className="admin-panel-title">
+                <span><Users size={16} /> Account Approval Queue</span>
+                <small>{pendingAccounts.length} pending</small>
+              </div>
+              <div className="admin-approval-queue">
+                {pendingAccounts.length ? pendingAccounts.slice(0, 5).map((office) => (
+                  <article key={office.id}>
+                    <strong>{office.name}</strong>
+                    <span>{office.workstationEmail ?? "email pending"} · {office.level}</span>
+                    <div>
+                      <button onClick={() => onApproveOfficeAccount(office.id)}>Approve</button>
+                      <button onClick={() => onRejectOfficeAccount(office.id)}>Reject</button>
+                    </div>
+                  </article>
+                )) : (
+                  <article className="empty">
+                    <CheckCircle2 size={18} />
+                    <strong>No account requests</strong>
+                    <span>New office accounts will appear here for approval.</span>
+                  </article>
+                )}
+              </div>
+            </div>
+
+            <div className="admin-enterprise-panel sessions">
+              <div className="admin-panel-title">
+                <span><LockKeyhole size={16} /> Sessions</span>
+                <small>{activeSessions.length} records</small>
+              </div>
+              <div className="admin-session-card">
+                {activeSessions.slice(0, 2).map((item) => (
+                  <article key={`${item.email}-${item.startedAt}`}>
+                    <strong>{item.email}</strong>
+                    <span>{item.status ?? "Active"} · {item.minutesRemaining} minutes remaining</span>
+                    <div>
+                      <b>{item.trusted ? "Trusted" : "Untrusted"}</b>
+                      <b>{item.mfaRequired ? "MFA" : "No MFA"}</b>
+                    </div>
+                    <div className="admin-panel-actions">
+                      <button disabled={!item.id} onClick={() => item.id && onTrustSession(item.id)}>Trust</button>
+                      <button disabled={!item.id} onClick={() => item.id && onRequireSessionMfa(item.id)}>MFA</button>
+                      <button disabled={!item.id || item.id === session.token} onClick={() => item.id && onRevokeSession(item.id)}>Revoke</button>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="admin-panel-actions">
+                <button onClick={onRenewSession}><RefreshCw size={15} /> Renew current</button>
+                <button onClick={() => onRevokeStationSessions(session.email)}><LockKeyhole size={15} /> Revoke station</button>
+              </div>
+            </div>
+
+            <div className="admin-enterprise-panel audit-feed">
+              <div className="admin-panel-title">
+                <span><ShieldCheck size={16} /> Audit Stream</span>
+                <small>{sealedAuditRows} sealed</small>
+              </div>
+              <div className="admin-timeline">
+                {recentAdminEvents.length ? recentAdminEvents.map((event, index) => (
+                  <article key={`${event.label}-${index}`}>
+                    <i />
+                    <span>{event.label}</span>
+                    <strong>{event.detail}</strong>
+                    <small>{index + 1}m ago · info</small>
+                  </article>
+                )) : (
+                  <article><i /><span>No events</span><strong>Audit stream is waiting for activity.</strong></article>
+                )}
+              </div>
+              <div className="admin-panel-actions">
+                <button onClick={onCreateAuditNote}><FileText size={15} /> Note</button>
+                <button onClick={onArchiveGovernanceSnapshot}><Files size={15} /> Snapshot</button>
+                <button onClick={onRefreshAuditDigest}><RefreshCw size={15} /> Digest</button>
+              </div>
+            </div>
+          </aside>
+        </main>
+      </div>
+    </section>
+  );
 
   return (
     <section className="admin-portal-shell" aria-label="Remedy Movement International administrator board">
@@ -15425,7 +19366,7 @@ function AdminBoard({
 
           <div className="admin-console-grid">
             <div className="admin-console-panel admin-console-wide">
-              <PanelHeader icon={SlidersHorizontal} title="Command Center" action="system console" />
+              <PanelHeader icon={SlidersHorizontal} title="Administration Overview" action="system review" />
               <div className="admin-system-grid">
                 {systemCards.map(({ icon: Icon, label, value, detail }) => (
                   <article className="admin-system-card" key={label}>
@@ -15471,6 +19412,46 @@ function AdminBoard({
                 <div><span>Documents</span><strong>{documents.length}</strong></div>
               </div>
               <button className="wide-action" onClick={onRefreshApi}><RefreshCw size={15} /> Refresh health</button>
+            </div>
+
+            <div className="admin-console-panel admin-console-wide">
+              <PanelHeader icon={LockKeyhole} title="Admin Recovery Plan" action={adminRecoveryPlan?.status ?? "checking"} />
+              <div className="admin-recovery-overview">
+                <div>
+                  <span>Recovery readiness</span>
+                  <strong>{adminRecoveryPlan ? `${adminRecoveryPlan.score}%` : "Loading"}</strong>
+                  <small>{adminRecoveryPlan ? `${adminRecoveryPlan.ready}/${adminRecoveryPlan.total} controls ready` : "Checking recovery controls"}</small>
+                </div>
+                <div>
+                  <span>Recovery email</span>
+                  <strong>{adminRecoveryPlan?.recoveryEmail ?? "checking"}</strong>
+                  <small>Must be RMVI-owned and protected with 2FA</small>
+                </div>
+                <div>
+                  <span>Second admin</span>
+                  <strong>{adminRecoveryPlan?.secondaryAdmin ?? "not assigned"}</strong>
+                  <small>Future leadership-approved recovery administrator</small>
+                </div>
+                <div>
+                  <span>Backups</span>
+                  <strong>{adminRecoveryPlan?.backupStatus ?? "checking"}</strong>
+                  <small>Restore: {adminRecoveryPlan?.restoreStatus ?? "checking"}</small>
+                </div>
+              </div>
+              <div className="admin-recovery-checks">
+                {(adminRecoveryPlan?.checks ?? []).map((check) => (
+                  <article key={check.id} className={check.ok ? "ready" : "attention"}>
+                    <span>{check.ok ? <CheckCircle2 size={15} /> : <AlertTriangle size={15} />} {check.required ? "Required" : "Recommended"}</span>
+                    <strong>{check.label}</strong>
+                    <small>{check.detail}</small>
+                  </article>
+                ))}
+                {!adminRecoveryPlan && <div className="empty-state">Loading administrator recovery readiness controls.</div>}
+              </div>
+              <div className="action-row">
+                <button onClick={onRefreshApi}><RefreshCw size={15} /> Refresh recovery</button>
+                <button onClick={onArchiveAdminRecoveryPlan}><ArchiveIcon size={15} /> Archive recovery packet</button>
+              </div>
             </div>
 
             <div className="admin-console-panel admin-console-wide">
@@ -15856,7 +19837,7 @@ function AdminBoard({
             <strong>{apiConnected ? "Backend is connected" : "Backend is not connected"}</strong>
             <small>{apiStatus?.persistence ?? "Start the API service for full session, file, and persistence operations."}</small>
           </article>
-          {events.slice(0, 5).map((event, index) => (
+          {events.filter(isUserVisibleEvent).slice(0, 5).map((event, index) => (
             <article className="source-map-item" key={`${event}-${index}`}>
               <span>Event {index + 1}</span>
               <strong>{event}</strong>
@@ -16412,6 +20393,27 @@ function Audit({
       setStationTraining(result.packet);
       setTrainingNotice(`Training packet archived as ${result.document.name}.`);
       refreshFinalProductionFinish();
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
+  }
+
+  function prepareFirstWaveRollout() {
+    const confirmed = window.confirm("Prepare first-wave station rollout now? This will publish station guides, assign policy/personnel training, and certify the first station walkthrough if approved.");
+    if (!confirmed) return;
+    void apiRequest<FirstWaveRolloutPreparation>("/api/rollout/first-wave/prepare", {
+      method: "POST",
+      body: JSON.stringify({
+        certifyCompleted: true,
+        trainer: session.email,
+        note: "First-wave RMVI GCOS station walkthrough certified from the launch rollout board."
+      })
+    }).then((result) => {
+      setStationTraining(result.training);
+      setRolloutReadiness(result.rollout);
+      setTrainingNotice(`First-wave rollout prepared: ${result.stations.length} stations, ${result.guides.length} new guides, ${result.personnelIds.length} personnel records.`);
+      refreshFinalProductionFinish();
+      refreshProjectCompletion();
+      refreshEnterpriseCompletion();
       onRefreshAuditDigest();
     }).catch(() => undefined);
   }
@@ -17442,6 +21444,7 @@ function Audit({
           </div>
           <div className="handoff-button-pair">
             <button onClick={refreshStationTraining}><RefreshCw size={15} /> Refresh</button>
+            <button onClick={prepareFirstWaveRollout}><Rocket size={15} /> Prepare first wave</button>
             <button onClick={archiveStationTrainingPacket}><ArchiveIcon size={15} /> Archive packet</button>
           </div>
         </div>
@@ -18350,10 +22353,10 @@ function Audit({
           <Insight label="Critical" value={String(eventDigest?.critical ?? events.filter((event) => event.startsWith("Critical:")).length)} />
           <Insight label="Muted" value={String(eventDigest?.muted ?? events.filter((event) => event.startsWith("Muted:")).length)} />
           <Insight label="Routed" value={String(eventDigest?.routed ?? events.filter((event) => event.startsWith("Routed to")).length)} />
-          <Insight label="Latest" value={eventDigest?.latest ?? events[0] ?? "None"} />
+          <Insight label="Latest" value={eventDigest?.latest && isUserVisibleEvent(eventDigest.latest) ? eventDigest.latest : events.find(isUserVisibleEvent) ?? "None"} />
         </div>
         <div className="source-map-list">
-          {events.slice(0, 6).map((event, index) => (
+          {events.filter(isUserVisibleEvent).slice(0, 6).map((event, index) => (
             <article className="source-map-item" key={`${event}-${index}`}>
               <span>Event {index + 1}</span>
               <strong>{event}</strong>
@@ -18385,7 +22388,7 @@ function formatDateTime(value: string) {
 
 function HierarchyPanel({ compact = false }: { compact?: boolean }) {
   return (
-    <div className={compact ? "panel span-7" : "panel module-primary"}>
+    <div className={compact ? "panel span-7 hierarchy-panel" : "panel module-primary hierarchy-panel"}>
       <PanelHeader icon={GitBranch} title="Organizational Hierarchy Graph" action="Graph live" />
       <div className="hierarchy-list">
         {hierarchy.map((node, index) => (
@@ -18407,7 +22410,7 @@ function HierarchyPanel({ compact = false }: { compact?: boolean }) {
 
 function AiPanel() {
   return (
-    <div className="panel span-5">
+    <div className="panel span-5 ai-intelligence-panel">
       <PanelHeader icon={Sparkles} title="AI Administrative Intelligence" action="Assist" />
       <div className="ai-card">
         <div className="ai-orbit">
@@ -18429,7 +22432,7 @@ function AiPanel() {
 
 function ChurchMailPanel({ messages }: { messages: Message[] }) {
   return (
-    <div className="panel span-4">
+    <div className="panel span-4 churchmail-panel">
       <PanelHeader icon={Mail} title="ChurchMail Inbox" action="Classified" />
       <div className="message-list">
         {messages.slice(0, 4).map((message) => (
@@ -18442,7 +22445,7 @@ function ChurchMailPanel({ messages }: { messages: Message[] }) {
 
 function WorkflowPanel() {
   return (
-    <div className="panel span-4 module-side">
+    <div className="panel span-4 module-side workflow-monitor-panel">
       <PanelHeader icon={Workflow} title="Workflow Monitor" action="Event-driven" />
       <div className="workflow-list">
         {workflows.map((item) => (
@@ -18464,7 +22467,7 @@ function WorkflowPanel() {
 
 function ApprovalPanel({ approvals }: { approvals: Approval[] }) {
   return (
-    <div className="panel span-4">
+    <div className="panel span-4 approval-chains-panel">
       <PanelHeader icon={FileClock} title="Approval Chains" action="Delegated" />
       <div className="approval-list">
         {approvals.slice(0, 3).map((approval) => (
@@ -18485,9 +22488,10 @@ function ApprovalPanel({ approvals }: { approvals: Approval[] }) {
 }
 
 function EventBusPanel({ events }: { events: string[] }) {
+  const visibleEvents = events.filter(isUserVisibleEvent).slice(0, 8);
   return (
-    <div className="panel span-6 module-side">
-      <PanelHeader icon={RadioTower} title="Event Bus Pipeline" action="Real time" />
+    <div className="panel span-6 module-side activity-center-panel">
+      <PanelHeader icon={RadioTower} title="Activity Center" action={`${visibleEvents.length} recent`} />
       <div className="pipeline">
         {["User Action", "Event Bus", "Workflow Engine", "Graph Update", "Notification", "Dashboard Refresh"].map((step) => (
           <React.Fragment key={step}>
@@ -18497,12 +22501,13 @@ function EventBusPanel({ events }: { events: string[] }) {
         ))}
       </div>
       <div className="event-feed">
-        {events.map((event) => (
+        {visibleEvents.map((event) => (
           <div className="event-line" key={event}>
             <span />
             <code>{event}</code>
           </div>
         ))}
+        {visibleEvents.length === 0 && <div className="empty-state">No live activity yet.</div>}
       </div>
     </div>
   );
@@ -18535,7 +22540,7 @@ function OfflinePanel({
   const readyCount = readyChecks.filter((item) => item.ok).length;
 
   return (
-    <div className="panel span-6 module-side">
+    <div className="panel span-6 module-side offline-sync-panel">
       <PanelHeader icon={Files} title="Offline Sync Queue" action={`${readyCount}/${readyChecks.length} ready`} />
       <div className="offline-readiness">
         {readyChecks.map((check) => (
@@ -18681,6 +22686,930 @@ function Insight({ label, value }: { label: string; value: string }) {
       <MessageSquareText size={16} />
       <span>{label}</span>
       <strong>{value}</strong>
+    </div>
+  );
+}
+
+type AdminV2Props = {
+  section: Section;
+  openSection: (section: Section) => void;
+  station: StationCard;
+  permissions: Permissions;
+  allowedSections: Section[];
+  workstationProfile: WorkstationProfile;
+  stationDirectory: StationCard[];
+  messages: Message[];
+  reports: Report[];
+  approvals: Approval[];
+  tasks: GovernanceTask[];
+  policies: Policy[];
+  calendarEvents: CalendarEvent[];
+  personnel: PersonRecord[];
+  escalations: Escalation[];
+  transfers: Transfer[];
+  documents: DocumentRecord[];
+  liveSessions: LiveSession[];
+  events: AuditEvent[];
+  apiStatus: ApiStatus | null;
+  offlineMode: boolean;
+  networkOnline: boolean;
+  searchQuery: string;
+  setSearchQuery: React.Dispatch<React.SetStateAction<string>>;
+  searchResults: SearchResult[];
+  onOpenSearchResult: (result: SearchResult) => void;
+  onLogout: () => void;
+  onSubmitReport: (id: string) => void;
+  onReviewReport: (id: string) => void;
+  onVerifyReport: (id: string) => void;
+  onArchiveReport: (id: string) => void;
+  onApprove: (id: string) => void;
+  onSign: (id: string) => void;
+  onReject: (id: string) => void;
+  onQuickAction: (action: string) => void;
+};
+
+function AdminV2Shell(props: AdminV2Props) {
+  const {
+    section,
+    openSection,
+    station,
+    permissions,
+    allowedSections,
+    workstationProfile,
+    stationDirectory,
+    messages,
+    reports,
+    approvals,
+    tasks,
+    policies,
+    calendarEvents,
+    personnel,
+    escalations,
+    transfers,
+    documents,
+    liveSessions,
+    events,
+    apiStatus,
+    offlineMode,
+    networkOnline,
+    searchQuery,
+    setSearchQuery,
+    searchResults,
+    onOpenSearchResult,
+    onLogout,
+    onSubmitReport,
+    onReviewReport,
+    onVerifyReport,
+    onArchiveReport,
+    onApprove,
+    onSign,
+    onReject,
+    onQuickAction
+  } = props;
+
+  const isAdminWorkstation = permissions.canOverride;
+  const navGroups: { label: string; items: { label: Section; icon: React.ElementType }[] }[] = [
+    { label: "Command", items: [{ label: "Control Center", icon: LayoutDashboard }, { label: "Admin Board", icon: ShieldCheck }, { label: "ChurchMail", icon: Mail }] },
+    { label: "Governance", items: [{ label: "Reports", icon: FileBarChart2 }, { label: "Approvals", icon: Signature }, { label: "Escalations", icon: AlertTriangle }, { label: "Tasks", icon: ListChecks }, { label: "Policies", icon: ScrollText }, { label: "Calendar", icon: CalendarDays }] },
+    { label: "Organization", items: [{ label: "Personnel", icon: Users }, { label: "Hierarchy", icon: GitBranch }, { label: "Offices", icon: Building2 }, { label: "Transfers", icon: ArrowUpFromLine }] },
+    { label: "Operations", items: [{ label: "AI Desk", icon: Sparkles }, { label: "Live Comms", icon: Video }] },
+    { label: "System", items: [{ label: "Archive", icon: ArchiveIcon }, { label: "Audit", icon: ShieldCheck }, { label: "Account Settings", icon: Settings }] }
+  ].map((group) => ({ ...group, items: group.items.filter((item) => allowedSections.includes(item.label)) })).filter((group) => group.items.length);
+
+  const pendingReports = reports.filter((item) => item.state !== "Approved");
+  const pendingApprovals = approvals.filter((item) => item.state !== "Approved" && item.state !== "Rejected");
+  const openEscalations = escalations.filter((item) => item.status !== "Resolved");
+  const openTasks = tasks.filter((item) => item.status !== "Complete");
+  const sectionMeta = adminV2SectionMeta(section, isAdminWorkstation, workstationProfile);
+  const SectionIcon = sectionMeta.icon;
+
+  function renderContent() {
+    if (section === "Reports") {
+      return (
+        <AdminV2Reports
+          reports={reports}
+          templates={churchReportTemplates}
+          onSubmitReport={onSubmitReport}
+          onReviewReport={onReviewReport}
+          onVerifyReport={onVerifyReport}
+          onArchiveReport={onArchiveReport}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Approvals") {
+      return (
+        <AdminV2Approvals
+          approvals={approvals}
+          onApprove={onApprove}
+          onSign={onSign}
+          onReject={onReject}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "ChurchMail") {
+      return <AdminV2Mail messages={messages} onQuickAction={onQuickAction} />;
+    }
+    if (section === "Personnel") {
+      return (
+        <AdminV2Directory
+          title="Personnel Directory"
+          description="Review people, access, transfers, verification, and readiness from one organized personnel workspace."
+          metrics={[
+            ["Active personnel", personnel.length],
+            ["Transfers", transfers.length],
+            ["Stations", stationDirectory.length]
+          ]}
+          actions={["Create person", "Verify access", "Review transfers"]}
+          records={personnel.map((person) => ({ title: person.name, meta: person.role, detail: `${person.currentStation} -> ${person.assignedStation}`, status: person.status }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Tasks") {
+      return (
+        <AdminV2Directory
+          title="Task Center"
+          description="Track open assignments, blocked work, due dates, accountable owners, and linked governance records."
+          metrics={[
+            ["Open", tasks.filter((item) => item.status !== "Complete").length],
+            ["Blocked", tasks.filter((item) => item.status === "Blocked").length],
+            ["Critical", tasks.filter((item) => item.priority === "Critical").length]
+          ]}
+          actions={["Create task", "Assign owner", "Review blockers"]}
+          records={tasks.map((item) => ({ title: item.title, meta: `${item.priority} priority`, detail: `${item.owner} -> ${item.assignee}`, status: item.status }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Policies") {
+      return (
+        <AdminV2Directory
+          title="Policy Registry"
+          description="Keep policies, acknowledgements, review cycles, exceptions, and compliance evidence easy to scan."
+          metrics={[
+            ["Policies", policies.length],
+            ["Active", policies.filter((item) => item.status === "Active").length],
+            ["Review", policies.filter((item) => item.status !== "Active").length]
+          ]}
+          actions={["Publish policy", "Review queue", "Export registry"]}
+          records={policies.map((item) => ({ title: item.title, meta: item.category, detail: item.summary, status: item.status }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Calendar") {
+      return (
+        <AdminV2Directory
+          title="Operations Calendar"
+          description="Coordinate meetings, deadlines, review windows, readiness checks, and linked reports."
+          metrics={[
+            ["Scheduled", calendarEvents.length],
+            ["At risk", calendarEvents.filter((item) => item.status === "At Risk").length],
+            ["Critical", calendarEvents.filter((item) => item.priority === "Critical").length]
+          ]}
+          actions={["Create event", "Week view", "Review deadlines"]}
+          records={calendarEvents.map((item) => ({ title: item.title, meta: `${item.date} / ${item.owner}`, detail: item.category, status: item.status }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Transfers") {
+      return (
+        <AdminV2Directory
+          title="Transfer Management"
+          description="Manage reassignment letters, acknowledgements, access changes, and station activation."
+          metrics={[
+            ["Transfers", transfers.length],
+            ["Pending", transfers.filter((item) => item.status !== "Complete").length],
+            ["Ready", transfers.filter((item) => item.status === "Ready").length]
+          ]}
+          actions={["Create transfer", "Verify access", "Archive letter"]}
+          records={transfers.map((item) => ({ title: item.person, meta: `${item.from} -> ${item.to}`, detail: item.risk, status: item.step }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Offices" || section === "Hierarchy") {
+      return (
+        <AdminV2Directory
+          title={section === "Offices" ? "Office Registry" : "Hierarchy Map"}
+          description={section === "Offices" ? "Create offices, assign reporting lines, set permissions, and manage official workstations." : "Review the office node structure that routes reports upward and directives downward."}
+          metrics={[
+            ["Stations", stationDirectory.length],
+            ["Ready", stationDirectory.filter((item) => (item.status ?? "Ready") === "Ready").length],
+            ["Levels", new Set(stationDirectory.map((item) => item.level)).size]
+          ]}
+          actions={section === "Offices" ? ["Create office", "Open registry", "Review permissions"] : ["View graph", "Open registry", "Validate routes"]}
+          records={stationDirectory.map((item) => ({ title: item.title, meta: item.level, detail: item.authority, status: item.status ?? "Ready" }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Escalations") {
+      return (
+        <AdminV2Directory
+          title="Escalation Review"
+          description="Focus leadership attention on urgent matters, timing risks, ownership, and resolution notes."
+          metrics={[
+            ["Open", escalations.filter((item) => item.status !== "Resolved").length],
+            ["Sources", new Set(escalations.map((item) => item.source)).size],
+            ["Resolved", escalations.filter((item) => item.status === "Resolved").length]
+          ]}
+          actions={["Open escalation", "Assign owner", "Review risk"]}
+          records={escalations.map((item) => ({ title: item.item, meta: item.source, detail: item.reason, status: item.status }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "AI Desk") {
+      return (
+        <AdminV2Directory
+          title="AI Administrative Desk"
+          description="Use approved GCOS records to prepare summaries, follow-up notes, bottleneck reviews, and briefings."
+          metrics={[
+            ["Signals", events.length],
+            ["Reports", reports.length],
+            ["Escalations", escalations.length]
+          ]}
+          actions={["Draft brief", "Summarize reports", "Review delays"]}
+          records={events.slice(0, 8).map((item) => ({ title: item.event, meta: item.actor, detail: item.object, status: "Insight" }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Live Comms") {
+      return (
+        <AdminV2Directory
+          title="Live Communication Rooms"
+          description="Coordinate official meetings, office chats, broadcasts, document reviews, and decision follow-up."
+          metrics={[
+            ["Sessions", liveSessions.length],
+            ["Active", liveSessions.filter((item) => item.status === "Active").length],
+            ["Linked records", liveSessions.filter((item) => item.linkedRecord).length]
+          ]}
+          actions={["Start meeting", "Send broadcast", "Share document"]}
+          records={liveSessions.map((item) => ({ title: item.title, meta: item.host, detail: item.purpose, status: item.status }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Archive") {
+      return (
+        <AdminV2Directory
+          title="Records Archive"
+          description="Search official records, evidence, exports, retention notes, and linked governance documents."
+          metrics={[
+            ["Documents", documents.length],
+            ["Archived", documents.filter((item) => item.status === "Archived").length],
+            ["Evidence", documents.filter((item) => item.classification.toLowerCase().includes("evidence")).length]
+          ]}
+          actions={["Upload record", "Export packet", "Verify custody"]}
+          records={documents.map((item) => ({ title: item.name, meta: item.classification, detail: item.source, status: item.status }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Audit") {
+      return (
+        <AdminV2Directory
+          title="Audit Activity"
+          description="Review activity, sessions, evidence history, readiness checks, and official audit records."
+          metrics={[
+            ["Audit rows", events.length],
+            ["Actors", new Set(events.map((item) => item.actor)).size],
+            ["Info", events.filter((item) => (item.severity ?? "Info") === "Info").length]
+          ]}
+          actions={["Export audit", "Review sessions", "Archive packet"]}
+          records={events.slice(0, 12).map((item) => ({ title: item.event, meta: item.actor, detail: item.object, status: item.severity ?? "Info" }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    if (section === "Account Settings") {
+      return (
+        <AdminV2Directory
+          title="Account Settings"
+          description="Review station identity, password controls, permissions, recovery settings, and account access."
+          metrics={[
+            ["Accounts", stationDirectory.length],
+            ["Ready", stationDirectory.filter((item) => (item.status ?? "Ready") === "Ready").length],
+            ["Current", station.email]
+          ]}
+          actions={["Reset password", "Review access", "Open recovery"]}
+          records={stationDirectory.map((item) => ({ title: item.email, meta: item.level, detail: item.authority, status: item.status ?? "Ready" }))}
+          onQuickAction={onQuickAction}
+        />
+      );
+    }
+    return (
+      isAdminWorkstation ? (
+        <AdminV2Overview
+          messages={messages}
+          reports={reports}
+          approvals={approvals}
+          tasks={tasks}
+          policies={policies}
+          calendarEvents={calendarEvents}
+          escalations={escalations}
+          transfers={transfers}
+          documents={documents}
+          events={events}
+          openSection={openSection}
+        />
+      ) : (
+        <AdminV2UserOverview
+          station={station}
+          profile={workstationProfile}
+          messages={messages}
+          reports={reports}
+          approvals={approvals}
+          tasks={tasks}
+          documents={documents}
+          openSection={openSection}
+        />
+      )
+    );
+  }
+
+  return (
+    <main className={`admin-v2-shell ${isAdminWorkstation ? "admin-v2-admin-mode" : "admin-v2-user-mode"}`}>
+      <aside className="admin-v2-sidebar" tabIndex={0} aria-label="GCOS navigation. Use arrow keys, page up, and page down to scroll this navigation panel.">
+        <button className="admin-v2-brand" onClick={() => openSection("Control Center")} type="button">
+          <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
+          <span>
+            <strong>RMVI GCOS</strong>
+            <small>{isAdminWorkstation ? "Administrative OS" : "Workstation OS"}</small>
+          </span>
+        </button>
+        <div className="admin-v2-station">
+          <strong>{station.title}</strong>
+          <span>{station.email}</span>
+          <small>{station.level}</small>
+        </div>
+        <nav className="admin-v2-nav">
+          {navGroups.map((group) => (
+            <section key={group.label}>
+              <p>{group.label}</p>
+              {group.items.map(({ label, icon: Icon }) => (
+                <button className={label === section ? "active" : ""} key={label} onClick={() => openSection(label)} type="button">
+                  <Icon size={17} />
+                  <span>{label}</span>
+                </button>
+              ))}
+            </section>
+          ))}
+        </nav>
+      </aside>
+      <section className="admin-v2-main" tabIndex={0} aria-label="GCOS workspace. Use arrow keys, page up, and page down to scroll this page.">
+        <header className="admin-v2-topbar">
+          <div className="admin-v2-page-title">
+            <span><SectionIcon size={18} /> {sectionMeta.kicker}</span>
+            <h1>{sectionMeta.title}</h1>
+            <p>{sectionMeta.description}</p>
+          </div>
+          <div className="admin-v2-actions">
+            <label>
+              <Search size={16} />
+              <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="Search GCOS" />
+            </label>
+            <div className="admin-v2-health">
+              <span className={networkOnline && !offlineMode ? "online" : ""} />
+              <strong>{apiStatus?.status.toUpperCase() ?? (offlineMode ? "LOCAL" : "READY")}</strong>
+              <small>{offlineMode ? "Local mode" : "Sync active"}</small>
+            </div>
+            <button type="button" onClick={onLogout}><LogOut size={17} /></button>
+          </div>
+          {searchQuery && (
+            <div className="admin-v2-search-results">
+              {searchResults.length ? searchResults.slice(0, 6).map((result) => (
+                <button key={`${result.section}-${result.id}`} onClick={() => onOpenSearchResult(result)} type="button">
+                  <span>{result.section}</span>
+                  <strong>{result.title}</strong>
+                  <small>{result.meta}</small>
+                </button>
+              )) : <p>No matching GCOS records.</p>}
+            </div>
+          )}
+        </header>
+
+        <section className="admin-v2-hero">
+          <div>
+            <span>{isAdminWorkstation ? "Global Administrative Operating System" : workstationProfile.label}</span>
+            <h2>{station.title}</h2>
+            <p>{station.authority}</p>
+          </div>
+          <div className="admin-v2-hero-metrics">
+            {isAdminWorkstation ? (
+              <>
+                <AdminV2Kpi label="Open reports" value={pendingReports.length} tone="blue" />
+                <AdminV2Kpi label="Approvals" value={pendingApprovals.length} tone="gold" />
+                <AdminV2Kpi label="Escalations" value={openEscalations.length} tone="red" />
+                <AdminV2Kpi label="Stations" value={stationDirectory.length} tone="green" />
+              </>
+            ) : (
+              <>
+                <AdminV2Kpi label="ChurchMail" value={messages.length} tone="blue" />
+                <AdminV2Kpi label="Reports" value={pendingReports.length} tone="gold" />
+                <AdminV2Kpi label="Tasks" value={openTasks.length} tone="green" />
+                <AdminV2Kpi label="Archive" value={documents.length} tone="blue" />
+              </>
+            )}
+          </div>
+        </section>
+
+        {renderContent()}
+      </section>
+    </main>
+  );
+}
+
+function adminV2SectionMeta(section: Section, isAdminWorkstation = true, profile?: WorkstationProfile) {
+  if (!isAdminWorkstation && section === "Control Center") {
+    return {
+      title: profile?.title ?? "My Workstation",
+      kicker: profile?.label ?? "Workstation",
+      description: profile?.description ?? "A focused station workspace for reports, ChurchMail, tasks, records, and assigned work.",
+      icon: LayoutDashboard
+    };
+  }
+  const map: Record<string, { title: string; kicker: string; description: string; icon: React.ElementType }> = {
+    "Control Center": { title: "Executive Overview", kicker: "Command", description: "A calm command home for governance activity, approvals, reports, communication, and operating health.", icon: LayoutDashboard },
+    "Admin Board": { title: "Administration Board", kicker: "Command", description: "Manage station identities, user approvals, system readiness, audit activity, and operating controls.", icon: ShieldCheck },
+    ChurchMail: { title: "ChurchMail", kicker: "Communication", description: "Secure governance communication for directives, reports, approvals, transfers, and official records.", icon: Mail },
+    Reports: { title: "Reports", kicker: "Governance", description: "Prepare, review, route, and archive official RMVI reports with evidence and approval tracking.", icon: FileBarChart2 },
+    Approvals: { title: "Approvals", kicker: "Governance", description: "Review authority limits, signatures, delegation, execution, and approval chain status.", icon: Signature },
+    Escalations: { title: "Escalations", kicker: "Governance", description: "Track priority issues requiring supervisory attention and executive follow-up.", icon: AlertTriangle },
+    Tasks: { title: "Tasks", kicker: "Governance", description: "Manage assignments, blockers, priorities, due dates, evidence, and accountable owners.", icon: ListChecks },
+    Policies: { title: "Policies", kicker: "Governance", description: "Organize governance policies, acknowledgements, compliance checks, evidence, and review cycles.", icon: ScrollText },
+    Calendar: { title: "Calendar", kicker: "Governance", description: "Coordinate meetings, deadlines, reviews, readiness checks, and linked operational events.", icon: CalendarDays },
+    Personnel: { title: "Personnel", kicker: "Organization", description: "Manage people, roles, station assignments, verification, training, and transfer readiness.", icon: Users },
+    Hierarchy: { title: "Hierarchy", kicker: "Organization", description: "View the organization as expandable governance nodes with reporting relationships.", icon: GitBranch },
+    Offices: { title: "Offices", kicker: "Organization", description: "Create and manage offices, departments, units, workstations, and permissions.", icon: Building2 },
+    Transfers: { title: "Transfers", kicker: "Organization", description: "Manage reassignment letters, acknowledgements, old access revocation, and new station activation.", icon: ArrowUpFromLine },
+    "AI Desk": { title: "AI Desk", kicker: "Operations", description: "Review summaries, bottlenecks, draft assistance, and administrative intelligence.", icon: Sparkles },
+    "Live Comms": { title: "Live Communications", kicker: "Operations", description: "Coordinate meetings, chat, broadcasts, documents, and office-to-office work.", icon: Video },
+    Archive: { title: "Archive", kicker: "System", description: "Search and manage evidence, official records, retention, custody, and export packets.", icon: ArchiveIcon },
+    Audit: { title: "Audit", kicker: "System", description: "Review activity, sessions, readiness, restore evidence, launch status, and immutable audit records.", icon: ShieldCheck },
+    "Account Settings": { title: "Account Settings", kicker: "System", description: "Review account identity, password controls, permissions, users, and station access settings.", icon: Settings }
+  };
+  return map[section] ?? map["Control Center"];
+}
+
+function AdminV2Kpi({ label, value, tone }: { label: string; value: number | string; tone: string }) {
+  return (
+    <article className={`admin-v2-kpi ${tone}`}>
+      <strong>{value}</strong>
+      <span>{label}</span>
+    </article>
+  );
+}
+
+function AdminV2Overview({ messages, reports, approvals, tasks, policies, calendarEvents, escalations, transfers, documents, events, openSection }: any) {
+  const cards = [
+    { label: "ChurchMail", value: messages.length, detail: "official communications", section: "ChurchMail" as Section, icon: Mail },
+    { label: "Reports", value: reports.filter((item: Report) => item.state !== "Approved").length, detail: "active report packets", section: "Reports" as Section, icon: FileText },
+    { label: "Approvals", value: approvals.filter((item: Approval) => item.state !== "Approved").length, detail: "awaiting action", section: "Approvals" as Section, icon: Signature },
+    { label: "Tasks", value: tasks.filter((item: GovernanceTask) => item.status !== "Complete").length, detail: "open assignments", section: "Admin Board" as Section, icon: ListChecks }
+  ];
+  return (
+    <div className="admin-v2-grid">
+      <section className="admin-v2-panel span-8">
+        <div className="admin-v2-panel-head">
+          <span>Executive Activity</span>
+          <strong>Priority work</strong>
+        </div>
+        <div className="admin-v2-card-grid">
+          {cards.map(({ label, value, detail, section, icon: Icon }) => (
+            <button className="admin-v2-module-card" key={label} onClick={() => openSection(section)} type="button">
+              <Icon size={20} />
+              <strong>{value}</strong>
+              <span>{label}</span>
+              <small>{detail}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+      <section className="admin-v2-panel span-4">
+        <div className="admin-v2-panel-head">
+          <span>AI Briefing</span>
+          <strong>Suggested focus</strong>
+        </div>
+        <p>{escalations.length ? `${escalations[0].item} needs review before the next governance update.` : "No critical escalation is blocking the current operating cycle."}</p>
+        <div className="admin-v2-mini-list">
+          <span>{policies.length} policy records</span>
+          <span>{calendarEvents.length} calendar items</span>
+          <span>{transfers.length} transfer records</span>
+          <span>{documents.length} archive records</span>
+        </div>
+      </section>
+      <section className="admin-v2-panel span-12">
+        <div className="admin-v2-panel-head">
+          <span>Recent Activity</span>
+          <strong>Audit timeline</strong>
+        </div>
+        <div className="admin-v2-table">
+          {events.slice(0, 6).map((event: AuditEvent) => (
+            <article key={event.id}>
+              <strong>{event.event}</strong>
+              <span>{event.actor}</span>
+              <small>{event.object}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function AdminV2UserOverview({
+  station,
+  profile,
+  messages,
+  reports,
+  approvals,
+  tasks,
+  documents,
+  openSection
+}: {
+  station: StationCard;
+  profile: WorkstationProfile;
+  messages: Message[];
+  reports: Report[];
+  approvals: Approval[];
+  tasks: GovernanceTask[];
+  documents: DocumentRecord[];
+  openSection: (section: Section) => void;
+}) {
+  const focusCards = [
+    { label: "ChurchMail", value: messages.length, detail: "messages assigned to this station", section: "ChurchMail" as Section, icon: Mail },
+    { label: "Reports", value: reports.filter((item) => item.state !== "Approved").length, detail: profile.defaultReportType, section: "Reports" as Section, icon: FileText },
+    { label: "Tasks", value: tasks.filter((item) => item.status !== "Complete").length, detail: "open station assignments", section: "Tasks" as Section, icon: ListChecks },
+    { label: "Archive", value: documents.length, detail: "records and evidence available", section: "Archive" as Section, icon: ArchiveIcon }
+  ];
+  const firstReport = reports[0];
+  const firstMessage = messages[0];
+  const firstTask = tasks.find((item) => item.status !== "Complete") ?? tasks[0];
+
+  return (
+    <div className="admin-v2-grid admin-v2-user-home">
+      <section className="admin-v2-panel span-8">
+        <div className="admin-v2-panel-head">
+          <span>My Workstation</span>
+          <strong>{profile.queueLabel}</strong>
+        </div>
+        <div className="admin-v2-card-grid">
+          {focusCards.map(({ label, value, detail, section, icon: Icon }) => (
+            <button className="admin-v2-module-card" key={label} onClick={() => openSection(section)} type="button">
+              <Icon size={20} />
+              <strong>{value}</strong>
+              <span>{label}</span>
+              <small>{detail}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+      <section className="admin-v2-panel span-4">
+        <div className="admin-v2-panel-head">
+          <span>Station Identity</span>
+          <strong>Ready</strong>
+        </div>
+        <div className="admin-v2-detail">
+          <span className="admin-v2-status ready">Station access</span>
+          <h2>{station.level}</h2>
+          <p>{station.authority}</p>
+          <span>{station.email}</span>
+        </div>
+      </section>
+      <section className="admin-v2-panel span-4">
+        <div className="admin-v2-panel-head">
+          <span>Next Message</span>
+          <strong>{firstMessage?.status ?? "Clear"}</strong>
+        </div>
+        {firstMessage ? (
+          <div className="admin-v2-detail">
+            <span className={`admin-v2-status ${firstMessage.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{firstMessage.kind}</span>
+            <h2>{firstMessage.subject}</h2>
+            <p>{firstMessage.from}</p>
+            <button className="admin-v2-inline-action" type="button" onClick={() => openSection("ChurchMail")}>Open ChurchMail</button>
+          </div>
+        ) : <p>No messages need attention.</p>}
+      </section>
+      <section className="admin-v2-panel span-4">
+        <div className="admin-v2-panel-head">
+          <span>Report Focus</span>
+          <strong>{firstReport?.state ?? "Ready"}</strong>
+        </div>
+        {firstReport ? (
+          <div className="admin-v2-detail">
+            <span className={`admin-v2-status ${firstReport.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{firstReport.type}</span>
+            <h2>{firstReport.name}</h2>
+            <p>{firstReport.path}</p>
+            <button className="admin-v2-inline-action" type="button" onClick={() => openSection("Reports")}>Open Reports</button>
+          </div>
+        ) : <p>No reports are assigned yet.</p>}
+      </section>
+      <section className="admin-v2-panel span-4">
+        <div className="admin-v2-panel-head">
+          <span>Work Queue</span>
+          <strong>{firstTask?.status ?? "Clear"}</strong>
+        </div>
+        {firstTask ? (
+          <div className="admin-v2-detail">
+            <span className={`admin-v2-status ${firstTask.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{firstTask.priority}</span>
+            <h2>{firstTask.title}</h2>
+            <p>{firstTask.owner} to {firstTask.assignee}</p>
+            <button className="admin-v2-inline-action" type="button" onClick={() => openSection("Tasks")}>Open Tasks</button>
+          </div>
+        ) : <p>No open assignments.</p>}
+      </section>
+      <section className="admin-v2-panel span-12">
+        <div className="admin-v2-panel-head">
+          <span>Station Tools</span>
+          <strong>Quick access</strong>
+        </div>
+        <div className="admin-v2-card-grid">
+          {profile.primaryTools.map(({ label, detail, section, icon: Icon }) => (
+            <button className="admin-v2-module-card" key={label} onClick={() => openSection(section)} type="button">
+              <Icon size={20} />
+              <span>{label}</span>
+              <small>{detail}</small>
+            </button>
+          ))}
+        </div>
+      </section>
+    </div>
+  );
+}
+
+function AdminV2Reports({ reports, templates, onSubmitReport, onReviewReport, onVerifyReport, onArchiveReport, onQuickAction }: { reports: Report[]; templates: ReportTemplate[]; onSubmitReport: (id: string) => void; onReviewReport: (id: string) => void; onVerifyReport: (id: string) => void; onArchiveReport: (id: string) => void; onQuickAction: (action: string) => void }) {
+  const selected = reports[0];
+  return (
+    <div className="admin-v2-workspace">
+      <section className="admin-v2-panel admin-v2-workspace-intro">
+        <div>
+          <span>Workspace</span>
+          <h2>Governance Reporting Workspace</h2>
+          <p>Prepare reports, select templates, track draft progress, attach evidence, and route packets through the right office path.</p>
+        </div>
+        <div className="admin-v2-stat-strip">
+          <article><strong>{templates.length}</strong><span>Templates</span></article>
+          <article><strong>{reports.filter((item) => item.state !== "Approved").length}</strong><span>Active reports</span></article>
+          <article><strong>{reports.filter((item) => item.state === "Escalated").length}</strong><span>Escalated</span></article>
+        </div>
+      </section>
+      <section className="admin-v2-toolbar">
+        <button className="primary" onClick={() => onQuickAction("Create report")} type="button">Create report</button>
+        <button onClick={() => onQuickAction("Save draft")} type="button">Save draft</button>
+        <button onClick={() => onQuickAction("Build packet")} type="button">Build packet</button>
+      </section>
+      <div className="admin-v2-three">
+      <section className="admin-v2-panel">
+        <div className="admin-v2-panel-head"><span>Template Library</span><strong>{templates.length} templates</strong></div>
+        <div className="admin-v2-list">
+          {templates.slice(0, 12).map((template) => (
+            <article key={template.id}>
+              <strong>{template.name}</strong>
+              <span>{template.type}</span>
+              <small>{template.path}</small>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="admin-v2-panel wide">
+        <div className="admin-v2-panel-head"><span>Report Workspace</span><strong>{selected?.name ?? "No report selected"}</strong></div>
+        {selected && (
+          <div className="admin-v2-detail">
+            <span className={`admin-v2-status ${selected.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selected.type} / {selected.state}</span>
+            <h2>{selected.name}</h2>
+            <p>{selected.path}</p>
+            <div className="admin-v2-progress"><i style={{ width: `${selected.score}%` }} /></div>
+            <div className="admin-v2-actions-row">
+              <button onClick={() => onReviewReport(selected.id)} type="button">Review</button>
+              <button onClick={() => onVerifyReport(selected.id)} type="button">Verify</button>
+              <button onClick={() => onSubmitReport(selected.id)} type="button">Submit</button>
+              <button onClick={() => onArchiveReport(selected.id)} type="button">Archive</button>
+            </div>
+          </div>
+        )}
+      </section>
+      <section className="admin-v2-panel">
+        <div className="admin-v2-panel-head"><span>Work Queue</span><strong>{reports.length} reports</strong></div>
+        <div className="admin-v2-list compact">
+          {reports.slice(0, 10).map((report) => (
+            <article key={report.id}>
+              <div className="admin-v2-record-main">
+                <strong>{report.name}</strong>
+                <span>{report.owner}</span>
+              </div>
+              <small>{report.type}</small>
+              <span className={`admin-v2-status ${report.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{report.state}</span>
+            </article>
+          ))}
+        </div>
+      </section>
+      </div>
+    </div>
+  );
+}
+
+function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickAction }: { approvals: Approval[]; onApprove: (id: string) => void; onSign: (id: string) => void; onReject: (id: string) => void; onQuickAction: (action: string) => void }) {
+  const selected = approvals[0];
+  return (
+    <div className="admin-v2-workspace">
+      <section className="admin-v2-panel admin-v2-workspace-intro">
+        <div>
+          <span>Workspace</span>
+          <h2>Approval Engine</h2>
+          <p>Review authority limits, signature progress, delegation, routing, and execution readiness in one calm approval workspace.</p>
+        </div>
+        <div className="admin-v2-stat-strip">
+          <article><strong>{approvals.filter((item) => item.state !== "Approved").length}</strong><span>Open</span></article>
+          <article><strong>{approvals.filter((item) => item.state === "Escalated").length}</strong><span>Escalated</span></article>
+          <article><strong>{approvals.length}</strong><span>Total chains</span></article>
+        </div>
+      </section>
+      <section className="admin-v2-toolbar">
+        <button className="primary" onClick={() => onQuickAction("Create approval")} type="button">Create approval</button>
+        <button onClick={() => onQuickAction("Digest")} type="button">Digest</button>
+        <button onClick={() => onQuickAction("Review signatures")} type="button">Review signatures</button>
+      </section>
+      <div className="admin-v2-three">
+      <section className="admin-v2-panel">
+        <div className="admin-v2-panel-head"><span>Workflow Views</span><strong>{approvals.length} records</strong></div>
+        <div className="admin-v2-mini-list">
+          <span>Open {approvals.filter((item) => item.state !== "Approved").length}</span>
+          <span>Signed {approvals.filter((item) => item.signatures === "complete").length}</span>
+          <span>Escalated {approvals.filter((item) => item.state === "Escalated").length}</span>
+        </div>
+      </section>
+      <section className="admin-v2-panel wide">
+        <div className="admin-v2-panel-head"><span>Approval Queue</span><strong>Authority review</strong></div>
+        <div className="admin-v2-table">
+          {approvals.map((approval) => (
+            <article key={approval.id}>
+              <div className="admin-v2-record-main">
+                <strong>{approval.request}</strong>
+                <span>{approval.route}</span>
+              </div>
+              <small>{approval.limit}</small>
+              <span className={`admin-v2-status ${approval.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{approval.state}</span>
+              <div className="admin-v2-row-actions">
+                <button onClick={() => onApprove(approval.id)} type="button">Approve</button>
+                <button onClick={() => onSign(approval.id)} type="button">Sign</button>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="admin-v2-panel">
+        <div className="admin-v2-panel-head"><span>Inspector</span><strong>{selected?.state ?? "Ready"}</strong></div>
+        {selected && (
+          <div className="admin-v2-detail">
+            <span className={`admin-v2-status ${selected.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selected.state}</span>
+            <h2>{selected.request}</h2>
+            <p>{selected.route}</p>
+            <span>{selected.signatures} signatures</span>
+            <div className="admin-v2-actions-row">
+              <button onClick={() => onApprove(selected.id)} type="button">Approve</button>
+              <button onClick={() => onReject(selected.id)} type="button">Reject</button>
+            </div>
+          </div>
+        )}
+      </section>
+      </div>
+    </div>
+  );
+}
+
+function AdminV2Mail({ messages, onQuickAction }: { messages: Message[]; onQuickAction: (action: string) => void }) {
+  const selected = messages[0];
+  return (
+    <div className="admin-v2-workspace">
+      <section className="admin-v2-panel admin-v2-workspace-intro">
+        <div>
+          <span>Workspace</span>
+          <h2>ChurchMail Governance Inbox</h2>
+          <p>Read official directives, reports, approvals, transfers, and archive-ready communication without exposing raw system noise.</p>
+        </div>
+        <div className="admin-v2-stat-strip">
+          <article><strong>{messages.length}</strong><span>Messages</span></article>
+          <article><strong>{messages.filter((item) => item.kind === "Directive").length}</strong><span>Directives</span></article>
+          <article><strong>{messages.filter((item) => item.status === "Escalated").length}</strong><span>Escalated</span></article>
+        </div>
+      </section>
+      <section className="admin-v2-toolbar">
+        <button className="primary" onClick={() => onQuickAction("Compose")} type="button">Compose</button>
+        <button onClick={() => onQuickAction("Route message")} type="button">Route message</button>
+        <button onClick={() => onQuickAction("Archive selected")} type="button">Archive selected</button>
+      </section>
+      <div className="admin-v2-three">
+      <section className="admin-v2-panel">
+        <div className="admin-v2-panel-head"><span>Mailboxes</span><strong>{messages.length} messages</strong></div>
+        <div className="admin-v2-mini-list">
+          <span>Inbox {messages.length}</span>
+          <span>Directives {messages.filter((item) => item.kind === "Directive").length}</span>
+          <span>Approvals {messages.filter((item) => item.kind === "Approval").length}</span>
+          <span>Transfers {messages.filter((item) => item.kind === "Transfer").length}</span>
+        </div>
+      </section>
+      <section className="admin-v2-panel wide">
+        <div className="admin-v2-panel-head"><span>Message Queue</span><strong>Secure route active</strong></div>
+        <div className="admin-v2-table">
+          {messages.map((message) => (
+            <article key={message.id}>
+              <div className="admin-v2-record-main">
+                <strong>{message.subject}</strong>
+                <span>{message.from}</span>
+              </div>
+              <small>{message.kind}</small>
+              <span className={`admin-v2-status ${message.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{message.status}</span>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="admin-v2-panel">
+        <div className="admin-v2-panel-head"><span>Inspector</span><strong>{selected?.kind ?? "Message"}</strong></div>
+        {selected && <div className="admin-v2-detail"><span className={`admin-v2-status ${selected.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selected.status}</span><h2>{selected.subject}</h2><p>{selected.body ?? selected.files}</p><span>{selected.route ?? "Governance communication"}</span></div>}
+      </section>
+      </div>
+    </div>
+  );
+}
+
+function AdminV2Directory({
+  title,
+  description,
+  metrics,
+  actions,
+  records,
+  onQuickAction
+}: {
+  title: string;
+  description: string;
+  metrics: [string, string | number][];
+  actions: string[];
+  records: { title: string; meta: string; detail: string; status: string }[];
+  onQuickAction: (action: string) => void;
+}) {
+  const normalizedRecords = records.map((record) => ({ ...record, status: record.status || "Ready" }));
+  const selected = normalizedRecords[0];
+  return (
+    <div className="admin-v2-workspace">
+      <section className="admin-v2-panel admin-v2-workspace-intro">
+        <div>
+          <span>Workspace</span>
+          <h2>{title}</h2>
+          <p>{description}</p>
+        </div>
+        <div className="admin-v2-stat-strip">
+          {metrics.map(([label, value]) => (
+            <article key={label}>
+              <strong>{value}</strong>
+              <span>{label}</span>
+            </article>
+          ))}
+        </div>
+      </section>
+      <section className="admin-v2-toolbar">
+        {actions.map((action, index) => (
+          <button className={index === 0 ? "primary" : ""} key={action} onClick={() => onQuickAction(action)} type="button">{action}</button>
+        ))}
+      </section>
+      <div className="admin-v2-two">
+      <section className="admin-v2-panel wide">
+        <div className="admin-v2-panel-head"><span>Registry</span><strong>{title}</strong></div>
+        <div className="admin-v2-table">
+          {normalizedRecords.map((record, index) => (
+            <article key={`${record.title}-${index}`}>
+              <div className="admin-v2-record-main">
+                <strong>{record.title}</strong>
+                <span>{record.meta}</span>
+              </div>
+              <small>{record.detail}</small>
+              <span className={`admin-v2-status ${record.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{record.status}</span>
+            </article>
+          ))}
+          {!records.length && <p className="admin-v2-empty">No records are available in this workspace yet.</p>}
+        </div>
+      </section>
+      <section className="admin-v2-panel">
+        <div className="admin-v2-panel-head"><span>Details</span><strong>{selected?.status ?? "Ready"}</strong></div>
+        {selected ? (
+          <div className="admin-v2-detail">
+            <span className={`admin-v2-status ${selected.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selected.status}</span>
+            <h2>{selected.title}</h2>
+            <p>{selected.detail}</p>
+            <span>{selected.meta}</span>
+            <div className="admin-v2-actions-row">
+              <button onClick={() => onQuickAction(actions[0] ?? "Open")} type="button">Open</button>
+              <button onClick={() => onQuickAction(actions[1] ?? "More")} type="button">More</button>
+            </div>
+          </div>
+        ) : <p>No records available.</p>}
+      </section>
+      </div>
     </div>
   );
 }

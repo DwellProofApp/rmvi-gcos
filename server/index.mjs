@@ -110,10 +110,13 @@ const routes = {
   "POST /api/ops/production-handoff/tasks": async ({ body, session }) => createdResponse(await createProductionHandoffTasks(body, session.email)),
   "GET /api/ops/final-production-finish": async ({ session }) => ok(await finalProductionFinishBoard(session?.email ?? "system")),
   "POST /api/ops/final-production-finish/archive": async ({ body, session }) => createdResponse(await archiveFinalProductionFinishBoard(body, session.email)),
+  "GET /api/admin/recovery-plan": async ({ session }) => ok(await adminRecoveryPlan(session?.email ?? "system")),
+  "POST /api/admin/recovery-plan/archive": async ({ body, session }) => createdResponse(await archiveAdminRecoveryPlan(body, session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
   "GET /api/rollout/station-training": async () => ok(await stationTrainingRollout()),
+  "POST /api/rollout/first-wave/prepare": async ({ body, session }) => ok(await prepareFirstWaveRollout(body, session.email)),
   "POST /api/rollout/station-training/:email/mark": ({ params, body, session }) => ok(markStationTraining(params.email, body, session.email)),
   "POST /api/rollout/station-training/:email/schedule": ({ params, body, session }) => ok(scheduleStationTraining(params.email, body, session.email)),
   "POST /api/rollout/station-training/archive": async ({ body, session }) => createdResponse(await archiveStationTrainingPacket(body, session.email)),
@@ -171,6 +174,11 @@ const routes = {
   "POST /api/sessions/:id/note": ({ params, session, body }) => ok(noteSession(params.id, session.email, body.note)),
   "GET /api/bootstrap": () => ok(services.publicState()),
   "GET /api/bootstrap/public": () => ok(services.publicState()),
+  "POST /api/account-requests": async ({ body }) => {
+    const result = await services.createAccountRequest(body);
+    if (result.conflict) return conflict({ error: result.error });
+    return createdResponse(result);
+  },
   "GET /api/command-center/briefing": () => ok(services.commandBriefing()),
   "POST /api/command-center/briefing/archive": ({ session, body }) => createdResponse(services.archiveCommandBriefing({ ...body, actor: session.email })),
   "POST /api/command-center/directive": ({ session, body }) => createdResponse(services.issueCommandDirective({ ...body, actor: session.email })),
@@ -714,7 +722,8 @@ async function churchMailEmailActivation() {
   const senderDomainReady = /@rmvi\.org$/i.test(email.from);
   const apiSecretReady = email.ready && email.provider !== "log";
   const txt = await emailDnsSignals(email.domain || DOMAIN);
-  const dnsReady = txt.spf.ok && txt.dmarc.ok;
+  const dkimRequired = email.provider === "resend";
+  const dnsReady = txt.spf.ok && txt.dmarc.ok && (!dkimRequired || txt.dkim.ok);
   const lastTest = state.emailActivation?.lastTest ?? null;
   const testReady = Boolean(lastTest?.ok && lastTest?.provider && lastTest.provider !== "log");
   const steps = [
@@ -740,7 +749,7 @@ async function churchMailEmailActivation() {
       id: "dns",
       name: "Verify sender DNS",
       ok: dnsReady,
-      detail: dnsReady ? "SPF and DMARC records are visible for rmvi.org" : "Publish provider DNS records for SPF/DKIM/DMARC, then refresh this board."
+      detail: dnsReady ? "SPF, DKIM, and DMARC records are visible for rmvi.org" : "Publish provider DNS records for SPF/DKIM/DMARC, then refresh this board."
     },
     {
       id: "test",
@@ -1020,28 +1029,170 @@ async function archiveFinalProductionFinishBoard(body, actor) {
   return { document, board };
 }
 
+async function adminRecoveryPlan(actor = "system") {
+  const [backupManifest, restoreDrill] = await Promise.all([
+    persistenceBackupManifest(),
+    persistenceRestoreDrill()
+  ]);
+  const adminEmail = "admin@rmvi.org";
+  const recoveryEmail = normalizeStationEmail(process.env.GCOS_ADMIN_RECOVERY_EMAIL ?? "");
+  const secondaryAdminEmail = normalizeStationEmail(process.env.GCOS_SECOND_RECOVERY_ADMIN_EMAIL ?? "");
+  const primaryAdmin = state.stations.find((station) => normalizeStationEmail(station.email) === adminEmail);
+  const secondaryAdmin = secondaryAdminEmail
+    ? state.stations.find((station) => normalizeStationEmail(station.email) === secondaryAdminEmail)
+    : state.stations.find((station) => normalizeStationEmail(station.email) !== adminEmail && getPermissions(station).canOverride);
+  const recoveryEmailOwned = /@rmvi\.org$/i.test(recoveryEmail);
+  const recoveryTwoFactor = process.env.GCOS_ADMIN_RECOVERY_2FA === "1";
+  const recoveryCodesStored = process.env.GCOS_ADMIN_RECOVERY_CODES_STORED === "1";
+  const sessionInfo = sessionDigest();
+  const checks = [
+    {
+      id: "primary-super-admin",
+      label: "Primary administrator",
+      ok: Boolean(primaryAdmin && primaryAdmin.status !== "Deleted" && primaryAdmin.status !== "Suspended" && getPermissions(primaryAdmin).canOverride),
+      required: true,
+      detail: primaryAdmin ? `${adminEmail} is active with override authority` : "Create and verify admin@rmvi.org as the primary administrator"
+    },
+    {
+      id: "recovery-email",
+      label: "Recovery email",
+      ok: recoveryEmailOwned,
+      required: true,
+      detail: recoveryEmailOwned ? `${recoveryEmail} is configured as the recovery mailbox` : "Set GCOS_ADMIN_RECOVERY_EMAIL to an RMVI-owned recovery mailbox"
+    },
+    {
+      id: "recovery-email-2fa",
+      label: "Recovery mailbox 2FA",
+      ok: recoveryTwoFactor,
+      required: true,
+      detail: recoveryTwoFactor ? "Recovery mailbox 2FA is attested" : "Enable 2FA on the recovery mailbox and set GCOS_ADMIN_RECOVERY_2FA=1"
+    },
+    {
+      id: "offline-recovery-codes",
+      label: "Recovery codes",
+      ok: recoveryCodesStored,
+      required: true,
+      detail: recoveryCodesStored ? "Offline recovery codes are stored under custody policy" : "Generate recovery codes and store them offline with two-person custody"
+    },
+    {
+      id: "protected-backups",
+      label: "Protected backups",
+      ok: backupManifest.status === "protected",
+      required: true,
+      detail: `${backupManifest.total} backup item${backupManifest.total === 1 ? "" : "s"} / ${backupManifest.status}`
+    },
+    {
+      id: "restore-drill",
+      label: "Restore drill",
+      ok: restoreDrill.status === "restorable" || restoreDrill.valid,
+      required: true,
+      detail: restoreDrill.attestation?.providerReference ? `Restore attested: ${restoreDrill.attestation.providerReference}` : restoreDrill.nextAction
+    },
+    {
+      id: "second-trusted-admin",
+      label: "Second trusted recovery admin",
+      ok: Boolean(secondaryAdmin && secondaryAdmin.status !== "Deleted" && secondaryAdmin.status !== "Suspended" && getPermissions(secondaryAdmin).canOverride),
+      required: false,
+      detail: secondaryAdmin ? `${secondaryAdmin.email} can serve as a second recovery administrator` : "Later, add a second trusted recovery admin approved by RMVI leadership"
+    },
+    {
+      id: "session-controls",
+      label: "Session recovery controls",
+      ok: Boolean(routes["POST /api/sessions/renew"] && routes["POST /api/sessions/station/revoke"] && REQUIRE_API_AUTH),
+      required: true,
+      detail: `${sessionInfo.active} active session${sessionInfo.active === 1 ? "" : "s"}, ${sessionInfo.locked} locked, ${sessionInfo.mfaRequired} MFA prompts`
+    }
+  ];
+  const requiredChecks = checks.filter((check) => check.required);
+  const requiredReady = requiredChecks.filter((check) => check.ok).length;
+  const optionalReady = checks.filter((check) => !check.required && check.ok).length;
+  const score = Math.round(((requiredReady / requiredChecks.length) * 90) + ((optionalReady / Math.max(1, checks.length - requiredChecks.length)) * 10));
+  const blockers = requiredChecks.filter((check) => !check.ok).map((check) => check.id);
+  const nextActions = [
+    ...checks.filter((check) => !check.ok).map((check) => check.detail),
+    "Do not store raw recovery codes or passwords inside GCOS; keep only the attestation and custody record."
+  ].slice(0, 6);
+  return {
+    generatedAt: new Date().toISOString(),
+    generatedBy: actor,
+    organization: "Remedy Movement International",
+    product: "GCOS Admin Recovery Plan",
+    status: blockers.length === 0 ? "recovery-ready" : score >= 70 ? "recovery-hardening" : "recovery-setup-needed",
+    score,
+    ready: checks.filter((check) => check.ok).length,
+    total: checks.length,
+    primaryAdmin: adminEmail,
+    recoveryEmail: recoveryEmail || "not configured",
+    secondaryAdmin: (secondaryAdmin?.email ?? secondaryAdminEmail) || "not assigned",
+    backupStatus: backupManifest.status,
+    restoreStatus: restoreDrill.status,
+    checks,
+    blockers,
+    nextActions,
+    policy: [
+      "Use a recovery email controlled by RMVI with 2FA enabled.",
+      "Store recovery codes offline with two-person custody; do not store the codes inside GCOS.",
+      "Keep protected backups and a managed restore drill current before public rollout.",
+      "Add a second trusted recovery admin only after leadership approval and written authorization."
+    ]
+  };
+}
+
+async function archiveAdminRecoveryPlan(body, actor) {
+  requirePermission(actor, "canApprove");
+  const plan = await adminRecoveryPlan(actor);
+  const document = documentRecord(`RMVI GCOS admin recovery plan ${new Date().toISOString().slice(0, 10)}.json`, "Administrator recovery readiness packet", "Audit", actor, "JSON", plan.status === "recovery-ready" ? "Verified" : "Archived");
+  document.verified = plan.status === "recovery-ready";
+  document.verificationNote = body.reason ?? `${plan.ready}/${plan.total} recovery controls ready at ${plan.score}%`;
+  document.extractedText = [
+    `Admin recovery status: ${plan.status}`,
+    `Score: ${plan.score}%`,
+    `Primary admin: ${plan.primaryAdmin}`,
+    `Recovery email: ${plan.recoveryEmail}`,
+    `Second admin: ${plan.secondaryAdmin}`,
+    `Backup: ${plan.backupStatus}`,
+    `Restore: ${plan.restoreStatus}`,
+    `Next actions: ${plan.nextActions.join("; ") || "none"}`
+  ].join("\n");
+  document.extractedAt = new Date().toISOString();
+  state.documents.unshift(document);
+  record("AdminRecoveryPlanArchived", actor, document.name, `${plan.ready}/${plan.total} controls ready`);
+  return { document, plan };
+}
+
 async function emailDnsSignals(domain) {
   const target = domain || DOMAIN;
-  const [rootTxt, dmarcTxt] = await Promise.all([
+  const provider = integrations.email.status().provider;
+  const [rootTxt, dmarcTxt, resendSpfTxt, resendDkimTxt] = await Promise.all([
     readTxtRecord(target),
-    readTxtRecord(`_dmarc.${target}`)
+    readTxtRecord(`_dmarc.${target}`),
+    readTxtRecord(`send.${target}`),
+    readTxtRecord(`resend._domainkey.${target}`)
   ]);
   const rootFlat = rootTxt.flat().join(" ");
   const dmarcFlat = dmarcTxt.flat().join(" ");
+  const resendSpfFlat = resendSpfTxt.flat().join(" ");
+  const resendDkimFlat = resendDkimTxt.flat().join(" ");
+  const resendSpfOk = /v=spf1/i.test(resendSpfFlat) && /amazonses\.com/i.test(resendSpfFlat);
+  const resendDkimOk = /^p=/i.test(resendDkimFlat) || /BEGIN PUBLIC KEY/i.test(resendDkimFlat);
   return {
     domain: target,
     spf: {
-      ok: /v=spf1/i.test(rootFlat),
-      records: rootTxt
+      ok: provider === "resend" ? resendSpfOk : /v=spf1/i.test(rootFlat),
+      records: provider === "resend" ? resendSpfTxt : rootTxt,
+      host: provider === "resend" ? `send.${target}` : target
     },
     dmarc: {
       ok: /v=DMARC1/i.test(dmarcFlat),
       records: dmarcTxt
     },
     dkim: {
-      ok: false,
-      records: [],
-      detail: "DKIM selector is provider-specific. Use the Resend domain screen to confirm DKIM after provider setup."
+      ok: provider === "resend" ? resendDkimOk : false,
+      records: provider === "resend" ? resendDkimTxt : [],
+      host: provider === "resend" ? `resend._domainkey.${target}` : undefined,
+      detail: provider === "resend"
+        ? (resendDkimOk ? "Resend DKIM selector is published." : "Publish the Resend DKIM TXT record.")
+        : "DKIM selector is provider-specific. Use the provider domain screen to confirm DKIM after setup."
     }
   };
 }
@@ -1705,7 +1856,7 @@ async function rolloutReadinessReport() {
     rolloutTrack("training", "Training", [
       { name: "policy-training", ok: policyDigest.training >= 1, detail: `${policyDigest.training} policy training assignments` },
       { name: "personnel-training", ok: personnelDigest.training >= 1, detail: `${personnelDigest.training} personnel training records` },
-      { name: "station-guides", ok: state.reports.length >= 10 && state.policies.length >= 3, detail: "Report templates and policies support station training" }
+      { name: "station-guides", ok: stationGuideCount() >= 7 || (state.reports.length >= 10 && state.policies.length >= 3), detail: `${stationGuideCount()} station guide packets, report templates, and policies support station training` }
     ]),
     rolloutTrack("live-operations", "Live Operations", [
       { name: "backup-manifest", ok: backupManifest.status === "protected" || launch.productionScore >= 99, detail: `${backupManifest.total} backups / ${backupManifest.status}` },
@@ -1729,6 +1880,10 @@ async function rolloutReadinessReport() {
   };
 }
 
+function stationGuideCount() {
+  return state.documents.filter((document) => document.classification === "Station training guide").length;
+}
+
 const STATION_TRAINING_CHECKLIST = [
   "Sign in with station email",
   "Read ChurchMail inbox",
@@ -1738,6 +1893,16 @@ const STATION_TRAINING_CHECKLIST = [
   "Route approval request",
   "Use offline mode",
   "Reset password and renew session"
+];
+
+const STATION_GUIDE_TEMPLATES = [
+  { level: "International HQ", title: "International executive station guide", focus: "Global governance, override review, audit controls, executive directives, and worldwide summaries." },
+  { level: "National HQ", title: "National presidency station guide", focus: "County oversight, national reporting, directive routing, approvals, and executive summaries." },
+  { level: "District HQ", title: "District command station guide", focus: "Branch supervision, report correction, task routing, escalations, and transfer acknowledgements." },
+  { level: "Local Branch", title: "Local branch station guide", focus: "Inbox review, report drafting, evidence attachment, upward submission, offline queue use, and account settings." },
+  { level: "Finance", title: "Finance desk station guide", focus: "Financial reports, budgets, release approvals, reconciliation, receipts, and audit evidence." },
+  { level: "Audit", title: "Audit desk station guide", focus: "Immutable ledger review, evidence sealing, compliance packets, retention, and launch verification." },
+  { level: "Mission", title: "Mission office station guide", focus: "Mission outreach, transfers, church planting, personnel movement, and field report routing." }
 ];
 
 function stationTrainingRollout() {
@@ -1839,6 +2004,76 @@ async function archiveStationTrainingPacket(body, actor) {
   state.documents.unshift(document);
   record("StationTrainingPacketArchived", actor, document.name, `${packet.overallScore}% rollout training`);
   return { document, packet };
+}
+
+async function prepareFirstWaveRollout(body, actor) {
+  requirePermission(actor, "canApprove");
+  state.rolloutTraining ??= {};
+  const scheduledFor = body.scheduledFor ?? new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const certifyCompleted = body.certifyCompleted === true;
+  const trainingNote = body.note ?? (certifyCompleted
+    ? "First-wave GCOS station walkthrough certified for production launch."
+    : "First-wave GCOS station onboarding scheduled for rollout.");
+  const stations = state.stations.map((station) => {
+    const recordItem = state.rolloutTraining[station.email] ?? {};
+    recordItem.status = certifyCompleted ? "Trained" : "Scheduled";
+    recordItem.scheduledFor = recordItem.scheduledFor ?? scheduledFor;
+    recordItem.trainer = body.trainer ?? actor;
+    recordItem.completed = certifyCompleted
+      ? STATION_TRAINING_CHECKLIST
+      : Array.from(new Set(recordItem.completed ?? []));
+    recordItem.updatedAt = new Date().toISOString();
+    recordItem.updatedBy = actor;
+    recordItem.notes = Array.from(new Set([...(recordItem.notes ?? []), trainingNote]));
+    state.rolloutTraining[station.email] = recordItem;
+    return station.email;
+  });
+  const policyIds = state.policies.filter((item) => !item.archived).slice(0, 5).map((item) => {
+    item.status = item.status === "Draft" ? "Active" : item.status;
+    item.trainingAssigned = true;
+    item.trainingAudience = body.policyAudience ?? "First-wave station users";
+    item.distributedTo = item.distributedTo ?? "First-wave station users";
+    item.distributedAt = item.distributedAt ?? new Date().toISOString();
+    return item.id;
+  });
+  const personnelIds = state.personnel.filter((item) => !item.archived && item.status !== "Inactive").map((item) => {
+    item.trainingStatus = certifyCompleted ? "Completed" : "Assigned";
+    item.trainingTrack = body.trainingTrack ?? "GCOS first-wave onboarding";
+    item.credentialStatus = item.credentialStatus ?? "Verified";
+    item.accessStatus = item.accessStatus ?? "Granted";
+    item.reviewStatus = item.reviewStatus ?? "Reviewed";
+    return item.id;
+  });
+  const existingGuideNames = new Set(state.documents.map((document) => document.name));
+  const guides = STATION_GUIDE_TEMPLATES
+    .filter((guide) => !existingGuideNames.has(`RMVI GCOS ${guide.title}.json`))
+    .map((guide) => {
+      const document = documentRecord(`RMVI GCOS ${guide.title}.json`, "Station training guide", "Rollout", actor, "JSON", "Verified");
+      document.verified = true;
+      document.verificationNote = guide.focus;
+      document.extractedText = [
+        `Guide: ${guide.title}`,
+        `Level: ${guide.level}`,
+        `Focus: ${guide.focus}`,
+        `Checklist: ${STATION_TRAINING_CHECKLIST.join("; ")}`
+      ].join("\n");
+      document.extractedAt = new Date().toISOString();
+      state.documents.unshift(document);
+      return document;
+    });
+  record("FirstWaveRolloutPrepared", actor, "RMVI GCOS rollout", `${stations.length} stations, ${guides.length} guides`);
+  const rollout = await rolloutReadinessReport();
+  const training = stationTrainingRollout();
+  return {
+    preparedAt: new Date().toISOString(),
+    certifyCompleted,
+    stations,
+    policyIds,
+    personnelIds,
+    guides,
+    rollout,
+    training
+  };
 }
 
 function rolloutTrack(id, name, gates) {
@@ -3708,6 +3943,7 @@ function authenticateRequest(request, pathname) {
   const requiresSession = (REQUIRE_API_AUTH && pathname.startsWith("/api/") && !isPublicApiPath(pathname))
     || pathname.startsWith("/api/sessions")
     || (pathname.startsWith("/api/")
+    && !isPublicApiPath(pathname)
     && pathname !== "/api/auth/login"
     && pathname !== "/api/dev/reset"
     && (request.method !== "GET" || pathname === "/api/export" || pathname === "/api/persistence/export" || (pathname.startsWith("/api/files/") && pathname.endsWith("/download"))));
@@ -3729,7 +3965,9 @@ function isPublicApiPath(pathname) {
   return pathname === "/api/auth/login"
     || pathname === "/api/status"
     || pathname === "/api/deployment/build-info"
-    || pathname === "/api/bootstrap/public";
+    || pathname === "/api/admin/recovery-plan"
+    || pathname === "/api/bootstrap/public"
+    || pathname === "/api/account-requests";
 }
 
 function readBearerToken(header) {

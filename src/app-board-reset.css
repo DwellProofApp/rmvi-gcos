@@ -1,0 +1,4412 @@
+:root {
+  --app-bg: #f5f7fb;
+  --app-panel: #ffffff;
+  --app-panel-soft: #f9fbff;
+  --app-ink: #172033;
+  --app-muted: #5d6b82;
+  --app-line: #d8e0ed;
+  --app-blue: #2563eb;
+  --app-blue-soft: #e8f0ff;
+  --app-green: #16a34a;
+  --app-green-soft: #e9f8ef;
+  --app-amber: #d97706;
+  --app-amber-soft: #fff4df;
+  --app-red: #dc2626;
+  --app-red-soft: #fff0f0;
+}
+
+/* Fresh signed-in app reset: neutralize the older dark/stacked page skins without removing features. */
+html body #root main.app-shell.enterprise-shell:not(.admin-shell),
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) * {
+  box-sizing: border-box !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) {
+  display: grid !important;
+  grid-template-columns: 270px minmax(0, 1fr) !important;
+  width: 100% !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  background: var(--app-bg) !important;
+  color: var(--app-ink) !important;
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) h1,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) h2,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) h3,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) strong,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) b {
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) p,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) span,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) small,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) label,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) input,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) select,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) textarea,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button {
+  color: var(--app-muted) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button {
+  cursor: pointer !important;
+  font: inherit !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+  grid-column: 1 !important;
+  grid-row: 1 !important;
+  position: sticky !important;
+  top: 0 !important;
+  align-self: start !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 16px !important;
+  width: auto !important;
+  height: 100vh !important;
+  max-height: none !important;
+  overflow-y: auto !important;
+  padding: 18px 14px !important;
+  border-right: 1px solid #21344f !important;
+  background: #132238 !important;
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 10px 8px 16px !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand-mark {
+  width: 44px !important;
+  height: 44px !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  padding: 3px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand strong,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand span,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-group-label,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-switcher p {
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand strong {
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand span {
+  color: #b9c8dc !important;
+  font-size: 12px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-collapse-button {
+  min-height: 38px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 10px !important;
+  background: rgba(255, 255, 255, 0.07) !important;
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+  display: grid !important;
+  gap: 4px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-group-label,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-switcher p {
+  margin: 14px 0 6px 8px !important;
+  color: #8ca6c4 !important;
+  font-size: 10px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-option {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 38px !important;
+  padding: 9px 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  background: transparent !important;
+  color: #dbeafe !important;
+  text-align: left !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item span,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item svg,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-option span,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-option svg {
+  color: inherit !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item.active,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item:hover,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-option.selected,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-option:hover {
+  background: #2563eb !important;
+  border-color: #4f8bff !important;
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-switcher {
+  margin-top: auto !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace {
+  display: block !important;
+  min-width: 0 !important;
+  min-height: 100vh !important;
+  height: auto !important;
+  max-height: none !important;
+  overflow: visible !important;
+  padding: 18px !important;
+  background: var(--app-bg) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace > .topbar,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace > .user-topbar,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace > .section-banner,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace > .metric-grid {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace > section,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace > div,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .churchmail-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .reports-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approvals-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .tasks-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policies-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .global-command-center,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfers-workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .module-grid,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .dashboard-grid {
+  width: 100% !important;
+  max-width: 1480px !important;
+  min-width: 0 !important;
+  margin: 0 auto !important;
+  overflow: visible !important;
+  background: transparent !important;
+  color: var(--app-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .churchmail-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .reports-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approvals-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .tasks-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policies-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-enterprise,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .global-command-center,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfers-workspace {
+  display: grid !important;
+  grid-template-columns: minmax(210px, 0.85fr) minmax(0, 1.65fr) minmax(260px, 1fr) !important;
+  gap: 16px !important;
+  align-items: start !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .global-command-header,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-command-bar,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-command-bar,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approval-command-bar,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .task-command-bar,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policy-command-bar,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-command-bar,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-command-bar,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfer-command-bar {
+  grid-column: 1 / -1 !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 12px !important;
+  align-items: center !important;
+  min-height: 0 !important;
+  padding: 16px !important;
+  border: 1px solid var(--app-line) !important;
+  border-radius: 18px !important;
+  background: #ffffff !important;
+  color: var(--app-ink) !important;
+  box-shadow: 0 12px 32px rgba(15, 23, 42, 0.05) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .global-command-header h1,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-command-bar h1,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-command-bar h1,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approval-command-bar h1,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .task-command-bar h1,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policy-command-bar h1,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-command-bar h1,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-command-bar h1,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) h1 {
+  color: var(--app-ink) !important;
+  font-size: clamp(28px, 3vw, 44px) !important;
+  line-height: 1.04 !important;
+  font-weight: 900 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .global-command-header p,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-command-bar p,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-command-bar p,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approval-command-bar p,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .task-command-bar p,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policy-command-bar p,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-command-bar p,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-command-bar p {
+  color: #475569 !important;
+  font-size: 15px !important;
+  line-height: 1.5 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .ops-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .command-module,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .command-record,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approval-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .task-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policy-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfer-nav-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfer-queue-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfer-inspector-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) article,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .table-row,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .data-table,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .message-item,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workflow-item,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approval-item,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-panel {
+  border: 1px solid var(--app-line) !important;
+  border-radius: 14px !important;
+  background: var(--app-panel) !important;
+  color: var(--app-ink) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .ops-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .command-module,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approval-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .task-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policy-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfer-nav-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfer-queue-panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfer-inspector-panel {
+  padding: 16px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .panel-header,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .command-column-head,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-panel-head,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-panel-head,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approval-panel-head,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .task-panel-head,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policy-panel-head,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-panel-head,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-panel-head {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-bottom: 12px !important;
+  padding: 0 !important;
+  border: 0 !important;
+  background: transparent !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .panel-header h2,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .panel-header h3,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .panel-header strong,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .command-column-head strong {
+  color: var(--app-ink) !important;
+  font-size: 17px !important;
+  font-weight: 900 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .status-pill,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .status,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .kind,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .severity,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .badge,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-badge,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-badge,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approval-badge {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  gap: 5px !important;
+  width: max-content !important;
+  padding: 5px 8px !important;
+  border: 1px solid #cbdaf2 !important;
+  border-radius: 999px !important;
+  background: var(--app-blue-soft) !important;
+  color: #1e40af !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-transform: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) input,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) select,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) textarea {
+  width: 100% !important;
+  min-height: 40px !important;
+  border: 1px solid var(--app-line) !important;
+  border-radius: 11px !important;
+  background: #ffffff !important;
+  color: var(--app-ink) !important;
+  padding: 9px 11px !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button:not(.nav-item):not(.station-option) {
+  min-height: 34px !important;
+  border: 1px solid var(--app-line) !important;
+  border-radius: 10px !important;
+  background: #ffffff !important;
+  color: var(--app-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button:not(.nav-item):not(.station-option):hover {
+  border-color: #b7c8e6 !important;
+  background: #f8fbff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .action-row,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .compact-actions,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .table-actions,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-actions-row {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .action-row button:first-child,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .compact-actions button:first-child,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .table-actions button:first-child,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-actions-row button:first-child {
+  background: var(--app-blue) !important;
+  border-color: var(--app-blue) !important;
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .table-row,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .data-table .table-row {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)) !important;
+  gap: 10px !important;
+  align-items: center !important;
+  padding: 10px 12px !important;
+  border-bottom: 1px solid #e6edf7 !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .table-head,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .table-row.table-head {
+  background: #f3f6fb !important;
+  color: #64748b !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+}
+
+@media (max-width: 1180px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+    position: relative !important;
+    display: grid !important;
+    grid-template-columns: minmax(180px, 1fr) minmax(170px, auto) !important;
+    grid-template-rows: auto auto !important;
+    align-items: center !important;
+    gap: 10px !important;
+    height: auto !important;
+    overflow: hidden !important;
+    padding: 12px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-switcher,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-collapse-button,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-group-label {
+    display: none !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand {
+    display: flex !important;
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    min-width: 0 !important;
+    padding: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand strong {
+    font-size: 15px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand span {
+    display: block !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip {
+    display: grid !important;
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    gap: 2px !important;
+    justify-items: end !important;
+    min-height: 58px !important;
+    padding: 10px 12px !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip strong {
+    color: #ffffff !important;
+    font-size: 13px !important;
+    line-height: 1.15 !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip span {
+    color: #b9c8dc !important;
+    font-size: 12px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+    display: flex !important;
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+    gap: 8px !important;
+    overflow-x: auto !important;
+    padding-bottom: 4px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item {
+    width: auto !important;
+    min-width: max-content !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .churchmail-enterprise,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .reports-enterprise,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approvals-enterprise,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .tasks-enterprise,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policies-enterprise,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-enterprise,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-enterprise,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .global-command-center,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfers-workspace {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+    grid-column: 1 !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip {
+    justify-items: start !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace {
+    padding: 12px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .global-command-header,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-command-bar,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .report-command-bar,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .approval-command-bar,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .task-command-bar,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .policy-command-bar,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .calendar-command-bar,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .personnel-command-bar,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .transfer-command-bar {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .global-command-header h1,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) h1 {
+    font-size: 34px !important;
+  }
+}
+
+/* Final scrub for old module-specific dark cards that remain inside individual pages. */
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .mail-nav-metrics article,
+  .mail-queue-toolbar,
+  .mail-inspector-header,
+  .mail-inspector-card,
+  .mail-inspector-grid article,
+  .mail-audit-feed article,
+  .mail-action-board,
+  .mail-inspector-compose,
+  .report-nav-metrics article,
+  .report-queue-toolbar,
+  .report-inspector-header,
+  .report-inspector-card,
+  .approval-nav-metrics article,
+  .approval-queue-toolbar,
+  .approval-inspector-header,
+  .approval-inspector-card,
+  .task-nav-metrics article,
+  .task-board-toolbar,
+  .task-inspector-header,
+  .task-inspector-card,
+  .policy-nav-metrics article,
+  .policy-registry-toolbar,
+  .policy-inspector-header,
+  .policy-inspector-card,
+  .calendar-nav-metrics article,
+  .calendar-workspace-toolbar,
+  .calendar-inspector-header,
+  .calendar-inspector-card,
+  .personnel-nav-metrics article,
+  .personnel-directory-toolbar,
+  .personnel-inspector-header,
+  .personnel-inspector-card
+) {
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 1px solid var(--app-line) !important;
+  color: var(--app-ink) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .mail-nav-metrics article,
+  .mail-inspector-grid article,
+  .mail-audit-feed article,
+  .report-nav-metrics article,
+  .approval-nav-metrics article,
+  .task-nav-metrics article,
+  .policy-nav-metrics article,
+  .calendar-nav-metrics article,
+  .personnel-nav-metrics article
+) {
+  border-radius: 12px !important;
+  padding: 10px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .mail-queue-toolbar,
+  .mail-inspector-header,
+  .report-queue-toolbar,
+  .report-inspector-header,
+  .approval-queue-toolbar,
+  .approval-inspector-header,
+  .task-board-toolbar,
+  .task-inspector-header,
+  .policy-registry-toolbar,
+  .policy-inspector-header,
+  .calendar-workspace-toolbar,
+  .calendar-inspector-header,
+  .personnel-directory-toolbar,
+  .personnel-inspector-header
+) {
+  border-radius: 14px !important;
+  padding: 12px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .mail-nav-metrics article,
+  .mail-queue-toolbar,
+  .mail-inspector-header,
+  .mail-inspector-card,
+  .mail-inspector-grid article,
+  .mail-audit-feed article,
+  .mail-action-board,
+  .mail-inspector-compose,
+  .report-nav-metrics article,
+  .report-queue-toolbar,
+  .report-inspector-header,
+  .report-inspector-card,
+  .approval-nav-metrics article,
+  .approval-queue-toolbar,
+  .approval-inspector-header,
+  .approval-inspector-card,
+  .task-nav-metrics article,
+  .task-board-toolbar,
+  .task-inspector-header,
+  .task-inspector-card,
+  .policy-nav-metrics article,
+  .policy-registry-toolbar,
+  .policy-inspector-header,
+  .policy-inspector-card,
+  .calendar-nav-metrics article,
+  .calendar-workspace-toolbar,
+  .calendar-inspector-header,
+  .calendar-inspector-card,
+  .personnel-nav-metrics article,
+  .personnel-directory-toolbar,
+  .personnel-inspector-header,
+  .personnel-inspector-card
+) * {
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .mail-nav-metrics article small,
+  .mail-queue-toolbar small,
+  .mail-inspector-header small,
+  .mail-inspector-card small,
+  .mail-inspector-grid article small,
+  .mail-audit-feed article small,
+  .report-nav-metrics article small,
+  .approval-nav-metrics article small,
+  .task-nav-metrics article small,
+  .policy-nav-metrics article small,
+  .calendar-nav-metrics article small,
+  .personnel-nav-metrics article small
+) {
+  color: var(--app-muted) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-nav-metrics article,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-inspector-grid article,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-audit-feed article {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  background: #ffffff !important;
+  border-color: var(--app-line) !important;
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-nav-metrics article *,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-inspector-grid article *,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .mail-audit-feed article * {
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace article:not(.global-kpi),
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .panel,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .module-card,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .module-side,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .empty-state,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .metric-grid article {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: var(--app-line) !important;
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace article:not(.global-kpi) *,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .panel *,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .module-card *,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .module-side *,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .empty-state *,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .metric-grid article * {
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6,
+  p,
+  span,
+  small,
+  strong,
+  b,
+  label,
+  summary,
+  li,
+  dt,
+  dd,
+  th,
+  td
+) {
+  color: var(--app-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  .transfer-stat-strip,
+  .transfer-command-bar,
+  .transfer-nav-panel,
+  .transfer-queue-panel,
+  .transfer-inspector-panel,
+  .transfer-create-panel,
+  .transfer-profile-card,
+  .transfer-route-map,
+  .transfer-detail-grid,
+  .transfer-lower-grid,
+  .transfer-table,
+  .transfer-table-head,
+  .transfer-row,
+  .sync-stage,
+  .security-strip,
+  .workflow-stage,
+  .status-strip,
+  .action-strip,
+  .detail-strip,
+  .summary-strip,
+  .inspector-grid article,
+  .inspector-card,
+  .queue-card,
+  .record-card,
+  .activity-card,
+  .control-card,
+  details,
+  details summary
+) {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: var(--app-line) !important;
+  color: var(--app-ink) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  .transfer-stat-strip,
+  .transfer-command-bar,
+  .transfer-nav-panel,
+  .transfer-queue-panel,
+  .transfer-inspector-panel,
+  .transfer-create-panel,
+  .transfer-profile-card,
+  .transfer-route-map,
+  .transfer-detail-grid,
+  .transfer-lower-grid,
+  .transfer-table,
+  .transfer-table-head,
+  .transfer-row,
+  .sync-stage,
+  .security-strip,
+  .workflow-stage,
+  .status-strip,
+  .action-strip,
+  .detail-strip,
+  .summary-strip,
+  .inspector-grid article,
+  .inspector-card,
+  .queue-card,
+  .record-card,
+  .activity-card,
+  .control-card,
+  details,
+  details summary
+) * {
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfers-workspace,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-shell,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-command-bar,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-nav-panel,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-queue-panel,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-inspector-panel,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-create-panel,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-row,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-profile-card,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-route-map,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-detail-grid > *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-lower-grid > * {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: var(--app-line) !important;
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfers-workspace *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-shell *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-command-bar *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-nav-panel *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-queue-panel *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-inspector-panel *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-create-panel *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-row *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-profile-card *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-route-map *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-detail-grid > * *,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) .transfer-lower-grid > * * {
+  color: var(--app-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  [class*="-workspace"],
+  [class*="-shell"]
+) {
+  background: transparent !important;
+  background-image: none !important;
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  [class*="-command-bar"],
+  [class*="-toolbar"],
+  [class*="-nav-panel"],
+  [class*="-queue-panel"],
+  [class*="-inspector-panel"],
+  [class*="-create-panel"],
+  [class*="-profile-card"],
+  [class*="-route-map"],
+  [class*="-stat-strip"],
+  [class*="-status-strip"],
+  [class*="-summary-strip"],
+  [class*="-action-strip"],
+  [class*="-detail-strip"],
+  [class*="-table"],
+  [class*="-table-head"],
+  [class*="-row"],
+  [class*="-card"],
+  [class*="-feed"],
+  [class*="-timeline"],
+  [class*="-board"],
+  [class*="-panel"],
+  [class*="-module"],
+  [class*="-record"],
+  [class*="-item"],
+  [class*="-metric"],
+  [class*="-control"],
+  [class*="-stage"],
+  [class*="-grid"] > article,
+  [class*="-grid"] > div,
+  article,
+  aside,
+  form,
+  details
+) {
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  background-image: none !important;
+  border-color: var(--app-line) !important;
+  color: var(--app-ink) !important;
+  box-shadow: 0 8px 22px rgba(15, 23, 42, 0.04) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace *:not(svg):not(path):not(circle):not(line):not(polyline):not(rect) {
+  color: var(--app-ink) !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  small,
+  .muted,
+  [class*="muted"],
+  [class*="meta"],
+  [class*="hint"],
+  [class*="subtle"]
+) {
+  color: var(--app-muted) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  .badge,
+  [class*="badge"],
+  .pill,
+  [class*="pill"],
+  .chip,
+  [class*="chip"],
+  .status,
+  [class*="status"]
+) {
+  background: #eef4ff !important;
+  background-image: none !important;
+  border-color: #d7e4fb !important;
+  color: #19345d !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  [class*="-row"],
+  [class*="-item"],
+  [class*="-card"],
+  [class*="-record"]
+) :is(strong, b) {
+  display: inline-block !important;
+  margin-right: 6px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  [class*="-row"],
+  [class*="-item"],
+  [class*="-card"],
+  [class*="-record"]
+) :is(p, span, small) {
+  line-height: 1.45 !important;
+}
+
+/* Keep the signed-in app readable without imposing a heavy redesign layer. */
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace {
+  display: block !important;
+  min-width: 0 !important;
+  width: auto !important;
+  overflow: auto !important;
+  background: #f5f7fb !important;
+  background-image: none !important;
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace > .topbar {
+  display: grid !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: auto !important;
+  min-height: 72px !important;
+  margin: 0 0 14px !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  border: 1px solid var(--app-line) !important;
+  border-radius: 16px !important;
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace > .topbar * {
+  color: var(--app-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-tasks:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-policies:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-calendar:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-personnel:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-escalations:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-ai-desk:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-live-comms:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-hierarchy:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-offices:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-transfers:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-archive:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) > .workspace,
+html body #root main.app-shell.enterprise-shell.section-account-settings:not(.admin-shell) > .workspace {
+  display: block !important;
+  flex-direction: initial !important;
+  gap: 0 !important;
+  min-width: 0 !important;
+  width: auto !important;
+  overflow: auto !important;
+  background: #f5f7fb !important;
+  background-image: none !important;
+  color: var(--app-ink) !important;
+}
+
+/* Executive command reset: hide engineering fragments behind a calm command IA. */
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) > .workspace > .topbar {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command {
+  --exec-ink: #172033;
+  --exec-muted: #65728a;
+  --exec-line: #dce5f2;
+  --exec-panel: #ffffff;
+  --exec-soft: #f8fbff;
+  --exec-blue: #2563eb;
+  --exec-gold: #b7791f;
+  width: 100% !important;
+  max-width: 1320px !important;
+  margin: 0 auto !important;
+  display: grid !important;
+  gap: 16px !important;
+  color: var(--exec-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command * {
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.38fr) !important;
+  gap: 18px !important;
+  min-height: 250px !important;
+  padding: clamp(24px, 4vw, 44px) !important;
+  border: 1px solid var(--exec-line) !important;
+  border-radius: 30px !important;
+  background:
+    radial-gradient(circle at 85% 8%, rgba(37, 99, 235, 0.14), transparent 30rem),
+    linear-gradient(145deg, #ffffff, #f7faff) !important;
+  box-shadow: 0 26px 70px rgba(31, 48, 76, 0.12) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command-identity span,
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-zone-title span,
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-secondary span {
+  color: var(--exec-gold) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command h1,
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command h2,
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command strong,
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command b {
+  color: var(--exec-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command h1 {
+  margin: 10px 0 !important;
+  font-size: clamp(44px, 7vw, 88px) !important;
+  line-height: 0.95 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command p,
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command span,
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command small,
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command li {
+  color: var(--exec-muted) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command-state {
+  display: grid !important;
+  place-items: center !important;
+  gap: 6px !important;
+  padding: 22px !important;
+  border: 1px solid rgba(37, 99, 235, 0.16) !important;
+  border-radius: 24px !important;
+  background: var(--exec-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command-state strong {
+  color: #166534 !important;
+  font-size: 18px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command-state b {
+  font-size: 58px !important;
+  line-height: 1 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.35fr) minmax(250px, 0.85fr) minmax(260px, 0.85fr) !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-zone,
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-secondary article {
+  padding: 20px !important;
+  border: 1px solid var(--exec-line) !important;
+  border-radius: 24px !important;
+  background: var(--exec-panel) !important;
+  box-shadow: 0 18px 48px rgba(31, 48, 76, 0.1) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-zone-title {
+  display: flex !important;
+  align-items: end !important;
+  justify-content: space-between !important;
+  gap: 14px !important;
+  margin-bottom: 16px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-zone-title h2 {
+  margin: 0 !important;
+  font-size: 26px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-overview-list {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-overview-list article {
+  display: grid !important;
+  grid-template-columns: 58px minmax(0, 1fr) !important;
+  align-items: center !important;
+  gap: 12px !important;
+  min-height: 62px !important;
+  padding: 12px !important;
+  border: 1px solid var(--exec-line) !important;
+  border-radius: 16px !important;
+  background: var(--exec-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-overview-list article strong {
+  font-size: 30px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-brief {
+  display: flex !important;
+  gap: 12px !important;
+  margin-top: 14px !important;
+  padding: 14px !important;
+  border-radius: 18px !important;
+  background: #eef5ff !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-risk-status {
+  display: grid !important;
+  gap: 4px !important;
+  padding: 16px !important;
+  border-radius: 18px !important;
+  background: #ecfdf3 !important;
+  border: 1px solid #bbf7d0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-risk-status.medium {
+  background: #fff7e6 !important;
+  border-color: #f8d78c !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-risk-status.high {
+  background: #fff0f0 !important;
+  border-color: #fecaca !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-risk-list {
+  display: grid !important;
+  gap: 10px !important;
+  margin: 16px 0 0 !important;
+  padding: 0 !important;
+  list-style: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-risk-list li {
+  padding: 12px !important;
+  border: 1px solid var(--exec-line) !important;
+  border-radius: 14px !important;
+  background: var(--exec-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-action-list {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-action-list button {
+  display: grid !important;
+  grid-template-columns: 36px minmax(0, 1fr) !important;
+  gap: 2px 10px !important;
+  align-items: center !important;
+  min-height: 68px !important;
+  padding: 13px !important;
+  border: 1px solid rgba(37, 99, 235, 0.18) !important;
+  border-radius: 16px !important;
+  background: var(--exec-soft) !important;
+  text-align: left !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-action-list button svg {
+  grid-row: span 2 !important;
+  color: var(--exec-blue) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-secondary {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 16px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-secondary article {
+  display: grid !important;
+  gap: 7px !important;
+}
+
+@media (max-width: 1080px) {
+  html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command-hero,
+  html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-command-grid,
+  html body #root main.app-shell.enterprise-shell.section-control-center:not(.admin-shell) .executive-secondary {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Reports command reset: keep 59 templates available without dumping the
+   entire library onto the page. */
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) > .workspace > .topbar {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-workspace {
+  --report-ink: #172033;
+  --report-muted: #64728a;
+  --report-line: #dce5f2;
+  --report-panel: #ffffff;
+  --report-soft: #f8fbff;
+  --report-blue: #2563eb;
+  --report-gold: #b7791f;
+  width: 100% !important;
+  max-width: 1440px !important;
+  margin: 0 auto !important;
+  display: grid !important;
+  gap: 16px !important;
+  color: var(--report-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-workspace * {
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-hero {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  min-height: 150px !important;
+  padding: 24px !important;
+  border: 1px solid var(--report-line) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 84% 0%, rgba(37, 99, 235, 0.13), transparent 28rem),
+    linear-gradient(145deg, #ffffff, #f7faff) !important;
+  box-shadow: 0 22px 60px rgba(31, 48, 76, 0.12) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-hero span,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-zone-title span,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-active-template span,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-submit-focus > span,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-work-queue > div span {
+  color: var(--report-gold) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-hero h1 {
+  margin: 6px 0 !important;
+  color: var(--report-ink) !important;
+  font-size: clamp(32px, 5vw, 58px) !important;
+  line-height: 1 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-workspace :is(p, small, label span, article span, button span) {
+  color: var(--report-muted) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-workspace :is(h1, h2, h3, strong, b) {
+  color: var(--report-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-status {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(82px, 1fr)) !important;
+  gap: 8px !important;
+  min-width: min(520px, 48%) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-status article {
+  display: grid !important;
+  gap: 3px !important;
+  min-height: 78px !important;
+  padding: 12px !important;
+  border: 1px solid var(--report-line) !important;
+  border-radius: 16px !important;
+  background: var(--report-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-status strong {
+  font-size: 28px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-grid {
+  display: grid !important;
+  grid-template-columns: minmax(220px, 0.72fr) minmax(0, 1.48fr) minmax(280px, 0.9fr) !important;
+  gap: 16px !important;
+  align-items: start !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-zone {
+  min-height: 0 !important;
+  max-height: calc(100vh - 240px) !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+  border: 1px solid var(--report-line) !important;
+  border-radius: 24px !important;
+  background: var(--report-panel) !important;
+  box-shadow: 0 18px 48px rgba(31, 48, 76, 0.1) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-zone-title {
+  display: flex !important;
+  align-items: end !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  margin-bottom: 14px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-zone-title h2 {
+  margin: 0 !important;
+  font-size: 24px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-search,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-calm-form label,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-submit-focus label {
+  display: grid !important;
+  gap: 6px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-search {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 42px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--report-line) !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-search input,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-calm-form input,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-calm-form textarea,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-submit-focus input {
+  width: 100% !important;
+  min-height: 38px !important;
+  border: 1px solid var(--report-line) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: var(--report-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-search input {
+  border: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-category-tabs,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-submit-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 14px 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-category-tabs button,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-template-compact-list button,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-work-queue button,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-submit-metrics article {
+  display: grid !important;
+  gap: 3px !important;
+  min-height: 54px !important;
+  padding: 10px !important;
+  border: 1px solid var(--report-line) !important;
+  border-radius: 14px !important;
+  background: var(--report-soft) !important;
+  text-align: left !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-template-compact-list,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-calm-form,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-section-cards,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-work-queue {
+  display: grid !important;
+  gap: 8px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-template-compact-list button.selected,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-category-tabs button.active,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-work-queue button.active {
+  border-color: rgba(37, 99, 235, 0.28) !important;
+  background: #eaf2ff !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-more-note {
+  padding: 12px !important;
+  border: 1px dashed var(--report-line) !important;
+  border-radius: 14px !important;
+  color: var(--report-muted) !important;
+  background: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-active-template,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-submit-focus {
+  display: grid !important;
+  gap: 12px !important;
+  margin-bottom: 14px !important;
+  padding: 14px !important;
+  border: 1px solid var(--report-line) !important;
+  border-radius: 18px !important;
+  background: var(--report-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-active-template {
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  align-items: center !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-active-template strong {
+  display: block !important;
+  margin: 4px 0 !important;
+  font-size: 24px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-form-meta {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-section-cards details {
+  border: 1px solid var(--report-line) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  overflow: hidden !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-section-cards summary {
+  display: grid !important;
+  grid-template-columns: 42px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 52px !important;
+  padding: 10px 12px !important;
+  list-style: none !important;
+  cursor: pointer !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-section-cards summary::-webkit-details-marker {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-section-cards textarea,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-attestation-field textarea {
+  min-height: 96px !important;
+  padding: 10px !important;
+  resize: vertical !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-primary-actions,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-submit-actions {
+  display: flex !important;
+  align-items: center !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-primary-actions > div {
+  margin-right: auto !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-primary-actions button,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-submit-actions button,
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-more-actions summary {
+  min-height: 38px !important;
+  padding: 0 12px !important;
+  border: 1px solid rgba(37, 99, 235, 0.18) !important;
+  border-radius: 12px !important;
+  background: #eaf2ff !important;
+  color: #1e3a8a !important;
+  font-weight: 800 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-more-actions {
+  flex-basis: 100% !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-more-actions summary {
+  display: inline-flex !important;
+  align-items: center !important;
+  list-style: none !important;
+  cursor: pointer !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-more-actions summary::-webkit-details-marker {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-more-actions div {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+}
+
+@media (max-width: 1120px) {
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-hero,
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-hero {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-status {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-zone {
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-command-status,
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-category-tabs,
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-active-template,
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-form-meta,
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-submit-metrics,
+  html body #root main.app-shell.enterprise-shell.section-reports:not(.admin-shell) .report-more-actions div {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Communication IA reset: keep the product shell quiet and make ChurchMail feel
+   like a secure governance inbox instead of exposed system output. */
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-directory-card {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+  width: 100% !important;
+  min-height: 82px !important;
+  padding: 13px !important;
+  border: 1px solid rgba(255, 255, 255, 0.16) !important;
+  border-radius: 16px !important;
+  background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.04)) !important;
+  text-align: left !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-directory-card strong {
+  display: block !important;
+  color: #ffffff !important;
+  font-size: 13px !important;
+  line-height: 1.2 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-directory-card span,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-directory-card svg {
+  color: #b9c8dc !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) {
+  --mail-panel: #ffffff;
+  --mail-panel-soft: #f8fbff;
+  --mail-ink: #172033;
+  --mail-muted: #627089;
+  --mail-line: #d9e2ef;
+  --mail-blue-soft: #e9f1ff;
+  --mail-gold: #b7791f;
+  --mail-red: #dc2626;
+  --mail-red-soft: #fff0f0;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .churchmail-enterprise {
+  display: grid !important;
+  grid-template-columns: minmax(190px, 0.66fr) minmax(0, 1.42fr) minmax(280px, 0.92fr) !important;
+  grid-template-rows: auto minmax(0, 1fr) !important;
+  gap: 14px !important;
+  min-height: calc(100vh - 110px) !important;
+  width: 100% !important;
+  max-width: 1480px !important;
+  margin: 0 auto !important;
+  color: var(--mail-ink) !important;
+  background: transparent !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) > .workspace > .topbar {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-executive-header {
+  grid-column: 1 / -1 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 18px !important;
+  min-height: 112px !important;
+  padding: 22px !important;
+  border: 1px solid var(--mail-line) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 85% 0%, rgba(37, 99, 235, 0.13), transparent 28rem),
+    linear-gradient(145deg, #ffffff, #f7faff) !important;
+  box-shadow: 0 22px 60px rgba(31, 48, 76, 0.12) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-executive-header span,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-brand-block span,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-section-title span,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-queue-toolbar span {
+  color: var(--mail-gold) !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  text-transform: uppercase !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-executive-header h1 {
+  margin: 4px 0 6px !important;
+  color: var(--mail-ink) !important;
+  font-size: clamp(28px, 4vw, 48px) !important;
+  line-height: 1 !important;
+  white-space: normal !important;
+  overflow-wrap: anywhere !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-executive-header p {
+  margin: 0 !important;
+  color: var(--mail-muted) !important;
+  font-size: 14px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-overview-strip {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(74px, 1fr)) !important;
+  gap: 8px !important;
+  min-width: min(460px, 48%) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-overview-strip article {
+  display: grid !important;
+  gap: 3px !important;
+  padding: 12px !important;
+  border: 1px solid var(--mail-line) !important;
+  border-radius: 16px !important;
+  background: var(--mail-panel-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-overview-strip article.attention {
+  border-color: rgba(220, 38, 38, 0.24) !important;
+  background: var(--mail-red-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-overview-strip strong {
+  color: var(--mail-ink) !important;
+  font-size: 26px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-overview-strip span {
+  color: var(--mail-muted) !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  text-transform: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-nav-panel,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-queue-panel,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-panel {
+  min-height: 0 !important;
+  max-height: calc(100vh - 238px) !important;
+  overflow-y: auto !important;
+  border: 1px solid var(--mail-line) !important;
+  border-radius: 24px !important;
+  background: var(--mail-panel) !important;
+  box-shadow: 0 18px 48px rgba(31, 48, 76, 0.1) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-nav-panel,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-panel {
+  padding: 14px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-brand-block {
+  display: flex !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 62px !important;
+  padding: 12px !important;
+  border-radius: 18px !important;
+  background: var(--mail-blue-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-brand-block strong {
+  color: var(--mail-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-folder-list {
+  display: grid !important;
+  gap: 7px !important;
+  margin: 14px 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-folder-list button {
+  display: grid !important;
+  grid-template-columns: 18px minmax(0, 1fr) auto !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 38px !important;
+  padding: 9px 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 12px !important;
+  background: transparent !important;
+  text-align: left !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-folder-list button.active,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-folder-list button:hover {
+  border-color: rgba(37, 99, 235, 0.16) !important;
+  background: var(--mail-blue-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-folder-list span,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-folder-list svg,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-folder-list b {
+  color: var(--mail-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-nav-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin: 12px 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-nav-metrics article {
+  min-height: 72px !important;
+  padding: 10px !important;
+  border: 1px solid var(--mail-line) !important;
+  border-radius: 14px !important;
+  background: var(--mail-panel-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-quick-compose {
+  display: grid !important;
+  gap: 8px !important;
+  margin-top: 14px !important;
+  padding: 12px !important;
+  border: 1px solid var(--mail-line) !important;
+  border-radius: 18px !important;
+  background: var(--mail-panel-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) :is(.mail-quick-compose, .mail-queue-toolbar, .mail-inspector-compose) :is(input, select) {
+  min-height: 38px !important;
+  border: 1px solid var(--mail-line) !important;
+  border-radius: 11px !important;
+  background: #ffffff !important;
+  color: var(--mail-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-queue-toolbar {
+  position: sticky !important;
+  top: 0 !important;
+  z-index: 4 !important;
+  display: grid !important;
+  grid-template-columns: minmax(150px, 0.7fr) minmax(220px, 1fr) repeat(3, minmax(112px, 0.42fr)) auto !important;
+  gap: 8px !important;
+  align-items: center !important;
+  padding: 14px !important;
+  border-bottom: 1px solid var(--mail-line) !important;
+  background: rgba(255, 255, 255, 0.94) !important;
+  backdrop-filter: blur(14px) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) :is(.mail-queue-toolbar, .mail-inspector-header, .mail-message-row, .mail-inspector-card, .mail-inspector-grid) strong,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-header h2 {
+  color: var(--mail-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-message-list {
+  display: grid !important;
+  gap: 8px !important;
+  padding: 12px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-message-row {
+  display: grid !important;
+  grid-template-columns: 84px minmax(0, 1fr) 70px 110px 80px 94px 20px !important;
+  align-items: center !important;
+  gap: 10px !important;
+  min-height: 70px !important;
+  padding: 10px 12px !important;
+  border: 1px solid var(--mail-line) !important;
+  border-radius: 16px !important;
+  background: #ffffff !important;
+  text-align: left !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-message-row.selected,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-message-row:hover {
+  border-color: rgba(37, 99, 235, 0.24) !important;
+  background: #f8fbff !important;
+  box-shadow: 0 12px 32px rgba(37, 99, 235, 0.08) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) :is(.mail-kind, .mail-priority, .status-pill) {
+  display: inline-flex !important;
+  justify-content: center !important;
+  align-items: center !important;
+  min-height: 26px !important;
+  padding: 5px 8px !important;
+  border-radius: 999px !important;
+  background: var(--mail-blue-soft) !important;
+  color: #1d4ed8 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-priority.high,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-priority.critical {
+  background: var(--mail-red-soft) !important;
+  color: var(--mail-red) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-row-title {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-row-title strong,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-row-title small,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-attachment {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-header,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-card,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-action-board,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-compose {
+  margin-bottom: 12px !important;
+  padding: 13px !important;
+  border: 1px solid var(--mail-line) !important;
+  border-radius: 18px !important;
+  background: var(--mail-panel-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-header {
+  display: flex !important;
+  align-items: flex-start !important;
+  gap: 12px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-header h2 {
+  margin: 4px 0 !important;
+  font-size: 22px !important;
+  line-height: 1.12 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) :is(.mail-inspector-header p, .mail-inspector-card p, .mail-message-row small, .mail-row-time, .mail-attachment) {
+  color: var(--mail-muted) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin-bottom: 12px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-grid article {
+  min-height: 68px !important;
+  padding: 10px !important;
+  border: 1px solid var(--mail-line) !important;
+  border-radius: 14px !important;
+  background: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-action-board {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-action-board .mail-section-title,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-more-actions {
+  grid-column: 1 / -1 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-action-board button,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-more-actions summary,
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-quick-compose button {
+  min-height: 38px !important;
+  border: 1px solid rgba(37, 99, 235, 0.18) !important;
+  border-radius: 12px !important;
+  background: var(--mail-blue-soft) !important;
+  color: #1e3a8a !important;
+  font-weight: 800 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-more-actions summary {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  list-style: none !important;
+  cursor: pointer !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-more-actions summary::-webkit-details-marker {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-more-actions div {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+  margin-top: 8px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-audit-feed {
+  display: grid !important;
+  gap: 7px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-audit-feed article {
+  display: grid !important;
+  grid-template-columns: 8px minmax(0, 0.45fr) minmax(0, 1fr) !important;
+  gap: 8px !important;
+  align-items: center !important;
+  min-height: 34px !important;
+}
+
+@media (max-width: 1080px) {
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .churchmail-enterprise {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto auto auto auto !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-nav-panel,
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-queue-panel,
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-inspector-panel {
+    max-height: none !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-executive-header {
+    align-items: flex-start !important;
+    flex-direction: column !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-overview-strip {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-executive-header {
+    min-height: 0 !important;
+    padding: 18px !important;
+    border-radius: 22px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-executive-header h1 {
+    font-size: 30px !important;
+    line-height: 1.05 !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-queue-toolbar,
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-message-row,
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-overview-strip,
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-action-board,
+  html body #root main.app-shell.enterprise-shell.section-churchmail:not(.admin-shell) .mail-more-actions div {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+/* Shell identity must remain legible in narrow app views. Older mobile rules
+   center the logo and hide the brand text, which makes the product feel like
+   disconnected icon navigation. */
+@media (max-width: 760px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+    grid-template-columns: minmax(0, 1fr) minmax(168px, auto) !important;
+    grid-template-rows: auto auto !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    display: flex !important;
+    justify-content: flex-start !important;
+    align-items: center !important;
+    width: 100% !important;
+    min-height: 58px !important;
+    padding: 8px !important;
+    border: 1px solid rgba(255, 255, 255, 0.14) !important;
+    border-radius: 16px !important;
+    background: rgba(255, 255, 255, 0.07) !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand > div:last-child {
+    display: grid !important;
+    gap: 2px !important;
+    min-width: 0 !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand strong {
+    color: #ffffff !important;
+    font-size: 14px !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand span {
+    display: block !important;
+    color: #b9c8dc !important;
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    justify-items: end !important;
+    width: 100% !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+    grid-column: 1 / -1 !important;
+    grid-row: 2 !important;
+  }
+}
+
+@media (max-width: 480px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .brand,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+    grid-column: 1 !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip {
+    grid-row: 2 !important;
+    justify-items: start !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+    grid-row: 3 !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.08), rgba(255, 255, 255, 0.035)), #15243a !important;
+    background-color: #15243a !important;
+    border-color: rgba(255, 255, 255, 0.16) !important;
+    box-shadow: none !important;
+    color: #ffffff !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button .brand-mark {
+    flex: 0 0 40px !important;
+    width: 40px !important;
+    height: 40px !important;
+    background: #ffffff !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button > div:last-child strong {
+    display: block !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button > div:last-child span {
+    display: block !important;
+    color: #c7d6ea !important;
+    opacity: 1 !important;
+  }
+}
+
+/* Approval command reset: expose the approval engine as three responsibilities
+   instead of one stacked system-output page. */
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > .workspace > .topbar {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-workspace {
+  --approval-ink: #172033;
+  --approval-muted: #61708a;
+  --approval-line: rgba(23, 32, 51, 0.11);
+  --approval-panel: rgba(255, 255, 255, 0.94);
+  --approval-panel-soft: rgba(248, 250, 252, 0.92);
+  --approval-gold: #c69122;
+  --approval-blue: #2457c5;
+  --approval-red: #c24132;
+  display: grid !important;
+  gap: 16px !important;
+  width: 100% !important;
+  max-width: 1480px !important;
+  margin: 0 auto !important;
+  color: var(--approval-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1.15fr) minmax(420px, 0.85fr) !important;
+  gap: 16px !important;
+  align-items: stretch !important;
+  padding: 22px !important;
+  border: 1px solid rgba(255, 255, 255, 0.74) !important;
+  border-radius: 26px !important;
+  background:
+    radial-gradient(circle at 8% 10%, rgba(198, 145, 34, 0.22), transparent 30%),
+    linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(242, 246, 252, 0.91)) !important;
+  box-shadow: 0 20px 55px rgba(15, 23, 42, 0.12) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-hero h1 {
+  margin: 6px 0 8px !important;
+  max-width: 680px !important;
+  color: #111827 !important;
+  font-size: clamp(28px, 4vw, 48px) !important;
+  line-height: 1.03 !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-hero p {
+  max-width: 760px !important;
+  margin: 0 !important;
+  color: var(--approval-muted) !important;
+  font-size: 15px !important;
+  line-height: 1.55 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-eyebrow,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone-title span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card > span {
+  color: #8a6417 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-identity-line {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 9px !important;
+  align-items: center !important;
+  margin-top: 18px !important;
+  color: #34445f !important;
+  font-size: 13px !important;
+  font-weight: 800 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-identity-line i {
+  width: 5px !important;
+  height: 5px !important;
+  border-radius: 999px !important;
+  background: rgba(198, 145, 34, 0.9) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 10px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics article,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-grid article,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact {
+  border: 1px solid var(--approval-line) !important;
+  border-radius: 18px !important;
+  background: var(--approval-panel) !important;
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics article {
+  display: grid !important;
+  gap: 3px !important;
+  min-height: 112px !important;
+  padding: 15px !important;
+  background: rgba(255, 255, 255, 0.72) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics article.attention {
+  border-color: rgba(194, 65, 50, 0.22) !important;
+  background: linear-gradient(135deg, rgba(254, 242, 242, 0.92), rgba(255, 255, 255, 0.76)) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-grid span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact label span {
+  color: var(--approval-muted) !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics strong {
+  color: #111827 !important;
+  font-size: 36px !important;
+  line-height: 1 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics small {
+  color: var(--approval-muted) !important;
+  font-size: 12px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-grid {
+  display: grid !important;
+  grid-template-columns: minmax(230px, 0.7fr) minmax(0, 1.55fr) minmax(315px, 0.95fr) !important;
+  gap: 16px !important;
+  align-items: start !important;
+  min-height: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone {
+  display: grid !important;
+  gap: 12px !important;
+  align-content: start !important;
+  min-width: 0 !important;
+  max-height: calc(100vh - 270px) !important;
+  overflow-y: auto !important;
+  padding: 16px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone-title {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 10px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone-title strong {
+  color: #1f2a44 !important;
+  font-size: 13px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-search {
+  display: flex !important;
+  align-items: center !important;
+  gap: 8px !important;
+  min-height: 42px !important;
+  padding: 0 12px !important;
+  border: 1px solid var(--approval-line) !important;
+  border-radius: 14px !important;
+  background: #f8fafc !important;
+  color: #475569 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-search input,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact input {
+  width: 100% !important;
+  min-width: 0 !important;
+  border: 0 !important;
+  outline: 0 !important;
+  background: transparent !important;
+  color: #172033 !important;
+  font: inherit !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-search input::placeholder {
+  color: #8794a8 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-nav {
+  display: grid !important;
+  gap: 7px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-nav button {
+  display: grid !important;
+  grid-template-columns: 22px minmax(0, 1fr) auto !important;
+  gap: 8px !important;
+  align-items: center !important;
+  min-height: 40px !important;
+  padding: 0 10px !important;
+  border: 1px solid transparent !important;
+  border-radius: 13px !important;
+  background: transparent !important;
+  color: #43536d !important;
+  font-weight: 800 !important;
+  text-align: left !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-nav button.active {
+  border-color: rgba(36, 87, 197, 0.18) !important;
+  background: rgba(36, 87, 197, 0.09) !important;
+  color: #1d4ed8 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-nav button.danger {
+  color: #9f3127 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact {
+  display: grid !important;
+  gap: 10px !important;
+  padding: 14px !important;
+  background: var(--approval-panel-soft) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact label {
+  display: grid !important;
+  gap: 5px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact input {
+  min-height: 38px !important;
+  padding: 0 10px !important;
+  border: 1px solid var(--approval-line) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact small {
+  color: #1d4ed8 !important;
+  font-weight: 800 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) :is(.approval-create-compact button, .approval-queue-toolbar-clean button, .approval-row-controls button, .approval-row-controls summary, .approval-review-actions button, .approval-review-actions summary) {
+  min-height: 36px !important;
+  border: 1px solid rgba(36, 87, 197, 0.2) !important;
+  border-radius: 12px !important;
+  background: rgba(36, 87, 197, 0.09) !important;
+  color: #1d4ed8 !important;
+  font-weight: 900 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) :is(.approval-create-compact button, .approval-queue-toolbar-clean button, .approval-row-controls button, .approval-row-controls summary, .approval-review-actions button, .approval-review-actions summary):disabled {
+  opacity: 0.48 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-queue-toolbar-clean {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-list {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-row {
+  display: grid !important;
+  grid-template-columns: minmax(125px, 0.7fr) minmax(180px, 1.6fr) minmax(90px, 0.55fr) minmax(84px, 0.42fr) auto !important;
+  gap: 12px !important;
+  align-items: center !important;
+  min-width: 0 !important;
+  padding: 12px !important;
+  border: 1px solid var(--approval-line) !important;
+  border-radius: 17px !important;
+  background: #ffffff !important;
+  cursor: pointer !important;
+  transition: transform 160ms ease, border-color 160ms ease, box-shadow 160ms ease !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-row:hover,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-row.selected {
+  border-color: rgba(198, 145, 34, 0.36) !important;
+  box-shadow: 0 16px 35px rgba(15, 23, 42, 0.11) !important;
+  transform: translateY(-1px) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-status,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-copy {
+  display: grid !important;
+  gap: 3px !important;
+  min-width: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-status {
+  grid-template-columns: 10px minmax(0, 1fr) !important;
+  align-items: center !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-state-dot {
+  width: 10px !important;
+  height: 10px !important;
+  border-radius: 999px !important;
+  background: #2457c5 !important;
+  box-shadow: 0 0 0 5px rgba(36, 87, 197, 0.09) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-state-dot.escalated {
+  background: #c24132 !important;
+  box-shadow: 0 0 0 5px rgba(194, 65, 50, 0.12) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-status b,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-copy strong,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-limit,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-grid strong {
+  color: #172033 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-status small,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-copy span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card p,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card.audit p {
+  color: var(--approval-muted) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-copy strong,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-copy span {
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-progress {
+  display: flex !important;
+  gap: 4px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-progress i {
+  width: 18px !important;
+  height: 6px !important;
+  border-radius: 999px !important;
+  background: #dbe3ef !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-progress i.done {
+  background: var(--approval-gold) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-controls {
+  display: flex !important;
+  gap: 7px !important;
+  align-items: center !important;
+  justify-content: end !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-controls details,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-actions details {
+  position: relative !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-controls summary,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-actions summary {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  min-width: 70px !important;
+  padding: 0 12px !important;
+  list-style: none !important;
+  cursor: pointer !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-controls summary::-webkit-details-marker,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-actions summary::-webkit-details-marker {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-controls details > div,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-actions details > div {
+  position: absolute !important;
+  z-index: 30 !important;
+  right: 0 !important;
+  top: calc(100% + 7px) !important;
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(100px, 1fr)) !important;
+  gap: 7px !important;
+  min-width: 235px !important;
+  padding: 9px !important;
+  border: 1px solid var(--approval-line) !important;
+  border-radius: 15px !important;
+  background: #ffffff !important;
+  box-shadow: 0 18px 48px rgba(15, 23, 42, 0.18) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-list-note,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-empty {
+  padding: 12px !important;
+  border: 1px dashed rgba(36, 87, 197, 0.22) !important;
+  border-radius: 16px !important;
+  background: rgba(36, 87, 197, 0.06) !important;
+  color: #36537a !important;
+  font-weight: 800 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card {
+  display: grid !important;
+  gap: 8px !important;
+  padding: 14px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card.primary {
+  background: linear-gradient(145deg, rgba(23, 32, 51, 0.96), rgba(35, 48, 73, 0.94)) !important;
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card.primary span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card.primary h2,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card.primary p {
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card.primary h2 {
+  margin: 0 !important;
+  font-size: 24px !important;
+  line-height: 1.14 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-grid {
+  display: grid !important;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  gap: 9px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-grid article {
+  display: grid !important;
+  gap: 4px !important;
+  min-height: 70px !important;
+  padding: 11px !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-path-clean {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 7px !important;
+  align-items: center !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-path-clean b {
+  padding: 7px 9px !important;
+  border-radius: 999px !important;
+  background: #eff4fb !important;
+  color: #1f2a44 !important;
+  font-size: 12px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-actions {
+  display: grid !important;
+  grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  gap: 8px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-actions details {
+  grid-column: 1 / -1 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-actions summary {
+  width: 100% !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card.audit p {
+  margin: 0 !important;
+  padding-left: 12px !important;
+  border-left: 2px solid rgba(198, 145, 34, 0.42) !important;
+  font-size: 13px !important;
+}
+
+@media (max-width: 1180px) {
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-hero,
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-grid {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone {
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-hero,
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone {
+    padding: 14px !important;
+    border-radius: 20px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-row,
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-grid,
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics article {
+    min-height: 82px !important;
+    padding: 12px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics strong {
+    font-size: 28px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-controls {
+    justify-content: start !important;
+  }
+}
+
+/* DwellProof-inspired GCOS shell reset. This is the new base architecture:
+   fixed dark left rail, independent content scroll, compact grouped nav, and
+   calm modular workspaces instead of a horizontal icon strip. */
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) {
+  display: grid !important;
+  grid-template-columns: 288px minmax(0, 1fr) !important;
+  grid-template-rows: 100vh !important;
+  height: 100vh !important;
+  min-height: 0 !important;
+  overflow: hidden !important;
+  background: #070b16 !important;
+  color: #e7edf6 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+  position: sticky !important;
+  top: 0 !important;
+  display: flex !important;
+  flex-direction: column !important;
+  gap: 18px !important;
+  width: 288px !important;
+  height: 100vh !important;
+  min-height: 0 !important;
+  padding: 16px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  border-right: 1px solid rgba(148, 163, 184, 0.14) !important;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(198, 145, 34, 0.12), transparent 34%),
+    linear-gradient(180deg, #0d1728 0%, #090f1e 100%) !important;
+  box-shadow: inset -1px 0 0 rgba(255, 255, 255, 0.03) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace {
+  grid-column: 2 !important;
+  grid-row: 1 !important;
+  height: 100vh !important;
+  min-height: 0 !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  padding: 16px 16px 56px !important;
+  background:
+    radial-gradient(circle at 80% 0%, rgba(198, 145, 34, 0.11), transparent 30%),
+    radial-gradient(circle at 50% 30%, rgba(34, 211, 166, 0.06), transparent 34%),
+    #070b16 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip {
+  width: 100% !important;
+  min-height: auto !important;
+  border: 1px solid rgba(148, 163, 184, 0.17) !important;
+  background: rgba(15, 23, 42, 0.7) !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button {
+  display: flex !important;
+  gap: 12px !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  padding: 12px !important;
+  border-radius: 18px !important;
+  color: #ffffff !important;
+  text-align: left !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button .brand-mark {
+  flex: 0 0 42px !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 999px !important;
+  background: rgba(255, 255, 255, 0.96) !important;
+  box-shadow: 0 0 0 1px rgba(198, 145, 34, 0.28), 0 12px 26px rgba(0, 0, 0, 0.18) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button > div:last-child {
+  display: grid !important;
+  gap: 2px !important;
+  min-width: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button strong {
+  display: block !important;
+  color: #ffffff !important;
+  font-size: 14px !important;
+  font-weight: 900 !important;
+  line-height: 1.1 !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button span {
+  display: block !important;
+  color: #9aa7bb !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  line-height: 1.2 !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip {
+  display: grid !important;
+  gap: 3px !important;
+  justify-items: start !important;
+  padding: 13px 14px !important;
+  border-radius: 18px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip strong {
+  color: #ffffff !important;
+  font-size: 13px !important;
+  font-weight: 900 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip span {
+  color: #9aa7bb !important;
+  font-size: 12px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-collapse-button {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+  display: grid !important;
+  grid-template-columns: 1fr !important;
+  gap: 18px !important;
+  width: 100% !important;
+  overflow: visible !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-group {
+  display: grid !important;
+  gap: 6px !important;
+  min-width: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-group-label {
+  padding: 0 10px !important;
+  color: #5f6f86 !important;
+  font-size: 11px !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.14em !important;
+  text-transform: uppercase !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: flex-start !important;
+  gap: 11px !important;
+  min-height: 42px !important;
+  width: 100% !important;
+  padding: 0 12px !important;
+  border: 1px solid transparent !important;
+  border-radius: 14px !important;
+  background: transparent !important;
+  color: #a5b0c3 !important;
+  font-size: 14px !important;
+  font-weight: 750 !important;
+  letter-spacing: 0 !important;
+  text-align: left !important;
+  transition: background 160ms ease, color 160ms ease, border-color 160ms ease, transform 160ms ease !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item svg {
+  flex: 0 0 auto !important;
+  width: 17px !important;
+  height: 17px !important;
+  color: currentColor !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item span {
+  display: block !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  color: inherit !important;
+  text-overflow: ellipsis !important;
+  white-space: nowrap !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item:hover {
+  border-color: rgba(255, 255, 255, 0.08) !important;
+  background: rgba(255, 255, 255, 0.05) !important;
+  color: #ffffff !important;
+  transform: translateX(1px) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item.active {
+  border-color: rgba(198, 145, 34, 0.26) !important;
+  background: linear-gradient(90deg, rgba(198, 145, 34, 0.22), rgba(34, 211, 166, 0.08)) !important;
+  color: #f5d37b !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-directory-card {
+  display: grid !important;
+  gap: 4px !important;
+  width: 100% !important;
+  min-height: 82px !important;
+  margin-top: auto !important;
+  padding: 14px !important;
+  border: 1px solid rgba(34, 211, 166, 0.2) !important;
+  border-radius: 18px !important;
+  background: rgba(34, 211, 166, 0.06) !important;
+  color: #d9f6ee !important;
+  text-align: left !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-directory-card strong {
+  color: #ffffff !important;
+  font-size: 14px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-directory-card span,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .station-directory-card small {
+  color: #8ddfca !important;
+  font-size: 12px !important;
+  font-weight: 800 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .topbar {
+  margin: 0 0 16px !important;
+  padding: 18px !important;
+  border: 1px solid rgba(148, 163, 184, 0.16) !important;
+  border-radius: 24px !important;
+  background: linear-gradient(145deg, rgba(15, 23, 42, 0.92), rgba(11, 19, 36, 0.92)) !important;
+  color: #e7edf6 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .topbar :is(h1, h2, h3, strong) {
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .topbar :is(p, span, small) {
+  color: #9aa7bb !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(.approval-command-workspace, .report-command-workspace, .churchmail-enterprise, .executive-command) {
+  max-width: 1160px !important;
+}
+
+@media (max-width: 559px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    overflow-y: auto !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .workspace {
+    height: auto !important;
+    min-height: 0 !important;
+  }
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace {
+  background:
+    radial-gradient(circle at 80% 0%, rgba(198, 145, 34, 0.11), transparent 30%),
+    radial-gradient(circle at 50% 30%, rgba(34, 211, 166, 0.06), transparent 34%),
+    #070b16 !important;
+  color: #e7edf6 !important;
+}
+
+/* DwellProof visual language for the rebuilt approval module. */
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-workspace {
+  --approval-ink: #e7edf6 !important;
+  --approval-muted: #9aa7bb !important;
+  --approval-line: rgba(148, 163, 184, 0.16) !important;
+  --approval-panel: rgba(11, 19, 36, 0.92) !important;
+  --approval-panel-soft: rgba(15, 23, 42, 0.86) !important;
+  color: #e7edf6 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-hero {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background:
+    radial-gradient(circle at 12% 4%, rgba(198, 145, 34, 0.17), transparent 36%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(11, 19, 36, 0.96)) !important;
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.26) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-hero h1,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone-title strong,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-status b,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-copy strong,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-limit,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-grid strong {
+  color: #f8fafc !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-command-hero p,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-identity-line,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics small,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-status small,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-copy span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-grid span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card p,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card.audit p {
+  color: #a8b4c8 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-eyebrow,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone-title span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card > span,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact label span {
+  color: #f0c96b !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics {
+  background: transparent !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics article,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-zone,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-card,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-grid article,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-row {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background: rgba(11, 19, 36, 0.9) !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics article.attention {
+  border-color: rgba(198, 145, 34, 0.3) !important;
+  background: linear-gradient(145deg, rgba(198, 145, 34, 0.11), rgba(11, 19, 36, 0.9)) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-hero-metrics strong {
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-search,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact input {
+  border-color: rgba(148, 163, 184, 0.15) !important;
+  background: rgba(7, 11, 22, 0.72) !important;
+  color: #e7edf6 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-search input,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-create-compact input {
+  color: #e7edf6 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-search input::placeholder {
+  color: #68778e !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-nav button {
+  color: #a5b0c3 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-nav button.active,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-clean-row.selected {
+  border-color: rgba(198, 145, 34, 0.28) !important;
+  background: linear-gradient(90deg, rgba(198, 145, 34, 0.16), rgba(34, 211, 166, 0.05)) !important;
+  color: #f5d37b !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) :is(.approval-create-compact button, .approval-queue-toolbar-clean button, .approval-row-controls button, .approval-row-controls summary, .approval-review-actions button, .approval-review-actions summary) {
+  border-color: rgba(198, 145, 34, 0.22) !important;
+  background: rgba(198, 145, 34, 0.11) !important;
+  color: #f5d37b !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-row-controls details > div,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-review-actions details > div {
+  border-color: rgba(148, 163, 184, 0.18) !important;
+  background: #0b1324 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) .approval-path-clean b {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #dbeafe !important;
+}
+
+/* Higher-specificity finish pass. Earlier audit-polish rules intentionally
+   forced all workspace text dark; this page now owns a dark DwellProof-style
+   surface, so it must win those global safety rules. */
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace.workspace {
+  background:
+    radial-gradient(circle at 80% 0%, rgba(198, 145, 34, 0.11), transparent 30%),
+    radial-gradient(circle at 50% 30%, rgba(34, 211, 166, 0.06), transparent 34%),
+    #070b16 !important;
+  color: #e7edf6 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-control-center > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-admin-board > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-churchmail > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-reports > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-approvals > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-escalations > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-personnel > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-hierarchy > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-offices > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-ai-desk > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-live-comms > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-archive > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-audit > section.workspace.workspace {
+  background:
+    radial-gradient(circle at 80% 0%, rgba(198, 145, 34, 0.11), transparent 30%),
+    radial-gradient(circle at 50% 30%, rgba(34, 211, 166, 0.06), transparent 34%),
+    #070b16 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace * {
+  color: #e7edf6 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-command-hero,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-zone,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-hero-metrics article,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-review-card,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-review-grid article,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-create-compact,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-clean-row {
+  border-color: rgba(148, 163, 184, 0.16) !important;
+  background-color: rgba(11, 19, 36, 0.92) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-command-hero {
+  background:
+    radial-gradient(circle at 12% 4%, rgba(198, 145, 34, 0.17), transparent 36%),
+    linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(11, 19, 36, 0.96)) !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace :is(p, small, input::placeholder),
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace :is(.approval-identity-line, .approval-row-status small, .approval-row-copy span, .approval-hero-metrics span, .approval-hero-metrics small, .approval-review-grid span, .approval-review-card.audit p) {
+  color: #a8b4c8 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace :is(.approval-eyebrow, .approval-zone-title span, .approval-review-card > span, .approval-create-compact label span) {
+  color: #f0c96b !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-clean-nav button,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-clean-search,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-queue-toolbar-clean button,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-row-controls button,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-row-controls summary,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-review-actions button,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-review-actions summary {
+  border-color: rgba(148, 163, 184, 0.14) !important;
+  background: rgba(7, 11, 22, 0.64) !important;
+  color: #d7e0ee !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-clean-nav button.active,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-clean-nav button:hover,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-row-controls button:hover,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-row-controls summary:hover {
+  border-color: rgba(198, 145, 34, 0.26) !important;
+  background: linear-gradient(90deg, rgba(198, 145, 34, 0.18), rgba(34, 211, 166, 0.07)) !important;
+  color: #f5d37b !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace .approval-hero-metrics.approval-hero-metrics,
+html body #root main.app-shell.enterprise-shell.section-approvals:not(.admin-shell) > section.workspace > section.approval-command-workspace.approval-command-workspace :is(.approval-queue-toolbar-clean, .approval-row-status, .approval-row-copy, .approval-row-limit, .approval-row-controls) {
+  background: transparent !important;
+  background-color: transparent !important;
+}
+
+/* -------------------------------------------------------------------------
+   GCOS calm church administration design system.
+   Final ownership layer for the Administrative OS: soft navy shell, white
+   work surfaces, warm gold accents, readable text, and consistent spacing
+   across every major module.
+------------------------------------------------------------------------- */
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) {
+  --gcos-navy-950: #071224;
+  --gcos-navy-900: #0d1d34;
+  --gcos-navy-800: #142b49;
+  --gcos-blue-700: #24517f;
+  --gcos-gold-600: #b98722;
+  --gcos-gold-100: #fff7df;
+  --gcos-ink: #172033;
+  --gcos-muted: #64748b;
+  --gcos-subtle: #f5f7fb;
+  --gcos-card: #ffffff;
+  --gcos-line: rgba(23, 32, 51, 0.11);
+  --gcos-shadow: 0 18px 45px rgba(15, 23, 42, 0.09);
+  background: #eef3f9 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+  background:
+    linear-gradient(180deg, rgba(13, 29, 52, 0.98), rgba(9, 22, 42, 0.98)),
+    var(--gcos-navy-900) !important;
+  border-right: 1px solid rgba(13, 29, 52, 0.18) !important;
+  box-shadow: 16px 0 45px rgba(15, 23, 42, 0.12) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace.workspace {
+  background:
+    radial-gradient(circle at 85% 0%, rgba(185, 135, 34, 0.12), transparent 28%),
+    linear-gradient(180deg, #f7f9fd 0%, #eef3f9 100%) !important;
+  color: var(--gcos-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+  border-color: rgba(255, 255, 255, 0.13) !important;
+  background: rgba(255, 255, 255, 0.06) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button.brand.brand-button span {
+  color: #c2ccdc !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip strong {
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .shell-identity-strip span {
+  color: #c2ccdc !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-group-label {
+  color: #93a2b8 !important;
+  letter-spacing: 0.1em !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item {
+  color: #d7dfeb !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item:hover {
+  background: rgba(255, 255, 255, 0.08) !important;
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-item.active {
+  border-color: rgba(249, 204, 94, 0.33) !important;
+  background: linear-gradient(90deg, rgba(249, 204, 94, 0.19), rgba(255, 255, 255, 0.05)) !important;
+  color: #fff4cf !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .section-banner,
+  .topbar,
+  .executive-command-hero,
+  .executive-zone,
+  .executive-secondary article,
+  .mail-executive-header,
+  .mail-nav-panel,
+  .mail-queue-panel,
+  .mail-inspector-panel,
+  .report-command-hero,
+  .report-zone,
+  .report-template-card,
+  .approval-command-hero,
+  .approval-zone,
+  .module-grid > .panel,
+  .panel,
+  .metric-card,
+  .command-card,
+  .admin-workspace-card,
+  .fresh-admin-card,
+  .audit-card,
+  .restore-command-board,
+  .handoff-board,
+  .launch-wizard,
+  .live-comms-workspace,
+  .transfers-workspace,
+  .calendar-workspace-panel,
+  .personnel-directory,
+  .office-card,
+  .archive-card
+) {
+  border: 1px solid var(--gcos-line) !important;
+  background: var(--gcos-card) !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: var(--gcos-shadow) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .section-banner,
+  .executive-command-hero,
+  .mail-executive-header,
+  .report-command-hero,
+  .approval-command-hero
+) {
+  background:
+    radial-gradient(circle at 92% 8%, rgba(185, 135, 34, 0.13), transparent 27%),
+    linear-gradient(135deg, #ffffff 0%, #f6f9fd 100%) !important;
+  border-radius: 26px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  h1, h2, h3, h4, h5, h6,
+  .workspace h1, .workspace h2, .workspace h3, .workspace h4,
+  strong, b
+) {
+  color: var(--gcos-ink) !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  p, small, span, li, label, summary, td, th, input, textarea, select
+) {
+  color: inherit !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .workspace p,
+  .workspace small,
+  .section-banner p,
+  .section-banner-status span,
+  .mail-executive-header p,
+  .report-command-hero p,
+  .approval-command-hero p,
+  .executive-command-hero p,
+  .metric-card small,
+  .command-card small,
+  .panel small
+) {
+  color: var(--gcos-muted) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .approval-eyebrow,
+  .report-command-hero span,
+  .mail-executive-header span:first-child,
+  .executive-command-identity span,
+  .section-banner-main span,
+  .panel-header span,
+  .approval-zone-title span,
+  .report-zone-title span,
+  .mail-section-title span
+) {
+  color: var(--gcos-gold-600) !important;
+  font-weight: 900 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) button,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .button,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) summary {
+  letter-spacing: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .workspace button:not(.nav-item):not(.brand-button):not(.station-directory-card),
+  .approval-row-controls button,
+  .approval-row-controls summary,
+  .approval-review-actions button,
+  .approval-review-actions summary,
+  .mail-action-board button,
+  .report-action-panel button,
+  .executive-action-list button
+) {
+  border: 1px solid rgba(36, 81, 127, 0.18) !important;
+  background: #f8fbff !important;
+  color: #21476f !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .workspace button.primary,
+  .approval-create-compact button[type="submit"],
+  .report-command-hero button.primary
+) {
+  border-color: rgba(185, 135, 34, 0.28) !important;
+  background: linear-gradient(180deg, #f6d886, #c9952c) !important;
+  color: #172033 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(input, textarea, select, .approval-clean-search, .report-template-search, .mail-search) {
+  border: 1px solid var(--gcos-line) !important;
+  background: #ffffff !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(input::placeholder, textarea::placeholder) {
+  color: #94a3b8 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .approval-hero-metrics article,
+  .approval-clean-row,
+  .approval-review-card,
+  .approval-review-grid article,
+  .approval-create-compact,
+  .report-metric,
+  .report-template-card,
+  .mail-message-row,
+  .mail-inspector-card,
+  .executive-overview-list article,
+  .executive-action-list button
+) {
+  border: 1px solid var(--gcos-line) !important;
+  background: #ffffff !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .approval-clean-nav button,
+  .report-category-list button,
+  .mail-folder-nav button
+) {
+  border: 1px solid transparent !important;
+  background: transparent !important;
+  color: #34516f !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .approval-clean-nav button.active,
+  .report-category-list button.active,
+  .mail-folder-nav button.active
+) {
+  border-color: rgba(185, 135, 34, 0.25) !important;
+  background: var(--gcos-gold-100) !important;
+  color: #60430d !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .approval-state-dot,
+  .status-dot,
+  .live-dot
+) {
+  background: #2f7d5b !important;
+  box-shadow: 0 0 0 5px rgba(47, 125, 91, 0.12) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .risk-alert,
+  .threat-card,
+  .executive-risk-status.high,
+  .executive-risk-status.medium,
+  .approval-hero-metrics article.attention
+) {
+  border-color: rgba(185, 135, 34, 0.26) !important;
+  background: #fff8e8 !important;
+  color: var(--gcos-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .risk-alert *,
+  .threat-card *,
+  .executive-risk-status *,
+  .approval-hero-metrics article.attention *
+) {
+  color: inherit !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .executive-risk-status span {
+  color: var(--gcos-muted) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace {
+  line-height: 1.45 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(
+  .approval-command-workspace,
+  .report-command-workspace,
+  .churchmail-enterprise,
+  .executive-command,
+  .module-grid,
+  .admin-enterprise-workspace,
+  .audit-workspace
+) {
+  width: 100% !important;
+  max-width: 1240px !important;
+  margin: 0 auto !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) :is(.approval-command-grid, .report-command-grid, .churchmail-enterprise) {
+  gap: 16px !important;
+}
+
+@media (max-width: 1180px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) {
+    grid-template-columns: 264px minmax(0, 1fr) !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+    width: 264px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+    position: relative !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+    padding: 12px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace.workspace {
+    grid-column: 1 !important;
+    grid-row: 2 !important;
+    height: auto !important;
+    min-height: 0 !important;
+    overflow: visible !important;
+    padding: 12px 12px 36px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 10px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-group {
+    gap: 5px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-group-label {
+    grid-column: 1 / -1 !important;
+  }
+}
+
+/* Final responsive correction: the Codex in-app browser often sits around
+   600px wide. That should still behave like a compact desktop app with a
+   left rail, not a stacked phone layout. */
+@media (min-width: 521px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) {
+    grid-template-columns: 252px minmax(0, 1fr) !important;
+    grid-template-rows: 100vh !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    position: sticky !important;
+    top: 0 !important;
+    width: 252px !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    overflow-y: auto !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace.workspace {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    height: 100vh !important;
+    min-height: 0 !important;
+    overflow-y: auto !important;
+    overflow-x: hidden !important;
+    padding: 16px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) .nav-list {
+    grid-template-columns: 1fr !important;
+  }
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-control-center > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-admin-board > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-churchmail > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-reports > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-approvals > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-escalations > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-personnel > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-hierarchy > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-offices > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-ai-desk > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-live-comms > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-archive > section.workspace.workspace,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell).section-audit > section.workspace.workspace {
+  background:
+    radial-gradient(circle at 88% 0%, rgba(185, 135, 34, 0.11), transparent 27%),
+    linear-gradient(180deg, #f7f9fd 0%, #eef3f9 100%) !important;
+  color: var(--gcos-ink) !important;
+}
+
+@media (max-width: 520px) {
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) {
+    grid-template-columns: 1fr !important;
+    grid-template-rows: auto minmax(0, 1fr) !important;
+    height: auto !important;
+    min-height: 100vh !important;
+    overflow-y: auto !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar,
+  html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace.workspace {
+    grid-column: 1 !important;
+    width: 100% !important;
+    height: auto !important;
+    max-height: none !important;
+  }
+}
+
+/* Final contrast repair for native selects and overflow action menus. */
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(select, option, input, textarea) {
+  background-color: #ffffff !important;
+  color: var(--gcos-ink) !important;
+  border-color: var(--gcos-line) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace details > div {
+  border: 1px solid var(--gcos-line) !important;
+  background: #ffffff !important;
+  background-color: #ffffff !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: 0 18px 45px rgba(15, 23, 42, 0.12) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace details > div * {
+  color: var(--gcos-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace details > div button {
+  background: #f8fbff !important;
+  color: #21476f !important;
+}
+
+/* Legacy production/audit panels had dark decorative layers and fixed widths.
+   Normalize them so Audit, Archive, and readiness views do not overflow or
+   bury text inside dark strips. */
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  .module-grid,
+  .panel,
+  .panel.module-primary,
+  .panel.module-side,
+  .final-production-finish-board,
+  .final-blocker-board,
+  .production-handoff-board,
+  .production-readiness-cockpit,
+  .restore-command-board,
+  .launch-operations-wizard,
+  .training-rollout-board,
+  .audit-ledger,
+  .persistence-store,
+  .database-migration,
+  .service-connections,
+  .evidence-vault,
+  .security-controls,
+  .event-bus-operations
+) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  overflow: hidden !important;
+  background: #ffffff !important;
+  background-image: none !important;
+  color: var(--gcos-ink) !important;
+  border-color: var(--gcos-line) !important;
+  box-shadow: var(--gcos-shadow) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(
+  .module-grid,
+  .office-summary-grid,
+  .metric-grid,
+  .finish-live-strip,
+  .finish-track-grid,
+  .handoff-phase-grid,
+  .activation-command-grid,
+  .audit-table,
+  .registry-table,
+  .data-table
+) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+  overflow-x: auto !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace :is(.panel::before, .panel::after, .module-primary::before, .module-primary::after) {
+  display: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .panel-header {
+  border-radius: 18px !important;
+  background: #f7f9fd !important;
+  color: var(--gcos-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) .workspace .panel-header * {
+  color: inherit !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar :is(.brand.brand-button strong, .brand.brand-button span, .shell-identity-strip strong, .shell-identity-strip span, .nav-item span, .nav-group-label) {
+  color: inherit !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar .brand.brand-button strong,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar .shell-identity-strip strong {
+  color: #ffffff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar .brand.brand-button span,
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > .sidebar .shell-identity-strip span {
+  color: #c2ccdc !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace.workspace {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace.workspace > * {
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace.workspace :is(.module-grid, .panel, .panel.module-primary, .panel.module-side) {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  box-sizing: border-box !important;
+}
+
+html body #root main.app-shell.enterprise-shell:not(.admin-shell) > section.workspace.workspace .module-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+}
+
+@media (max-width: 900px) {
+  html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) .workspace :is(
+    .finish-board-hero,
+    .final-blocker-hero,
+    .handoff-hero,
+    .production-readiness-hero,
+    .restore-command-hero,
+    .launch-wizard-hero,
+    .finish-live-strip,
+    .handoff-score-grid,
+    .handoff-provider-strip,
+    .production-readiness-grid,
+    .restore-command-summary,
+    .finish-track-grid,
+    .final-blocker-grid,
+    .launch-wizard-steps,
+    .restore-command-grid
+  ) {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    gap: 12px !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) .workspace :is(
+    .finish-board-hero > *,
+    .final-blocker-hero > *,
+    .handoff-hero > *,
+    .production-readiness-hero > *,
+    .restore-command-hero > *,
+    .launch-wizard-hero > *,
+    .finish-live-strip > *,
+    .handoff-score-grid > *,
+    .handoff-provider-strip > *,
+    .production-readiness-grid > *,
+    .restore-command-summary > *,
+    .finish-track-grid > *,
+    .final-blocker-grid > *,
+    .launch-wizard-steps > *,
+    .restore-command-grid > *
+  ) {
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+}
+
+/* Approval-style operating workspace shared by the remaining administrative pages. */
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) > section.workspace.workspace {
+  --module-surface: #ffffff;
+  --module-soft: #f6f8fc;
+  --module-line: #dce5f1;
+  --module-ink: #13233d;
+  --module-muted: #63718a;
+  --module-gold: #b78a28;
+  --module-blue: #173b67;
+  padding: 18px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) > section.workspace.workspace > .topbar {
+  max-width: 1280px !important;
+  margin: 0 auto 14px !important;
+  border: 1px solid rgba(191, 207, 228, 0.95) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.98), rgba(247, 250, 254, 0.94)) !important;
+  box-shadow: 0 20px 54px rgba(17, 38, 71, 0.09) !important;
+  color: var(--module-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) > section.workspace.workspace > .section-banner {
+  max-width: 1280px !important;
+  margin: 0 auto 16px !important;
+  border: 1px solid rgba(207, 216, 230, 0.95) !important;
+  border-radius: 28px !important;
+  background:
+    radial-gradient(circle at 98% 5%, rgba(183, 138, 40, 0.15), transparent 34%),
+    linear-gradient(135deg, #ffffff 0%, #f7f9fd 58%, #eef4fb 100%) !important;
+  color: var(--module-ink) !important;
+  box-shadow: 0 24px 70px rgba(16, 36, 70, 0.11) !important;
+  overflow: hidden !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) > section.workspace.workspace > .section-banner * {
+  color: inherit !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) .module-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+  max-width: 1280px !important;
+  margin: 0 auto !important;
+  align-items: start !important;
+  overflow: visible !important;
+}
+
+@media (min-width: 1180px) {
+  html body #root main.app-shell.enterprise-shell:is(
+    .section-escalations,
+    .section-personnel,
+    .section-hierarchy,
+    .section-offices,
+    .section-ai-desk,
+    .section-live-comms,
+    .section-archive
+  ):not(.admin-shell) .module-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(310px, 0.75fr) !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) .module-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) .module-grid > .panel.module-primary {
+    grid-column: span 8 !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) .module-grid > .panel.module-side {
+    grid-column: span 4 !important;
+  }
+}
+
+html body #root main.app-shell.enterprise-shell.section-escalations:not(.admin-shell) > section.workspace.workspace > .module-grid,
+html body #root main.app-shell.enterprise-shell.section-personnel:not(.admin-shell) > section.workspace.workspace > .module-grid,
+html body #root main.app-shell.enterprise-shell.section-hierarchy:not(.admin-shell) > section.workspace.workspace > .module-grid,
+html body #root main.app-shell.enterprise-shell.section-offices:not(.admin-shell) > section.workspace.workspace > .module-grid,
+html body #root main.app-shell.enterprise-shell.section-ai-desk:not(.admin-shell) > section.workspace.workspace > .module-grid,
+html body #root main.app-shell.enterprise-shell.section-live-comms:not(.admin-shell) > section.workspace.workspace > .module-grid,
+html body #root main.app-shell.enterprise-shell.section-archive:not(.admin-shell) > section.workspace.workspace > .module-grid,
+html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+  overflow: visible !important;
+}
+
+@media (min-width: 1180px) {
+  html body #root main.app-shell.enterprise-shell.section-escalations:not(.admin-shell) > section.workspace.workspace > .module-grid,
+  html body #root main.app-shell.enterprise-shell.section-personnel:not(.admin-shell) > section.workspace.workspace > .module-grid,
+  html body #root main.app-shell.enterprise-shell.section-hierarchy:not(.admin-shell) > section.workspace.workspace > .module-grid,
+  html body #root main.app-shell.enterprise-shell.section-offices:not(.admin-shell) > section.workspace.workspace > .module-grid,
+  html body #root main.app-shell.enterprise-shell.section-ai-desk:not(.admin-shell) > section.workspace.workspace > .module-grid,
+  html body #root main.app-shell.enterprise-shell.section-live-comms:not(.admin-shell) > section.workspace.workspace > .module-grid,
+  html body #root main.app-shell.enterprise-shell.section-archive:not(.admin-shell) > section.workspace.workspace > .module-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(310px, 0.75fr) !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  }
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) .module-grid > .panel,
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) .module-grid > .module-primary,
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) .module-grid > .module-side {
+  border: 1px solid rgba(207, 216, 230, 0.98) !important;
+  border-radius: 24px !important;
+  background: var(--module-surface) !important;
+  color: var(--module-ink) !important;
+  box-shadow: 0 22px 58px rgba(16, 36, 70, 0.1) !important;
+  padding: 16px !important;
+  overflow: hidden !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) .panel-header {
+  display: flex !important;
+  align-items: center !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  border: 1px solid rgba(214, 223, 235, 0.98) !important;
+  border-radius: 20px !important;
+  background:
+    linear-gradient(135deg, rgba(246, 249, 253, 0.98), rgba(255, 255, 255, 0.96)) !important;
+  padding: 13px !important;
+  margin-bottom: 12px !important;
+  color: var(--module-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) .panel-header :is(h1, h2, h3, strong) {
+  color: #13233d !important;
+  font-size: clamp(1rem, 1.4vw, 1.2rem) !important;
+  letter-spacing: 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) .panel-header :is(span, small) {
+  color: #63718a !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(
+  .office-summary-grid,
+  .workflow-digest,
+  .live-status-strip,
+  .ai-source-grid,
+  .metric-grid,
+  .audit-integrity-grid
+) {
+  display: grid !important;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr)) !important;
+  gap: 10px !important;
+  margin: 12px 0 !important;
+  overflow: visible !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(
+  .insight,
+  .metric-card,
+  .graph-node,
+  .source-map-item,
+  .provision-summary,
+  .empty-state,
+  .route-box
+) {
+  border: 1px solid rgba(218, 226, 237, 0.98) !important;
+  border-radius: 16px !important;
+  background: #f8fbff !important;
+  color: var(--module-ink) !important;
+  box-shadow: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(
+  .archive-toolbar,
+  .registry-toolbar,
+  .audit-toolbar,
+  .live-comms-console,
+  .live-call-controls,
+  .finish-action-row
+) {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-items: end !important;
+  gap: 9px !important;
+  border: 1px solid rgba(218, 226, 237, 0.98) !important;
+  border-radius: 18px !important;
+  background: #f8fbff !important;
+  padding: 10px !important;
+  margin: 10px 0 14px !important;
+  color: var(--module-ink) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(.office-form, .ai-desk-form) {
+  display: grid !important;
+  gap: 10px !important;
+  border: 1px solid rgba(218, 226, 237, 0.98) !important;
+  border-radius: 18px !important;
+  background: #f8fbff !important;
+  padding: 12px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) label {
+  color: var(--module-muted) !important;
+  font-size: 0.76rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(input, select, textarea) {
+  width: 100% !important;
+  min-height: 40px !important;
+  border: 1px solid rgba(199, 212, 229, 0.98) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #14233d !important;
+  box-shadow: inset 0 1px 0 rgba(15, 23, 42, 0.02) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(
+  .escalation-list,
+  .draft-list,
+  .hierarchy-list,
+  .personnel-list,
+  .live-session-grid,
+  .source-map-list,
+  .live-channel-list,
+  .data-table,
+  .audit-table
+) {
+  display: grid !important;
+  gap: 10px !important;
+  margin-top: 10px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(
+  .escalation-card,
+  .draft-card,
+  .hierarchy-row,
+  .personnel-card,
+  .live-session-card,
+  .document-card,
+  .office-card,
+  .data-table > *,
+  .audit-table > *
+) {
+  border: 1px solid rgba(218, 226, 237, 0.98) !important;
+  border-radius: 18px !important;
+  background:
+    linear-gradient(180deg, #ffffff 0%, #f9fbfe 100%) !important;
+  color: var(--module-ink) !important;
+  padding: 13px !important;
+  box-shadow: 0 12px 30px rgba(17, 38, 71, 0.06) !important;
+  overflow: hidden !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(
+  .escalation-card,
+  .draft-card,
+  .hierarchy-row,
+  .personnel-card,
+  .live-session-card,
+  .document-card,
+  .office-card
+):hover {
+  transform: translateY(-1px) !important;
+  border-color: rgba(183, 138, 40, 0.45) !important;
+  box-shadow: 0 18px 42px rgba(17, 38, 71, 0.1) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(h1, h2, h3, strong) {
+  color: #13233d !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(p, span, small, li, td, th, pre) {
+  color: #4b5f7c !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(button, .button, summary) {
+  min-height: 36px !important;
+  border: 1px solid rgba(190, 204, 224, 0.98) !important;
+  border-radius: 12px !important;
+  background: #ffffff !important;
+  color: #173b67 !important;
+  font-weight: 800 !important;
+  box-shadow: 0 8px 20px rgba(17, 38, 71, 0.06) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(button, .button, summary):hover:not(:disabled) {
+  border-color: rgba(183, 138, 40, 0.65) !important;
+  background: #fff9ec !important;
+  transform: translateY(-1px) !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(button:disabled, .button:disabled) {
+  opacity: 0.55 !important;
+  transform: none !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) .action-row,
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) .compact-actions {
+  display: flex !important;
+  flex-wrap: nowrap !important;
+  gap: 8px !important;
+  max-width: 100% !important;
+  overflow-x: auto !important;
+  overflow-y: hidden !important;
+  padding: 9px !important;
+  margin-top: 10px !important;
+  border: 1px solid rgba(218, 226, 237, 0.96) !important;
+  border-radius: 16px !important;
+  background: #f8fbff !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) :is(.action-row, .compact-actions) > button {
+  flex: 0 0 auto !important;
+  white-space: nowrap !important;
+  min-height: 34px !important;
+  padding: 0 11px !important;
+}
+
+html body #root main.app-shell.enterprise-shell:is(
+  .section-live-comms,
+  .section-ai-desk
+):not(.admin-shell) :is(.live-session-card, .draft-card) pre {
+  max-height: 180px !important;
+  overflow: auto !important;
+  border-radius: 14px !important;
+  background: #f2f6fb !important;
+  color: #263d5d !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-live-comms:not(.admin-shell) .live-comms-hero {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  gap: 14px !important;
+  align-items: center !important;
+  border: 1px solid rgba(218, 226, 237, 0.98) !important;
+  border-radius: 22px !important;
+  background:
+    linear-gradient(135deg, #f8fbff, #ffffff) !important;
+  padding: 14px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-live-comms:not(.admin-shell) .live-comms-hero p {
+  max-width: 68ch !important;
+  margin: 6px 0 0 !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-live-comms:not(.admin-shell) .live-session-card small {
+  display: inline-flex !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  margin: 3px 5px 3px 0 !important;
+  border: 1px solid rgba(218, 226, 237, 0.9) !important;
+  border-radius: 999px !important;
+  background: #f6f8fc !important;
+  padding: 4px 8px !important;
+}
+
+html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) .module-grid > .panel.module-primary:first-child,
+html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) .module-grid > .panel.module-primary:nth-child(2),
+html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) .module-grid > .panel.module-primary:nth-child(3) {
+  background:
+    radial-gradient(circle at 92% 0%, rgba(183, 138, 40, 0.11), transparent 34%),
+    #ffffff !important;
+}
+
+@media (max-width: 900px) {
+  html body #root main.app-shell.enterprise-shell.section-live-comms:not(.admin-shell) .live-comms-hero {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Keep the page workspace itself as the controlling grid. The generic summary
+   card rule above also touches .module-grid, so this final rule prevents
+   zero-width phantom columns on compact browser widths. */
+html body #root main.app-shell.enterprise-shell:is(
+  .section-escalations,
+  .section-personnel,
+  .section-hierarchy,
+  .section-offices,
+  .section-ai-desk,
+  .section-live-comms,
+  .section-archive,
+  .section-audit
+):not(.admin-shell) > section.workspace.workspace > .module-grid {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) !important;
+  gap: 16px !important;
+  overflow: visible !important;
+}
+
+@media (min-width: 1180px) {
+  html body #root main.app-shell.enterprise-shell:is(
+    .section-escalations,
+    .section-personnel,
+    .section-hierarchy,
+    .section-offices,
+    .section-ai-desk,
+    .section-live-comms,
+    .section-archive
+  ):not(.admin-shell) > section.workspace.workspace > .module-grid {
+    grid-template-columns: minmax(0, 1.55fr) minmax(310px, 0.75fr) !important;
+  }
+
+  html body #root main.app-shell.enterprise-shell.section-audit:not(.admin-shell) > section.workspace.workspace > .module-grid {
+    grid-template-columns: repeat(12, minmax(0, 1fr)) !important;
+  }
+}
