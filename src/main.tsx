@@ -115,6 +115,11 @@ type Report = {
   templateChecklist?: string[];
   evidenceFiles?: FileReference[];
   linkedLiveSession?: string;
+  assignmentId?: string;
+  assignmentTarget?: string;
+  assignmentTargetName?: string;
+  assignmentCadence?: string;
+  sourceFiles?: string[];
 };
 type ReportTemplate = {
   id: string;
@@ -129,6 +134,22 @@ type ReportTemplate = {
   approvalLimit: string;
   description: string;
   checklist: string[];
+  sourceFiles?: string[];
+};
+type ReportAssignment = {
+  id: string;
+  name: string;
+  targetMode: "resident-pastor-offices" | "designated-office";
+  targetOfficeId?: string;
+  targetLabel: string;
+  period: string;
+  cadence: string;
+  status: string;
+  assignedBy: string;
+  assignedAt: string;
+  templates: Pick<ReportTemplate, "id" | "name" | "type" | "sourceFiles">[];
+  targetCount: number;
+  generatedReportIds: string[];
 };
 type Approval = {
   id: string;
@@ -1600,7 +1621,101 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
   }
 ];
 
+const residentPastorMonthlyReportTemplates: ReportTemplate[] = [
+  {
+    id: "tpl-resident-pastor-church-growth",
+    type: "Resident Pastor Monthly",
+    name: "Monthly Church Growth Activities Report",
+    owner: "Resident Pastor",
+    due: "Monthly",
+    period: "Current month",
+    path: "Mission Station -> Area Office -> District HQ -> Church Growth Department",
+    evidenceStatus: "Service attendance workbook pending",
+    routingStage: "Resident pastor drafting",
+    approvalLimit: "Area Office and Church Growth Department review",
+    description: "Monthly station service attendance, preacher/message records, church growth activities, counseling, and home cell fellowship reporting.",
+    checklist: ["Station and month", "Service attendance", "Preacher and message theme", "Counseling record", "Home cell fellowship", "Growth notes"],
+    sourceFiles: ["1. JANUARY.xlsx", "Church_Growth_REPORT_RMI_Greenville_APRIL_2026.xlsx"]
+  },
+  {
+    id: "tpl-resident-pastor-counseling",
+    type: "Resident Pastor Monthly",
+    name: "Monthly Counseling Report",
+    owner: "Resident Pastor",
+    due: "Monthly",
+    period: "Current month",
+    path: "Mission Station -> Area Office -> District Pastoral Care",
+    evidenceStatus: "Counseling register pending",
+    routingStage: "Pastoral care review",
+    approvalLimit: "District Pastoral Care acknowledgement",
+    description: "Monthly counseling summary for the mission station, resident pastor, assistant pastor, counseling categories, and follow-up care.",
+    checklist: ["Mission station", "Resident pastor", "Assistant pastor", "Counseling categories", "Follow-up actions", "Confidential care notes"],
+    sourceFiles: ["1. JANUARY.xlsx", "Church_Growth_REPORT_RMI_Greenville_APRIL_2026.xlsx"]
+  },
+  {
+    id: "tpl-resident-pastor-home-cell",
+    type: "Resident Pastor Monthly",
+    name: "Monthly Home Cell Fellowship Report",
+    owner: "Resident Pastor",
+    due: "Monthly",
+    period: "Current month",
+    path: "Mission Station -> Area Office -> District HQ",
+    evidenceStatus: "Home cell attendance and income register pending",
+    routingStage: "Home cell review",
+    approvalLimit: "Area Office acknowledgement",
+    description: "Monthly home cell fellowship report covering locations, leaders, attendance, boys/girls counts, and income by currency.",
+    checklist: ["Cell locations", "Cell leaders", "Attendance totals", "Income USD/LRD", "Growth needs", "Follow-up notes"],
+    sourceFiles: ["1. JANUARY.xlsx", "Church_Growth_REPORT_RMI_Greenville_APRIL_2026.xlsx"]
+  },
+  {
+    id: "tpl-resident-pastor-financial-ledger",
+    type: "Resident Pastor Monthly",
+    name: "Monthly Financial Income and Expense Report",
+    owner: "Resident Pastor",
+    due: "Monthly",
+    period: "Current month",
+    path: "Mission Station -> District Finance -> County Finance -> Audit Desk",
+    evidenceStatus: "Income ledger, expenses ledger, and cashflow workbook pending",
+    routingStage: "Finance validation",
+    approvalLimit: "District Finance and Audit Desk review",
+    description: "Monthly financial report covering tithes, offerings, first fruit, project income, recurrent expenses, deposits, balances, and cashflow summary.",
+    checklist: ["Income ledger", "Expense ledger", "Cashflow summary", "USD/LRD totals", "Deposits and balances", "Finance attestation"],
+    sourceFiles: ["1. JANUARY (1).xlsx", "Financial_Report_RMI_Greenville_APRIL_2026.xlsx"]
+  },
+  {
+    id: "tpl-resident-pastor-budget-proposal",
+    type: "Resident Pastor Monthly",
+    name: "Monthly Budget Proposal",
+    owner: "Resident Pastor",
+    due: "Monthly",
+    period: "Next month",
+    path: "Mission Station -> District Finance -> National Finance",
+    evidenceStatus: "Budget proposal workbook pending",
+    routingStage: "Budget review",
+    approvalLimit: "District Finance approval before release",
+    description: "Monthly budget proposal for expected incomes, ministry needs, operating costs, project needs, and requested approvals.",
+    checklist: ["Budget period", "Expected income", "Expense breakdown", "Ministry needs", "Project requests", "Approval request"],
+    sourceFiles: ["Budget_RMI_Greenville_May_2026.xlsx"]
+  },
+  {
+    id: "tpl-resident-pastor-narrative-letter",
+    type: "Resident Pastor Monthly",
+    name: "Resident Pastor Monthly Narrative Report",
+    owner: "Resident Pastor",
+    due: "Monthly",
+    period: "Current month",
+    path: "Mission Station -> Vice President for Mission Affairs -> International HQ",
+    evidenceStatus: "Narrative report letter pending",
+    routingStage: "Mission affairs review",
+    approvalLimit: "Mission Affairs executive review",
+    description: "Monthly narrative report letter summarizing financial performance, church growth, attendance, activities, challenges, and pastoral recommendations.",
+    checklist: ["Opening summary", "Financial overview", "Church growth summary", "Monthly activities", "Challenges and needs", "Recommendations"],
+    sourceFiles: ["January 2026 Reports.docx"]
+  }
+];
+
 const churchReportTemplates: ReportTemplate[] = [
+  ...residentPastorMonthlyReportTemplates,
   {
     id: "tpl-branch-admin",
     type: "Administrative",
@@ -2433,6 +2548,7 @@ const initialAuditRows: AuditRow[] = [
 
 const initialOfflineQueue: OfflineAction[] = [];
 const initialOfflineSyncHistory: OfflineSyncRecord[] = [];
+const initialReportAssignments: ReportAssignment[] = [];
 
 const initialEvents = [
   "ReportSubmitted: Local Branch 017",
@@ -3236,6 +3352,7 @@ function App() {
   const networkWasOfflineRef = React.useRef(!networkOnline);
   const [messages, setMessages] = usePersistentState("gcos.messages", initialMessages);
   const [reports, setReports] = usePersistentState("gcos.reports", initialReports);
+  const [reportAssignments, setReportAssignments] = usePersistentState<ReportAssignment[]>("gcos.reportAssignments", initialReportAssignments);
   const [approvals, setApprovals] = usePersistentState("gcos.approvals", initialApprovals);
   const [tasks, setTasks] = usePersistentState("gcos.tasks", initialTasks);
   const [policies, setPolicies] = usePersistentState("gcos.policies", initialPolicies);
@@ -3324,6 +3441,9 @@ function App() {
     if (permissions.canOverride) return stationDirectory;
     return stationDirectory.filter((station) => normalizeStationEmail(station.email) === normalizeStationEmail(activeStation.email));
   }, [activeStation.email, permissions.canOverride, stationDirectory]);
+  const churchMailRecipientDirectory = React.useMemo(() => (
+    stationDirectory.filter((station) => !["Deleted", "Suspended", "Locked"].includes(station.status ?? "Ready"))
+  ), [stationDirectory]);
   const operatingMetrics = React.useMemo(() => {
     const commandCount = scopedMessages.filter((item) => ["Directive", "Notification", "Transfer"].includes(item.kind)).length + scopedTransfers.length;
     const activeReportCount = scopedReports.filter((item) => item.state !== "Approved").length + scopedTasks.filter((item) => item.status !== "Complete").length;
@@ -3497,6 +3617,7 @@ function App() {
         stations: StationCard[];
         messages: Message[];
         reports: Report[];
+        reportAssignments?: ReportAssignment[];
         approvals: Approval[];
         tasks: GovernanceTask[];
         policies: Policy[];
@@ -3514,6 +3635,7 @@ function App() {
       setApiStations(data.stations.length ? data.stations : stations);
       setMessages(data.messages);
       setReports(data.reports);
+      setReportAssignments(data.reportAssignments ?? []);
       setApprovals(data.approvals);
       setTasks(data.tasks ?? initialTasks);
       setPolicies(data.policies ?? initialPolicies);
@@ -3563,6 +3685,7 @@ function App() {
         stations: StationCard[];
         messages: Message[];
         reports: Report[];
+        reportAssignments?: ReportAssignment[];
         approvals: Approval[];
         tasks: GovernanceTask[];
         policies: Policy[];
@@ -3580,6 +3703,7 @@ function App() {
       setApiStations(data.stations.length ? data.stations : stations);
       setMessages(data.messages);
       setReports(data.reports);
+      setReportAssignments(data.reportAssignments ?? []);
       setApprovals(data.approvals);
       setTasks(data.tasks ?? initialTasks);
       setPolicies(data.policies ?? initialPolicies);
@@ -5355,6 +5479,49 @@ function App() {
     }
   }
 
+  function assignResidentPastorReportPack(input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) {
+    const payload = {
+      name: "Resident Pastor Monthly Report Pack",
+      targetMode: input.targetMode,
+      targetOfficeId: input.targetOfficeId,
+      period: input.period || "Current month",
+      cadence: "Monthly",
+      templates: residentPastorMonthlyReportTemplates
+    };
+    recordAudit("ReportPackAssignmentStarted", payload.name, input.targetMode === "designated-office" ? input.targetOfficeId ?? "Designated office" : "All Resident Pastor offices");
+    if (offlineMode) {
+      const assignment: ReportAssignment = {
+        id: `assignment-${Date.now()}`,
+        name: payload.name,
+        targetMode: payload.targetMode,
+        targetOfficeId: payload.targetOfficeId,
+        targetLabel: payload.targetMode === "designated-office" ? payload.targetOfficeId ?? "Designated office" : "All Resident Pastor / Local Branch offices",
+        period: payload.period,
+        cadence: payload.cadence,
+        status: "Queued",
+        assignedBy: activeStation.email,
+        assignedAt: new Date().toISOString(),
+        templates: residentPastorMonthlyReportTemplates.map(({ id, name, type, sourceFiles }) => ({ id, name, type, sourceFiles })),
+        targetCount: 0,
+        generatedReportIds: []
+      };
+      setReportAssignments((items) => [assignment, ...items]);
+      return;
+    }
+    void apiRequest<{ assignment: ReportAssignment; reports: Report[]; targets: { owner: string; email: string }[] }>("/api/report-assignments", {
+      method: "POST",
+      body: JSON.stringify({ ...payload, actor: activeStation.email })
+    }).then((result) => {
+      setReportAssignments((items) => [result.assignment, ...items.filter((item) => item.id !== result.assignment.id)]);
+      setReports((items) => {
+        const existing = new Set(items.map((item) => item.id));
+        return [...result.reports.filter((item) => !existing.has(item.id)), ...items];
+      });
+      recordAudit("ReportPackAssigned", payload.name, `${result.reports.length} reports assigned to ${result.targets.length} office(s)`);
+      void refreshFromApi();
+    }).catch(() => recordAudit("ReportPackAssignmentFailed", payload.name, "Assignment API unavailable"));
+  }
+
   function updateReportDetails(id: string, details: Pick<Report, "preparedBy" | "attestation" | "approvalLimit" | "reportFields" | "templateChecklist">) {
     const fieldCount = Object.keys(details.reportFields ?? {}).length;
     const completed = completedReportFields(details.reportFields);
@@ -6728,7 +6895,7 @@ function App() {
     setActiveSection("Archive");
   }
 
-  function sendChurchMail(message: Pick<Message, "kind" | "subject" | "files"> & { to: string }) {
+  function sendChurchMail(message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) {
     const status: Status = offlineMode ? "Queued" : "Ready";
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
@@ -6737,14 +6904,17 @@ function App() {
       from: `${activeStation.email} -> ${message.to}`,
       age: "now",
       status,
-      files: message.files || "No attachments"
+      files: message.files || "No attachments",
+      body: message.body,
+      priority: message.priority,
+      recipients: message.recipients
     };
     setMessages((items) => [newMessage, ...items]);
     recordAudit("EmailSent", newMessage.subject, `${message.kind} routed to ${message.to}`);
     if (!offlineMode) {
       void apiRequest<Message>("/api/messages", {
         method: "POST",
-        body: JSON.stringify({ ...newMessage, actor: activeStation.email })
+        body: JSON.stringify({ ...newMessage, to: message.to, actor: activeStation.email })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -9810,8 +9980,10 @@ function App() {
         allowedSections={allowedSections}
         workstationProfile={workstationProfile}
         stationDirectory={visibleStationDirectory}
+        churchMailRecipientDirectory={churchMailRecipientDirectory}
         messages={scopedMessages}
         reports={scopedReports}
+        reportAssignments={reportAssignments}
         approvals={scopedApprovals}
         tasks={scopedTasks}
         policies={policies}
@@ -9828,10 +10000,12 @@ function App() {
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
         onLogout={handleLogout}
+        onSendChurchMail={sendChurchMail}
         onSubmitReport={submitReport}
         onReviewReport={reviewReport}
         onVerifyReport={verifyReport}
         onArchiveReport={archiveReportRecord}
+        onAssignReportPack={assignResidentPastorReportPack}
         onApprove={approveRequest}
         onSign={signApproval}
         onReject={rejectApproval}
@@ -11084,8 +11258,10 @@ function CommandDeck({
   allowedSections: Section[];
   workstationProfile: WorkstationProfile;
   stationDirectory: StationCard[];
+  churchMailRecipientDirectory: StationCard[];
   messages: Message[];
   reports: Report[];
+  reportAssignments: ReportAssignment[];
   approvals: Approval[];
   tasks: GovernanceTask[];
   policies: Policy[];
@@ -22894,10 +23070,12 @@ type AdminV2Props = {
   searchResults: SearchResult[];
   onOpenSearchResult: (result: SearchResult) => void;
   onLogout: () => void;
+  onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
   onSubmitReport: (id: string) => void;
   onReviewReport: (id: string) => void;
   onVerifyReport: (id: string) => void;
   onArchiveReport: (id: string) => void;
+  onAssignReportPack: (input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) => void;
   onApprove: (id: string) => void;
   onSign: (id: string) => void;
   onReject: (id: string) => void;
@@ -22913,8 +23091,10 @@ function AdminV2Shell(props: AdminV2Props) {
     allowedSections,
     workstationProfile,
     stationDirectory,
+    churchMailRecipientDirectory,
     messages,
     reports,
+    reportAssignments,
     approvals,
     tasks,
     policies,
@@ -22933,10 +23113,12 @@ function AdminV2Shell(props: AdminV2Props) {
     searchResults,
     onOpenSearchResult,
     onLogout,
+    onSendChurchMail,
     onSubmitReport,
     onReviewReport,
     onVerifyReport,
     onArchiveReport,
+    onAssignReportPack,
     onApprove,
     onSign,
     onReject,
@@ -22964,11 +23146,15 @@ function AdminV2Shell(props: AdminV2Props) {
       return (
         <AdminV2Reports
           reports={reports}
+          reportAssignments={reportAssignments}
           templates={churchReportTemplates}
+          stationDirectory={stationDirectory}
+          permissions={permissions}
           onSubmitReport={onSubmitReport}
           onReviewReport={onReviewReport}
           onVerifyReport={onVerifyReport}
           onArchiveReport={onArchiveReport}
+          onAssignReportPack={onAssignReportPack}
           onQuickAction={onQuickAction}
         />
       );
@@ -22985,7 +23171,7 @@ function AdminV2Shell(props: AdminV2Props) {
       );
     }
     if (section === "ChurchMail") {
-      return <AdminV2Mail messages={messages} onQuickAction={onQuickAction} />;
+      return <AdminV2Mail messages={messages} station={station} stationDirectory={churchMailRecipientDirectory} onSendChurchMail={onSendChurchMail} onQuickAction={onQuickAction} />;
     }
     if (section === "Personnel") {
       return (
@@ -23519,8 +23705,44 @@ function AdminV2UserOverview({
   );
 }
 
-function AdminV2Reports({ reports, templates, onSubmitReport, onReviewReport, onVerifyReport, onArchiveReport, onQuickAction }: { reports: Report[]; templates: ReportTemplate[]; onSubmitReport: (id: string) => void; onReviewReport: (id: string) => void; onVerifyReport: (id: string) => void; onArchiveReport: (id: string) => void; onQuickAction: (action: string) => void }) {
+function AdminV2Reports({
+  reports,
+  reportAssignments,
+  templates,
+  stationDirectory,
+  permissions,
+  onSubmitReport,
+  onReviewReport,
+  onVerifyReport,
+  onArchiveReport,
+  onAssignReportPack,
+  onQuickAction
+}: {
+  reports: Report[];
+  reportAssignments: ReportAssignment[];
+  templates: ReportTemplate[];
+  stationDirectory: StationCard[];
+  permissions: Permissions;
+  onSubmitReport: (id: string) => void;
+  onReviewReport: (id: string) => void;
+  onVerifyReport: (id: string) => void;
+  onArchiveReport: (id: string) => void;
+  onAssignReportPack: (input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) => void;
+  onQuickAction: (action: string) => void;
+}) {
   const selected = reports[0];
+  const [assignmentTargetMode, setAssignmentTargetMode] = React.useState<ReportAssignment["targetMode"]>("resident-pastor-offices");
+  const [assignmentTargetOfficeId, setAssignmentTargetOfficeId] = React.useState(stationDirectory.find((item) => /local branch|resident pastor|mission station/i.test([item.title, item.level, item.authority].join(" ")))?.id ?? stationDirectory[0]?.id ?? "");
+  const [assignmentPeriod, setAssignmentPeriod] = React.useState("Current month");
+  const monthlyTemplates = templates.filter((template) => template.type === "Resident Pastor Monthly");
+  const residentPastorTargets = stationDirectory.filter((item) => /local branch|resident pastor|mission station|pastor in charge/i.test([item.title, item.level, item.authority].join(" ")));
+  const assignedReportIds = new Set(reportAssignments.flatMap((assignment) => assignment.generatedReportIds));
+  const monthlyAssignedReports = reports.filter((report) => report.assignmentId || assignedReportIds.has(report.id));
+  const activeMonthlyDrafts = monthlyAssignedReports.filter((report) => report.state !== "Approved" && !report.archived);
+  const latestAssignment = reportAssignments[0];
+  const coverage = residentPastorTargets.length
+    ? Math.min(100, Math.round(((latestAssignment?.targetCount ?? 0) / residentPastorTargets.length) * 100))
+    : 0;
   return (
     <div className="admin-v2-workspace">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -23533,12 +23755,82 @@ function AdminV2Reports({ reports, templates, onSubmitReport, onReviewReport, on
           <article><strong>{templates.length}</strong><span>Templates</span></article>
           <article><strong>{reports.filter((item) => item.state !== "Approved").length}</strong><span>Active reports</span></article>
           <article><strong>{reports.filter((item) => item.state === "Escalated").length}</strong><span>Escalated</span></article>
+          <article><strong>{activeMonthlyDrafts.length}</strong><span>Monthly drafts</span></article>
         </div>
       </section>
       <section className="admin-v2-toolbar">
         <button className="primary" onClick={() => onQuickAction("Create report")} type="button">Create report</button>
         <button onClick={() => onQuickAction("Save draft")} type="button">Save draft</button>
         <button onClick={() => onQuickAction("Build packet")} type="button">Build packet</button>
+      </section>
+      <section className="admin-v2-panel resident-report-assignment">
+        <div className="admin-v2-panel-head">
+          <span>Super Admin Assignment</span>
+          <strong>Resident Pastor Monthly Report Pack</strong>
+        </div>
+        <div className="admin-v2-assignment-summary">
+          <article>
+            <strong>{monthlyTemplates.length}</strong>
+            <span>Monthly forms</span>
+          </article>
+          <article>
+            <strong>{residentPastorTargets.length}</strong>
+            <span>Matched offices</span>
+          </article>
+          <article>
+            <strong>{coverage}%</strong>
+            <span>Latest coverage</span>
+          </article>
+          <article>
+            <strong>{activeMonthlyDrafts.length}</strong>
+            <span>Open assigned drafts</span>
+          </article>
+        </div>
+        <div className="admin-v2-assignment-grid">
+          <div>
+            <p>Assign the uploaded monthly report package to every Resident Pastor/local branch office, or choose one designated office for a controlled rollout.</p>
+            <div className="admin-v2-source-list">
+              {monthlyTemplates.slice(0, 6).map((template) => (
+                <span key={template.id}>{template.name}</span>
+              ))}
+            </div>
+          </div>
+          <label>
+            <span>Assignment scope</span>
+            <select value={assignmentTargetMode} onChange={(event) => setAssignmentTargetMode(event.target.value as ReportAssignment["targetMode"])}>
+              <option value="resident-pastor-offices">All Resident Pastor offices</option>
+              <option value="designated-office">Designated office only</option>
+            </select>
+          </label>
+          <label>
+            <span>Designated office</span>
+            <select value={assignmentTargetOfficeId} disabled={assignmentTargetMode !== "designated-office"} onChange={(event) => setAssignmentTargetOfficeId(event.target.value)}>
+              {stationDirectory.map((item) => (
+                <option key={item.id ?? item.email} value={item.id ?? item.email}>{item.title} / {item.email}</option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>Reporting period</span>
+            <input value={assignmentPeriod} onChange={(event) => setAssignmentPeriod(event.target.value)} placeholder="Example: May 2026" />
+          </label>
+          <button
+            className="primary"
+            type="button"
+            disabled={!permissions.canOverride || !monthlyTemplates.length}
+            onClick={() => onAssignReportPack({ targetMode: assignmentTargetMode, targetOfficeId: assignmentTargetOfficeId, period: assignmentPeriod })}
+          >
+            Assign monthly reports
+          </button>
+        </div>
+        <div className="admin-v2-assignment-history">
+          <strong>{reportAssignments.length}</strong>
+          <span>assignment{reportAssignments.length === 1 ? "" : "s"} recorded</span>
+          {reportAssignments.slice(0, 3).map((assignment) => (
+            <small key={assignment.id}>{assignment.period} / {assignment.targetLabel} / {assignment.generatedReportIds.length} drafts</small>
+          ))}
+          {!reportAssignments.length && <small>No monthly pack has been assigned yet.</small>}
+        </div>
       </section>
       <div className="admin-v2-three">
       <section className="admin-v2-panel">
@@ -23659,8 +23951,53 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
   );
 }
 
-function AdminV2Mail({ messages, onQuickAction }: { messages: Message[]; onQuickAction: (action: string) => void }) {
+function AdminV2Mail({
+  messages,
+  station,
+  stationDirectory,
+  onSendChurchMail,
+  onQuickAction
+}: {
+  messages: Message[];
+  station: StationCard;
+  stationDirectory: StationCard[];
+  onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
+  onQuickAction: (action: string) => void;
+}) {
   const selected = messages[0];
+  const [composerOpen, setComposerOpen] = React.useState(false);
+  const [composeKind, setComposeKind] = React.useState<MessageKind>("Directive");
+  const [composeAudience, setComposeAudience] = React.useState("all");
+  const [composeOffice, setComposeOffice] = React.useState(stationDirectory[0]?.email ?? "");
+  const [composePriority, setComposePriority] = React.useState<Message["priority"]>("Medium");
+  const [composeSubject, setComposeSubject] = React.useState("Executive governance directive");
+  const [composeBody, setComposeBody] = React.useState("Please review this directive and acknowledge receipt through ChurchMail.");
+  const [composeFiles, setComposeFiles] = React.useState("No attachments");
+  const [composeFeedback, setComposeFeedback] = React.useState("");
+  const audienceOptions = [
+    { value: "all", label: "Everyone on GCOS", recipients: stationDirectory.map((item) => item.email), route: "All Active GCOS Accounts" },
+    { value: "national-regional", label: "National and Regional offices", recipients: stationDirectory.filter((item) => /national|regional|international/i.test(String(item.level))).map((item) => item.email), route: "All National and Regional Offices" },
+    { value: "resident-pastor", label: "Resident Pastor / Local Branch offices", recipients: stationDirectory.filter((item) => /resident pastor|local branch|mission station|pastor in charge/i.test([item.title, item.level, item.authority].join(" "))).map((item) => item.email), route: "Resident Pastor Offices" },
+    { value: "designated", label: "Designated office", recipients: [composeOffice].filter(Boolean), route: stationDirectory.find((item) => item.email === composeOffice)?.title ?? "Designated Office" }
+  ];
+  const selectedAudience = audienceOptions.find((item) => item.value === composeAudience) ?? audienceOptions[0];
+
+  function sendComposedMessage(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const recipients = selectedAudience.recipients.filter((email) => email !== station.email);
+    onSendChurchMail({
+      kind: composeKind,
+      to: selectedAudience.route,
+      subject: composeSubject,
+      body: composeBody,
+      files: composeFiles,
+      priority: composePriority,
+      recipients
+    });
+    setComposeFeedback(`Message sent to ${recipients.length || selectedAudience.recipients.length} recipient${(recipients.length || selectedAudience.recipients.length) === 1 ? "" : "s"}.`);
+    setComposerOpen(false);
+  }
+
   return (
     <div className="admin-v2-workspace">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -23673,13 +24010,75 @@ function AdminV2Mail({ messages, onQuickAction }: { messages: Message[]; onQuick
           <article><strong>{messages.length}</strong><span>Messages</span></article>
           <article><strong>{messages.filter((item) => item.kind === "Directive").length}</strong><span>Directives</span></article>
           <article><strong>{messages.filter((item) => item.status === "Escalated").length}</strong><span>Escalated</span></article>
+          <article><strong>{stationDirectory.length}</strong><span>Recipients</span></article>
         </div>
       </section>
       <section className="admin-v2-toolbar">
-        <button className="primary" onClick={() => onQuickAction("Compose")} type="button">Compose</button>
+        <button className="primary" onClick={() => setComposerOpen((open) => !open)} type="button">Compose</button>
         <button onClick={() => onQuickAction("Route message")} type="button">Route message</button>
         <button onClick={() => onQuickAction("Archive selected")} type="button">Archive selected</button>
       </section>
+      {composerOpen && (
+        <section className="admin-v2-panel churchmail-composer">
+          <div className="admin-v2-panel-head">
+            <span>Compose Message</span>
+            <strong>{selectedAudience.label}</strong>
+          </div>
+          <form onSubmit={sendComposedMessage}>
+            <div className="churchmail-compose-grid">
+              <label>
+                <span>Message type</span>
+                <select value={composeKind} onChange={(event) => setComposeKind(event.target.value as MessageKind)}>
+                  <option>Directive</option>
+                  <option>Report</option>
+                  <option>Approval</option>
+                  <option>Notification</option>
+                  <option>Transfer</option>
+                </select>
+              </label>
+              <label>
+                <span>Audience</span>
+                <select value={composeAudience} onChange={(event) => setComposeAudience(event.target.value)}>
+              {audienceOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Designated office</span>
+                <select value={composeOffice} disabled={composeAudience !== "designated"} onChange={(event) => setComposeOffice(event.target.value)}>
+                  {stationDirectory.map((item) => <option key={item.email} value={item.email}>{item.title} / {item.email}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>Priority</span>
+                <select value={composePriority} onChange={(event) => setComposePriority(event.target.value as Message["priority"])}>
+                  <option>Low</option>
+                  <option>Medium</option>
+                  <option>High</option>
+                  <option>Critical</option>
+                </select>
+              </label>
+            </div>
+            <label className="churchmail-compose-subject">
+              <span>Subject</span>
+              <input value={composeSubject} onChange={(event) => setComposeSubject(event.target.value)} required />
+            </label>
+            <label className="churchmail-compose-body">
+              <span>Message</span>
+              <textarea value={composeBody} onChange={(event) => setComposeBody(event.target.value)} required />
+            </label>
+            <label className="churchmail-compose-subject">
+              <span>Attachment note</span>
+              <input value={composeFiles} onChange={(event) => setComposeFiles(event.target.value)} />
+            </label>
+            <div className="churchmail-compose-actions">
+              <span>{Math.max(0, selectedAudience.recipients.filter((email) => email !== station.email).length)} active recipient{Math.max(0, selectedAudience.recipients.filter((email) => email !== station.email).length) === 1 ? "" : "s"} selected</span>
+              <button type="button" onClick={() => setComposerOpen(false)}>Cancel</button>
+              <button className="primary" type="submit">Send message</button>
+            </div>
+          </form>
+        </section>
+      )}
+      {composeFeedback && <div className="admin-v2-compose-feedback">{composeFeedback}</div>}
       <div className="admin-v2-three">
       <section className="admin-v2-panel">
         <div className="admin-v2-panel-head"><span>Mailboxes</span><strong>{messages.length} messages</strong></div>

@@ -224,6 +224,9 @@ const routes = {
   "POST /api/messages/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateMessage(params.id, body)),
   "GET /api/reports": () => ok(state.reports),
   "POST /api/reports": ({ body }) => createdResponse(services.createReport(body)),
+  "GET /api/report-assignments": () => ok(state.reportAssignments ?? []),
+  "GET /api/report-assignments/digest": () => ok(services.reportAssignmentDigest()),
+  "POST /api/report-assignments": ({ body, session }) => createdResponse(services.assignReportPack({ ...body, actor: session?.email ?? body.actor })),
   "POST /api/reports/:id/submit": ({ params, body }) => ok(services.submitReport(params.id, body)),
   "POST /api/reports/:id/correction": ({ params, body }) => ok(services.requestReportCorrection(params.id, body)),
   "POST /api/reports/:id/due": ({ params, body }) => ok(services.updateReportDue(params.id, body)),
@@ -3989,6 +3992,7 @@ async function loadState() {
 
 function migratePersistedState(loadedState) {
   const migratedState = JSON.parse(JSON.stringify(loadedState).replaceAll("@rmi.org", "@rmvi.org").replaceAll("@gcos.org", "@rmvi.org"));
+  migratedState.reportAssignments ??= [];
   for (const station of migratedState.stations) station.email = normalizeStationEmail(station.email);
   for (const office of migratedState.offices) office.email = normalizeStationEmail(office.email);
   const seenStationEmails = new Set();

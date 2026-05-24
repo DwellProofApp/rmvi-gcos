@@ -16,7 +16,7 @@ import {
   task,
   transfer
 } from "./domain.mjs";
-import { pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
+import { pbkdf2Sync, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 const LOCKOUT_ATTEMPTS = 3;
 const LOCKOUT_MINUTES = 15;
@@ -45,6 +45,7 @@ export function createServices({ state, record, requirePermission, findById, int
       stations: state.stations,
       messages: state.messages,
       reports: state.reports,
+      reportAssignments: state.reportAssignments ?? [],
       approvals: state.approvals,
       tasks: state.tasks,
       policies: state.policies,
@@ -79,6 +80,42 @@ export function createServices({ state, record, requirePermission, findById, int
       state.authCredentials[normalizedEmail] = credentialRecord(normalizedEmail, password ?? `gcos-${normalizedEmail.split("@")[0]}`);
     }
     return state.authCredentials[normalizedEmail];
+  }
+
+  function resolveReportAssignmentTargets(body) {
+    const offices = (state.offices ?? []).map((entry) => ({
+      id: entry.id,
+      email: entry.email,
+      owner: entry.name,
+      level: entry.level,
+      department: entry.department,
+      path: entry.reportingRoute ?? `${entry.level} -> ${entry.supervisor ?? "Supervising Office"}`
+    }));
+    const stations = (state.stations ?? []).map((entry) => ({
+      id: entry.id,
+      email: entry.email,
+      owner: entry.title,
+      level: entry.level,
+      department: entry.authority,
+      path: entry.reportingRoute ?? `${entry.level} -> Supervising Office`
+    }));
+    const directory = [...offices, ...stations];
+    if (body.targetMode === "designated-office") {
+      const targetId = String(body.targetOfficeId ?? "").toLowerCase();
+      return directory.filter((entry) => [entry.id, entry.email, entry.owner].map((value) => String(value ?? "").toLowerCase()).includes(targetId));
+    }
+    return directory.filter((entry) => {
+      const haystack = [entry.owner, entry.level, entry.department, entry.path].join(" ").toLowerCase();
+      return haystack.includes("resident pastor")
+        || haystack.includes("pastor in charge")
+        || haystack.includes("local branch")
+        || haystack.includes("mission station");
+    });
+  }
+
+  function targetLabelForAssignment(body, targets) {
+    if (body.targetMode === "designated-office") return targets[0]?.owner ?? "Designated office";
+    return "All Resident Pastor / Local Branch offices";
   }
 
   function credentialRecord(email, password) {
@@ -1301,10 +1338,13 @@ export function createServices({ state, record, requirePermission, findById, int
       const created = message(body.kind, body.subject, body.from, body.status ?? "Ready", body.files ?? "No attachments");
       created.to = body.to ?? body.recipient ?? body.routeTo;
       created.route = body.route ?? body.routingPath;
+      created.body = body.body;
+      created.priority = body.priority;
+      created.recipients = Array.isArray(body.recipients) ? body.recipients : [body.to, body.recipient, body.routeTo].filter(Boolean);
       state.messages.unshift(created);
-      record("EmailSent", body.actor ?? body.from ?? "ChurchMail", created.subject, `${created.kind} routed`);
+      record("EmailSent", body.actor ?? body.from ?? "ChurchMail", created.subject, `${created.kind} routed to ${created.recipients.length || 1} recipient(s)`);
       try {
-        const delivery = await integrations.email?.deliverChurchMail?.(created, [body.to, body.recipient].filter(Boolean));
+        const delivery = await integrations.email?.deliverChurchMail?.(created, created.recipients);
         if (delivery) {
           created.delivery = {
             provider: delivery.provider,
@@ -1439,6 +1479,88 @@ export function createServices({ state, record, requirePermission, findById, int
       state.reports.unshift(created);
       record("ReportDrafted", body.actor, created.name, "Created in reporting center");
       return created;
+    },
+
+    assignReportPack(body) {
+      requirePermission(body.actor, "canOverride");
+      state.reportAssignments ??= [];
+      const templates = Array.isArray(body.templates) ? body.templates : [];
+      if (!templates.length) throw Object.assign(new Error("At least one report template is required"), { status: 400 });
+      const targets = resolveReportAssignmentTargets(body);
+      if (!targets.length) throw Object.assign(new Error("No matching office or station found for this assignment"), { status: 400 });
+      const assignment = {
+        id: randomUUID(),
+        name: body.name ?? "Resident Pastor Monthly Report Pack",
+        targetMode: body.targetMode ?? "resident-pastor-offices",
+        targetOfficeId: body.targetOfficeId,
+        targetLabel: body.targetLabel ?? targetLabelForAssignment(body, targets),
+        period: body.period ?? "Current month",
+        cadence: body.cadence ?? "Monthly",
+        status: "Active",
+        assignedBy: body.actor,
+        assignedAt: new Date().toISOString(),
+        templates: templates.map((template) => ({
+          id: template.id,
+          name: template.name,
+          type: template.type,
+          sourceFiles: template.sourceFiles ?? []
+        })),
+        targetCount: targets.length,
+        generatedReportIds: []
+      };
+      const createdReports = [];
+      for (const target of targets) {
+        for (const template of templates) {
+          const duplicate = state.reports.find((item) => (
+            item.templateId === template.id
+            && item.owner === target.owner
+            && item.period === assignment.period
+            && item.assignmentTarget === target.email
+          ));
+          if (duplicate) continue;
+          const created = report(template.name, target.owner, template.path ?? target.path, "Monthly", "Ready", 10, {
+            type: template.type,
+            period: assignment.period,
+            routingStage: "Assigned to office",
+            evidenceStatus: template.evidenceStatus ?? "Monthly report evidence pending",
+            templateId: template.id,
+            preparedBy: target.email,
+            approvalLimit: template.approvalLimit,
+            reportFields: Object.fromEntries((template.checklist ?? []).map((section) => [section, ""])),
+            templateChecklist: template.checklist ?? []
+          });
+          created.assignmentId = assignment.id;
+          created.assignmentTarget = target.email;
+          created.assignmentTargetName = target.owner;
+          created.assignmentCadence = assignment.cadence;
+          created.sourceFiles = template.sourceFiles ?? [];
+          state.reports.unshift(created);
+          createdReports.push(created);
+          assignment.generatedReportIds.push(created.id);
+        }
+      }
+      state.reportAssignments.unshift(assignment);
+      record("ReportPackAssigned", body.actor, assignment.name, `${createdReports.length} monthly reports assigned to ${targets.length} office(s)`);
+      return { assignment, reports: createdReports, targets };
+    },
+
+    reportAssignmentDigest() {
+      const assignments = state.reportAssignments ?? [];
+      const residentPastorTargets = resolveReportAssignmentTargets({ targetMode: "resident-pastor-offices" });
+      const assignedReportIds = new Set(assignments.flatMap((assignment) => assignment.generatedReportIds ?? []));
+      const assignedReports = state.reports.filter((item) => item.assignmentId || assignedReportIds.has(item.id));
+      const activeReports = assignedReports.filter((item) => !item.archived && item.state !== "Approved");
+      return {
+        generatedAt: new Date().toISOString(),
+        assignments: assignments.length,
+        activeAssignments: assignments.filter((item) => item.status !== "Archived").length,
+        residentPastorTargets: residentPastorTargets.length,
+        assignedReports: assignedReports.length,
+        activeReports: activeReports.length,
+        templatesAssigned: assignments.reduce((sum, item) => sum + (item.templates?.length ?? 0), 0),
+        latestAssignment: assignments[0] ?? null,
+        nextTarget: residentPastorTargets[0]?.owner ?? "No Resident Pastor office found"
+      };
     },
 
     createApproval(body) {

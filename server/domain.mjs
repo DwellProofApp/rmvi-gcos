@@ -55,6 +55,7 @@ export function createSeedState() {
       report("County finance summary", "County Finance", "County -> National", "Tomorrow", "Ready", 94, { type: "Financial", period: "Q2 2026", routingStage: "County validation", evidenceStatus: "Ledger pending" }),
       report("Construction milestone report", "District Works", "District -> County", "Overdue", "Escalated", 58, { type: "Construction", period: "May 2026", routingStage: "District correction", evidenceStatus: "Photo packet incomplete", correctionReason: "Missing site photos" })
     ],
+    reportAssignments: [],
     approvals: [
       approval("County youth program budget", "District -> County -> National", "$24,800", "Validation", "0/3"),
       approval("Area vehicle repair release", "Area -> District Finance", "$3,400", "Signature", "1/2"),

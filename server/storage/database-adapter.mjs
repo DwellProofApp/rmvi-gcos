@@ -6,6 +6,7 @@ const COLLECTIONS = [
   { name: "stations", type: "array", key: "id" },
   { name: "messages", type: "array", key: "id" },
   { name: "reports", type: "array", key: "id" },
+  { name: "reportAssignments", type: "array", key: "id" },
   { name: "approvals", type: "array", key: "id" },
   { name: "tasks", type: "array", key: "id" },
   { name: "policies", type: "array", key: "id" },

@@ -396,6 +396,9 @@ const validators = {
     requireString(body.from, "from");
     if (body.status !== undefined) requireEnum(body.status, statuses, "status");
     if (body.files !== undefined) requireString(body.files, "files");
+    if (body.body !== undefined) requireString(body.body, "body");
+    if (body.priority !== undefined) requireEnum(body.priority, ["Low", "Medium", "High", "Critical"], "priority");
+    if (body.recipients !== undefined) requireStringArray(body.recipients, "recipients");
   },
 
   "POST /api/messages/:id/classify": (body) => {
@@ -448,6 +451,22 @@ const validators = {
     if (body.approvalLimit !== undefined) requireString(body.approvalLimit, "approvalLimit");
     if (body.templateChecklist !== undefined) requireStringArray(body.templateChecklist, "templateChecklist");
     if (body.reportFields !== undefined && (body.reportFields === null || typeof body.reportFields !== "object" || Array.isArray(body.reportFields))) throw validationError("reportFields must be an object");
+  },
+
+  "POST /api/report-assignments": (body) => {
+    if (body.name !== undefined) requireString(body.name, "name");
+    if (body.targetMode !== undefined) requireEnum(body.targetMode, ["resident-pastor-offices", "designated-office"], "targetMode");
+    if (body.targetOfficeId !== undefined) requireString(body.targetOfficeId, "targetOfficeId");
+    if (body.period !== undefined) requireString(body.period, "period");
+    if (body.cadence !== undefined) requireString(body.cadence, "cadence");
+    if (!Array.isArray(body.templates) || body.templates.length === 0) throw validationError("templates must be a non-empty array");
+    for (const template of body.templates) {
+      if (!template || typeof template !== "object") throw validationError("templates must contain objects");
+      requireString(template.id, "template.id");
+      requireString(template.name, "template.name");
+      requireString(template.path, "template.path");
+      if (template.checklist !== undefined) requireStringArray(template.checklist, "template.checklist");
+    }
   },
 
   "POST /api/reports/:id/score": (body) => {

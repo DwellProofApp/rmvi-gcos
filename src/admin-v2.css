@@ -764,7 +764,204 @@
     grid-template-columns: 1fr;
   }
 
-  .admin-v2-status {
-    justify-self: start;
+.admin-v2-status {
+  justify-self: start;
+}
+}
+
+.resident-report-assignment {
+  margin-top: 14px;
+}
+
+.admin-v2-assignment-summary {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.admin-v2-assignment-summary article {
+  background: linear-gradient(180deg, rgba(255, 255, 255, .94), rgba(248, 250, 252, .9));
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 14px;
+  box-shadow: 0 12px 28px rgba(15, 23, 42, .06);
+  display: grid;
+  gap: 4px;
+  padding: 13px 14px;
+}
+
+.admin-v2-assignment-summary strong {
+  color: #172033;
+  font-size: 22px;
+  letter-spacing: -.02em;
+}
+
+.admin-v2-assignment-summary span {
+  color: var(--v2-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-v2-assignment-grid {
+  align-items: end;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(260px, 1.4fr) minmax(170px, 0.7fr) minmax(220px, 0.85fr) minmax(160px, 0.65fr) auto;
+}
+
+.admin-v2-assignment-grid p {
+  color: var(--v2-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0 0 10px;
+}
+
+.admin-v2-assignment-grid label {
+  display: grid;
+  gap: 7px;
+}
+
+.admin-v2-assignment-grid label span {
+  color: var(--v2-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-v2-assignment-grid input,
+.admin-v2-assignment-grid select {
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, .34);
+  border-radius: 12px;
+  color: #172033;
+  font: inherit;
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.admin-v2-source-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.admin-v2-source-list span {
+  background: rgba(197, 145, 42, .1);
+  border: 1px solid rgba(197, 145, 42, .22);
+  border-radius: 999px;
+  color: #73531c;
+  font-size: 11px;
+  font-weight: 800;
+  padding: 6px 9px;
+}
+
+.admin-v2-assignment-history {
+  align-items: center;
+  border-top: 1px solid rgba(148, 163, 184, .2);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 14px;
+  padding-top: 12px;
+}
+
+.admin-v2-assignment-history strong {
+  color: #172033;
+}
+
+.admin-v2-assignment-history span,
+.admin-v2-assignment-history small {
+  color: var(--v2-muted);
+  font-size: 12px;
+}
+
+.churchmail-composer {
+  margin-top: 14px;
+}
+
+.churchmail-composer form {
+  display: grid;
+  gap: 14px;
+}
+
+.churchmail-compose-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.churchmail-composer label {
+  display: grid;
+  gap: 7px;
+}
+
+.churchmail-composer label span,
+.churchmail-compose-actions span {
+  color: var(--v2-muted);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.churchmail-composer input,
+.churchmail-composer select,
+.churchmail-composer textarea {
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, .34);
+  border-radius: 12px;
+  color: #172033;
+  font: inherit;
+  min-height: 42px;
+  padding: 0 12px;
+}
+
+.churchmail-composer textarea {
+  line-height: 1.5;
+  min-height: 128px;
+  padding: 12px;
+  resize: vertical;
+}
+
+.churchmail-compose-actions {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.admin-v2-compose-feedback {
+  background: rgba(21, 128, 61, .1);
+  border: 1px solid rgba(21, 128, 61, .18);
+  border-radius: 14px;
+  color: #166534;
+  font-size: 13px;
+  font-weight: 800;
+  margin-top: 12px;
+  padding: 12px 14px;
+}
+
+@media (max-width: 1180px) {
+  .admin-v2-assignment-summary,
+  .admin-v2-assignment-grid,
+  .churchmail-compose-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-v2-assignment-summary,
+  .admin-v2-assignment-grid,
+  .churchmail-compose-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .churchmail-compose-actions {
+    align-items: stretch;
+    display: grid;
+    justify-content: stretch;
   }
 }
