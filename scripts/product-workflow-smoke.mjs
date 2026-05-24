@@ -257,8 +257,9 @@ await check("15 operational monitor is working", async () => {
 await check("16 rollout and training boards are connected", async () => {
   const rollout = await request("/api/rollout/readiness");
   const training = await request("/api/rollout/station-training");
-  if (!Array.isArray(rollout.tracks) && !Array.isArray(training.stations)) fail("Rollout/training records were missing.");
-  return `rollout ${rollout.overallScore ?? 0}%; training stations ${(training.stations ?? []).length}`;
+  const trainingRecords = training.records ?? training.stations ?? [];
+  if (!Array.isArray(rollout.tracks) || !Array.isArray(trainingRecords)) fail("Rollout/training records were missing.");
+  return `rollout ${rollout.overallScore ?? 0}%; training stations ${trainingRecords.length}; trained ${training.trained ?? 0}`;
 });
 
 const failures = report.checks.filter((item) => item.status === "failed");
@@ -300,11 +301,20 @@ async function raw(path, options = {}) {
   if (options.body !== undefined) headers["content-type"] = "application/json";
   const bearer = options.token === undefined ? adminToken : options.token;
   if (bearer) headers.authorization = `Bearer ${bearer}`;
-  const response = await fetch(`${baseUrl}${path}`, {
-    method: options.method ?? "GET",
-    headers,
-    body: options.body === undefined ? undefined : JSON.stringify(options.body)
-  });
+  const method = options.method ?? "GET";
+  const requestBody = options.body === undefined ? undefined : JSON.stringify(options.body);
+  const retryStatuses = new Set([502, 503, 504]);
+  const maxAttempts = options.noRetry ? 1 : 3;
+  let response;
+  for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
+    response = await fetch(`${baseUrl}${path}`, {
+      method,
+      headers,
+      body: requestBody
+    });
+    if (!retryStatuses.has(response.status) || attempt === maxAttempts || options.allowStatus?.includes(response.status)) break;
+    await new Promise((resolve) => setTimeout(resolve, 350 * attempt));
+  }
   if (!response.ok && !options.allowStatus?.includes(response.status)) {
     const text = await response.text();
     throw new Error(`${response.status} ${response.statusText}: ${text.slice(0, 300)}`);
