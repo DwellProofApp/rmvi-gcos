@@ -20,6 +20,7 @@
     "runtime:smoke": "node scripts/runtime-smoke.mjs",
     "product:smoke": "node scripts/product-workflow-smoke.mjs",
     "rollout:finish": "node scripts/product-rollout-finish.mjs",
+    "activation:final": "node scripts/final-live-activation.mjs",
     "deployment:align": "node scripts/deployment-alignment-check.mjs",
     "firebase:domain-check": "node scripts/firebase-domain-check.mjs",
     "hosting:security-check": "node scripts/hosting-security-check.mjs",
