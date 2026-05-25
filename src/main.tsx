@@ -24192,6 +24192,22 @@ function AdminV2Reports({
     : [];
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
   const selectedReport = reports.find((report) => report.id === selectedReportId) ?? reports[0];
+  const selectedReportApproval = selectedReport
+    ? approvals.find((approval) => approval.linkedReport === selectedReport.id || approval.request.toLowerCase().includes(selectedReport.name.toLowerCase()))
+    : undefined;
+  const selectedReportIsSubmitted = Boolean(selectedReport?.submittedAt || selectedReport?.routingStage?.toLowerCase().startsWith("submitted"));
+  const selectedReportIsApproved = selectedReport?.state === "Approved";
+  const selectedReportIsArchived = Boolean(selectedReport?.archived);
+  const selectedReportHasEvidence = Boolean(selectedReport?.evidenceStatus && /attached|bundled|verified|archived/i.test(selectedReport.evidenceStatus));
+  const selectedReportWorkflowSteps = selectedReport
+    ? [
+      { label: "Draft", value: selectedReport.score > 0 ? "Started" : "Needed", done: selectedReport.score > 0 },
+      { label: "Evidence", value: selectedReport.evidenceStatus ?? "Pending", done: selectedReportHasEvidence },
+      { label: "Submitted", value: selectedReportIsSubmitted ? selectedReport.routingStage ?? "Submitted upward" : "Pending", done: selectedReportIsSubmitted },
+      { label: "Approval", value: selectedReportApproval?.state ?? (selectedReportIsApproved ? "Approved" : "Needed"), done: selectedReportIsApproved || selectedReportApproval?.state === "Approved" },
+      { label: "Archive", value: selectedReportIsArchived ? "Archived" : "Ready after approval", done: selectedReportIsArchived }
+    ]
+    : [];
   const visibleTemplates = templates.filter((template) => [template.name, template.type, template.path, template.description].join(" ").toLowerCase().includes(templateSearch.trim().toLowerCase())).slice(0, 18);
   const coverage = residentPastorTargets.length
     ? Math.min(100, Math.round(((latestAssignment?.targetCount ?? 0) / residentPastorTargets.length) * 100))
@@ -24689,11 +24705,19 @@ function AdminV2Reports({
               <article><span>Stage</span><strong>{selectedReport.routingStage ?? selectedReport.state}</strong></article>
             </div>
             <div className="admin-v2-progress" aria-label={`${selectedReport.score}% complete`}><i style={{ width: `${selectedReport.score}%` }} /></div>
+            <div className="admin-v2-workflow-status" aria-label="Selected report workflow status">
+              {selectedReportWorkflowSteps.map((step) => (
+                <article className={step.done ? "complete" : ""} key={step.label}>
+                  <span>{step.label}</span>
+                  <strong>{step.value}</strong>
+                </article>
+              ))}
+            </div>
             <div className="admin-v2-actions-row">
-              <button onClick={() => runSelectedReportAction("review")} type="button">Review</button>
-              <button onClick={() => runSelectedReportAction("verify")} type="button">Verify</button>
-              <button onClick={() => runSelectedReportAction("submit")} type="button">Submit</button>
-              <button onClick={() => runSelectedReportAction("archive")} type="button">Archive</button>
+              <button onClick={() => runSelectedReportAction("review")} disabled={selectedReportIsApproved || selectedReportIsArchived} type="button">Review</button>
+              <button onClick={() => runSelectedReportAction("verify")} disabled={selectedReportIsApproved || selectedReportIsArchived} type="button">{selectedReportIsApproved ? "Verified" : "Verify"}</button>
+              <button onClick={() => runSelectedReportAction("submit")} disabled={selectedReportIsSubmitted || selectedReportIsApproved || selectedReportIsArchived} type="button">{selectedReportIsSubmitted ? "Submitted" : "Submit"}</button>
+              <button onClick={() => runSelectedReportAction("archive")} disabled={selectedReportIsArchived} type="button">{selectedReportIsArchived ? "Archived" : "Archive"}</button>
             </div>
             <div className="admin-v2-connected-routes" aria-label="Connected report destinations">
               <button type="button" onClick={openSelectedReportApprovalRoute}><Signature size={14} /> Approval route</button>

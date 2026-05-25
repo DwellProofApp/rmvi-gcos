@@ -945,6 +945,54 @@
   color: white;
 }
 
+.admin-v2-actions-row button:disabled,
+.admin-v2-row-actions button:disabled {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  cursor: not-allowed;
+}
+
+.admin-v2-workflow-status {
+  background: linear-gradient(135deg, rgba(248, 250, 252, .94), rgba(239, 246, 255, .72));
+  border: 1px solid var(--v2-line);
+  border-radius: 16px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  padding: 10px;
+}
+
+.admin-v2-workflow-status article {
+  background: rgba(255, 255, 255, .78);
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 12px;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 9px;
+}
+
+.admin-v2-workflow-status article.complete {
+  background: rgba(236, 253, 245, .92);
+  border-color: rgba(16, 185, 129, .22);
+}
+
+.admin-v2-workflow-status span {
+  color: var(--v2-muted);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-v2-workflow-status strong {
+  color: var(--v2-text);
+  font-size: 12px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
 .admin-v2-connected-routes {
   border-top: 1px solid var(--v2-line);
   display: grid;
@@ -1569,7 +1617,8 @@
   .admin-v2-assignment-brief,
   .admin-v2-assignment-next,
   .admin-v2-package-row,
-  .admin-v2-assignment-grid {
+  .admin-v2-assignment-grid,
+  .admin-v2-workflow-status {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -1582,7 +1631,8 @@
   .admin-v2-package-row,
   .admin-v2-assignment-grid,
   .admin-v2-assignment-summary,
-  .admin-v2-report-meta {
+  .admin-v2-report-meta,
+  .admin-v2-workflow-status {
     grid-template-columns: 1fr;
   }
 }
