@@ -12,6 +12,7 @@ import {
   liveSession,
   normalizeStationEmail,
   station,
+  getPermissions,
   stationPasswords,
   task,
   transfer
@@ -40,10 +41,10 @@ export function createServices({ state, record, requirePermission, findById, int
     throw Object.assign(new Error("Event not found"), { status: 404 });
   }
 
-  function publicState() {
+  function publicState(actor) {
     return {
       stations: state.stations,
-      messages: state.messages,
+      messages: actor ? messagesForStation(actor) : state.messages,
       reports: state.reports,
       reportAssignments: state.reportAssignments ?? [],
       approvals: state.approvals,
@@ -61,6 +62,34 @@ export function createServices({ state, record, requirePermission, findById, int
       audit: state.audit,
       events: state.events
     };
+  }
+
+  function messagesForStation(actor) {
+    const stationEmail = normalizeStationEmail(actor);
+    const stationRecord = state.stations.find((entry) => normalizeStationEmail(entry.email) === stationEmail);
+    if (stationRecord && getPermissions(stationRecord).canOverride) return state.messages;
+    return state.messages.filter((item) => messageBelongsToStation(item, stationEmail));
+  }
+
+  function messageBelongsToStation(item, stationEmail) {
+    const from = normalizeStationEmail(item.from ?? "");
+    if (from === stationEmail) return true;
+    const recipients = messageRecipients(item).map(normalizeStationEmail);
+    if (recipients.includes(stationEmail)) return true;
+    return messageRouteIsBroadcast(item) && !item.archived;
+  }
+
+  function messageRecipients(item) {
+    return Array.from(new Set([
+      ...(Array.isArray(item.recipients) ? item.recipients : []),
+      ...(Array.isArray(item.delivery?.recipients) ? item.delivery.recipients : []),
+      item.recipient,
+      item.routeTo
+    ].filter((value) => String(value ?? "").includes("@"))));
+  }
+
+  function messageRouteIsBroadcast(item) {
+    return /all active gcos accounts|everyone on gcos|all national and regional offices|resident pastor offices/i.test(String(item.to ?? item.route ?? ""));
   }
 
   function ensureAuthCredentials() {
@@ -242,6 +271,7 @@ export function createServices({ state, record, requirePermission, findById, int
 
   return {
     publicState,
+    messagesForStation,
 
     commandBriefing(body = {}) {
       const openEscalations = state.escalations.filter((item) => item.status !== "Resolved");
@@ -1335,14 +1365,15 @@ export function createServices({ state, record, requirePermission, findById, int
     },
 
     async createMessage(body) {
-      const created = message(body.kind, body.subject, body.from, body.status ?? "Ready", body.files ?? "No attachments");
+      const actor = normalizeStationEmail(body.actor ?? body.from ?? "ChurchMail");
+      const created = message(body.kind, body.subject, actor, body.status ?? "Ready", body.files ?? "No attachments");
       created.to = body.to ?? body.recipient ?? body.routeTo;
       created.route = body.route ?? body.routingPath;
       created.body = body.body;
       created.priority = body.priority;
       created.recipients = Array.isArray(body.recipients) ? body.recipients : [body.to, body.recipient, body.routeTo].filter(Boolean);
       state.messages.unshift(created);
-      record("EmailSent", body.actor ?? body.from ?? "ChurchMail", created.subject, `${created.kind} routed to ${created.recipients.length || 1} recipient(s)`);
+      record("EmailSent", actor, created.subject, `${created.kind} routed to ${created.recipients.length || 1} recipient(s)`);
       try {
         const delivery = await integrations.email?.deliverChurchMail?.(created, created.recipients);
         if (delivery) {
@@ -1354,11 +1385,11 @@ export function createServices({ state, record, requirePermission, findById, int
             recipients: delivery.to,
             updatedAt: new Date().toISOString()
           };
-          record("ChurchMailDeliveryQueued", body.actor ?? body.from ?? "ChurchMail", created.subject, `${created.delivery.provider}:${created.delivery.status}`);
+          record("ChurchMailDeliveryQueued", actor, created.subject, `${created.delivery.provider}:${created.delivery.status}`);
         }
       } catch (error) {
         created.delivery = { provider: integrations.email?.provider ?? "unknown", status: "Failed", error: error.message, updatedAt: new Date().toISOString() };
-        record("ChurchMailDeliveryFailed", body.actor ?? body.from ?? "ChurchMail", created.subject, error.message);
+        record("ChurchMailDeliveryFailed", actor, created.subject, error.message);
       }
       return created;
     },

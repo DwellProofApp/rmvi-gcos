@@ -3631,7 +3631,7 @@ function App() {
         aiDrafts: AiDraft[];
         audit: AuditRow[];
         events: string[];
-      }>("/api/bootstrap/public");
+      }>("/api/bootstrap");
       setApiStations(data.stations.length ? data.stations : stations);
       setMessages(data.messages);
       setReports(data.reports);
