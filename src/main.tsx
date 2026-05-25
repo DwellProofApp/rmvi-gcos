@@ -7405,6 +7405,16 @@ function App() {
     const approval = approvals.find((item) => item.id === id);
     if (!approval) return;
     setApprovals((items) => items.map((item) => item.id === id ? { ...item, state: "Approved", signatures: "complete" } : item));
+    if (approval.linkedReport) {
+      setReports((items) => items.map((item) => item.id === approval.linkedReport ? {
+        ...item,
+        state: "Approved",
+        score: Math.max(item.score, 95),
+        routingStage: "Approved through approval engine",
+        approvedBy: activeStation.email,
+        verified: true
+      } : item));
+    }
     recordAudit("ApprovalGranted", approval.request, "Execution authorized");
     if (!offlineMode) {
       void apiRequest<Approval>(`/api/approvals/${id}/approve`, {
@@ -7443,6 +7453,16 @@ function App() {
       nextApproval.state = "Signature";
     }
     setApprovals((items) => items.map((item) => item.id === id ? nextApproval : item));
+    if (nextApproval.state === "Approved" && approval.linkedReport) {
+      setReports((items) => items.map((item) => item.id === approval.linkedReport ? {
+        ...item,
+        state: "Approved",
+        score: Math.max(item.score, 95),
+        routingStage: "Approved through signature chain",
+        approvedBy: activeStation.email,
+        verified: true
+      } : item));
+    }
     recordAudit("ApprovalSigned", approval.request, `${nextApproval.signatures} signatures`);
     if (!offlineMode) {
       void apiRequest<Approval>(`/api/approvals/${id}/sign`, {
@@ -24190,6 +24210,17 @@ function AdminV2Reports({
     if (!reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id ?? "");
   }, [reports, selectedReportId]);
   React.useEffect(() => {
+    const focusReportId = window.sessionStorage.getItem("gcos.reports.focusId");
+    if (!focusReportId) return;
+    const focusedReport = reports.find((report) => report.id === focusReportId);
+    if (!focusedReport) return;
+    window.sessionStorage.removeItem("gcos.reports.focusId");
+    setSelectedReportId(focusedReport.id);
+    setSelectedAssignmentId(focusedReport.assignmentId ?? selectedAssignmentId);
+    setPageNotice(`${focusedReport.name} opened from the approval workflow.`);
+    window.setTimeout(() => document.querySelector(".admin-v2-report-workspace")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+  }, [reports, selectedAssignmentId]);
+  React.useEffect(() => {
     if (reportAssignments.length > previousAssignmentCount.current && reportAssignments[0]?.id) {
       previousAssignmentCount.current = reportAssignments.length;
       setSelectedAssignmentId(reportAssignments[0].id);
@@ -24758,6 +24789,15 @@ function AdminV2Approvals({
     }));
     onOpenSection("Archive");
   }
+  function openSourceReport() {
+    if (!selected?.linkedReport) {
+      onOpenSection("Reports");
+      return;
+    }
+    window.sessionStorage.setItem("gcos.reports.focusId", selected.linkedReport);
+    setNotice(`${selected.request} source report opened.`);
+    onOpenSection("Reports");
+  }
   return (
     <div className="admin-v2-workspace">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -24890,7 +24930,7 @@ function AdminV2Approvals({
               <button onClick={() => runSelectedAction("reject")} type="button">Reject</button>
             </div>
             <div className="admin-v2-connected-routes" aria-label="Connected approval destinations">
-              <button type="button" onClick={() => onOpenSection("Reports")}><FileBarChart2 size={14} /> Source report</button>
+              <button type="button" onClick={openSourceReport}><FileBarChart2 size={14} /> Source report</button>
               <button type="button" onClick={archiveSelectedApproval}><ArchiveIcon size={14} /> Archive packet</button>
               <button type="button" onClick={() => onOpenSection("Audit")}><ShieldCheck size={14} /> Audit trail</button>
             </div>

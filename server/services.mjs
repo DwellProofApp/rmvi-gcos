@@ -3016,6 +3016,16 @@ export function createServices({ state, record, requirePermission, findById, int
       const item = findById(state.approvals, id);
       item.state = "Approved";
       item.signatures = "complete";
+      if (item.linkedReport) {
+        const reportItem = state.reports.find((report) => report.id === item.linkedReport);
+        if (reportItem) {
+          reportItem.state = "Approved";
+          reportItem.score = Math.max(reportItem.score ?? 0, 95);
+          reportItem.routingStage = "Approved through approval engine";
+          reportItem.approvedBy = body.actor;
+          reportItem.verified = true;
+        }
+      }
       record("ApprovalGranted", body.actor, item.request, "Execution authorized");
       return item;
     },
@@ -3042,6 +3052,16 @@ export function createServices({ state, record, requirePermission, findById, int
       } else {
         item.signatures = body.signatures ?? "1/2";
         item.state = body.state ?? "Signature";
+      }
+      if (item.state === "Approved" && item.linkedReport) {
+        const reportItem = state.reports.find((report) => report.id === item.linkedReport);
+        if (reportItem) {
+          reportItem.state = "Approved";
+          reportItem.score = Math.max(reportItem.score ?? 0, 95);
+          reportItem.routingStage = "Approved through signature chain";
+          reportItem.approvedBy = body.actor;
+          reportItem.verified = true;
+        }
       }
       record("ApprovalSigned", body.actor, item.request, `${item.signatures} signatures`);
       return item;

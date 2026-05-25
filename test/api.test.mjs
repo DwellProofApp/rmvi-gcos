@@ -978,6 +978,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(governancePacket.document.linkedReport, packetReport.id);
     assert.equal(governancePacket.document.linkedApproval, governancePacket.approval.id);
     assert.equal(governancePacket.escalation.linkedApproval, governancePacket.approval.id);
+    const approvedPacketRequest = await postJson(`/api/approvals/${governancePacket.approval.id}/approve`, {}, nationalToken);
+    assert.equal(approvedPacketRequest.state, "Approved");
+    const reportsAfterPacketApproval = await getJson("/api/reports", nationalToken);
+    const approvedPacketReport = reportsAfterPacketApproval.find((item) => item.id === packetReport.id);
+    assert.equal(approvedPacketReport.state, "Approved");
+    assert.equal(approvedPacketReport.routingStage, "Approved through approval engine");
 
     const bulkReport = await postJson("/api/reports", {
       name: "Automated bulk workflow report",
