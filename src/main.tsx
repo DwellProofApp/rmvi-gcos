@@ -2631,6 +2631,10 @@ function usePersistentState<T>(key: string, initialValue: T) {
   });
 
   React.useEffect(() => {
+    if (value === null) {
+      window.localStorage.removeItem(key);
+      return;
+    }
     window.localStorage.setItem(key, JSON.stringify(value));
   }, [key, value]);
 
@@ -2762,10 +2766,20 @@ function getSessionToken() {
 
   try {
     const session = JSON.parse(stored) as Session;
+    if (!session || typeof session !== "object") return "";
     return session.token ?? "";
   } catch {
     return "";
   }
+}
+
+function clearStoredSession() {
+  window.localStorage.removeItem("gcos.session");
+}
+
+function sessionExpired(session: Session | null) {
+  if (!session?.expiresAt) return false;
+  return Number.isFinite(Date.parse(session.expiresAt)) && Date.parse(session.expiresAt) <= Date.now();
 }
 
 function localhostAdminPreviewSession() {
@@ -3728,7 +3742,13 @@ function App() {
 
   React.useEffect(() => {
     if (!session) return;
+    if (sessionExpired(session)) {
+      clearStoredSession();
+      setSession(null);
+      return;
+    }
     if (!session.token && !session.authPending && !isLocalPreview) {
+      clearStoredSession();
       setSession(null);
       return;
     }
@@ -3744,6 +3764,7 @@ function App() {
   React.useEffect(() => {
     const url = new URL(window.location.href);
     if (url.searchParams.get("logout") !== "1") return;
+    clearStoredSession();
     setSession(null);
     setActiveSection(adminRouteRequested() ? "Admin Board" : "Control Center");
     url.searchParams.delete("logout");
@@ -5214,7 +5235,7 @@ function App() {
         return;
       }
       if (!isLocalPreview) {
-        window.localStorage.removeItem("gcos.session");
+        clearStoredSession();
         setSession(null);
       }
     });
@@ -5325,9 +5346,13 @@ function App() {
 
   function handleLogout() {
     recordAudit("Logout", activeStation.title, "Session closed");
+    clearStoredSession();
+    setSearchQuery("");
+    setNotificationsOpen(false);
     setSession(null);
-    setActiveSection(adminRouteRequested() ? "Admin Board" : "Control Center");
-    window.history.replaceState({}, "", adminRouteRequested() ? "/admin" : "/");
+    const target = permissions.canOverride || adminRouteRequested() ? "/admin#signin" : "/#signin";
+    setActiveSection(target.startsWith("/admin") ? "Admin Board" : "Control Center");
+    window.location.replace(target);
   }
 
   const showAdminSignInGate = adminLandingRequested();
@@ -5343,7 +5368,7 @@ function App() {
       openAuthenticatedWorkspace(station, { ...session, email: normalizedEmail }, landingSection);
       return;
     }
-    window.localStorage.removeItem("gcos.session");
+    clearStoredSession();
     setSession(null);
     setActiveSection(showAdminSignInGate ? "Admin Board" : "Control Center");
   }, [session, setSession, showAdminSignInGate, showUserSignInGate, stationDirectory]);
@@ -10271,7 +10296,7 @@ function App() {
                 )}
               </div>
             )}
-            <button className="icon-button" aria-label="Logout" title="Sign out" onClick={handleLogout}>
+            <button className="icon-button" aria-label="Sign out" title="Sign out" onClick={handleLogout}>
               <LogOut size={18} />
             </button>
           </div>
@@ -23696,7 +23721,7 @@ function AdminV2Shell(props: AdminV2Props) {
               <strong>{apiStatus?.status.toUpperCase() ?? (offlineMode ? "LOCAL" : "READY")}</strong>
               <small>{offlineMode ? "Local mode" : "Sync active"}</small>
             </div>
-            <button type="button" onClick={onLogout}><LogOut size={17} /></button>
+            <button type="button" aria-label="Sign out" title="Sign out" onClick={onLogout}><LogOut size={17} /></button>
           </div>
           {searchQuery && (
             <div className="admin-v2-search-results">
