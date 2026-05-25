@@ -1400,11 +1400,13 @@
 
 .churchmail-composer {
   margin-top: 14px;
+  overflow: hidden;
 }
 
 .churchmail-composer form {
   display: grid;
   gap: 14px;
+  min-width: 0;
 }
 
 .churchmail-compose-grid {
@@ -1416,6 +1418,7 @@
 .churchmail-composer label {
   display: grid;
   gap: 7px;
+  min-width: 0;
 }
 
 .churchmail-composer label span,
@@ -1436,7 +1439,9 @@
   color: #172033;
   font: inherit;
   min-height: 42px;
+  min-width: 0;
   padding: 0 12px;
+  width: 100%;
 }
 
 .churchmail-composer textarea {

@@ -24185,6 +24185,33 @@ function AdminV2Reports({
       onOpenSection("Archive");
     }
   }
+  function notifyAssignedOffices() {
+    if (!latestAssignment) {
+      onOpenSection("ChurchMail");
+      return;
+    }
+    const firstDraftNames = latestAssignedReports.slice(0, 6).map((report) => report.name);
+    const designatedTarget = stationDirectory.find((item) => (item.id ?? item.email) === latestAssignment.targetOfficeId);
+    window.sessionStorage.setItem("gcos.churchmail.compose", JSON.stringify({
+      kind: "Directive",
+      audience: latestAssignment.targetMode === "designated-office" ? "designated" : "resident-pastor",
+      office: designatedTarget?.email ?? "",
+      priority: "High",
+      subject: `${latestAssignment.period} Resident Pastor monthly report package`,
+      body: [
+        `The ${latestAssignment.period} Resident Pastor monthly report package has been assigned in GCOS.`,
+        "",
+        `Target: ${latestAssignment.targetLabel}`,
+        `Forms assigned: ${latestAssignment.templates.length}`,
+        `Draft reports opened: ${latestAssignment.generatedReportIds.length}`,
+        "",
+        "Please complete the assigned monthly forms, attach the required evidence, and submit upward through the reporting route.",
+        firstDraftNames.length ? `Included forms: ${firstDraftNames.join(", ")}.` : ""
+      ].filter(Boolean).join("\n"),
+      files: "Monthly report package assigned in GCOS"
+    }));
+    onOpenSection("ChurchMail");
+  }
   return (
     <div className="admin-v2-workspace admin-v2-report-board">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -24327,7 +24354,7 @@ function AdminV2Reports({
             </div>
             <aside>
               <span>Routing handoff</span>
-              <button type="button" onClick={() => onOpenSection("ChurchMail")}>Notify assigned offices</button>
+              <button type="button" onClick={notifyAssignedOffices}>Notify assigned offices</button>
               <button type="button" onClick={() => onOpenSection("Approvals")}>Review approval path</button>
               <button type="button" onClick={() => onOpenSection("Archive")}>Prepare archive packet</button>
             </aside>
@@ -24656,6 +24683,34 @@ function AdminV2Mail({
       setSelectedMessageId(visibleMessages[0].id);
     }
   }, [selectedMessageId, visibleMessages]);
+  React.useEffect(() => {
+    const rawCompose = window.sessionStorage.getItem("gcos.churchmail.compose");
+    if (!rawCompose) return;
+    window.sessionStorage.removeItem("gcos.churchmail.compose");
+    try {
+      const draft = JSON.parse(rawCompose) as Partial<{
+        kind: MessageKind;
+        audience: string;
+        office: string;
+        priority: Message["priority"];
+        subject: string;
+        body: string;
+        files: string;
+      }>;
+      if (draft.kind) setComposeKind(draft.kind);
+      if (draft.audience) setComposeAudience(draft.audience);
+      if (draft.office) setComposeOffice(draft.office);
+      if (draft.priority) setComposePriority(draft.priority);
+      if (draft.subject) setComposeSubject(draft.subject);
+      if (draft.body) setComposeBody(draft.body);
+      if (draft.files) setComposeFiles(draft.files);
+      setComposerOpen(true);
+      setComposeFeedback("Monthly report notification is ready to review and send.");
+    } catch (error) {
+      setComposerOpen(true);
+      setComposeFeedback("ChurchMail composer opened. Review the message before sending.");
+    }
+  }, []);
 
   function sendComposedMessage(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
