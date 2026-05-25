@@ -179,6 +179,60 @@ export function createServices({ state, record, requirePermission, findById, int
     return "Signed-in station collaboration";
   }
 
+  async function createLiveSessionInvite(item, participant, actor) {
+    const normalizedParticipant = normalizeStationEmail(participant);
+    item.invitationLog ??= [];
+    const invitation = {
+      participant: normalizedParticipant,
+      invitedBy: normalizeStationEmail(actor),
+      invitedAt: new Date().toISOString(),
+      status: "Sent"
+    };
+    item.invitationLog.unshift(invitation);
+    const inviteMessage = message("Meeting Invite", `Invitation: ${item.title}`, actor, "Ready", item.linkedRecord ?? "Live Comms");
+    Object.assign(inviteMessage, {
+      to: normalizedParticipant,
+      route: item.route,
+      body: [
+        `You have been invited to ${item.title}.`,
+        `Purpose: ${item.purpose}`,
+        `Linked record: ${item.linkedRecord}`,
+        `Access: ${item.accessMode ?? "Invite Only"}`,
+        item.joinUrl ? `Join link: ${item.joinUrl}` : "Meeting room link is pending."
+      ].join("\n"),
+      priority: item.status === "Priority" ? "High" : "Normal",
+      recipients: [normalizedParticipant],
+      linkedLiveSession: item.id,
+      classification: "Live Comms"
+    });
+    state.messages.unshift(inviteMessage);
+    try {
+      const delivery = await integrations.email?.deliverChurchMail?.(inviteMessage, [normalizedParticipant]);
+      if (delivery) {
+        inviteMessage.delivery = {
+          provider: delivery.provider,
+          status: delivery.ok ? "Sent" : "Queued",
+          mode: delivery.mode,
+          messageId: delivery.messageId,
+          recipients: delivery.to,
+          updatedAt: new Date().toISOString()
+        };
+        invitation.deliveryStatus = inviteMessage.delivery.status;
+      }
+    } catch (error) {
+      inviteMessage.delivery = {
+        provider: integrations.email?.status?.().provider ?? "email",
+        status: "Queued",
+        mode: "deferred",
+        error: error.message,
+        recipients: [normalizedParticipant],
+        updatedAt: new Date().toISOString()
+      };
+      invitation.deliveryStatus = "Queued";
+    }
+    return inviteMessage;
+  }
+
   function enforceLiveSessionCreateAuthority(actor, sessionType) {
     const permissions = actorPermissions(actor);
     if (!permissions) throw Object.assign(new Error("Signed-in station required to create live sessions."), { status: 403 });
@@ -508,6 +562,10 @@ export function createServices({ state, record, requirePermission, findById, int
         created.videoError = error.message;
       }
       state.liveSessions.unshift(created);
+      const invitees = created.participants.filter((participant) => normalizeStationEmail(participant) !== actor);
+      for (const participant of invitees) {
+        await createLiveSessionInvite(created, participant, actor);
+      }
       record("LiveSessionCreated", body.actor, created.title, `${created.sessionType} linked to ${created.linkedRecord}`);
       return created;
     },

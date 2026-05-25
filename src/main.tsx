@@ -3486,6 +3486,11 @@ function App() {
   const offlineConflicts = React.useMemo(() => buildOfflineConflicts(offlineQueue), [offlineQueue]);
   const StationIcon = resolveStationIcon(activeStation);
   const permissions = getPermissions(activeStation);
+  const activeTeamEmails = React.useMemo(() => (
+    stationDirectory
+      .filter((station) => !["Deleted", "Suspended", "Locked"].includes(station.status ?? "Ready"))
+      .map((station) => normalizeStationEmail(station.email))
+  ), [stationDirectory]);
   const workstationProfile = React.useMemo(() => getWorkstationProfile(activeStation, permissions), [activeStation, permissions]);
   const allowedSections = React.useMemo(() => getAllowedSections(activeStation, permissions), [activeStation, permissions]);
   const scopedMessages = React.useMemo(() => scopeMessages(messages, activeStation, permissions, workstationProfile), [activeStation, messages, permissions, workstationProfile]);
@@ -3887,6 +3892,15 @@ function App() {
       accessMode: draft.accessMode ?? "Invite Only",
       invitedOnly: true,
       participants: draft.participants?.length ? draft.participants : [activeStation.email],
+      invitationLog: (draft.participants ?? [])
+        .filter((participant) => normalizeStationEmail(participant) !== normalizeStationEmail(activeStation.email))
+        .map((participant) => ({
+          participant: normalizeStationEmail(participant),
+          invitedBy: activeStation.email,
+          invitedAt: new Date().toISOString(),
+          status: "Sent",
+          deliveryStatus: "Queued"
+        })),
       notes: draft.notes ?? [],
       files: draft.files ?? [],
       createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
@@ -10214,7 +10228,8 @@ function App() {
           linkedRecord: firstReport?.name ?? firstApproval?.request ?? "Governance review",
           route: reportingRoute,
           purpose: "Coordinate official governance work and record follow-up actions.",
-          participants: [activeStation.email, workstationProfile.defaultMessageTo]
+          accessMode: permissions.canOverride ? "All Active Stations" : "Invite Only",
+          participants: permissions.canOverride ? activeTeamEmails : [activeStation.email, workstationProfile.defaultMessageTo]
         }).then((session) => {
           if (meetingWindow && session.joinUrl) meetingWindow.location.href = session.joinUrl;
           else if (!meetingWindow) window.open(meetingUrl, "_blank");
@@ -10784,6 +10799,7 @@ function App() {
             tasks={scopedTasks}
             messages={scopedMessages}
             liveSessions={liveSessions}
+            stationDirectory={stationDirectory}
             permissions={permissions}
             onCreateLiveSession={createLiveSession}
             onUpdateLiveSessionStatus={updateLiveSessionStatus}
@@ -17669,6 +17685,7 @@ function LiveComms({
   tasks,
   messages,
   liveSessions,
+  stationDirectory,
   permissions,
   onCreateLiveSession,
   onUpdateLiveSessionStatus,
@@ -17727,6 +17744,7 @@ function LiveComms({
   tasks: GovernanceTask[];
   messages: Message[];
   liveSessions: LiveSession[];
+  stationDirectory: StationCard[];
   permissions: Permissions;
   onCreateLiveSession: (draft: Omit<LiveSession, "id" | "createdAt"> & Partial<Pick<LiveSession, "id">>) => Promise<LiveSession>;
   onUpdateLiveSessionStatus: (id: string, status: LiveSession["status"]) => void;
@@ -17802,11 +17820,17 @@ function LiveComms({
   ];
   const participantOptions = Array.from(new Set([
     station.email,
+    ...stationDirectory
+      .filter((item) => !["Deleted", "Suspended", "Locked"].includes(item.status ?? "Ready"))
+      .map((item) => item.email),
     ...activeOffices.map((office) => office.email),
     "district_admin@rmvi.org",
     "finance@rmvi.org",
     "mission@rmvi.org"
   ].filter(Boolean)));
+  const liveTeamParticipants = permissions.canOverride
+    ? participantOptions.map(normalizeStationEmail)
+    : [station.email, inviteTarget].map(normalizeStationEmail);
   const canCreateBroadcast = permissions.canOverride || permissions.canCreateOffices;
   const canCreateApprovalRoom = permissions.canOverride || permissions.canApprove;
   const canCreateVideoMeeting = permissions.canOverride || permissions.canCreateOffices || permissions.canApprove;
@@ -17894,9 +17918,9 @@ function LiveComms({
         purpose: `${type} for ${linkedRecord}`,
         hostEmail: station.email,
         createdBy: station.email,
-        accessMode: "Invite Only",
+        accessMode: permissions.canOverride ? "All Active Stations" : "Invite Only",
         invitedOnly: true,
-        participants: [station.email],
+        participants: liveTeamParticipants,
         notes: [],
         files: []
       });
@@ -17962,6 +17986,7 @@ function LiveComms({
           </div>
           <div className="live-call-controls">
             <button type="button" disabled={!canCreateVideoMeeting} onClick={() => startSession("Video Meeting")}><Video size={16} /> Start video meeting</button>
+            {permissions.canOverride && <button type="button" onClick={() => startSession("Video Meeting")}><Users size={16} /> Meet with all stations</button>}
             <button type="button" onClick={() => startSession("Office Chat")}><MessageSquareText size={16} /> Open office chat</button>
             <button type="button" disabled={!canCreateBroadcast} onClick={() => startSession("Broadcast")}><RadioTower size={16} /> Broadcast directive</button>
           </div>
