@@ -1406,6 +1406,7 @@
 }
 
 .admin-v2-form-stack button,
+.admin-v2-history-stack button,
 .admin-v2-history-stack article {
   align-items: start;
   background: #fff;
@@ -1431,7 +1432,10 @@
 }
 
 .admin-v2-form-stack button:hover,
-.admin-v2-form-stack button:focus-visible {
+.admin-v2-form-stack button:focus-visible,
+.admin-v2-history-stack button:hover,
+.admin-v2-history-stack button:focus-visible,
+.admin-v2-history-stack button.selected {
   border-color: rgba(70, 95, 255, .42);
   box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
   outline: none;

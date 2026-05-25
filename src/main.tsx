@@ -24094,6 +24094,7 @@ function AdminV2Reports({
   const [templateSearch, setTemplateSearch] = React.useState("");
   const [selectedTemplateId, setSelectedTemplateId] = React.useState(templates[0]?.id ?? "");
   const [selectedReportId, setSelectedReportId] = React.useState(reports[0]?.id ?? "");
+  const [selectedAssignmentId, setSelectedAssignmentId] = React.useState(reportAssignments[0]?.id ?? "");
   const [pageNotice, setPageNotice] = React.useState("");
   const monthlyTemplates = templates.filter((template) => template.type === "Resident Pastor Monthly");
   const residentPastorTargets = stationDirectory.filter((item) => /local branch|resident pastor|mission station|pastor in charge/i.test([item.title, item.level, item.authority].join(" ")));
@@ -24101,17 +24102,18 @@ function AdminV2Reports({
   const monthlyAssignedReports = reports.filter((report) => report.assignmentId || assignedReportIds.has(report.id));
   const activeMonthlyDrafts = monthlyAssignedReports.filter((report) => report.state !== "Approved" && !report.archived);
   const latestAssignment = reportAssignments[0];
-  const latestAssignedReportIds = new Set(latestAssignment?.generatedReportIds ?? []);
-  const latestAssignmentTemplateIds = new Set(latestAssignment?.templates.map((template) => template.id) ?? []);
-  const directlyMatchedLatestReports = latestAssignment
-    ? reports.filter((report) => report.assignmentId === latestAssignment.id || latestAssignedReportIds.has(report.id))
+  const focusedAssignment = reportAssignments.find((assignment) => assignment.id === selectedAssignmentId) ?? latestAssignment;
+  const focusedAssignedReportIds = new Set(focusedAssignment?.generatedReportIds ?? []);
+  const focusedAssignmentTemplateIds = new Set(focusedAssignment?.templates.map((template) => template.id) ?? []);
+  const directlyMatchedFocusedReports = focusedAssignment
+    ? reports.filter((report) => report.assignmentId === focusedAssignment.id || focusedAssignedReportIds.has(report.id))
     : [];
-  const latestAssignedReports = latestAssignment
-    ? directlyMatchedLatestReports.length
-      ? directlyMatchedLatestReports
+  const focusedAssignedReports = focusedAssignment
+    ? directlyMatchedFocusedReports.length
+      ? directlyMatchedFocusedReports
       : reports
-        .filter((report) => report.period === latestAssignment.period && latestAssignmentTemplateIds.has(report.templateId ?? ""))
-        .slice(0, latestAssignment.generatedReportIds.length)
+        .filter((report) => report.period === focusedAssignment.period && focusedAssignmentTemplateIds.has(report.templateId ?? ""))
+        .slice(0, focusedAssignment.generatedReportIds.length)
     : [];
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
   const selectedReport = reports.find((report) => report.id === selectedReportId) ?? reports[0];
@@ -24130,9 +24132,14 @@ function AdminV2Reports({
     if (!reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id ?? "");
   }, [reports, selectedReportId]);
   React.useEffect(() => {
-    const firstDraft = latestAssignedReports[0];
+    if (reportAssignments.length && !reportAssignments.some((assignment) => assignment.id === selectedAssignmentId)) {
+      setSelectedAssignmentId(reportAssignments[0].id);
+    }
+  }, [reportAssignments, selectedAssignmentId]);
+  React.useEffect(() => {
+    const firstDraft = focusedAssignedReports[0];
     if (firstDraft && selectedReportId !== firstDraft.id) setSelectedReportId(firstDraft.id);
-  }, [latestAssignment?.id, latestAssignedReports, selectedReportId]);
+  }, [focusedAssignment?.id, focusedAssignedReports, selectedReportId]);
   function createSelectedTemplateDraft() {
     if (!selectedTemplate) {
       onQuickAction("Create report");
@@ -24187,24 +24194,24 @@ function AdminV2Reports({
     }
   }
   function notifyAssignedOffices() {
-    if (!latestAssignment) {
+    if (!focusedAssignment) {
       onOpenSection("ChurchMail");
       return;
     }
-    const firstDraftNames = latestAssignedReports.slice(0, 6).map((report) => report.name);
-    const designatedTarget = stationDirectory.find((item) => (item.id ?? item.email) === latestAssignment.targetOfficeId);
+    const firstDraftNames = focusedAssignedReports.slice(0, 6).map((report) => report.name);
+    const designatedTarget = stationDirectory.find((item) => (item.id ?? item.email) === focusedAssignment.targetOfficeId);
     window.sessionStorage.setItem("gcos.churchmail.compose", JSON.stringify({
       kind: "Directive",
-      audience: latestAssignment.targetMode === "designated-office" ? "designated" : "resident-pastor",
+      audience: focusedAssignment.targetMode === "designated-office" ? "designated" : "resident-pastor",
       office: designatedTarget?.email ?? "",
       priority: "High",
-      subject: `${latestAssignment.period} Resident Pastor monthly report package`,
+      subject: `${focusedAssignment.period} Resident Pastor monthly report package`,
       body: [
-        `The ${latestAssignment.period} Resident Pastor monthly report package has been assigned in GCOS.`,
+        `The ${focusedAssignment.period} Resident Pastor monthly report package has been assigned in GCOS.`,
         "",
-        `Target: ${latestAssignment.targetLabel}`,
-        `Forms assigned: ${latestAssignment.templates.length}`,
-        `Draft reports opened: ${latestAssignment.generatedReportIds.length}`,
+        `Target: ${focusedAssignment.targetLabel}`,
+        `Forms assigned: ${focusedAssignment.templates.length}`,
+        `Draft reports opened: ${focusedAssignment.generatedReportIds.length}`,
         "",
         "Please complete the assigned monthly forms, attach the required evidence, and submit upward through the reporting route.",
         firstDraftNames.length ? `Included forms: ${firstDraftNames.join(", ")}.` : ""
@@ -24214,41 +24221,41 @@ function AdminV2Reports({
     onOpenSection("ChurchMail");
   }
   function reviewAssignmentApprovalPath() {
-    if (!latestAssignment) {
+    if (!focusedAssignment) {
       onOpenSection("Approvals");
       return;
     }
-    const routeSample = latestAssignedReports[0]?.path ?? "Mission Station -> Area Office -> District HQ";
+    const routeSample = focusedAssignedReports[0]?.path ?? "Mission Station -> Area Office -> District HQ";
     window.sessionStorage.setItem("gcos.approvals.prefill", JSON.stringify({
-      request: `${latestAssignment.period} Resident Pastor monthly report package review`,
+      request: `${focusedAssignment.period} Resident Pastor monthly report package review`,
       route: routeSample,
-      limit: `${latestAssignment.templates.length} monthly forms / ${latestAssignment.generatedReportIds.length} drafts`,
-      delegate: latestAssignment.assignedBy,
-      linkedReport: latestAssignedReports[0]?.id ?? latestAssignment.generatedReportIds[0] ?? latestAssignment.id,
+      limit: `${focusedAssignment.templates.length} monthly forms / ${focusedAssignment.generatedReportIds.length} drafts`,
+      delegate: focusedAssignment.assignedBy,
+      linkedReport: focusedAssignedReports[0]?.id ?? focusedAssignment.generatedReportIds[0] ?? focusedAssignment.id,
       evidenceStatus: "Monthly report packet ready",
       auditTrail: [
-        `Assignment ${latestAssignment.id}`,
-        `${latestAssignment.generatedReportIds.length} draft reports`,
-        latestAssignment.targetLabel
+        `Assignment ${focusedAssignment.id}`,
+        `${focusedAssignment.generatedReportIds.length} draft reports`,
+        focusedAssignment.targetLabel
       ]
     }));
     onOpenSection("Approvals");
   }
   function prepareAssignmentArchivePacket() {
-    if (!latestAssignment) {
+    if (!focusedAssignment) {
       onOpenSection("Archive");
       return;
     }
-    const firstDraftNames = latestAssignedReports.slice(0, 6).map((report) => report.name);
+    const firstDraftNames = focusedAssignedReports.slice(0, 6).map((report) => report.name);
     window.sessionStorage.setItem("gcos.archive.prefill", JSON.stringify({
-      title: `${latestAssignment.period} Resident Pastor monthly report packet`,
+      title: `${focusedAssignment.period} Resident Pastor monthly report packet`,
       meta: "Monthly report evidence packet",
-      detail: `${latestAssignment.targetLabel} / ${latestAssignment.generatedReportIds.length} draft reports / ${latestAssignment.templates.length} forms`,
+      detail: `${focusedAssignment.targetLabel} / ${focusedAssignment.generatedReportIds.length} draft reports / ${focusedAssignment.templates.length} forms`,
       status: "Ready",
       body: [
-        `Target: ${latestAssignment.targetLabel}`,
-        `Reporting period: ${latestAssignment.period}`,
-        `Draft reports: ${latestAssignment.generatedReportIds.length}`,
+        `Target: ${focusedAssignment.targetLabel}`,
+        `Reporting period: ${focusedAssignment.period}`,
+        `Draft reports: ${focusedAssignment.generatedReportIds.length}`,
         `Forms: ${firstDraftNames.join(", ")}`
       ].join("\n")
     }));
@@ -24396,11 +24403,22 @@ function AdminV2Reports({
             </div>
             <div className="admin-v2-history-stack">
               {reportAssignments.slice(0, 3).map((assignment) => (
-                <article key={assignment.id}>
+                <button
+                  className={focusedAssignment?.id === assignment.id ? "selected" : ""}
+                  key={assignment.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedAssignmentId(assignment.id);
+                    const assignmentReportIds = new Set(assignment.generatedReportIds);
+                    const firstReport = reports.find((report) => report.assignmentId === assignment.id || assignmentReportIds.has(report.id));
+                    if (firstReport) setSelectedReportId(firstReport.id);
+                    setPageNotice(`${assignment.period} assignment opened. Connected drafts and handoff actions are ready.`);
+                  }}
+                >
                   <span>{assignment.period}</span>
                   <strong>{assignment.targetLabel}</strong>
                   <small>{assignment.generatedReportIds.length} draft reports</small>
-                </article>
+                </button>
               ))}
               {!reportAssignments.length && (
                 <article className="empty">
@@ -24412,14 +24430,14 @@ function AdminV2Reports({
             </div>
           </section>
         </div>
-        {latestAssignment && (
+        {focusedAssignment && (
           <div className="admin-v2-assignment-next">
             <div>
               <span>Connected drafts</span>
-              <strong>{latestAssignment.period} / {latestAssignment.targetLabel}</strong>
-              <small>{latestAssignment.generatedReportIds.length} draft reports created from the monthly pack.</small>
+              <strong>{focusedAssignment.period} / {focusedAssignment.targetLabel}</strong>
+              <small>{focusedAssignment.generatedReportIds.length} draft reports created from the monthly pack.</small>
               <div className="admin-v2-assignment-drafts">
-                {latestAssignedReports.slice(0, 4).map((report) => (
+                {focusedAssignedReports.slice(0, 4).map((report) => (
                   <button key={report.id} type="button" onClick={() => setSelectedReportId(report.id)}>
                     <strong>{report.name}</strong>
                     <small>{report.owner} / {report.state}</small>
