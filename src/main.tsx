@@ -23815,7 +23815,13 @@ function AdminV2Overview({ messages, reports, approvals, tasks, policies, calend
     { label: "ChurchMail", value: messages.length, detail: "official communications", section: "ChurchMail" as Section, icon: Mail },
     { label: "Reports", value: reports.filter((item: Report) => item.state !== "Approved").length, detail: "active report packets", section: "Reports" as Section, icon: FileText },
     { label: "Approvals", value: approvals.filter((item: Approval) => item.state !== "Approved").length, detail: "awaiting action", section: "Approvals" as Section, icon: Signature },
-    { label: "Tasks", value: tasks.filter((item: GovernanceTask) => item.status !== "Complete").length, detail: "open assignments", section: "Admin Board" as Section, icon: ListChecks }
+    { label: "Tasks", value: tasks.filter((item: GovernanceTask) => item.status !== "Complete").length, detail: "open assignments", section: "Tasks" as Section, icon: ListChecks }
+  ];
+  const intelligenceRoutes = [
+    { label: "Policy records", value: policies.length, section: "Policies" as Section, icon: ScrollText },
+    { label: "Calendar items", value: calendarEvents.length, section: "Calendar" as Section, icon: CalendarDays },
+    { label: "Transfer records", value: transfers.length, section: "Transfers" as Section, icon: ArrowUpFromLine },
+    { label: "Archive records", value: documents.length, section: "Archive" as Section, icon: ArchiveIcon }
   ];
   return (
     <div className="admin-v2-grid">
@@ -23842,10 +23848,12 @@ function AdminV2Overview({ messages, reports, approvals, tasks, policies, calend
         </div>
         <p>{escalations.length ? `${escalations[0].item} needs review before the next governance update.` : "No critical escalation is blocking the current operating cycle."}</p>
         <div className="admin-v2-mini-list">
-          <span>{policies.length} policy records</span>
-          <span>{calendarEvents.length} calendar items</span>
-          <span>{transfers.length} transfer records</span>
-          <span>{documents.length} archive records</span>
+          {intelligenceRoutes.map(({ label, value, section, icon: Icon }) => (
+            <button key={label} type="button" onClick={() => openSection(section)}>
+              <Icon size={14} />
+              <span>{value} {label}</span>
+            </button>
+          ))}
         </div>
       </section>
       <section className="admin-v2-panel span-12">
