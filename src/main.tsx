@@ -24106,6 +24106,12 @@ function AdminV2Reports({
   const coverage = residentPastorTargets.length
     ? Math.min(100, Math.round(((latestAssignment?.targetCount ?? 0) / residentPastorTargets.length) * 100))
     : 0;
+  const designatedOffice = stationDirectory.find((item) => (item.id ?? item.email) === assignmentTargetOfficeId);
+  const assignmentTargetCount = assignmentTargetMode === "designated-office" ? (designatedOffice ? 1 : 0) : residentPastorTargets.length;
+  const projectedDraftCount = assignmentTargetCount * monthlyTemplates.length;
+  const assignmentTargetLabel = assignmentTargetMode === "designated-office"
+    ? designatedOffice?.title ?? "Selected office"
+    : "All Resident Pastor / Local Branch offices";
   React.useEffect(() => {
     if (!reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id ?? "");
   }, [reports, selectedReportId]);
@@ -24201,8 +24207,19 @@ function AdminV2Reports({
       {pageNotice && <div className="admin-v2-live-notice" role="status">{pageNotice}</div>}
       <section className="admin-v2-panel resident-report-assignment">
         <div className="admin-v2-panel-head">
-          <span>Monthly Pack Assignment</span>
+          <span>Monthly Assignment Center</span>
           <strong>Resident Pastor Monthly Report Pack</strong>
+        </div>
+        <div className="admin-v2-assignment-brief">
+          <div>
+            <h3>Assign the full monthly package once, then GCOS creates the required draft reports for each target office.</h3>
+            <p>Use this when every Resident Pastor or local branch must submit the same monthly forms. Choose one designated office for a small rollout, or assign the pack to every matched office.</p>
+          </div>
+          <aside>
+            <span>Next assignment</span>
+            <strong>{projectedDraftCount}</strong>
+            <small>{monthlyTemplates.length} forms x {assignmentTargetCount} target office{assignmentTargetCount === 1 ? "" : "s"}</small>
+          </aside>
         </div>
         <div className="admin-v2-assignment-summary">
           <article>
@@ -24210,8 +24227,8 @@ function AdminV2Reports({
             <span>Monthly forms</span>
           </article>
           <article>
-            <strong>{residentPastorTargets.length}</strong>
-            <span>Matched offices</span>
+            <strong>{assignmentTargetCount}</strong>
+            <span>Selected offices</span>
           </article>
           <article>
             <strong>{coverage}%</strong>
@@ -24223,14 +24240,6 @@ function AdminV2Reports({
           </article>
         </div>
         <div className="admin-v2-assignment-grid">
-          <div>
-            <p>Assign the uploaded monthly report package to every Resident Pastor/local branch office, or choose one designated office for a controlled rollout.</p>
-            <div className="admin-v2-source-list">
-              {monthlyTemplates.slice(0, 6).map((template) => (
-                <span key={template.id}>{template.name}</span>
-              ))}
-            </div>
-          </div>
           <label>
             <span>Assignment scope</span>
             <select value={assignmentTargetMode} onChange={(event) => setAssignmentTargetMode(event.target.value as ReportAssignment["targetMode"])}>
@@ -24250,17 +24259,27 @@ function AdminV2Reports({
             <span>Reporting period</span>
             <input value={assignmentPeriod} onChange={(event) => setAssignmentPeriod(event.target.value)} placeholder="Example: May 2026" />
           </label>
+          <div className="admin-v2-assignment-route">
+            <span>Target</span>
+            <strong>{assignmentTargetLabel}</strong>
+            <small>{projectedDraftCount} report draft{projectedDraftCount === 1 ? "" : "s"} will be opened after assignment.</small>
+          </div>
           <button
             className="primary"
             type="button"
             disabled={!permissions.canOverride || !monthlyTemplates.length}
             onClick={() => {
               onAssignReportPack({ targetMode: assignmentTargetMode, targetOfficeId: assignmentTargetOfficeId, period: assignmentPeriod });
-              setPageNotice(`Monthly report pack assignment started for ${assignmentTargetMode === "designated-office" ? "the selected office" : "Resident Pastor offices"}.`);
+              setPageNotice(`Monthly report pack assigned to ${assignmentTargetLabel}. ${projectedDraftCount} draft reports are ready in the work queue.`);
             }}
           >
             Assign monthly reports
           </button>
+        </div>
+        <div className="admin-v2-source-list" aria-label="Monthly forms included">
+          {monthlyTemplates.slice(0, 6).map((template) => (
+            <span key={template.id}>{template.name}</span>
+          ))}
         </div>
         <div className="admin-v2-assignment-history">
           <strong>{reportAssignments.length}</strong>

@@ -1108,6 +1108,67 @@
   margin-top: 14px;
 }
 
+.admin-v2-assignment-brief {
+  align-items: stretch;
+  background:
+    linear-gradient(135deg, rgba(70, 95, 255, .08), rgba(214, 166, 43, .1)),
+    #f8fbff;
+  border: 1px solid rgba(70, 95, 255, .14);
+  border-radius: 16px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(180px, .28fr);
+  margin-bottom: 14px;
+  padding: 16px;
+}
+
+.admin-v2-assignment-brief h3 {
+  color: var(--v2-text);
+  font-size: clamp(1.05rem, 1.7vw, 1.35rem);
+  letter-spacing: -.02em;
+  line-height: 1.18;
+  margin: 0 0 8px;
+}
+
+.admin-v2-assignment-brief p {
+  color: var(--v2-muted);
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  max-width: 820px;
+}
+
+.admin-v2-assignment-brief aside {
+  background: rgba(255, 255, 255, .82);
+  border: 1px solid rgba(148, 163, 184, .24);
+  border-radius: 14px;
+  display: grid;
+  gap: 4px;
+  padding: 14px;
+}
+
+.admin-v2-assignment-brief aside span,
+.admin-v2-assignment-route span {
+  color: var(--v2-blue);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-v2-assignment-brief aside strong {
+  color: var(--v2-text);
+  font-size: 30px;
+  letter-spacing: -.04em;
+}
+
+.admin-v2-assignment-brief aside small,
+.admin-v2-assignment-route small {
+  color: var(--v2-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
 .admin-v2-assignment-summary {
   display: grid;
   gap: 10px;
@@ -1143,11 +1204,7 @@
   align-items: stretch;
   display: grid;
   gap: 14px;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-}
-
-.admin-v2-assignment-grid > div:first-child {
-  grid-column: 1 / -1;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
 }
 
 .admin-v2-assignment-grid p {
@@ -1182,6 +1239,23 @@
   width: 100%;
 }
 
+.admin-v2-assignment-route {
+  background: #f8fafc;
+  border: 1px solid rgba(148, 163, 184, .28);
+  border-radius: 12px;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 10px 12px;
+}
+
+.admin-v2-assignment-route strong {
+  color: var(--v2-text);
+  font-size: 13px;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
 .admin-v2-assignment-grid button.primary {
   align-self: end;
   background: var(--v2-blue);
@@ -1205,6 +1279,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 7px;
+  margin-top: 14px;
 }
 
 .admin-v2-source-list span {
@@ -1238,12 +1313,14 @@
 }
 
 @media (max-width: 1100px) {
+  .admin-v2-assignment-brief,
   .admin-v2-assignment-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
 
 @media (max-width: 760px) {
+  .admin-v2-assignment-brief,
   .admin-v2-assignment-grid,
   .admin-v2-assignment-summary,
   .admin-v2-report-meta {
