@@ -23355,6 +23355,27 @@ type AdminV2Props = {
   onQuickAction: (action: string) => void;
 };
 
+function normalizeAdminV2Event(event: unknown, index = 0) {
+  if (typeof event === "string") {
+    const [rawTitle, ...rawDetail] = event.split(":");
+    return {
+      id: `event-${index}-${rawTitle}`,
+      event: rawTitle?.trim() || "Activity",
+      actor: rawDetail.join(":").trim() || "GCOS",
+      object: rawDetail.join(":").trim() || event,
+      severity: "Info"
+    };
+  }
+  const row = event as Partial<AuditRow> | null | undefined;
+  return {
+    id: row?.id ?? `event-${index}`,
+    event: row?.event || "Activity",
+    actor: row?.actor || "GCOS",
+    object: row?.object || row?.result || "System activity",
+    severity: row?.severity ?? "Info"
+  };
+}
+
 function AdminV2Shell(props: AdminV2Props) {
   const {
     section,
@@ -23578,7 +23599,10 @@ function AdminV2Shell(props: AdminV2Props) {
             ["Escalations", escalations.length]
           ]}
           actions={["Draft brief", "Summarize reports", "Review delays"]}
-          records={events.slice(0, 8).map((item) => ({ title: item.event, meta: item.actor, detail: item.object, status: "Insight" }))}
+          records={events.slice(0, 8).map((item, index) => {
+            const row = normalizeAdminV2Event(item, index);
+            return { title: row.event, meta: row.actor, detail: row.object, status: "Insight" };
+          })}
           onQuickAction={onQuickAction}
         />
       );
@@ -23622,11 +23646,14 @@ function AdminV2Shell(props: AdminV2Props) {
           description="Review activity, sessions, evidence history, readiness checks, and official audit records."
           metrics={[
             ["Audit rows", events.length],
-            ["Actors", new Set(events.map((item) => item.actor)).size],
-            ["Info", events.filter((item) => (item.severity ?? "Info") === "Info").length]
+            ["Actors", new Set(events.map((item, index) => normalizeAdminV2Event(item, index).actor)).size],
+            ["Info", events.filter((item, index) => normalizeAdminV2Event(item, index).severity === "Info").length]
           ]}
           actions={["Export audit", "Review sessions", "Archive packet"]}
-          records={events.slice(0, 12).map((item) => ({ title: item.event, meta: item.actor, detail: item.object, status: item.severity ?? "Info" }))}
+          records={events.slice(0, 12).map((item, index) => {
+            const row = normalizeAdminV2Event(item, index);
+            return { title: row.event, meta: row.actor, detail: row.object, status: row.severity };
+          })}
           onQuickAction={onQuickAction}
         />
       );
@@ -23862,13 +23889,16 @@ function AdminV2Overview({ messages, reports, approvals, tasks, policies, calend
           <strong>Audit timeline</strong>
         </div>
         <div className="admin-v2-table">
-          {events.slice(0, 6).map((event: AuditEvent) => (
-            <article key={event.id}>
-              <strong>{event.event}</strong>
-              <span>{event.actor}</span>
-              <small>{event.object}</small>
-            </article>
-          ))}
+          {events.slice(0, 6).map((event: unknown, index: number) => {
+            const row = normalizeAdminV2Event(event, index);
+            return (
+              <article key={row.id}>
+                <strong>{row.event}</strong>
+                <span>{row.actor}</span>
+                <small>{row.object}</small>
+              </article>
+            );
+          })}
         </div>
       </section>
     </div>
@@ -24563,7 +24593,14 @@ function AdminV2Directory({
   onQuickAction: (action: string) => void;
 }) {
   const normalizedRecords = records.map((record) => ({ ...record, status: record.status || "Ready" }));
-  const selected = normalizedRecords[0];
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
+  React.useEffect(() => {
+    setSelectedIndex(0);
+  }, [title]);
+  React.useEffect(() => {
+    if (selectedIndex >= normalizedRecords.length) setSelectedIndex(0);
+  }, [normalizedRecords.length, selectedIndex]);
+  const selected = normalizedRecords[Math.min(selectedIndex, Math.max(normalizedRecords.length - 1, 0))];
   return (
     <div className="admin-v2-workspace">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -24591,14 +24628,19 @@ function AdminV2Directory({
         <div className="admin-v2-panel-head"><span>Registry</span><strong>{title}</strong></div>
         <div className="admin-v2-table">
           {normalizedRecords.map((record, index) => (
-            <article key={`${record.title}-${index}`}>
+            <button
+              className={index === selectedIndex ? "selected" : ""}
+              key={`${record.title}-${index}`}
+              onClick={() => setSelectedIndex(index)}
+              type="button"
+            >
               <div className="admin-v2-record-main">
                 <strong>{record.title}</strong>
                 <span>{record.meta}</span>
               </div>
               <small>{record.detail}</small>
               <span className={`admin-v2-status ${record.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{record.status}</span>
-            </article>
+            </button>
           ))}
           {!records.length && <p className="admin-v2-empty">No records are available in this workspace yet.</p>}
         </div>

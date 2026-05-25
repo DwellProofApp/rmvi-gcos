@@ -227,8 +227,9 @@
   color: var(--v2-text);
   font-size: clamp(1.65rem, 3vw, 2.45rem);
   letter-spacing: -0.03em;
-  line-height: 1;
+  line-height: 1.08;
   margin: 8px 0;
+  overflow-wrap: anywhere;
 }
 
 .admin-v2-page-title p {
@@ -466,9 +467,10 @@
   color: var(--v2-text);
   font-size: 1.32rem;
   letter-spacing: -0.03em;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  line-height: 1.12;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .admin-v2-stat-strip span {
@@ -522,9 +524,15 @@
   align-items: start;
   border-bottom: 1px solid var(--v2-line);
   display: flex;
+  gap: 10px;
   justify-content: space-between;
   margin: -2px 0 14px;
   padding-bottom: 12px;
+}
+
+.admin-v2-panel-head > * {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .admin-v2-module-card {
@@ -553,6 +561,7 @@
 
 .admin-v2-list article,
 .admin-v2-table article,
+.admin-v2-table button,
 .admin-v2-template-picker button,
 .admin-v2-report-queue button {
   background: var(--v2-soft);
@@ -566,13 +575,17 @@
   text-align: left;
 }
 
-.admin-v2-table article {
+.admin-v2-table article,
+.admin-v2-table button {
   cursor: pointer;
+  font: inherit;
   transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
 }
 
 .admin-v2-table article:hover,
 .admin-v2-table article.selected,
+.admin-v2-table button:hover,
+.admin-v2-table button.selected,
 .admin-v2-template-picker button:hover,
 .admin-v2-template-picker button.selected,
 .admin-v2-report-queue button:hover,
@@ -582,8 +595,12 @@
   transform: translateY(-1px);
 }
 
-.admin-v2-table article small {
+.admin-v2-table article small,
+.admin-v2-table button small {
   grid-column: 1 / -1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .admin-v2-record-main {
@@ -594,9 +611,9 @@
 
 .admin-v2-record-main strong,
 .admin-v2-record-main span {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  white-space: normal;
 }
 
 .admin-v2-template-picker button,
@@ -797,11 +814,12 @@
   font-weight: 800;
   justify-self: end;
   letter-spacing: 0.02em;
-  max-width: 160px;
-  overflow: hidden;
+  max-width: 100%;
+  min-width: 0;
+  overflow-wrap: anywhere;
   padding: 5px 8px;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  text-align: center;
+  white-space: normal;
 }
 
 .admin-v2-status.escalated,
