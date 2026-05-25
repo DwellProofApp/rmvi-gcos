@@ -5568,6 +5568,7 @@ function App() {
         body: JSON.stringify(reportDraft)
       }).then(refreshFromApi).catch(() => undefined);
     }
+    return report;
   }
 
   function assignResidentPastorReportPack(input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) {
@@ -23339,7 +23340,7 @@ type AdminV2Props = {
   onOpenSearchResult: (result: SearchResult) => void;
   onLogout: () => void;
   onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
-  onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => void;
+  onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => Report;
   onSubmitReport: (id: string) => void;
   onReviewReport: (id: string) => void;
   onVerifyReport: (id: string) => void;
@@ -23426,6 +23427,7 @@ function AdminV2Shell(props: AdminV2Props) {
           templates={churchReportTemplates}
           stationDirectory={stationDirectory}
           permissions={permissions}
+          onOpenSection={openSection}
           onCreateReport={onCreateReport}
           onSubmitReport={onSubmitReport}
           onReviewReport={onReviewReport}
@@ -23991,6 +23993,7 @@ function AdminV2Reports({
   templates,
   stationDirectory,
   permissions,
+  onOpenSection,
   onCreateReport,
   onSubmitReport,
   onReviewReport,
@@ -24007,7 +24010,8 @@ function AdminV2Reports({
   templates: ReportTemplate[];
   stationDirectory: StationCard[];
   permissions: Permissions;
-  onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => void;
+  onOpenSection: (section: Section) => void;
+  onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => Report;
   onSubmitReport: (id: string) => void;
   onReviewReport: (id: string) => void;
   onVerifyReport: (id: string) => void;
@@ -24045,7 +24049,7 @@ function AdminV2Reports({
       onQuickAction("Create report");
       return;
     }
-    onCreateReport({
+    const created = onCreateReport({
       name: selectedTemplate.name,
       owner: selectedTemplate.owner,
       path: selectedTemplate.path,
@@ -24063,6 +24067,7 @@ function AdminV2Reports({
       templateChecklist: selectedTemplate.checklist,
       sourceFiles: selectedTemplate.sourceFiles
     });
+    setSelectedReportId(created.id);
     setPageNotice(`${selectedTemplate.name} draft created and added to the report queue.`);
   }
   function runSelectedReportAction(action: "save" | "evidence" | "packet" | "review" | "verify" | "submit" | "archive") {
@@ -24075,7 +24080,8 @@ function AdminV2Reports({
       setPageNotice(`${selectedReport.name} evidence marked attached.`);
     } else if (action === "packet") {
       onBuildGovernancePacket(selectedReport.id);
-      setPageNotice(`${selectedReport.name} governance packet built and linked to approvals.`);
+      setPageNotice(`${selectedReport.name} governance packet built. Opening Approvals so the packet can be reviewed.`);
+      onOpenSection("Approvals");
     } else if (action === "review") {
       onReviewReport(selectedReport.id);
       setPageNotice(`${selectedReport.name} moved into review.`);
@@ -24087,7 +24093,8 @@ function AdminV2Reports({
       setPageNotice(`${selectedReport.name} submitted upward.`);
     } else {
       onArchiveReport(selectedReport.id);
-      setPageNotice(`${selectedReport.name} archived.`);
+      setPageNotice(`${selectedReport.name} archived. Opening Archive so the record can be reviewed.`);
+      onOpenSection("Archive");
     }
   }
   return (
@@ -24224,6 +24231,12 @@ function AdminV2Reports({
               <button onClick={() => runSelectedReportAction("verify")} type="button">Verify</button>
               <button onClick={() => runSelectedReportAction("submit")} type="button">Submit</button>
               <button onClick={() => runSelectedReportAction("archive")} type="button">Archive</button>
+            </div>
+            <div className="admin-v2-connected-routes" aria-label="Connected report destinations">
+              <button type="button" onClick={() => onOpenSection("Approvals")}><Signature size={14} /> Approval route</button>
+              <button type="button" onClick={() => onOpenSection("ChurchMail")}><Mail size={14} /> ChurchMail route</button>
+              <button type="button" onClick={() => onOpenSection("Archive")}><ArchiveIcon size={14} /> Evidence archive</button>
+              <button type="button" onClick={() => onOpenSection("Audit")}><ShieldCheck size={14} /> Audit trail</button>
             </div>
           </div>
         )}

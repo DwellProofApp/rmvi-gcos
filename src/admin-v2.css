@@ -716,6 +716,36 @@
   color: white;
 }
 
+.admin-v2-connected-routes {
+  border-top: 1px solid var(--v2-line);
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  padding-top: 12px;
+}
+
+.admin-v2-connected-routes button {
+  align-items: center;
+  background: #f8fafc;
+  border: 1px solid var(--v2-line-strong);
+  border-radius: 12px;
+  color: var(--v2-text);
+  cursor: pointer;
+  display: flex;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 800;
+  gap: 8px;
+  min-height: 40px;
+  padding: 9px 10px;
+}
+
+.admin-v2-connected-routes button:hover {
+  background: #eef4ff;
+  border-color: #b9c6ff;
+  color: #2437c8;
+}
+
 .admin-v2-inline-action {
   background: var(--v2-blue);
   border: 1px solid var(--v2-blue);
