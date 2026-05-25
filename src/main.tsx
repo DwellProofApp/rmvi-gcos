@@ -17547,10 +17547,27 @@ function LiveComms({
       || participants.includes(normalizedStationEmail);
   }
 
+  function canRespondSession(sessionItem: LiveSession) {
+    const participants = (sessionItem.participants ?? []).map((item) => normalizeStationEmail(item));
+    const normalizedStationEmail = normalizeStationEmail(station.email);
+    return permissions.canOverride
+      || normalizeStationEmail(sessionItem.hostEmail ?? sessionItem.createdBy ?? "") === normalizedStationEmail
+      || participants.includes(normalizedStationEmail);
+  }
+
   function stationRsvp(sessionItem: LiveSession) {
     return sessionItem.rsvpStatus?.[normalizeStationEmail(station.email)]?.status
       ?? sessionItem.invitationLog?.find((entry) => normalizeStationEmail(entry.participant) === normalizeStationEmail(station.email))?.status
       ?? "No response";
+  }
+
+  function accessLabel(sessionItem: LiveSession) {
+    const response = stationRsvp(sessionItem);
+    if (response === "Declined") return "Declined - accept again to rejoin";
+    if (response === "Accepted") return "Accepted - join enabled";
+    if (canJoinSession(sessionItem)) return "Access granted";
+    if (canRespondSession(sessionItem)) return "RSVP required";
+    return "Invite required";
   }
 
   function rsvpSummary(sessionItem: LiveSession) {
@@ -17594,6 +17611,10 @@ function LiveComms({
 
   function joinSession(sessionItem: LiveSession) {
     if (!canJoinSession(sessionItem)) {
+      if (stationRsvp(sessionItem) === "Declined") {
+        setFeedback("This station declined the invitation. Accept the invite again before joining.");
+        return;
+      }
       setFeedback("This station is not invited to that meeting. Ask the host or an administrator to invite it.");
       return;
     }
@@ -17677,7 +17698,7 @@ function LiveComms({
               <p>{sessionItem.route}</p>
               <small>Linked record: {sessionItem.linkedRecord}</small>
               <small>{sessionItem.joinUrl ? `${sessionItem.videoProvider ?? "Video"} room ready` : sessionItem.videoError ? `Video unavailable: ${sessionItem.videoError}` : "Meeting link pending"}</small>
-              <small>{sessionItem.accessMode ?? "Invite Only"} - {canJoinSession(sessionItem) ? "your station has access" : "invite required"}</small>
+              <small className={`live-access-note ${canJoinSession(sessionItem) ? "granted" : stationRsvp(sessionItem).toLowerCase().replace(/\s+/g, "-")}`}>{sessionItem.accessMode ?? "Invite Only"} - {accessLabel(sessionItem)}</small>
               {sessionItem.roomName && <small>Room: {sessionItem.roomName}</small>}
               <small>{sessionItem.notes?.length ?? 0} notes - {sessionItem.transcript?.length ?? 0} messages - {sessionItem.decisions?.length ?? 0} decisions</small>
               <small>{sessionItem.recordingStatus ?? "Not recorded"} - {sessionItem.transcriptStatus ?? "No voice transcript"}</small>
@@ -17699,8 +17720,8 @@ function LiveComms({
               <small>RSVP: {rsvpSummary(sessionItem)} - Your station: {stationRsvp(sessionItem)}</small>
               <div className="compact-actions">
                 <button type="button" disabled={!canJoinSession(sessionItem)} onClick={() => joinSession(sessionItem)}>{sessionItem.joinUrl ? "Join room" : "Invite required"}</button>
-                <button type="button" disabled={!canJoinSession(sessionItem)} onClick={() => onRespondLiveSessionInvitation(sessionItem.id, "Accepted")}>Accept</button>
-                <button type="button" disabled={!canJoinSession(sessionItem)} onClick={() => onRespondLiveSessionInvitation(sessionItem.id, "Declined")}>Decline</button>
+                <button type="button" disabled={!canRespondSession(sessionItem) || stationRsvp(sessionItem) === "Accepted"} onClick={() => onRespondLiveSessionInvitation(sessionItem.id, "Accepted")}>{stationRsvp(sessionItem) === "Declined" ? "Accept again" : "Accept"}</button>
+                <button type="button" disabled={!canRespondSession(sessionItem) || stationRsvp(sessionItem) === "Declined"} onClick={() => onRespondLiveSessionInvitation(sessionItem.id, "Declined")}>Decline</button>
                 <button type="button" onClick={() => onUpdateLiveSessionRecording(sessionItem.id, sessionItem.recordingStatus === "Recording" ? "Stopped" : "Recording")}>{sessionItem.recordingStatus === "Recording" ? "Stop rec" : "Record"}</button>
                 <button type="button" onClick={() => onAttachLiveSessionTranscript(sessionItem.id)}>Transcript</button>
                 <button type="button" onClick={() => onUpdateLiveSessionAgenda(sessionItem.id)}>Agenda</button>
