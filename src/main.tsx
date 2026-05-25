@@ -5554,24 +5554,71 @@ function App() {
       cadence: "Monthly",
       templates: residentPastorMonthlyReportTemplates
     };
-    recordAudit("ReportPackAssignmentStarted", payload.name, input.targetMode === "designated-office" ? input.targetOfficeId ?? "Designated office" : "All Resident Pastor offices");
-    if (offlineMode) {
+    function resolveLocalAssignmentTargets() {
+      const residentTargets = visibleStationDirectory.filter((item) => /local branch|resident pastor|mission station|pastor in charge/i.test([item.title, item.level, item.authority].join(" ")));
+      if (payload.targetMode === "designated-office") {
+        const target = visibleStationDirectory.find((item) => (item.id ?? item.email) === payload.targetOfficeId);
+        return target ? [target] : [];
+      }
+      return residentTargets;
+    }
+    function createLocalAssignment(status: string) {
+      const targets = resolveLocalAssignmentTargets();
+      const assignmentId = `assignment-${Date.now()}`;
+      const generatedReports: Report[] = targets.flatMap((target) => residentPastorMonthlyReportTemplates.map((template, index) => ({
+        id: `rep-${assignmentId}-${target.email.replace(/[^a-z0-9]/gi, "-")}-${index}`,
+        name: template.name,
+        owner: target.title,
+        path: target.reportingRoute ?? template.path,
+        due: "Monthly",
+        state: "Ready",
+        score: 10,
+        type: template.type,
+        period: payload.period,
+        routingStage: "Assigned to office",
+        evidenceStatus: template.evidenceStatus,
+        templateId: template.id,
+        preparedBy: target.email,
+        approvalLimit: template.approvalLimit,
+        reportFields: defaultReportFields(template),
+        templateChecklist: template.checklist,
+        assignmentId,
+        assignmentTarget: target.email,
+        assignmentTargetName: target.title,
+        assignmentCadence: payload.cadence,
+        sourceFiles: template.sourceFiles
+      })));
       const assignment: ReportAssignment = {
-        id: `assignment-${Date.now()}`,
+        id: assignmentId,
         name: payload.name,
         targetMode: payload.targetMode,
         targetOfficeId: payload.targetOfficeId,
-        targetLabel: payload.targetMode === "designated-office" ? payload.targetOfficeId ?? "Designated office" : "All Resident Pastor / Local Branch offices",
+        targetLabel: payload.targetMode === "designated-office"
+          ? targets[0]?.title ?? "Designated office"
+          : "All Resident Pastor / Local Branch offices",
         period: payload.period,
         cadence: payload.cadence,
-        status: "Queued",
+        status,
         assignedBy: activeStation.email,
         assignedAt: new Date().toISOString(),
         templates: residentPastorMonthlyReportTemplates.map(({ id, name, type, sourceFiles }) => ({ id, name, type, sourceFiles })),
-        targetCount: 0,
-        generatedReportIds: []
+        targetCount: targets.length,
+        generatedReportIds: generatedReports.map((report) => report.id)
       };
       setReportAssignments((items) => [assignment, ...items]);
+      setReports((items) => {
+        const existing = new Set(items.map((item) => `${item.templateId}:${item.assignmentTarget}:${item.period}`));
+        return [
+          ...generatedReports.filter((report) => !existing.has(`${report.templateId}:${report.assignmentTarget}:${report.period}`)),
+          ...items
+        ];
+      });
+      return { assignment, reports: generatedReports, targets };
+    }
+    recordAudit("ReportPackAssignmentStarted", payload.name, input.targetMode === "designated-office" ? input.targetOfficeId ?? "Designated office" : "All Resident Pastor offices");
+    if (offlineMode) {
+      const result = createLocalAssignment("Queued");
+      recordAudit("ReportPackAssignedLocal", payload.name, `${result.reports.length} reports queued for ${result.targets.length} office(s)`);
       return;
     }
     void apiRequest<{ assignment: ReportAssignment; reports: Report[]; targets: { owner: string; email: string }[] }>("/api/report-assignments", {
@@ -5585,7 +5632,10 @@ function App() {
       });
       recordAudit("ReportPackAssigned", payload.name, `${result.reports.length} reports assigned to ${result.targets.length} office(s)`);
       void refreshFromApi();
-    }).catch(() => recordAudit("ReportPackAssignmentFailed", payload.name, "Assignment API unavailable"));
+    }).catch(() => {
+      const result = createLocalAssignment("Active");
+      recordAudit("ReportPackAssignedLocal", payload.name, `${result.reports.length} reports created locally after API fallback`);
+    });
   }
 
   function updateReportDetails(id: string, details: Pick<Report, "preparedBy" | "attestation" | "approvalLimit" | "reportFields" | "templateChecklist">) {
@@ -10069,10 +10119,14 @@ function App() {
         setSearchQuery={setSearchQuery}
         onLogout={handleLogout}
         onSendChurchMail={sendChurchMail}
+        onCreateReport={createReportDraft}
         onSubmitReport={submitReport}
         onReviewReport={reviewReport}
         onVerifyReport={verifyReport}
         onArchiveReport={archiveReportRecord}
+        onUpdateReportScore={updateReportScore}
+        onMarkReportEvidence={markReportEvidence}
+        onBuildGovernancePacket={buildReportGovernancePacket}
         onAssignReportPack={assignResidentPastorReportPack}
         onApprove={approveRequest}
         onSign={signApproval}
@@ -23260,10 +23314,14 @@ type AdminV2Props = {
   onOpenSearchResult: (result: SearchResult) => void;
   onLogout: () => void;
   onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
+  onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => void;
   onSubmitReport: (id: string) => void;
   onReviewReport: (id: string) => void;
   onVerifyReport: (id: string) => void;
   onArchiveReport: (id: string) => void;
+  onUpdateReportScore: (id: string, score: number) => void;
+  onMarkReportEvidence: (id: string) => void;
+  onBuildGovernancePacket: (id: string) => void;
   onAssignReportPack: (input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) => void;
   onApprove: (id: string) => void;
   onSign: (id: string) => void;
@@ -23303,10 +23361,14 @@ function AdminV2Shell(props: AdminV2Props) {
     onOpenSearchResult,
     onLogout,
     onSendChurchMail,
+    onCreateReport,
     onSubmitReport,
     onReviewReport,
     onVerifyReport,
     onArchiveReport,
+    onUpdateReportScore,
+    onMarkReportEvidence,
+    onBuildGovernancePacket,
     onAssignReportPack,
     onApprove,
     onSign,
@@ -23339,10 +23401,14 @@ function AdminV2Shell(props: AdminV2Props) {
           templates={churchReportTemplates}
           stationDirectory={stationDirectory}
           permissions={permissions}
+          onCreateReport={onCreateReport}
           onSubmitReport={onSubmitReport}
           onReviewReport={onReviewReport}
           onVerifyReport={onVerifyReport}
           onArchiveReport={onArchiveReport}
+          onUpdateReportScore={onUpdateReportScore}
+          onMarkReportEvidence={onMarkReportEvidence}
+          onBuildGovernancePacket={onBuildGovernancePacket}
           onAssignReportPack={onAssignReportPack}
           onQuickAction={onQuickAction}
         />
@@ -23900,10 +23966,14 @@ function AdminV2Reports({
   templates,
   stationDirectory,
   permissions,
+  onCreateReport,
   onSubmitReport,
   onReviewReport,
   onVerifyReport,
   onArchiveReport,
+  onUpdateReportScore,
+  onMarkReportEvidence,
+  onBuildGovernancePacket,
   onAssignReportPack,
   onQuickAction
 }: {
@@ -23912,33 +23982,96 @@ function AdminV2Reports({
   templates: ReportTemplate[];
   stationDirectory: StationCard[];
   permissions: Permissions;
+  onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => void;
   onSubmitReport: (id: string) => void;
   onReviewReport: (id: string) => void;
   onVerifyReport: (id: string) => void;
   onArchiveReport: (id: string) => void;
+  onUpdateReportScore: (id: string, score: number) => void;
+  onMarkReportEvidence: (id: string) => void;
+  onBuildGovernancePacket: (id: string) => void;
   onAssignReportPack: (input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) => void;
   onQuickAction: (action: string) => void;
 }) {
-  const selected = reports[0];
   const [assignmentTargetMode, setAssignmentTargetMode] = React.useState<ReportAssignment["targetMode"]>("resident-pastor-offices");
   const [assignmentTargetOfficeId, setAssignmentTargetOfficeId] = React.useState(stationDirectory.find((item) => /local branch|resident pastor|mission station/i.test([item.title, item.level, item.authority].join(" ")))?.id ?? stationDirectory[0]?.id ?? "");
   const [assignmentPeriod, setAssignmentPeriod] = React.useState("Current month");
+  const [templateSearch, setTemplateSearch] = React.useState("");
+  const [selectedTemplateId, setSelectedTemplateId] = React.useState(templates[0]?.id ?? "");
+  const [selectedReportId, setSelectedReportId] = React.useState(reports[0]?.id ?? "");
+  const [pageNotice, setPageNotice] = React.useState("");
   const monthlyTemplates = templates.filter((template) => template.type === "Resident Pastor Monthly");
   const residentPastorTargets = stationDirectory.filter((item) => /local branch|resident pastor|mission station|pastor in charge/i.test([item.title, item.level, item.authority].join(" ")));
   const assignedReportIds = new Set(reportAssignments.flatMap((assignment) => assignment.generatedReportIds));
   const monthlyAssignedReports = reports.filter((report) => report.assignmentId || assignedReportIds.has(report.id));
   const activeMonthlyDrafts = monthlyAssignedReports.filter((report) => report.state !== "Approved" && !report.archived);
   const latestAssignment = reportAssignments[0];
+  const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
+  const selectedReport = reports.find((report) => report.id === selectedReportId) ?? reports[0];
+  const visibleTemplates = templates.filter((template) => [template.name, template.type, template.path, template.description].join(" ").toLowerCase().includes(templateSearch.trim().toLowerCase())).slice(0, 18);
   const coverage = residentPastorTargets.length
     ? Math.min(100, Math.round(((latestAssignment?.targetCount ?? 0) / residentPastorTargets.length) * 100))
     : 0;
+  React.useEffect(() => {
+    if (!reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id ?? "");
+  }, [reports, selectedReportId]);
+  function createSelectedTemplateDraft() {
+    if (!selectedTemplate) {
+      onQuickAction("Create report");
+      return;
+    }
+    onCreateReport({
+      name: selectedTemplate.name,
+      owner: selectedTemplate.owner,
+      path: selectedTemplate.path,
+      due: selectedTemplate.due,
+      type: selectedTemplate.type,
+      period: selectedTemplate.period,
+      routingStage: selectedTemplate.routingStage,
+      evidenceStatus: selectedTemplate.evidenceStatus,
+      reviewNote: selectedTemplate.description,
+      templateId: selectedTemplate.id,
+      preparedBy: selectedTemplate.owner,
+      attestation: "Prepared for RMVI supervisory review.",
+      approvalLimit: selectedTemplate.approvalLimit,
+      reportFields: defaultReportFields(selectedTemplate),
+      templateChecklist: selectedTemplate.checklist,
+      sourceFiles: selectedTemplate.sourceFiles
+    });
+    setPageNotice(`${selectedTemplate.name} draft created and added to the report queue.`);
+  }
+  function runSelectedReportAction(action: "save" | "evidence" | "packet" | "review" | "verify" | "submit" | "archive") {
+    if (!selectedReport) return;
+    if (action === "save") {
+      onUpdateReportScore(selectedReport.id, Math.max(selectedReport.score, 45));
+      setPageNotice(`${selectedReport.name} saved as a live draft.`);
+    } else if (action === "evidence") {
+      onMarkReportEvidence(selectedReport.id);
+      setPageNotice(`${selectedReport.name} evidence marked attached.`);
+    } else if (action === "packet") {
+      onBuildGovernancePacket(selectedReport.id);
+      setPageNotice(`${selectedReport.name} governance packet built and linked to approvals.`);
+    } else if (action === "review") {
+      onReviewReport(selectedReport.id);
+      setPageNotice(`${selectedReport.name} moved into review.`);
+    } else if (action === "verify") {
+      onVerifyReport(selectedReport.id);
+      setPageNotice(`${selectedReport.name} verified and approved.`);
+    } else if (action === "submit") {
+      onSubmitReport(selectedReport.id);
+      setPageNotice(`${selectedReport.name} submitted upward.`);
+    } else {
+      onArchiveReport(selectedReport.id);
+      setPageNotice(`${selectedReport.name} archived.`);
+    }
+  }
   return (
-    <div className="admin-v2-workspace">
+    <div className="admin-v2-workspace admin-v2-report-board">
       <section className="admin-v2-panel admin-v2-workspace-intro">
         <div>
           <span>Workspace</span>
           <h2>Governance Reporting Workspace</h2>
-          <p>Prepare reports, select templates, track draft progress, attach evidence, and route packets through the right office path.</p>
+          <p>Prepare live reports, assign monthly packs, attach evidence, build approval packets, and route official RMVI reporting through the right office path.</p>
         </div>
         <div className="admin-v2-stat-strip">
           <article><strong>{templates.length}</strong><span>Templates</span></article>
@@ -23948,10 +24081,12 @@ function AdminV2Reports({
         </div>
       </section>
       <section className="admin-v2-toolbar">
-        <button className="primary" onClick={() => onQuickAction("Create report")} type="button">Create report</button>
-        <button onClick={() => onQuickAction("Save draft")} type="button">Save draft</button>
-        <button onClick={() => onQuickAction("Build packet")} type="button">Build packet</button>
+        <button className="primary" onClick={createSelectedTemplateDraft} type="button">Create selected report</button>
+        <button onClick={() => runSelectedReportAction("save")} disabled={!selectedReport} type="button">Save selected draft</button>
+        <button onClick={() => runSelectedReportAction("evidence")} disabled={!selectedReport} type="button">Attach evidence</button>
+        <button onClick={() => runSelectedReportAction("packet")} disabled={!selectedReport} type="button">Build packet</button>
       </section>
+      {pageNotice && <div className="admin-v2-live-notice" role="status">{pageNotice}</div>}
       <section className="admin-v2-panel resident-report-assignment">
         <div className="admin-v2-panel-head">
           <span>Super Admin Assignment</span>
@@ -24007,7 +24142,10 @@ function AdminV2Reports({
             className="primary"
             type="button"
             disabled={!permissions.canOverride || !monthlyTemplates.length}
-            onClick={() => onAssignReportPack({ targetMode: assignmentTargetMode, targetOfficeId: assignmentTargetOfficeId, period: assignmentPeriod })}
+            onClick={() => {
+              onAssignReportPack({ targetMode: assignmentTargetMode, targetOfficeId: assignmentTargetOfficeId, period: assignmentPeriod });
+              setPageNotice(`Monthly report pack assignment started for ${assignmentTargetMode === "designated-office" ? "the selected office" : "Resident Pastor offices"}.`);
+            }}
           >
             Assign monthly reports
           </button>
@@ -24023,46 +24161,60 @@ function AdminV2Reports({
       </section>
       <div className="admin-v2-three">
       <section className="admin-v2-panel">
-        <div className="admin-v2-panel-head"><span>Template Library</span><strong>{templates.length} templates</strong></div>
-        <div className="admin-v2-list">
-          {templates.slice(0, 12).map((template) => (
-            <article key={template.id}>
+        <div className="admin-v2-panel-head"><span>Template Library</span><strong>{visibleTemplates.length} shown</strong></div>
+        <label className="admin-v2-search-field">
+          <Search size={14} />
+          <input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search templates" />
+        </label>
+        <div className="admin-v2-list admin-v2-template-picker">
+          {visibleTemplates.map((template) => (
+            <button type="button" key={template.id} className={selectedTemplate?.id === template.id ? "selected" : ""} onClick={() => {
+              setSelectedTemplateId(template.id);
+              setPageNotice(`${template.name} selected.`);
+            }}>
               <strong>{template.name}</strong>
               <span>{template.type}</span>
               <small>{template.path}</small>
-            </article>
+            </button>
           ))}
+          {!visibleTemplates.length && <small>No report templates match this search.</small>}
         </div>
       </section>
       <section className="admin-v2-panel wide">
-        <div className="admin-v2-panel-head"><span>Report Workspace</span><strong>{selected?.name ?? "No report selected"}</strong></div>
-        {selected && (
+        <div className="admin-v2-panel-head"><span>Report Workspace</span><strong>{selectedReport?.name ?? "No report selected"}</strong></div>
+        {selectedReport && (
           <div className="admin-v2-detail">
-            <span className={`admin-v2-status ${selected.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selected.type} / {selected.state}</span>
-            <h2>{selected.name}</h2>
-            <p>{selected.path}</p>
-            <div className="admin-v2-progress"><i style={{ width: `${selected.score}%` }} /></div>
+            <span className={`admin-v2-status ${selectedReport.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selectedReport.type} / {selectedReport.state}</span>
+            <h2>{selectedReport.name}</h2>
+            <p>{selectedReport.path}</p>
+            <div className="admin-v2-report-meta">
+              <article><span>Owner</span><strong>{selectedReport.owner}</strong></article>
+              <article><span>Period</span><strong>{selectedReport.period ?? "Current"}</strong></article>
+              <article><span>Evidence</span><strong>{selectedReport.evidenceStatus ?? "Pending"}</strong></article>
+              <article><span>Stage</span><strong>{selectedReport.routingStage ?? selectedReport.state}</strong></article>
+            </div>
+            <div className="admin-v2-progress" aria-label={`${selectedReport.score}% complete`}><i style={{ width: `${selectedReport.score}%` }} /></div>
             <div className="admin-v2-actions-row">
-              <button onClick={() => onReviewReport(selected.id)} type="button">Review</button>
-              <button onClick={() => onVerifyReport(selected.id)} type="button">Verify</button>
-              <button onClick={() => onSubmitReport(selected.id)} type="button">Submit</button>
-              <button onClick={() => onArchiveReport(selected.id)} type="button">Archive</button>
+              <button onClick={() => runSelectedReportAction("review")} type="button">Review</button>
+              <button onClick={() => runSelectedReportAction("verify")} type="button">Verify</button>
+              <button onClick={() => runSelectedReportAction("submit")} type="button">Submit</button>
+              <button onClick={() => runSelectedReportAction("archive")} type="button">Archive</button>
             </div>
           </div>
         )}
       </section>
       <section className="admin-v2-panel">
         <div className="admin-v2-panel-head"><span>Work Queue</span><strong>{reports.length} reports</strong></div>
-        <div className="admin-v2-list compact">
+        <div className="admin-v2-list compact admin-v2-report-queue">
           {reports.slice(0, 10).map((report) => (
-            <article key={report.id}>
+            <button type="button" key={report.id} className={selectedReport?.id === report.id ? "selected" : ""} onClick={() => setSelectedReportId(report.id)}>
               <div className="admin-v2-record-main">
                 <strong>{report.name}</strong>
                 <span>{report.owner}</span>
               </div>
               <small>{report.type}</small>
               <span className={`admin-v2-status ${report.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{report.state}</span>
-            </article>
+            </button>
           ))}
         </div>
       </section>
