@@ -42,26 +42,99 @@ export function createServices({ state, record, requirePermission, findById, int
   }
 
   function publicState(actor) {
+    const scoped = scopedPlatformState(actor);
     return {
       stations: state.stations,
-      messages: actor ? messagesForStation(actor) : state.messages,
-      reports: state.reports,
-      reportAssignments: state.reportAssignments ?? [],
-      approvals: state.approvals,
-      tasks: state.tasks,
-      policies: state.policies,
-      calendarEvents: state.calendarEvents,
-      liveSessions: state.liveSessions ?? [],
-      personnel: state.personnel,
-      escalations: state.escalations,
-      transfers: state.transfers,
-      offices: state.offices,
-      documents: state.documents,
+      messages: scoped.messages,
+      reports: scoped.reports,
+      reportAssignments: scoped.reportAssignments,
+      approvals: scoped.approvals,
+      tasks: scoped.tasks,
+      policies: scoped.policies,
+      calendarEvents: scoped.calendarEvents,
+      liveSessions: scoped.liveSessions,
+      personnel: scoped.personnel,
+      escalations: scoped.escalations,
+      transfers: scoped.transfers,
+      offices: scoped.offices,
+      documents: scoped.documents,
       files: state.files ?? [],
-      aiDrafts: state.aiDrafts,
-      audit: state.audit,
+      aiDrafts: scoped.aiDrafts,
+      audit: scoped.audit,
       events: state.events
     };
+  }
+
+  function scopedPlatformState(actor) {
+    const scope = stationScope(actor);
+    if (!scope || scope.canOverride) {
+      return {
+        messages: state.messages,
+        reports: state.reports,
+        reportAssignments: state.reportAssignments ?? [],
+        approvals: state.approvals,
+        tasks: state.tasks,
+        policies: state.policies,
+        calendarEvents: state.calendarEvents,
+        liveSessions: state.liveSessions ?? [],
+        personnel: state.personnel,
+        escalations: state.escalations,
+        transfers: state.transfers,
+        offices: state.offices,
+        documents: state.documents,
+        aiDrafts: state.aiDrafts,
+        audit: state.audit
+      };
+    }
+    return {
+      messages: messagesForStation(scope.email),
+      reports: state.reports.filter((item) => recordMatchesScope(item, scope, ["name", "owner", "path", "type", "routingStage", "preparedBy", "assignedToEmail"])),
+      reportAssignments: (state.reportAssignments ?? []).filter((item) => recordMatchesScope(item, scope, ["targetLabel", "targetMode", "targetOfficeId", "assignedBy", "period"])),
+      approvals: state.approvals.filter((item) => recordMatchesScope(item, scope, ["request", "route", "delegate", "linkedReport", "linkedTask"])),
+      tasks: state.tasks.filter((item) => recordMatchesScope(item, scope, ["title", "owner", "assignee", "linkedReport", "linkedApproval", "handoffTo"])),
+      policies: state.policies.filter((item) => recordMatchesScope(item, scope, ["title", "category", "owner", "summary", "distributedTo", "trainingAudience"])),
+      calendarEvents: state.calendarEvents.filter((item) => recordMatchesScope(item, scope, ["title", "category", "owner", "linkedTask", "linkedReport"])),
+      liveSessions: (state.liveSessions ?? []).filter((item) => recordMatchesScope(item, scope, ["title", "host", "route", "linkedRecord", "purpose"]) || (item.participants ?? []).map(normalizeStationEmail).includes(scope.email)),
+      personnel: state.personnel.filter((item) => recordMatchesScope(item, scope, ["name", "role", "currentStation", "assignedStation", "stationAccess", "linkedTask"])),
+      escalations: state.escalations.filter((item) => recordMatchesScope(item, scope, ["source", "item", "reason", "owner", "linkedTask", "linkedReport", "linkedApproval"])),
+      transfers: state.transfers.filter((item) => recordMatchesScope(item, scope, ["person", "from", "to", "step", "risk", "personnelRecord", "linkedTask", "linkedReport"])),
+      offices: state.offices.filter((item) => recordMatchesScope(item, scope, ["name", "email", "level", "department", "supervisor", "parentName", "reportingRoute"])),
+      documents: state.documents.filter((item) => recordMatchesScope(item, scope, ["name", "classification", "source", "owner", "linkedReport", "linkedApproval"])),
+      aiDrafts: state.aiDrafts.filter((item) => recordMatchesScope(item, scope, ["kind", "title", "body", "sourceNote", "publishedBy"])),
+      audit: state.audit.filter((item) => recordMatchesScope(item, scope, ["event", "actor", "object", "result", "category", "reviewer"]))
+    };
+  }
+
+  function stationScope(actor) {
+    if (!actor) return null;
+    const email = normalizeStationEmail(actor);
+    const stationRecord = state.stations.find((entry) => normalizeStationEmail(entry.email) === email);
+    const officeRecord = state.offices.find((entry) => normalizeStationEmail(entry.email) === email);
+    const level = stationRecord?.level ?? officeRecord?.level ?? "";
+    const keywords = Array.from(new Set([
+      email,
+      email.split("@")[0],
+      stationRecord?.title,
+      stationRecord?.level,
+      stationRecord?.authority,
+      officeRecord?.name,
+      officeRecord?.level,
+      officeRecord?.department,
+      officeRecord?.supervisor,
+      officeRecord?.parentName,
+      officeRecord?.reportingRoute
+    ].filter(Boolean).flatMap((value) => String(value).toLowerCase().split(/[^a-z0-9@.]+/)).filter((value) => value.length > 2)));
+    return {
+      email,
+      level,
+      canOverride: Boolean(stationRecord && getPermissions(stationRecord).canOverride),
+      keywords
+    };
+  }
+
+  function recordMatchesScope(item, scope, fields) {
+    const text = fields.map((field) => item?.[field]).concat(item?.watchers ?? [], item?.recipients ?? []).filter(Boolean).join(" ").toLowerCase();
+    return text.includes(scope.email) || scope.keywords.some((keyword) => text.includes(keyword));
   }
 
   function messagesForStation(actor) {
