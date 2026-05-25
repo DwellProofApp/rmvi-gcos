@@ -24449,8 +24449,13 @@ function AdminV2Reports({
               <span>Connected drafts</span>
               <strong>{focusedAssignment.period} / {focusedAssignment.targetLabel}</strong>
               <small>{focusedAssignment.generatedReportIds.length} draft reports created from the monthly pack.</small>
+              <div className="admin-v2-assignment-status" aria-label="Assignment draft status">
+                <em>{focusedAssignedReports.filter((report) => report.state === "Ready").length} Ready</em>
+                <em>{focusedAssignedReports.filter((report) => report.state === "In Review").length} In review</em>
+                <em>{focusedAssignedReports.filter((report) => report.state === "Approved").length} Approved</em>
+              </div>
               <div className="admin-v2-assignment-drafts">
-                {focusedAssignedReports.slice(0, 4).map((report) => (
+                {focusedAssignedReports.map((report) => (
                   <button
                     className={selectedReport?.id === report.id ? "selected" : ""}
                     key={report.id}

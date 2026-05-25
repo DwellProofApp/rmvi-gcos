@@ -1512,6 +1512,23 @@
   line-height: 1.35;
 }
 
+.admin-v2-assignment-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.admin-v2-assignment-status em {
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, .22);
+  border-radius: 999px;
+  color: var(--v2-muted);
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 800;
+  padding: 5px 8px;
+}
+
 .admin-v2-assignment-drafts {
   display: grid;
   gap: 8px;
