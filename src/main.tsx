@@ -9856,17 +9856,28 @@ function App() {
     return () => window.removeEventListener("keydown", handleGlobalScrollKeys);
   }, [effectiveSection]);
 
-  function handleAdminV2QuickAction(action: string) {
+  function handleAdminV2QuickAction(action: string, record?: { title: string; meta: string; detail: string; status: string }) {
     const validLevels: StationLevel[] = ["International HQ", "Regional HQ", "National HQ", "County/State HQ", "District HQ", "Area HQ", "Local Branch"];
     const stationLevel = validLevels.includes(activeStation.level as StationLevel) ? activeStation.level as StationLevel : "National HQ";
     const reportingRoute = buildReportingRoute(stationLevel, activeStation.parentName ?? "Supervising Office");
+    const recordNeedle = [record?.title, record?.meta, record?.detail].filter(Boolean).join(" ").toLowerCase();
+    const includesRecord = (values: Array<string | undefined>) => Boolean(recordNeedle) && values.some((value) => value ? recordNeedle.includes(value.toLowerCase()) || value.toLowerCase().includes(recordNeedle) : false);
+    const selectedMessage = scopedMessages.find((item) => includesRecord([item.subject, item.from, item.to, item.route]));
+    const selectedReport = scopedReports.find((item) => includesRecord([item.name, item.owner, item.path, item.type]));
+    const selectedApproval = scopedApprovals.find((item) => includesRecord([item.request, item.route, item.limit]));
+    const selectedTask = scopedTasks.find((item) => includesRecord([item.title, item.owner, item.assignee, item.priority]));
+    const selectedPerson = scopedPersonnel.find((item) => includesRecord([item.name, item.role, item.currentStation, item.assignedStation]));
+    const selectedEscalation = scopedEscalations.find((item) => includesRecord([item.item, item.source, item.reason, item.owner]));
+    const selectedTransfer = scopedTransfers.find((item) => includesRecord([item.person, item.from, item.to, item.risk]));
+    const selectedDocument = scopedDocuments.find((item) => includesRecord([item.name, item.classification, item.source, item.owner]));
     const firstMessage = scopedMessages[0];
-    const firstReport = scopedReports[0];
-    const firstApproval = scopedApprovals[0];
-    const firstTask = scopedTasks.find((item) => item.status !== "Complete") ?? scopedTasks[0];
-    const firstPerson = scopedPersonnel[0];
-    const firstTransfer = scopedTransfers[0];
-    const firstDocument = scopedDocuments[0];
+    const firstReport = selectedReport ?? scopedReports[0];
+    const firstApproval = selectedApproval ?? scopedApprovals[0];
+    const firstTask = selectedTask ?? scopedTasks.find((item) => item.status !== "Complete") ?? scopedTasks[0];
+    const firstPerson = selectedPerson ?? scopedPersonnel[0];
+    const firstEscalation = selectedEscalation ?? scopedEscalations[0];
+    const firstTransfer = selectedTransfer ?? scopedTransfers[0];
+    const firstDocument = selectedDocument ?? scopedDocuments[0];
     const today = new Date().toISOString().slice(0, 10);
 
     switch (action) {
@@ -9882,10 +9893,10 @@ function App() {
         setActiveSection("ChurchMail");
         return;
       case "Route message":
-        firstMessage ? updateMessageRoute(firstMessage.id) : handleAdminV2QuickAction("Compose");
+        (selectedMessage ?? firstMessage) ? updateMessageRoute((selectedMessage ?? firstMessage).id) : handleAdminV2QuickAction("Compose");
         return;
       case "Archive selected":
-        firstMessage ? archiveMessage(firstMessage.id) : recordAudit("ChurchMailArchiveSkipped", activeStation.email, "No message selected");
+        (selectedMessage ?? firstMessage) ? archiveMessage((selectedMessage ?? firstMessage).id) : recordAudit("ChurchMailArchiveSkipped", activeStation.email, "No message selected");
         return;
       case "Create report":
         createReportDraft({
@@ -9937,7 +9948,7 @@ function App() {
         return;
       case "Assign owner":
         if (effectiveSection === "Escalations") {
-          scopedEscalations[0] ? updateEscalationOwner(scopedEscalations[0].id, activeStation.email) : handleAdminV2QuickAction("Open escalation");
+          firstEscalation ? updateEscalationOwner(firstEscalation.id, activeStation.email) : handleAdminV2QuickAction("Open escalation");
         } else {
           firstTask ? updateTaskAssignee(firstTask.id, activeStation.email) : handleAdminV2QuickAction("Create task");
         }
@@ -10050,6 +10061,7 @@ function App() {
         setActiveSection("Escalations");
         return;
       case "Review risk":
+        firstEscalation ? triageEscalation(firstEscalation.id) : undefined;
         refreshEscalationDigest();
         return;
       case "Draft brief":
@@ -23359,7 +23371,7 @@ type AdminV2Props = {
   onApprove: (id: string) => void;
   onSign: (id: string) => void;
   onReject: (id: string) => void;
-  onQuickAction: (action: string) => void;
+  onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 };
 
 function normalizeAdminV2Event(event: unknown, index = 0) {
@@ -24067,7 +24079,7 @@ function AdminV2Reports({
   onMarkReportEvidence: (id: string) => void;
   onBuildGovernancePacket: (id: string) => void;
   onAssignReportPack: (input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) => void;
-  onQuickAction: (action: string) => void;
+  onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 }) {
   const [assignmentTargetMode, setAssignmentTargetMode] = React.useState<ReportAssignment["targetMode"]>("resident-pastor-offices");
   const [assignmentTargetOfficeId, setAssignmentTargetOfficeId] = React.useState(stationDirectory.find((item) => /local branch|resident pastor|mission station/i.test([item.title, item.level, item.authority].join(" ")))?.id ?? stationDirectory[0]?.id ?? "");
@@ -24336,7 +24348,7 @@ function AdminV2Approvals({
   onApprove: (id: string) => void;
   onSign: (id: string) => void;
   onReject: (id: string) => void;
-  onQuickAction: (action: string) => void;
+  onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 }) {
   const [selectedApprovalId, setSelectedApprovalId] = React.useState(approvals[0]?.id ?? "");
   const [notice, setNotice] = React.useState("");
@@ -24515,7 +24527,7 @@ function AdminV2Mail({
   station: StationCard;
   stationDirectory: StationCard[];
   onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
-  onQuickAction: (action: string) => void;
+  onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 }) {
   const [composerOpen, setComposerOpen] = React.useState(false);
   const [composeKind, setComposeKind] = React.useState<MessageKind>("Directive");
@@ -24726,7 +24738,7 @@ function AdminV2Directory({
   metrics: [string, string | number][];
   actions: string[];
   records: { title: string; meta: string; detail: string; status: string }[];
-  onQuickAction: (action: string) => void;
+  onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 }) {
   const normalizedRecords = records.map((record) => ({ ...record, status: record.status || "Ready" }));
   const [selectedIndex, setSelectedIndex] = React.useState(0);
@@ -24739,9 +24751,9 @@ function AdminV2Directory({
     if (selectedIndex >= normalizedRecords.length) setSelectedIndex(0);
   }, [normalizedRecords.length, selectedIndex]);
   const selected = normalizedRecords[Math.min(selectedIndex, Math.max(normalizedRecords.length - 1, 0))];
-  function runAction(action: string, recordTitle?: string) {
-    onQuickAction(action);
-    setNotice(recordTitle ? `${action} started for ${recordTitle}.` : `${action} started. The connected workspace has been updated.`);
+  function runAction(action: string, record?: { title: string; meta: string; detail: string; status: string }) {
+    onQuickAction(action, record);
+    setNotice(record ? `${action} started for ${record.title}.` : `${action} started. The connected workspace has been updated.`);
   }
   return (
     <div className="admin-v2-workspace">
@@ -24797,8 +24809,8 @@ function AdminV2Directory({
             <p>{selected.detail}</p>
             <span>{selected.meta}</span>
             <div className="admin-v2-actions-row">
-              <button onClick={() => runAction(actions[0] ?? "Open", selected.title)} type="button">{actions[0] ?? "Open"}</button>
-              <button onClick={() => runAction(actions[1] ?? "More", selected.title)} type="button">{actions[1] ?? "More"}</button>
+              <button onClick={() => runAction(actions[0] ?? "Open", selected)} type="button">{actions[0] ?? "Open"}</button>
+              <button onClick={() => runAction(actions[1] ?? "More", selected)} type="button">{actions[1] ?? "More"}</button>
             </div>
             <div className="admin-v2-empty-state">Connected to GCOS records, audit trail, and the related workspace action above.</div>
           </div>
