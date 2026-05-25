@@ -24557,6 +24557,28 @@ function AdminV2Approvals({
       setNotice(`${selected.request} rejected and closed.`);
     }
   }
+  function archiveSelectedApproval() {
+    if (!selected) {
+      onOpenSection("Archive");
+      return;
+    }
+    window.sessionStorage.setItem("gcos.archive.prefill", JSON.stringify({
+      title: `${selected.request} approval packet`,
+      meta: "Approval evidence packet",
+      detail: `${selected.route} / ${selected.limit} / ${selected.state}`,
+      status: "Ready",
+      body: [
+        `Request: ${selected.request}`,
+        `Route: ${selected.route}`,
+        `Authority limit: ${selected.limit}`,
+        `Signatures: ${selected.signatures}`,
+        `Evidence: ${selected.evidenceStatus ?? "Pending"}`,
+        `Linked report: ${selected.linkedReport ?? "None"}`,
+        ...(selected.auditTrail ?? []).map((item) => `Audit: ${item}`)
+      ].join("\n")
+    }));
+    onOpenSection("Archive");
+  }
   return (
     <div className="admin-v2-workspace">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -24690,7 +24712,7 @@ function AdminV2Approvals({
             </div>
             <div className="admin-v2-connected-routes" aria-label="Connected approval destinations">
               <button type="button" onClick={() => onOpenSection("Reports")}><FileBarChart2 size={14} /> Source report</button>
-              <button type="button" onClick={() => onOpenSection("Archive")}><ArchiveIcon size={14} /> Archive packet</button>
+              <button type="button" onClick={archiveSelectedApproval}><ArchiveIcon size={14} /> Archive packet</button>
               <button type="button" onClick={() => onOpenSection("Audit")}><ShieldCheck size={14} /> Audit trail</button>
             </div>
           </div>
