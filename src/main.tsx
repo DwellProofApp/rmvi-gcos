@@ -10860,6 +10860,19 @@ function LoginScreen({
     setDownloadNotice("For Windows, open rmvi.org in Chrome or Microsoft Edge, then choose the browser Install app option. The install prompt appears after the live HTTPS site is published.");
   }
 
+  async function installAndroidApp() {
+    if (pwa.installed) {
+      setDownloadNotice("RMVI GCOS is already installed on this Android device. Open it from the home screen app icon.");
+      return;
+    }
+    if (pwa.canInstall) {
+      await pwa.install();
+      setDownloadNotice("GCOS install prompt opened. After installation, launch RMVI GCOS from the Android home screen.");
+      return;
+    }
+    setDownloadNotice("On Android, open rmvi.org in Chrome, tap the browser menu, then choose Install app or Add to Home screen.");
+  }
+
   function showIosInstallHelp() {
     setDownloadNotice("On iPhone or iPad, open rmvi.org in Safari, tap Share, then choose Add to Home Screen to install RMVI GCOS.");
   }
@@ -10881,6 +10894,12 @@ function LoginScreen({
         "3. If the browser shows an install prompt, approve it.",
         "4. Open RMVI GCOS from the Windows Start menu.",
         "",
+        "Android",
+        "1. Open https://rmvi.org in Chrome on the Android device.",
+        "2. Tap the browser menu.",
+        "3. Choose Install app or Add to Home screen.",
+        "4. Open RMVI GCOS from the Android home screen icon.",
+        "",
         "iPhone or iPad",
         "1. Open https://rmvi.org in Safari.",
         "2. Tap Share.",
@@ -10892,7 +10911,7 @@ function LoginScreen({
       ].join("\n"),
       "text/plain;charset=utf-8"
     );
-    setDownloadNotice("The RMVI GCOS install guide has been downloaded. Use it to help Windows and iPhone/iPad users install the app from rmvi.org.");
+    setDownloadNotice("The RMVI GCOS install guide has been downloaded. Use it to help Windows, Android, and iPhone/iPad users install the app from rmvi.org.");
   }
 
   return (
@@ -11008,6 +11027,13 @@ function LoginScreen({
                 <strong>Add to Home Screen</strong>
                 <small>Open rmvi.org in Safari, tap Share, then add GCOS to the home screen.</small>
                 <b>Safari install path</b>
+              </button>
+              <button type="button" className="download-card" onClick={installAndroidApp}>
+                <Smartphone size={22} />
+                <span>Android</span>
+                <strong>Install mobile app</strong>
+                <small>Open rmvi.org in Chrome, then install GCOS to the Android home screen.</small>
+                <b>{pwa.canInstall ? "Install prompt available" : "Chrome install path"}</b>
               </button>
               <button type="button" className="download-card" onClick={continueInBrowser}>
                 <Globe2 size={22} />
@@ -11238,6 +11264,7 @@ function LoginScreen({
         </div>
         <div>
           <button type="button" onClick={installWindowsApp}><Download size={14} /> Windows</button>
+          <button type="button" onClick={installAndroidApp}><Smartphone size={14} /> Android</button>
           <button type="button" onClick={showIosInstallHelp}><Smartphone size={14} /> iPhone / iPad</button>
           <button type="button" onClick={continueInBrowser}><Globe2 size={14} /> Web</button>
         </div>
