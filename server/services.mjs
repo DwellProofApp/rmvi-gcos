@@ -201,6 +201,12 @@ export function createServices({ state, record, requirePermission, findById, int
     return actor === hostEmail || participants.includes(actor);
   }
 
+  function canManageLiveSession(actor, item) {
+    const permissions = actorPermissions(actor);
+    if (permissions?.canOverride) return true;
+    return actor === normalizeStationEmail(item.hostEmail ?? item.createdBy ?? "");
+  }
+
   function ensureAuthCredentials() {
     state.authCredentials ??= {};
     for (const stationRecord of state.stations ?? []) {
@@ -547,13 +553,65 @@ export function createServices({ state, record, requirePermission, findById, int
       return item;
     },
 
-    inviteLiveSessionParticipant(id, body) {
+    async inviteLiveSessionParticipant(id, body) {
       const item = findById(state.liveSessions ?? [], id);
+      if (!canManageLiveSession(normalizeStationEmail(body.actor), item)) {
+        throw Object.assign(new Error("Only the meeting host or an administrator can invite participants."), { status: 403 });
+      }
       item.participants ??= [];
-      const participant = body.participant ?? body.email ?? body.actor;
-      item.participants = Array.from(new Set([participant, ...item.participants].filter(Boolean)));
+      const participant = normalizeStationEmail(body.participant ?? body.email ?? body.actor);
+      item.participants = Array.from(new Set([participant, ...item.participants].filter(Boolean).map(normalizeStationEmail)));
+      item.invitationLog ??= [];
+      const invitation = {
+        participant,
+        invitedBy: normalizeStationEmail(body.actor),
+        invitedAt: new Date().toISOString(),
+        status: "Sent"
+      };
+      item.invitationLog.unshift(invitation);
+      const inviteMessage = message("Meeting Invite", `Invitation: ${item.title}`, body.actor, "Ready", item.linkedRecord ?? "Live Comms");
+      Object.assign(inviteMessage, {
+        to: participant,
+        route: item.route,
+        body: [
+          `You have been invited to ${item.title}.`,
+          `Purpose: ${item.purpose}`,
+          `Linked record: ${item.linkedRecord}`,
+          `Access: ${item.accessMode ?? "Invite Only"}`,
+          item.joinUrl ? "Open Live Comms to join the secured meeting room." : "Meeting room link is pending."
+        ].join("\n"),
+        priority: item.status === "Priority" ? "High" : "Normal",
+        recipients: [participant],
+        linkedLiveSession: item.id,
+        classification: "Live Comms"
+      });
+      state.messages.unshift(inviteMessage);
+      try {
+        const delivery = await integrations.email?.deliverChurchMail?.(inviteMessage, [participant]);
+        if (delivery) {
+          inviteMessage.delivery = {
+            provider: delivery.provider,
+            status: delivery.ok ? "Sent" : "Queued",
+            mode: delivery.mode,
+            messageId: delivery.messageId,
+            recipients: delivery.to,
+            updatedAt: new Date().toISOString()
+          };
+          invitation.deliveryStatus = inviteMessage.delivery.status;
+        }
+      } catch (error) {
+        inviteMessage.delivery = {
+          provider: integrations.email?.status?.().provider ?? "email",
+          status: "Queued",
+          mode: "deferred",
+          error: error.message,
+          recipients: [participant],
+          updatedAt: new Date().toISOString()
+        };
+        invitation.deliveryStatus = "Queued";
+      }
       item.updatedAt = new Date().toISOString();
-      record("LiveSessionParticipantInvited", body.actor, item.title, participant);
+      record("LiveSessionParticipantInvited", body.actor, item.title, `${participant} notified through ChurchMail`);
       return item;
     },
 
