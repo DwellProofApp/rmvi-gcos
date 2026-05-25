@@ -876,10 +876,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(detailedReport.routingStage, "Report details updated");
 
     const submittedReport = await postJson(`/api/reports/${reports[0].id}/submit`, {}, nationalToken);
-    assert.equal(submittedReport.state, "Approved");
-    assert.equal(submittedReport.score, 100);
-    assert.equal(submittedReport.routingStage, "Archived upward");
-    assert.equal(submittedReport.approvedBy, "np@rmvi.org");
+    assert.equal(submittedReport.state, "In Review");
+    assert.equal(submittedReport.score >= 80, true);
+    assert.equal(submittedReport.routingStage.startsWith("Submitted to "), true);
+    assert.equal(submittedReport.approvedBy, undefined);
+    const routedReportMessages = await getJson("/api/messages", nationalToken);
+    assert.equal(routedReportMessages.some((message) => message.kind === "Report" && message.linkedReport === submittedReport.id), true);
 
     const correctionReport = await postJson(`/api/reports/${reports[1].id}/correction`, {
       reason: "Supporting documents need revision"

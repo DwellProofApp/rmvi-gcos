@@ -7064,15 +7064,51 @@ function App() {
     }
   }
 
+  function nextReportRoutingOffice(report: Report) {
+    const offices = report.path.split("->").map((part) => part.trim()).filter(Boolean);
+    if (offices.length <= 1) return offices[0] ?? "Supervising Office";
+    return offices[1];
+  }
+
   function submitReport(id: string) {
     const report = reports.find((item) => item.id === id);
     if (!report) return;
-    setReports((items) => items.map((item) => item.id === id ? { ...item, state: "Approved", score: 100, routingStage: "Archived upward", submittedAt: new Date().toISOString(), approvedBy: activeStation.email } : item));
-    recordAudit("ReportSubmitted", report.name, "Forwarded upward");
+    const submittedAt = new Date().toISOString();
+    const routeTarget = nextReportRoutingOffice(report);
+    const reportMessage: Message = {
+      id: `msg-report-${Date.now()}`,
+      kind: "Report",
+      subject: report.name,
+      from: activeStation.email,
+      to: routeTarget,
+      route: report.path,
+      age: "now",
+      status: "In Review",
+      files: report.evidenceStatus ?? "Report packet pending",
+      priority: report.due === "Overdue" || report.state === "Escalated" ? "High" : "Medium",
+      linkedReport: report.id,
+      body: [
+        `${report.name} has been submitted upward for review.`,
+        `Owner: ${report.owner}`,
+        `Period: ${report.period ?? "Current"}`,
+        `Route: ${report.path}`,
+        `Evidence: ${report.evidenceStatus ?? "Pending"}`
+      ].join("\n")
+    };
+    setReports((items) => items.map((item) => item.id === id ? {
+      ...item,
+      state: "In Review",
+      score: Math.max(item.score, 80),
+      routingStage: `Submitted to ${routeTarget}`,
+      reviewNote: `Submitted upward to ${routeTarget} through ChurchMail`,
+      submittedAt
+    } : item));
+    setMessages((items) => [reportMessage, ...items.filter((item) => item.id !== reportMessage.id)]);
+    recordAudit("ReportSubmitted", report.name, `Forwarded upward to ${routeTarget}`);
     if (!offlineMode) {
       void apiRequest<Report>(`/api/reports/${id}/submit`, {
         method: "POST",
-        body: JSON.stringify({ actor: activeStation.email })
+        body: JSON.stringify({ actor: activeStation.email, routeTarget })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -24216,6 +24252,13 @@ function AdminV2Reports({
       onOpenSection("Archive");
     }
   }
+  function openSelectedReportChurchMailRoute() {
+    if (selectedReport) {
+      window.sessionStorage.setItem("gcos.churchmail.focusLinkedReport", selectedReport.id);
+      setPageNotice(`${selectedReport.name} ChurchMail route opened.`);
+    }
+    onOpenSection("ChurchMail");
+  }
   function notifyAssignedOffices() {
     if (!focusedAssignment) {
       onOpenSection("ChurchMail");
@@ -24533,7 +24576,7 @@ function AdminV2Reports({
             </div>
             <div className="admin-v2-connected-routes" aria-label="Connected report destinations">
               <button type="button" onClick={() => onOpenSection("Approvals")}><Signature size={14} /> Approval route</button>
-              <button type="button" onClick={() => onOpenSection("ChurchMail")}><Mail size={14} /> ChurchMail route</button>
+              <button type="button" onClick={openSelectedReportChurchMailRoute}><Mail size={14} /> ChurchMail route</button>
               <button type="button" onClick={() => onOpenSection("Archive")}><ArchiveIcon size={14} /> Evidence archive</button>
               <button type="button" onClick={() => onOpenSection("Audit")}><ShieldCheck size={14} /> Audit trail</button>
             </div>
@@ -24881,6 +24924,16 @@ function AdminV2Mail({
       setSelectedMessageId(visibleMessages[0].id);
     }
   }, [selectedMessageId, visibleMessages]);
+  React.useEffect(() => {
+    const linkedReport = window.sessionStorage.getItem("gcos.churchmail.focusLinkedReport");
+    if (!linkedReport) return;
+    const routedMessage = messages.find((message) => message.linkedReport === linkedReport);
+    if (!routedMessage) return;
+    window.sessionStorage.removeItem("gcos.churchmail.focusLinkedReport");
+    setActiveMailbox(isSentByStation(routedMessage) ? "sent" : "inbox");
+    setSelectedMessageId(routedMessage.id);
+    setComposeFeedback(`${routedMessage.subject} routing message opened.`);
+  }, [messages, stationEmail]);
   React.useEffect(() => {
     const rawCompose = window.sessionStorage.getItem("gcos.churchmail.compose");
     if (!rawCompose) return;

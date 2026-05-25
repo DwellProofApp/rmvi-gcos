@@ -2763,12 +2763,28 @@ export function createServices({ state, record, requirePermission, findById, int
 
     submitReport(id, body) {
       const item = findById(state.reports, id);
-      item.state = "Approved";
-      item.score = 100;
-      item.routingStage = "Archived upward";
+      const routeParts = String(item.path ?? "").split("->").map((part) => part.trim()).filter(Boolean);
+      const routeTarget = body.routeTarget ?? (routeParts.length > 1 ? routeParts[1] : routeParts[0] ?? "Supervising Office");
+      const wasUrgent = item.due === "Overdue" || item.state === "Escalated";
+      item.state = "In Review";
+      item.score = Math.max(item.score ?? 0, 80);
+      item.routingStage = `Submitted to ${routeTarget}`;
       item.submittedAt = new Date().toISOString();
-      item.approvedBy = body.actor;
-      record("ReportSubmitted", body.actor, item.name, "Forwarded upward");
+      item.reviewNote = `Submitted upward to ${routeTarget} through ChurchMail`;
+      const routedMessage = message("Report", item.name, body.actor ?? item.preparedBy ?? item.owner, "In Review", item.evidenceStatus ?? "Report packet pending");
+      routedMessage.to = routeTarget;
+      routedMessage.route = item.path;
+      routedMessage.priority = wasUrgent ? "High" : "Medium";
+      routedMessage.linkedReport = item.id;
+      routedMessage.body = [
+        `${item.name} has been submitted upward for review.`,
+        `Owner: ${item.owner}`,
+        `Period: ${item.period ?? "Current"}`,
+        `Route: ${item.path}`,
+        `Evidence: ${item.evidenceStatus ?? "Pending"}`
+      ].join("\n");
+      state.messages.unshift(routedMessage);
+      record("ReportSubmitted", body.actor, item.name, `Forwarded upward to ${routeTarget}`);
       return item;
     },
 
