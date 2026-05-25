@@ -23492,6 +23492,7 @@ function AdminV2Shell(props: AdminV2Props) {
       return (
         <AdminV2Approvals
           approvals={approvals}
+          onOpenSection={openSection}
           onCreateApproval={onCreateApproval}
           onApprove={onApprove}
           onSign={onSign}
@@ -24222,7 +24223,14 @@ function AdminV2Reports({
       request: `${latestAssignment.period} Resident Pastor monthly report package review`,
       route: routeSample,
       limit: `${latestAssignment.templates.length} monthly forms / ${latestAssignment.generatedReportIds.length} drafts`,
-      delegate: latestAssignment.assignedBy
+      delegate: latestAssignment.assignedBy,
+      linkedReport: latestAssignedReports[0]?.id ?? latestAssignment.generatedReportIds[0] ?? latestAssignment.id,
+      evidenceStatus: "Monthly report packet ready",
+      auditTrail: [
+        `Assignment ${latestAssignment.id}`,
+        `${latestAssignment.generatedReportIds.length} draft reports`,
+        latestAssignment.targetLabel
+      ]
     }));
     onOpenSection("Approvals");
   }
@@ -24467,6 +24475,7 @@ function AdminV2Reports({
 
 function AdminV2Approvals({
   approvals,
+  onOpenSection,
   onCreateApproval,
   onApprove,
   onSign,
@@ -24474,6 +24483,7 @@ function AdminV2Approvals({
   onQuickAction
 }: {
   approvals: Approval[];
+  onOpenSection: (section: Section) => void;
   onCreateApproval: (approval: Omit<Approval, "id" | "state" | "signatures">) => Approval;
   onApprove: (id: string) => void;
   onSign: (id: string) => void;
@@ -24486,6 +24496,7 @@ function AdminV2Approvals({
   const [route, setRoute] = React.useState("Local Office -> Area Office -> District HQ");
   const [limit, setLimit] = React.useState("Supervisor review");
   const [delegate, setDelegate] = React.useState("");
+  const [approvalContext, setApprovalContext] = React.useState<Pick<Approval, "linkedReport" | "evidenceStatus" | "auditTrail"> | null>(null);
   React.useEffect(() => {
     if (!approvals.some((approval) => approval.id === selectedApprovalId)) setSelectedApprovalId(approvals[0]?.id ?? "");
   }, [approvals, selectedApprovalId]);
@@ -24494,11 +24505,16 @@ function AdminV2Approvals({
     if (!rawApproval) return;
     window.sessionStorage.removeItem("gcos.approvals.prefill");
     try {
-      const draft = JSON.parse(rawApproval) as Partial<Pick<Approval, "request" | "route" | "limit" | "delegate">>;
+      const draft = JSON.parse(rawApproval) as Partial<Pick<Approval, "request" | "route" | "limit" | "delegate" | "linkedReport" | "evidenceStatus" | "auditTrail">>;
       if (draft.request) setRequest(draft.request);
       if (draft.route) setRoute(draft.route);
       if (draft.limit) setLimit(draft.limit);
       if (draft.delegate) setDelegate(draft.delegate);
+      setApprovalContext({
+        linkedReport: draft.linkedReport,
+        evidenceStatus: draft.evidenceStatus,
+        auditTrail: draft.auditTrail
+      });
       setNotice("Monthly report approval path is ready to validate. Review the request, then choose Create and validate.");
       window.setTimeout(() => document.getElementById("admin-v2-create-approval")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
     } catch (error) {
@@ -24519,10 +24535,14 @@ function AdminV2Approvals({
       request: request.trim() || "New governance approval request",
       route: route.trim() || "Local Office -> Area Office -> District HQ",
       limit: limit.trim() || "Supervisor review",
-      delegate: delegate.trim() || undefined
+      delegate: delegate.trim() || undefined,
+      linkedReport: approvalContext?.linkedReport,
+      evidenceStatus: approvalContext?.evidenceStatus,
+      auditTrail: approvalContext?.auditTrail
     });
     setSelectedApprovalId(created.id);
     setNotice(`${created.request} created and ready for validation.`);
+    setApprovalContext(null);
   }
   function runSelectedAction(action: "approve" | "sign" | "reject") {
     if (!selected) return;
@@ -24583,6 +24603,13 @@ function AdminV2Approvals({
           <span>Signed {approvals.filter((item) => item.signatures === "complete").length}</span>
           <span>Escalated {approvals.filter((item) => item.state === "Escalated").length}</span>
         </div>
+        {approvalContext && (
+          <div className="admin-v2-context-card">
+            <span>Report assignment context</span>
+            <strong>{approvalContext.evidenceStatus ?? "Evidence ready"}</strong>
+            <small>{approvalContext.linkedReport ?? "Monthly report packet"}</small>
+          </div>
+        )}
         <form className="admin-v2-create-form" id="admin-v2-create-approval" onSubmit={createApproval}>
           <strong>Create approval</strong>
           <label>
@@ -24647,12 +24674,24 @@ function AdminV2Approvals({
               <article><span>Authority limit</span><strong>{selected.limit}</strong></article>
               <article><span>Signatures</span><strong>{selected.signatures}</strong></article>
               <article><span>Delegate</span><strong>{selected.delegate ?? "Not assigned"}</strong></article>
+              <article><span>Evidence</span><strong>{selected.evidenceStatus ?? "Pending"}</strong></article>
+              <article><span>Linked report</span><strong>{selected.linkedReport ?? "None"}</strong></article>
             </div>
+            {selected.auditTrail?.length ? (
+              <div className="admin-v2-audit-mini">
+                {selected.auditTrail.map((item) => <span key={item}>{item}</span>)}
+              </div>
+            ) : null}
             <p><strong>How this approval moves:</strong> validate the request, collect required signatures, execute the decision, then preserve the action in Audit and Archive.</p>
             <div className="admin-v2-actions-row">
               <button onClick={() => runSelectedAction("approve")} type="button">Approve</button>
               <button onClick={() => runSelectedAction("sign")} type="button">Sign</button>
               <button onClick={() => runSelectedAction("reject")} type="button">Reject</button>
+            </div>
+            <div className="admin-v2-connected-routes" aria-label="Connected approval destinations">
+              <button type="button" onClick={() => onOpenSection("Reports")}><FileBarChart2 size={14} /> Source report</button>
+              <button type="button" onClick={() => onOpenSection("Archive")}><ArchiveIcon size={14} /> Archive packet</button>
+              <button type="button" onClick={() => onOpenSection("Audit")}><ShieldCheck size={14} /> Audit trail</button>
             </div>
           </div>
         )}
