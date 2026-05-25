@@ -1169,7 +1169,7 @@
 @media (max-width: 760px) {
   .admin-v2-shell {
     display: grid;
-    grid-template-columns: 210px minmax(0, 1fr);
+    grid-template-columns: 78px minmax(0, 1fr);
     height: 100vh;
     overflow: hidden;
   }
@@ -1182,7 +1182,8 @@
   .admin-v2-sidebar {
     border-right: 1px solid var(--v2-line);
     border-bottom: 0;
-    padding: 14px 10px;
+    gap: 12px;
+    padding: 14px 8px;
   }
 
   .admin-v2-main {
@@ -1190,7 +1191,9 @@
   }
 
   .admin-v2-brand {
-    gap: 8px;
+    gap: 0;
+    justify-content: center;
+    padding: 2px;
   }
 
   .admin-v2-brand img {
@@ -1198,13 +1201,30 @@
     width: 34px;
   }
 
+  .admin-v2-brand span,
+  .admin-v2-station,
+  .admin-v2-nav p,
   .admin-v2-brand small {
     display: none;
   }
 
+  .admin-v2-nav {
+    gap: 8px;
+  }
+
+  .admin-v2-nav section {
+    gap: 6px;
+  }
+
   .admin-v2-nav button {
+    border-radius: 14px;
+    justify-content: center;
     min-height: 36px;
-    padding: 8px 9px;
+    padding: 8px;
+  }
+
+  .admin-v2-nav button span {
+    display: none;
   }
 
   .admin-v2-actions {
@@ -1216,7 +1236,10 @@
     width: 100%;
   }
 
-  .admin-v2-stat-strip,
+  .admin-v2-stat-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .admin-v2-process-flow {
     grid-template-columns: 1fr;
   }
