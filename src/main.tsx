@@ -2828,6 +2828,33 @@ function opensProviderRoom(sessionType: string) {
   return /video|report review|approval room|broadcast/i.test(sessionType);
 }
 
+function meetingRoomSlug(value: string) {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/(^-|-$)/g, "")
+    .slice(0, 80) || "gcos-session";
+}
+
+function previewLiveSessionJoinUrl(title: string, id: string) {
+  return `https://meet.jit.si/rmvi-gcos-${meetingRoomSlug(title)}-${id.slice(0, 8)}`;
+}
+
+function writeMeetingWindowMessage(meetingWindow: Window | null, title: string, message: string, detail?: string) {
+  if (!meetingWindow) return;
+  meetingWindow.document.title = title;
+  meetingWindow.document.body.innerHTML = `
+    <main style="min-height:100vh;margin:0;display:grid;place-items:center;background:#f5f7fb;color:#13233f;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;">
+      <section style="max-width:520px;padding:32px;border:1px solid #d8e0ee;border-radius:18px;background:white;box-shadow:0 24px 70px rgba(19,35,63,.14);">
+        <p style="margin:0 0 10px;text-transform:uppercase;letter-spacing:.14em;font-size:12px;color:#6a7892;">RMVI GCOS Meeting</p>
+        <h1 style="margin:0 0 12px;font-size:24px;line-height:1.2;">${title}</h1>
+        <p style="margin:0;color:#41516d;line-height:1.6;">${message}</p>
+        ${detail ? `<p style="margin:18px 0 0;color:#7a2d2d;line-height:1.5;font-size:14px;">${detail}</p>` : ""}
+      </section>
+    </main>
+  `;
+}
+
 function buildOfflineConflicts(queue: OfflineAction[]): OfflineConflict[] {
   const grouped = queue.reduce<Map<string, OfflineAction[]>>((map, action) => {
     const key = action.object.trim().toLowerCase();
@@ -3851,10 +3878,10 @@ function App() {
     setEvents((items) => [`${event}: ${object}`, ...items].slice(0, 8));
   }
 
-  async function createLiveSession(draft: Omit<LiveSession, "id" | "createdAt">) {
+  async function createLiveSession(draft: Omit<LiveSession, "id" | "createdAt"> & Partial<Pick<LiveSession, "id">>) {
     const created: LiveSession = {
       ...draft,
-      id: `live-${Date.now()}`,
+      id: draft.id ?? `live-${Date.now()}`,
       hostEmail: activeStation.email,
       createdBy: activeStation.email,
       accessMode: draft.accessMode ?? "Invite Only",
@@ -10167,26 +10194,33 @@ function App() {
         setActiveSection("AI Desk");
         return;
       case "Start meeting":
+        const meetingTitle = `${activeStation.title} governance meeting`;
+        const meetingId = `live-${Date.now()}`;
+        const meetingUrl = previewLiveSessionJoinUrl(meetingTitle, meetingId);
         const meetingWindow = window.open("about:blank", "_blank");
         if (meetingWindow) {
           meetingWindow.opener = null;
-          meetingWindow.document.title = "Opening GCOS meeting";
-          meetingWindow.document.body.innerHTML = "<p style=\"font-family: system-ui; padding: 24px; color: #13233f;\">Opening secure GCOS meeting room...</p>";
+          writeMeetingWindowMessage(meetingWindow, "Opening meeting room", "GCOS is creating the secure video room and will redirect this tab when it is ready.");
+          meetingWindow.location.href = meetingUrl;
         }
         void createLiveSession({
-          title: `${activeStation.title} governance meeting`,
+          id: meetingId,
+          title: meetingTitle,
           host: activeStation.email,
           sessionType: "Video Meeting",
           status: "Queued",
+          joinUrl: meetingUrl,
+          videoProvider: "jitsi",
           linkedRecord: firstReport?.name ?? firstApproval?.request ?? "Governance review",
           route: reportingRoute,
           purpose: "Coordinate official governance work and record follow-up actions.",
           participants: [activeStation.email, workstationProfile.defaultMessageTo]
         }).then((session) => {
           if (meetingWindow && session.joinUrl) meetingWindow.location.href = session.joinUrl;
-          else if (meetingWindow) meetingWindow.close();
+          else if (!meetingWindow) window.open(meetingUrl, "_blank");
         }).catch(() => {
-          if (meetingWindow) meetingWindow.close();
+          if (meetingWindow) meetingWindow.location.href = meetingUrl;
+          else window.open(meetingUrl, "_blank");
         });
         setActiveSection("Live Comms");
         return;
@@ -17694,7 +17728,7 @@ function LiveComms({
   messages: Message[];
   liveSessions: LiveSession[];
   permissions: Permissions;
-  onCreateLiveSession: (draft: Omit<LiveSession, "id" | "createdAt">) => Promise<LiveSession>;
+  onCreateLiveSession: (draft: Omit<LiveSession, "id" | "createdAt"> & Partial<Pick<LiveSession, "id">>) => Promise<LiveSession>;
   onUpdateLiveSessionStatus: (id: string, status: LiveSession["status"]) => void;
   onAttachLiveSessionFile: (id: string) => void;
   onAddLiveSessionNote: (id: string) => void;
@@ -17834,8 +17868,7 @@ function LiveComms({
       : null;
     if (meetingWindow) {
       meetingWindow.opener = null;
-      meetingWindow.document.title = "Opening GCOS meeting";
-      meetingWindow.document.body.innerHTML = "<p style=\"font-family: system-ui; padding: 24px; color: #13233f;\">Opening secure GCOS meeting room...</p>";
+      writeMeetingWindowMessage(meetingWindow, "Opening meeting room", "GCOS is creating the secure video room and will redirect this tab when it is ready.");
     }
     const title = type === "Broadcast"
       ? `${station.level} broadcast`
@@ -17844,12 +17877,18 @@ function LiveComms({
         : type === "Office Chat"
           ? `${station.level} office chat`
           : `${station.level} live meeting`;
+    const sessionId = `live-${Date.now()}`;
+    const previewJoinUrl = previewLiveSessionJoinUrl(title, sessionId);
+    if (meetingWindow) meetingWindow.location.href = previewJoinUrl;
     try {
       const created = await onCreateLiveSession({
+        id: sessionId,
         title,
         host: station.title,
         sessionType: type,
         status: type === "Broadcast" ? "Priority" : "Live",
+        joinUrl: opensProviderRoom(type) ? previewJoinUrl : undefined,
+        videoProvider: opensProviderRoom(type) ? "jitsi" : undefined,
         linkedRecord,
         route,
         purpose: `${type} for ${linkedRecord}`,
@@ -17864,12 +17903,13 @@ function LiveComms({
       if (meetingWindow && created.joinUrl) {
         meetingWindow.location.href = created.joinUrl;
       } else if (meetingWindow) {
-        meetingWindow.close();
+        writeMeetingWindowMessage(meetingWindow, "Meeting record created", "The GCOS session was created, but the video provider did not return a room link yet. Return to Live Comms and try Join room.");
       }
       setFeedback(created.joinUrl ? `${title} started and opened in ${created.videoProvider ?? "the video provider"}.` : `${title} started and linked to ${linkedRecord}.`);
     } catch (error) {
-      if (meetingWindow) meetingWindow.close();
       const message = error instanceof Error ? error.message : "The meeting could not be started.";
+      if (meetingWindow && opensProviderRoom(type)) meetingWindow.location.href = previewJoinUrl;
+      else writeMeetingWindowMessage(meetingWindow, "Meeting could not start", "GCOS could not reach the live meeting service from this page. Keep the app open, refresh Live Comms, and try again after the backend is reachable.", message);
       setFeedback(message);
     }
   }
@@ -17888,8 +17928,7 @@ function LiveComms({
       : null;
     if (meetingWindow) meetingWindow.opener = null;
     if (meetingWindow && !sessionItem.joinUrl) {
-      meetingWindow.document.title = "Opening GCOS meeting";
-      meetingWindow.document.body.innerHTML = "<p style=\"font-family: system-ui; padding: 24px; color: #13233f;\">Opening secure GCOS meeting room...</p>";
+      writeMeetingWindowMessage(meetingWindow, "Opening meeting room", "GCOS is checking your invitation and will redirect this tab when the room is ready.");
     }
     void apiRequest<{ joinUrl: string; provider: string; checkedInParticipants?: string[] }>(`/api/live-sessions/${sessionItem.id}/join`, {
       method: "POST",
@@ -17903,10 +17942,10 @@ function LiveComms({
         setFeedback(`${sessionItem.title} opened in ${result.provider ?? sessionItem.videoProvider ?? "the video provider"}.`);
         return;
       }
-      if (meetingWindow) meetingWindow.close();
+      writeMeetingWindowMessage(meetingWindow, "Meeting link unavailable", "GCOS checked you in, but this meeting does not have a provider room link yet.");
       setFeedback("This session was checked in, but no meeting link is available yet.");
     }).catch(() => {
-      if (meetingWindow) meetingWindow.close();
+      writeMeetingWindowMessage(meetingWindow, "Meeting access not available", "This station is not authorized to join that meeting, or the backend could not confirm the meeting room.");
       setFeedback("This station is not authorized to join that meeting.");
     });
   }
