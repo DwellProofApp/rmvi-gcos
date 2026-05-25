@@ -345,6 +345,7 @@ const routes = {
   "GET /api/live-sessions": () => ok(state.liveSessions ?? []),
   "POST /api/live-sessions": async ({ body, session }) => createdResponse(await services.createLiveSession({ ...body, actor: session.email })),
   "GET /api/live-sessions/digest": () => ok(services.liveCommsDigest()),
+  "POST /api/live-sessions/:id/join": ({ params, body, session }) => ok(services.joinLiveSession(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/status": ({ params, body, session }) => ok(services.updateLiveSessionStatus(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/file": ({ params, body, session }) => ok(services.attachLiveSessionFile(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/note": ({ params, body, session }) => ok(services.addLiveSessionNote(params.id, { ...body, actor: session.email })),

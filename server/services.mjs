@@ -165,6 +165,42 @@ export function createServices({ state, record, requirePermission, findById, int
     return /all active gcos accounts|everyone on gcos|all national and regional offices|resident pastor offices/i.test(String(item.to ?? item.route ?? ""));
   }
 
+  function actorPermissions(actor) {
+    const email = normalizeStationEmail(actor);
+    const stationRecord = state.stations.find((entry) => normalizeStationEmail(entry.email) === email);
+    if (!stationRecord) return null;
+    return getPermissions(stationRecord);
+  }
+
+  function liveSessionPolicy(sessionType) {
+    if (/broadcast|emergency/i.test(String(sessionType))) return "Executive broadcast only";
+    if (/approval/i.test(String(sessionType))) return "Approval authority required";
+    if (/video|report review/i.test(String(sessionType))) return "Office lead or administrator";
+    return "Signed-in station collaboration";
+  }
+
+  function enforceLiveSessionCreateAuthority(actor, sessionType) {
+    const permissions = actorPermissions(actor);
+    if (!permissions) throw Object.assign(new Error("Signed-in station required to create live sessions."), { status: 403 });
+    if (/broadcast|emergency/i.test(String(sessionType)) && !permissions.canOverride && !permissions.canCreateOffices) {
+      throw Object.assign(new Error("Broadcast sessions require executive or office administration authority."), { status: 403 });
+    }
+    if (/approval/i.test(String(sessionType)) && !permissions.canApprove && !permissions.canOverride) {
+      throw Object.assign(new Error("Approval rooms require approval authority."), { status: 403 });
+    }
+    if (/video|report review/i.test(String(sessionType)) && !permissions.canApprove && !permissions.canCreateOffices && !permissions.canOverride) {
+      throw Object.assign(new Error("Video meetings require office lead, approval, or administrator authority."), { status: 403 });
+    }
+  }
+
+  function canAccessLiveSession(actor, item) {
+    const permissions = actorPermissions(actor);
+    if (permissions?.canOverride) return true;
+    const participants = (item.participants ?? []).map(normalizeStationEmail);
+    const hostEmail = normalizeStationEmail(item.hostEmail ?? item.createdBy ?? "");
+    return actor === hostEmail || participants.includes(actor);
+  }
+
   function ensureAuthCredentials() {
     state.authCredentials ??= {};
     for (const stationRecord of state.stations ?? []) {
@@ -426,16 +462,23 @@ export function createServices({ state, record, requirePermission, findById, int
 
     async createLiveSession(body) {
       state.liveSessions ??= [];
+      const actor = normalizeStationEmail(body.actor);
+      enforceLiveSessionCreateAuthority(actor, body.sessionType ?? "Video Meeting");
       const created = liveSession(
         body.title ?? "GCOS live session",
-        body.host ?? body.actor ?? "Live Comms",
+        body.host ?? actor ?? "Live Comms",
         body.sessionType ?? "Video Meeting",
         body.status ?? "Live",
         body.linkedRecord ?? "Unlinked record",
         body.route ?? "Current station -> invited offices",
         body.purpose ?? "Live administrative collaboration"
       );
-      created.participants = body.participants ?? [body.actor].filter(Boolean);
+      created.createdBy = actor;
+      created.hostEmail = actor;
+      created.accessMode = body.accessMode ?? "Invite Only";
+      created.meetingPolicy = liveSessionPolicy(created.sessionType);
+      created.participants = Array.from(new Set([actor, ...(body.participants ?? [])].filter(Boolean).map(normalizeStationEmail)));
+      created.invitedOnly = true;
       try {
         const room = await integrations.video?.createRoom?.(created);
         if (room) {
@@ -451,6 +494,30 @@ export function createServices({ state, record, requirePermission, findById, int
       state.liveSessions.unshift(created);
       record("LiveSessionCreated", body.actor, created.title, `${created.sessionType} linked to ${created.linkedRecord}`);
       return created;
+    },
+
+    joinLiveSession(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const actor = normalizeStationEmail(body.actor);
+      if (!canAccessLiveSession(actor, item)) {
+        record("LiveSessionJoinDenied", actor, item.title, "Station is not host, invited participant, or administrator");
+        throw Object.assign(new Error("This station is not invited to this live session."), { status: 403 });
+      }
+      item.checkedInParticipants ??= [];
+      if (!item.checkedInParticipants.map(normalizeStationEmail).includes(actor)) item.checkedInParticipants.push(actor);
+      item.joinAudit ??= [];
+      item.joinAudit.unshift({ actor, joinedAt: new Date().toISOString(), provider: item.videoProvider ?? "internal" });
+      item.lastActionBy = actor;
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionJoined", actor, item.title, item.videoProvider ?? "internal");
+      return {
+        id: item.id,
+        title: item.title,
+        provider: item.videoProvider ?? "internal",
+        joinUrl: item.joinUrl ?? "",
+        accessMode: item.accessMode ?? "Invite Only",
+        checkedInParticipants: item.checkedInParticipants
+      };
     },
 
     updateLiveSessionStatus(id, body) {

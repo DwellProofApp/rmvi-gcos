@@ -262,10 +262,11 @@ export function aiDraft(kind, title, body, sourceCount) {
 
 export function getPermissions(station) {
   const level = station.level;
+  const preset = station.permissionPreset;
   return {
-    canCreateOffices: ["International HQ", "Regional HQ", "National HQ"].includes(level),
-    canApprove: ["International HQ", "Regional HQ", "National HQ", "County/State HQ", "District HQ"].includes(level),
-    canExecuteTransfers: ["International HQ", "Regional HQ", "National HQ", "District HQ"].includes(level),
-    canOverride: ["International HQ", "Regional HQ"].includes(level)
+    canCreateOffices: preset === "Executive Override" || preset === "Office Admin" || ["International HQ", "Regional HQ", "National HQ"].includes(level),
+    canApprove: ["Executive Override", "Office Admin", "Approver", "Department Lead"].includes(String(preset)) || ["International HQ", "Regional HQ", "National HQ", "County/State HQ", "District HQ"].includes(level),
+    canExecuteTransfers: preset === "Executive Override" || preset === "Transfer Officer" || ["International HQ", "Regional HQ", "National HQ", "District HQ"].includes(level),
+    canOverride: preset === "Executive Override" || ["International HQ", "Regional HQ"].includes(level)
   };
 }
