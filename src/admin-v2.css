@@ -993,6 +993,57 @@
   overflow-wrap: anywhere;
 }
 
+.admin-v2-next-step-card {
+  align-items: center;
+  background: linear-gradient(135deg, #0f2f6b 0%, #2748b8 100%);
+  border: 1px solid rgba(70, 95, 255, .22);
+  border-radius: 16px;
+  box-shadow: 0 16px 34px rgba(39, 72, 184, .18);
+  color: #fff;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 14px;
+}
+
+.admin-v2-next-step-card span {
+  color: rgba(255, 255, 255, .72);
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+
+.admin-v2-next-step-card strong {
+  color: #fff;
+  display: block;
+  font-size: 16px;
+  line-height: 1.2;
+  margin-top: 4px;
+}
+
+.admin-v2-next-step-card p {
+  color: rgba(255, 255, 255, .78);
+  font-size: 13px;
+  line-height: 1.4;
+  margin: 5px 0 0;
+}
+
+.admin-v2-next-step-card button {
+  background: #fff;
+  border: 1px solid rgba(255, 255, 255, .4);
+  border-radius: 12px;
+  color: #17368a;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  font-weight: 900;
+  min-height: 42px;
+  padding: 10px 14px;
+  white-space: nowrap;
+}
+
 .admin-v2-connected-routes {
   border-top: 1px solid var(--v2-line);
   display: grid;
@@ -1643,6 +1694,14 @@
   .admin-v2-assignment-grid,
   .admin-v2-workflow-status {
     grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-v2-next-step-card {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-v2-next-step-card button {
+    width: 100%;
   }
 }
 

@@ -24208,6 +24208,19 @@ function AdminV2Reports({
       { label: "Archive", value: selectedReportIsArchived ? "Archived" : "Ready after approval", done: selectedReportIsArchived }
     ]
     : [];
+  const selectedReportNextStep = selectedReport
+    ? !selectedReportHasEvidence
+      ? { label: "Attach evidence", detail: "Add the workbook, packet, signatures, or supporting files before routing.", action: "evidence" as const }
+      : !selectedReportIsSubmitted
+        ? { label: "Submit upward", detail: `Route this report through ${selectedReport.path}.`, action: "submit" as const }
+        : !selectedReportApproval
+          ? { label: "Build approval packet", detail: "Create the approval packet so the receiving office can review and sign.", action: "packet" as const }
+          : !selectedReportIsApproved
+            ? { label: "Review approval route", detail: `${selectedReportApproval.state} approval is waiting in the approval engine.`, action: "approval" as const }
+            : !selectedReportIsArchived
+              ? { label: "Archive record", detail: "Preserve the approved report and evidence packet in the archive.", action: "archive" as const }
+              : { label: "Review audit trail", detail: "This report is archived. Review the immutable audit trail when needed.", action: "audit" as const }
+    : undefined;
   const visibleTemplates = templates.filter((template) => [template.name, template.type, template.path, template.description].join(" ").toLowerCase().includes(templateSearch.trim().toLowerCase())).slice(0, 18);
   const coverage = residentPastorTargets.length
     ? Math.min(100, Math.round(((latestAssignment?.targetCount ?? 0) / residentPastorTargets.length) * 100))
@@ -24395,6 +24408,16 @@ function AdminV2Reports({
     }));
     setPageNotice(`${selectedReport.name} audit trail opened.`);
     onOpenSection("Audit");
+  }
+  function runSelectedReportNextStep() {
+    if (!selectedReportNextStep) return;
+    if (selectedReportNextStep.action === "approval") {
+      openSelectedReportApprovalRoute();
+    } else if (selectedReportNextStep.action === "audit") {
+      openSelectedReportAuditTrail();
+    } else {
+      runSelectedReportAction(selectedReportNextStep.action);
+    }
   }
   function notifyAssignedOffices() {
     if (!focusedAssignment) {
@@ -24713,6 +24736,16 @@ function AdminV2Reports({
                 </article>
               ))}
             </div>
+            {selectedReportNextStep && (
+              <div className="admin-v2-next-step-card">
+                <div>
+                  <span>Next required step</span>
+                  <strong>{selectedReportNextStep.label}</strong>
+                  <p>{selectedReportNextStep.detail}</p>
+                </div>
+                <button className="primary" type="button" onClick={runSelectedReportNextStep}>{selectedReportNextStep.label}</button>
+              </div>
+            )}
             <div className="admin-v2-actions-row">
               <button onClick={() => runSelectedReportAction("review")} disabled={selectedReportIsApproved || selectedReportIsArchived} type="button">Review</button>
               <button onClick={() => runSelectedReportAction("verify")} disabled={selectedReportIsApproved || selectedReportIsArchived} type="button">{selectedReportIsApproved ? "Verified" : "Verify"}</button>
