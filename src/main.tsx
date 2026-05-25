@@ -24212,6 +24212,20 @@ function AdminV2Reports({
     }));
     onOpenSection("ChurchMail");
   }
+  function reviewAssignmentApprovalPath() {
+    if (!latestAssignment) {
+      onOpenSection("Approvals");
+      return;
+    }
+    const routeSample = latestAssignedReports[0]?.path ?? "Mission Station -> Area Office -> District HQ";
+    window.sessionStorage.setItem("gcos.approvals.prefill", JSON.stringify({
+      request: `${latestAssignment.period} Resident Pastor monthly report package review`,
+      route: routeSample,
+      limit: `${latestAssignment.templates.length} monthly forms / ${latestAssignment.generatedReportIds.length} drafts`,
+      delegate: latestAssignment.assignedBy
+    }));
+    onOpenSection("Approvals");
+  }
   return (
     <div className="admin-v2-workspace admin-v2-report-board">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -24355,7 +24369,7 @@ function AdminV2Reports({
             <aside>
               <span>Routing handoff</span>
               <button type="button" onClick={notifyAssignedOffices}>Notify assigned offices</button>
-              <button type="button" onClick={() => onOpenSection("Approvals")}>Review approval path</button>
+              <button type="button" onClick={reviewAssignmentApprovalPath}>Review approval path</button>
               <button type="button" onClick={() => onOpenSection("Archive")}>Prepare archive packet</button>
             </aside>
           </div>
@@ -24455,6 +24469,22 @@ function AdminV2Approvals({
   React.useEffect(() => {
     if (!approvals.some((approval) => approval.id === selectedApprovalId)) setSelectedApprovalId(approvals[0]?.id ?? "");
   }, [approvals, selectedApprovalId]);
+  React.useEffect(() => {
+    const rawApproval = window.sessionStorage.getItem("gcos.approvals.prefill");
+    if (!rawApproval) return;
+    window.sessionStorage.removeItem("gcos.approvals.prefill");
+    try {
+      const draft = JSON.parse(rawApproval) as Partial<Pick<Approval, "request" | "route" | "limit" | "delegate">>;
+      if (draft.request) setRequest(draft.request);
+      if (draft.route) setRoute(draft.route);
+      if (draft.limit) setLimit(draft.limit);
+      if (draft.delegate) setDelegate(draft.delegate);
+      setNotice("Monthly report approval path is ready to validate. Review the request, then choose Create and validate.");
+      window.setTimeout(() => document.getElementById("admin-v2-create-approval")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
+    } catch (error) {
+      setNotice("Approval form opened. Review the request, then choose Create and validate.");
+    }
+  }, []);
   const selected = approvals.find((approval) => approval.id === selectedApprovalId) ?? approvals[0];
   const approvalStages = [
     ["Request", "Approval is created from a report, budget, transfer, policy, or direct admin action."],
