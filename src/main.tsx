@@ -7335,7 +7335,14 @@ function App() {
       limit: "Delegated authority review",
       state: offlineMode ? "Queued" : "Validation",
       signatures: "0/3",
-      delegate: report.owner
+      delegate: report.owner,
+      linkedReport: report.id,
+      evidenceStatus: report.evidenceStatus ?? "Evidence pending",
+      auditTrail: [
+        `Report: ${report.name}`,
+        `Owner: ${report.owner}`,
+        `Route: ${report.path}`
+      ]
     };
     setReports((items) => items.map((item) => item.id === id ? {
       ...item,
@@ -23507,6 +23514,7 @@ function AdminV2Shell(props: AdminV2Props) {
         <AdminV2Reports
           reports={reports}
           reportAssignments={reportAssignments}
+          approvals={approvals}
           templates={churchReportTemplates}
           stationDirectory={stationDirectory}
           permissions={permissions}
@@ -24092,6 +24100,7 @@ function AdminV2UserOverview({
 function AdminV2Reports({
   reports,
   reportAssignments,
+  approvals,
   templates,
   stationDirectory,
   permissions,
@@ -24109,6 +24118,7 @@ function AdminV2Reports({
 }: {
   reports: Report[];
   reportAssignments: ReportAssignment[];
+  approvals: Approval[];
   templates: ReportTemplate[];
   stationDirectory: StationCard[];
   permissions: Permissions;
@@ -24234,6 +24244,7 @@ function AdminV2Reports({
       onMarkReportEvidence(selectedReport.id);
       setPageNotice(`${selectedReport.name} evidence marked attached.`);
     } else if (action === "packet") {
+      window.sessionStorage.setItem("gcos.approvals.focusLinkedReport", selectedReport.id);
       onBuildGovernancePacket(selectedReport.id);
       setPageNotice(`${selectedReport.name} governance packet built. Opening Approvals so the packet can be reviewed.`);
       onOpenSection("Approvals");
@@ -24258,6 +24269,33 @@ function AdminV2Reports({
       setPageNotice(`${selectedReport.name} ChurchMail route opened.`);
     }
     onOpenSection("ChurchMail");
+  }
+  function openSelectedReportApprovalRoute() {
+    if (!selectedReport) {
+      onOpenSection("Approvals");
+      return;
+    }
+    const linkedApproval = approvals.find((approval) => approval.linkedReport === selectedReport.id || approval.request.toLowerCase().includes(selectedReport.name.toLowerCase()));
+    if (linkedApproval) {
+      window.sessionStorage.setItem("gcos.approvals.focusId", linkedApproval.id);
+      setPageNotice(`${selectedReport.name} approval packet opened.`);
+    } else {
+      window.sessionStorage.setItem("gcos.approvals.prefill", JSON.stringify({
+        request: `${selectedReport.name} approval packet`,
+        route: selectedReport.path,
+        limit: selectedReport.approvalLimit ?? "Delegated authority review",
+        delegate: selectedReport.owner,
+        linkedReport: selectedReport.id,
+        evidenceStatus: selectedReport.evidenceStatus ?? "Evidence pending",
+        auditTrail: [
+          `Report: ${selectedReport.name}`,
+          `Owner: ${selectedReport.owner}`,
+          `Stage: ${selectedReport.routingStage ?? selectedReport.state}`
+        ]
+      }));
+      setPageNotice(`${selectedReport.name} approval request prepared.`);
+    }
+    onOpenSection("Approvals");
   }
   function notifyAssignedOffices() {
     if (!focusedAssignment) {
@@ -24575,7 +24613,7 @@ function AdminV2Reports({
               <button onClick={() => runSelectedReportAction("archive")} type="button">Archive</button>
             </div>
             <div className="admin-v2-connected-routes" aria-label="Connected report destinations">
-              <button type="button" onClick={() => onOpenSection("Approvals")}><Signature size={14} /> Approval route</button>
+              <button type="button" onClick={openSelectedReportApprovalRoute}><Signature size={14} /> Approval route</button>
               <button type="button" onClick={openSelectedReportChurchMailRoute}><Mail size={14} /> ChurchMail route</button>
               <button type="button" onClick={() => onOpenSection("Archive")}><ArchiveIcon size={14} /> Evidence archive</button>
               <button type="button" onClick={() => onOpenSection("Audit")}><ShieldCheck size={14} /> Audit trail</button>
@@ -24630,6 +24668,17 @@ function AdminV2Approvals({
   React.useEffect(() => {
     if (!approvals.some((approval) => approval.id === selectedApprovalId)) setSelectedApprovalId(approvals[0]?.id ?? "");
   }, [approvals, selectedApprovalId]);
+  React.useEffect(() => {
+    const focusId = window.sessionStorage.getItem("gcos.approvals.focusId");
+    const focusLinkedReport = window.sessionStorage.getItem("gcos.approvals.focusLinkedReport");
+    if (!focusId && !focusLinkedReport) return;
+    const focused = approvals.find((approval) => approval.id === focusId || approval.linkedReport === focusLinkedReport);
+    if (!focused) return;
+    window.sessionStorage.removeItem("gcos.approvals.focusId");
+    window.sessionStorage.removeItem("gcos.approvals.focusLinkedReport");
+    setSelectedApprovalId(focused.id);
+    setNotice(`${focused.request} opened from the report workflow.`);
+  }, [approvals]);
   React.useEffect(() => {
     const rawApproval = window.sessionStorage.getItem("gcos.approvals.prefill");
     if (!rawApproval) return;
