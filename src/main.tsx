@@ -24353,6 +24353,29 @@ function AdminV2Reports({
     }));
     onArchiveEvidence(selectedReport.id);
   }
+  function openSelectedReportAuditTrail() {
+    if (!selectedReport) {
+      onOpenSection("Audit");
+      return;
+    }
+    window.sessionStorage.setItem("gcos.audit.prefill", JSON.stringify({
+      title: `${selectedReport.name} audit trail`,
+      meta: selectedReport.type ?? "Report",
+      detail: `${selectedReport.owner} / ${selectedReport.period ?? "Current"} / ${selectedReport.state}`,
+      status: selectedReport.verified ? "Verified" : "Info",
+      body: [
+        `Report: ${selectedReport.name}`,
+        `Owner: ${selectedReport.owner}`,
+        `Route: ${selectedReport.path}`,
+        `Stage: ${selectedReport.routingStage ?? selectedReport.state}`,
+        `Evidence: ${selectedReport.evidenceStatus ?? "Evidence pending"}`,
+        `Submitted: ${selectedReport.submittedAt ?? "Not submitted"}`,
+        `Approved by: ${selectedReport.approvedBy ?? "Pending"}`
+      ].join("\n")
+    }));
+    setPageNotice(`${selectedReport.name} audit trail opened.`);
+    onOpenSection("Audit");
+  }
   function notifyAssignedOffices() {
     if (!focusedAssignment) {
       onOpenSection("ChurchMail");
@@ -24672,7 +24695,7 @@ function AdminV2Reports({
               <button type="button" onClick={openSelectedReportApprovalRoute}><Signature size={14} /> Approval route</button>
               <button type="button" onClick={openSelectedReportChurchMailRoute}><Mail size={14} /> ChurchMail route</button>
               <button type="button" onClick={openSelectedReportEvidenceArchive}><ArchiveIcon size={14} /> Evidence archive</button>
-              <button type="button" onClick={() => onOpenSection("Audit")}><ShieldCheck size={14} /> Audit trail</button>
+              <button type="button" onClick={openSelectedReportAuditTrail}><ShieldCheck size={14} /> Audit trail</button>
             </div>
           </div>
         )}
@@ -25252,30 +25275,31 @@ function AdminV2Directory({
   React.useEffect(() => {
     setSelectedIndex(0);
     setNotice("");
-    if (title !== "Records Archive") {
+    if (title !== "Records Archive" && title !== "Audit Activity") {
       setHandoffContext(null);
       return;
     }
-    const rawArchive = window.sessionStorage.getItem("gcos.archive.prefill");
-    if (!rawArchive) {
+    const storageKey = title === "Records Archive" ? "gcos.archive.prefill" : "gcos.audit.prefill";
+    const rawContext = window.sessionStorage.getItem(storageKey);
+    if (!rawContext) {
       setHandoffContext(null);
       return;
     }
-    window.sessionStorage.removeItem("gcos.archive.prefill");
+    window.sessionStorage.removeItem(storageKey);
     try {
-      const packet = JSON.parse(rawArchive) as { title?: string; meta?: string; detail?: string; status?: string; body?: string };
+      const packet = JSON.parse(rawContext) as { title?: string; meta?: string; detail?: string; status?: string; body?: string };
       const context = {
-        title: packet.title || "Governance archive packet",
-        meta: packet.meta || "Evidence packet",
-        detail: packet.detail || "Ready for archive",
-        status: packet.status || "Ready",
+        title: packet.title || (title === "Records Archive" ? "Governance archive packet" : "Governance audit trail"),
+        meta: packet.meta || (title === "Records Archive" ? "Evidence packet" : "Audit context"),
+        detail: packet.detail || (title === "Records Archive" ? "Ready for archive" : "Ready for review"),
+        status: packet.status || (title === "Records Archive" ? "Ready" : "Info"),
         body: packet.body
       };
       setHandoffContext(context);
-      setNotice(`${context.title} is ready to archive.`);
+      setNotice(title === "Records Archive" ? `${context.title} is ready to archive.` : `${context.title} opened for audit review.`);
     } catch (error) {
       setHandoffContext(null);
-      setNotice("Archive workspace opened. Review the packet before archiving.");
+      setNotice(title === "Records Archive" ? "Archive workspace opened. Review the packet before archiving." : "Audit workspace opened. Review the related activity records.");
     }
   }, [title]);
   React.useEffect(() => {
@@ -25312,12 +25336,12 @@ function AdminV2Directory({
       {handoffContext && (
         <section className="admin-v2-panel admin-v2-handoff-card">
           <div>
-            <span>Ready packet</span>
+            <span>{title === "Records Archive" ? "Ready packet" : "Audit focus"}</span>
             <h3>{handoffContext.title}</h3>
             <p>{handoffContext.detail}</p>
             {handoffContext.body && <small>{handoffContext.body}</small>}
           </div>
-          <button className="primary" type="button" onClick={() => runAction("Archive packet", handoffContext)}>Archive packet</button>
+          <button className="primary" type="button" onClick={() => runAction(title === "Records Archive" ? "Archive packet" : "Export audit", handoffContext)}>{title === "Records Archive" ? "Archive packet" : "Export audit"}</button>
         </section>
       )}
       <div className="admin-v2-two">
