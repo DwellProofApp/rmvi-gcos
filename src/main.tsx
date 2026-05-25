@@ -24096,6 +24096,7 @@ function AdminV2Reports({
   const [selectedReportId, setSelectedReportId] = React.useState(reports[0]?.id ?? "");
   const [selectedAssignmentId, setSelectedAssignmentId] = React.useState(reportAssignments[0]?.id ?? "");
   const [pageNotice, setPageNotice] = React.useState("");
+  const previousFocusedAssignmentId = React.useRef<string | undefined>(undefined);
   const monthlyTemplates = templates.filter((template) => template.type === "Resident Pastor Monthly");
   const residentPastorTargets = stationDirectory.filter((item) => /local branch|resident pastor|mission station|pastor in charge/i.test([item.title, item.level, item.authority].join(" ")));
   const assignedReportIds = new Set(reportAssignments.flatMap((assignment) => assignment.generatedReportIds));
@@ -24128,6 +24129,16 @@ function AdminV2Reports({
     ? designatedOffice?.title ?? "Selected office"
     : "All Resident Pastor / Local Branch offices";
   const assignmentReady = assignmentTargetMode !== "designated-office" || Boolean(designatedOffice);
+  function reportsForAssignment(assignment: ReportAssignment) {
+    const reportIds = new Set(assignment.generatedReportIds);
+    const templateIds = new Set(assignment.templates.map((template) => template.id));
+    const directMatches = reports.filter((report) => report.assignmentId === assignment.id || reportIds.has(report.id));
+    return directMatches.length
+      ? directMatches
+      : reports
+        .filter((report) => report.period === assignment.period && templateIds.has(report.templateId ?? ""))
+        .slice(0, assignment.generatedReportIds.length);
+  }
   React.useEffect(() => {
     if (!reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id ?? "");
   }, [reports, selectedReportId]);
@@ -24138,8 +24149,11 @@ function AdminV2Reports({
   }, [reportAssignments, selectedAssignmentId]);
   React.useEffect(() => {
     const firstDraft = focusedAssignedReports[0];
-    if (firstDraft && selectedReportId !== firstDraft.id) setSelectedReportId(firstDraft.id);
-  }, [focusedAssignment?.id, focusedAssignedReports, selectedReportId]);
+    if (focusedAssignment?.id && previousFocusedAssignmentId.current !== focusedAssignment.id) {
+      previousFocusedAssignmentId.current = focusedAssignment.id;
+      if (firstDraft) setSelectedReportId(firstDraft.id);
+    }
+  }, [focusedAssignment?.id, focusedAssignedReports]);
   function createSelectedTemplateDraft() {
     if (!selectedTemplate) {
       onQuickAction("Create report");
@@ -24409,8 +24423,7 @@ function AdminV2Reports({
                   type="button"
                   onClick={() => {
                     setSelectedAssignmentId(assignment.id);
-                    const assignmentReportIds = new Set(assignment.generatedReportIds);
-                    const firstReport = reports.find((report) => report.assignmentId === assignment.id || assignmentReportIds.has(report.id));
+                    const firstReport = reportsForAssignment(assignment)[0];
                     if (firstReport) setSelectedReportId(firstReport.id);
                     setPageNotice(`${assignment.period} assignment opened. Connected drafts and handoff actions are ready.`);
                   }}
@@ -24438,7 +24451,16 @@ function AdminV2Reports({
               <small>{focusedAssignment.generatedReportIds.length} draft reports created from the monthly pack.</small>
               <div className="admin-v2-assignment-drafts">
                 {focusedAssignedReports.slice(0, 4).map((report) => (
-                  <button key={report.id} type="button" onClick={() => setSelectedReportId(report.id)}>
+                  <button
+                    className={selectedReport?.id === report.id ? "selected" : ""}
+                    key={report.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedReportId(report.id);
+                      setPageNotice(`${report.name} opened in the report workspace.`);
+                      document.querySelector(".admin-v2-report-workspace")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                    }}
+                  >
                     <strong>{report.name}</strong>
                     <small>{report.owner} / {report.state}</small>
                   </button>
@@ -24475,7 +24497,7 @@ function AdminV2Reports({
           {!visibleTemplates.length && <small>No report templates match this search.</small>}
         </div>
       </section>
-      <section className="admin-v2-panel wide">
+      <section className="admin-v2-panel wide admin-v2-report-workspace">
         <div className="admin-v2-panel-head"><span>Steps 2-5</span><strong>{selectedReport?.name ?? "No report selected"}</strong></div>
         {selectedReport && (
           <div className="admin-v2-detail">
