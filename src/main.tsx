@@ -2824,6 +2824,10 @@ function normalizeStationEmail(email: string) {
   return email.toLowerCase().replace("@rmi.org", "@rmvi.org").replace("@gcos.org", "@rmvi.org");
 }
 
+function opensProviderRoom(sessionType: string) {
+  return /video|report review|approval room|broadcast/i.test(sessionType);
+}
+
 function buildOfflineConflicts(queue: OfflineAction[]): OfflineConflict[] {
   const grouped = queue.reduce<Map<string, OfflineAction[]>>((map, action) => {
     const key = action.object.trim().toLowerCase();
@@ -3847,7 +3851,7 @@ function App() {
     setEvents((items) => [`${event}: ${object}`, ...items].slice(0, 8));
   }
 
-  function createLiveSession(draft: Omit<LiveSession, "id" | "createdAt">) {
+  async function createLiveSession(draft: Omit<LiveSession, "id" | "createdAt">) {
     const created: LiveSession = {
       ...draft,
       id: `live-${Date.now()}`,
@@ -3862,15 +3866,19 @@ function App() {
     };
     setLiveSessions((items) => [created, ...items]);
     recordAudit("LiveSessionCreated", created.title, `${created.sessionType} linked to ${created.linkedRecord}`);
-    void apiRequest<LiveSession>("/api/live-sessions", {
-      method: "POST",
-      body: JSON.stringify(created)
-    })
-      .then((serverSession) => setLiveSessions((items) => items.map((item) => item.id === created.id ? serverSession : item)))
-      .catch((error) => {
-        setLiveSessions((items) => items.filter((item) => item.id !== created.id));
-        recordAudit("LiveSessionCreateDenied", created.title, error.message);
+    try {
+      const serverSession = await apiRequest<LiveSession>("/api/live-sessions", {
+        method: "POST",
+        body: JSON.stringify(created)
       });
+      setLiveSessions((items) => items.map((item) => item.id === created.id ? serverSession : item));
+      return serverSession;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Live session could not be created";
+      setLiveSessions((items) => items.filter((item) => item.id !== created.id));
+      recordAudit("LiveSessionCreateDenied", created.title, message);
+      throw error;
+    }
   }
 
   function updateLiveSessionStatus(id: string, status: LiveSession["status"]) {
@@ -10159,7 +10167,13 @@ function App() {
         setActiveSection("AI Desk");
         return;
       case "Start meeting":
-        createLiveSession({
+        const meetingWindow = window.open("about:blank", "_blank");
+        if (meetingWindow) {
+          meetingWindow.opener = null;
+          meetingWindow.document.title = "Opening GCOS meeting";
+          meetingWindow.document.body.innerHTML = "<p style=\"font-family: system-ui; padding: 24px; color: #13233f;\">Opening secure GCOS meeting room...</p>";
+        }
+        void createLiveSession({
           title: `${activeStation.title} governance meeting`,
           host: activeStation.email,
           sessionType: "Video Meeting",
@@ -10168,6 +10182,11 @@ function App() {
           route: reportingRoute,
           purpose: "Coordinate official governance work and record follow-up actions.",
           participants: [activeStation.email, workstationProfile.defaultMessageTo]
+        }).then((session) => {
+          if (meetingWindow && session.joinUrl) meetingWindow.location.href = session.joinUrl;
+          else if (meetingWindow) meetingWindow.close();
+        }).catch(() => {
+          if (meetingWindow) meetingWindow.close();
         });
         setActiveSection("Live Comms");
         return;
@@ -17675,7 +17694,7 @@ function LiveComms({
   messages: Message[];
   liveSessions: LiveSession[];
   permissions: Permissions;
-  onCreateLiveSession: (draft: Omit<LiveSession, "id" | "createdAt">) => void;
+  onCreateLiveSession: (draft: Omit<LiveSession, "id" | "createdAt">) => Promise<LiveSession>;
   onUpdateLiveSessionStatus: (id: string, status: LiveSession["status"]) => void;
   onAttachLiveSessionFile: (id: string) => void;
   onAddLiveSessionNote: (id: string) => void;
@@ -17805,10 +17824,18 @@ function LiveComms({
     return `${accepted} accepted / ${declined} declined / ${pending} pending`;
   }
 
-  function startSession(type = sessionType) {
+  async function startSession(type = sessionType) {
     if (!canCreateSessionType(type)) {
       setFeedback(`${type} requires ${type === "Broadcast" ? "executive or office admin" : "office lead, approval, or admin"} authority.`);
       return;
+    }
+    const meetingWindow = opensProviderRoom(type)
+      ? window.open("about:blank", "_blank")
+      : null;
+    if (meetingWindow) {
+      meetingWindow.opener = null;
+      meetingWindow.document.title = "Opening GCOS meeting";
+      meetingWindow.document.body.innerHTML = "<p style=\"font-family: system-ui; padding: 24px; color: #13233f;\">Opening secure GCOS meeting room...</p>";
     }
     const title = type === "Broadcast"
       ? `${station.level} broadcast`
@@ -17817,23 +17844,34 @@ function LiveComms({
         : type === "Office Chat"
           ? `${station.level} office chat`
           : `${station.level} live meeting`;
-    onCreateLiveSession({
-      title,
-      host: station.title,
-      sessionType: type,
-      status: type === "Broadcast" ? "Priority" : "Live",
-      linkedRecord,
-      route,
-      purpose: `${type} for ${linkedRecord}`,
-      hostEmail: station.email,
-      createdBy: station.email,
-      accessMode: "Invite Only",
-      invitedOnly: true,
-      participants: [station.email],
-      notes: [],
-      files: []
-    });
-    setFeedback(`${title} started and linked to ${linkedRecord}.`);
+    try {
+      const created = await onCreateLiveSession({
+        title,
+        host: station.title,
+        sessionType: type,
+        status: type === "Broadcast" ? "Priority" : "Live",
+        linkedRecord,
+        route,
+        purpose: `${type} for ${linkedRecord}`,
+        hostEmail: station.email,
+        createdBy: station.email,
+        accessMode: "Invite Only",
+        invitedOnly: true,
+        participants: [station.email],
+        notes: [],
+        files: []
+      });
+      if (meetingWindow && created.joinUrl) {
+        meetingWindow.location.href = created.joinUrl;
+      } else if (meetingWindow) {
+        meetingWindow.close();
+      }
+      setFeedback(created.joinUrl ? `${title} started and opened in ${created.videoProvider ?? "the video provider"}.` : `${title} started and linked to ${linkedRecord}.`);
+    } catch (error) {
+      if (meetingWindow) meetingWindow.close();
+      const message = error instanceof Error ? error.message : "The meeting could not be started.";
+      setFeedback(message);
+    }
   }
 
   function joinSession(sessionItem: LiveSession) {
@@ -17845,18 +17883,32 @@ function LiveComms({
       setFeedback("This station is not invited to that meeting. Ask the host or an administrator to invite it.");
       return;
     }
+    const meetingWindow = opensProviderRoom(sessionItem.sessionType)
+      ? window.open(sessionItem.joinUrl || "about:blank", "_blank")
+      : null;
+    if (meetingWindow) meetingWindow.opener = null;
+    if (meetingWindow && !sessionItem.joinUrl) {
+      meetingWindow.document.title = "Opening GCOS meeting";
+      meetingWindow.document.body.innerHTML = "<p style=\"font-family: system-ui; padding: 24px; color: #13233f;\">Opening secure GCOS meeting room...</p>";
+    }
     void apiRequest<{ joinUrl: string; provider: string; checkedInParticipants?: string[] }>(`/api/live-sessions/${sessionItem.id}/join`, {
       method: "POST",
       body: JSON.stringify({})
     }).then((result) => {
       onUpdateLiveSessionStatus(sessionItem.id, "Live");
       if (result.joinUrl || sessionItem.joinUrl) {
-        window.open(result.joinUrl || sessionItem.joinUrl, "_blank", "noopener,noreferrer");
+        const joinUrl = result.joinUrl || sessionItem.joinUrl || "";
+        if (meetingWindow) meetingWindow.location.href = joinUrl;
+        else window.open(joinUrl, "_blank", "noopener,noreferrer");
         setFeedback(`${sessionItem.title} opened in ${result.provider ?? sessionItem.videoProvider ?? "the video provider"}.`);
         return;
       }
+      if (meetingWindow) meetingWindow.close();
       setFeedback("This session was checked in, but no meeting link is available yet.");
-    }).catch(() => setFeedback("This station is not authorized to join that meeting."));
+    }).catch(() => {
+      if (meetingWindow) meetingWindow.close();
+      setFeedback("This station is not authorized to join that meeting.");
+    });
   }
 
   return (

@@ -488,6 +488,7 @@ export function createServices({ state, record, requirePermission, findById, int
         body.route ?? "Current station -> invited offices",
         body.purpose ?? "Live administrative collaboration"
       );
+      if (body.id) created.id = body.id;
       created.createdBy = actor;
       created.hostEmail = actor;
       created.accessMode = body.accessMode ?? "Invite Only";

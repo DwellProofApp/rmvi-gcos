@@ -180,10 +180,10 @@ const routes = {
     return createdResponse(result);
   },
   "GET /api/command-center/briefing": () => ok(services.commandBriefing()),
-  "POST /api/command-center/briefing/archive": ({ session, body }) => createdResponse(services.archiveCommandBriefing({ ...body, actor: session.email })),
-  "POST /api/command-center/directive": ({ session, body }) => createdResponse(services.issueCommandDirective({ ...body, actor: session.email })),
-  "POST /api/command-center/task": ({ session, body }) => createdResponse(services.createCommandTask({ ...body, actor: session.email })),
-  "POST /api/command-center/escalation": ({ session, body }) => createdResponse(services.openCommandEscalation({ ...body, actor: session.email })),
+  "POST /api/command-center/briefing/archive": ({ session, body }) => createdResponse(services.archiveCommandBriefing({ ...body, actor: requestActor(session, body) })),
+  "POST /api/command-center/directive": ({ session, body }) => createdResponse(services.issueCommandDirective({ ...body, actor: requestActor(session, body) })),
+  "POST /api/command-center/task": ({ session, body }) => createdResponse(services.createCommandTask({ ...body, actor: requestActor(session, body) })),
+  "POST /api/command-center/escalation": ({ session, body }) => createdResponse(services.openCommandEscalation({ ...body, actor: requestActor(session, body) })),
   "POST /api/dev/reset": () => {
     if (!DEV_RESET_ENABLED) throw new HttpError(403, "Development reset is disabled");
     Object.assign(state, createSeedState());
@@ -233,11 +233,11 @@ const routes = {
   "POST /api/reports/:id/score": ({ params, body }) => ok(services.updateReportScore(params.id, body)),
   "POST /api/reports/:id/owner": ({ params, body }) => ok(services.updateReportOwner(params.id, body)),
   "POST /api/reports/:id/path": ({ params, body }) => ok(services.updateReportPath(params.id, body)),
-  "POST /api/reports/:id/details": ({ params, body, session }) => ok(services.updateReportDetails(params.id, { ...body, actor: session.email })),
+  "POST /api/reports/:id/details": ({ params, body, session }) => ok(services.updateReportDetails(params.id, { ...body, actor: requestActor(session, body) })),
   "POST /api/reports/:id/evidence": ({ params, body }) => ok(services.markReportEvidence(params.id, body)),
   "POST /api/reports/:id/review": ({ params, body }) => ok(services.reviewReport(params.id, body)),
   "POST /api/reports/:id/verify": ({ params, body }) => ok(services.verifyReport(params.id, body)),
-  "POST /api/reports/:id/packet": ({ params, body, session }) => createdResponse(services.buildReportGovernancePacket(params.id, { ...body, actor: session.email })),
+  "POST /api/reports/:id/packet": ({ params, body, session }) => createdResponse(services.buildReportGovernancePacket(params.id, { ...body, actor: requestActor(session, body) })),
   "POST /api/reports/:id/watch": ({ params, body }) => ok(services.watchReport(params.id, body)),
   "POST /api/reports/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateReport(params.id, body)),
   "POST /api/reports/:id/archive": ({ params, body }) => ok(services.archiveReport(params.id, body)),
@@ -254,7 +254,7 @@ const routes = {
   "POST /api/approvals/:id/delegate": ({ params, body }) => ok(services.delegateApproval(params.id, body)),
   "POST /api/approvals/:id/hold": ({ params, body }) => ok(services.holdApproval(params.id, body)),
   "POST /api/approvals/:id/release": ({ params, body }) => ok(services.releaseApprovalHold(params.id, body)),
-  "POST /api/approvals/:id/execute": ({ params, body, session }) => createdResponse(services.executeApproval(params.id, { ...body, actor: session.email })),
+  "POST /api/approvals/:id/execute": ({ params, body, session }) => createdResponse(services.executeApproval(params.id, { ...body, actor: requestActor(session, body) })),
   "POST /api/approvals/:id/watch": ({ params, body }) => ok(services.watchApproval(params.id, body)),
   "POST /api/approvals/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateApproval(params.id, body)),
   "POST /api/approvals/:id/archive": ({ params, body }) => ok(services.archiveApproval(params.id, body)),
@@ -343,56 +343,56 @@ const routes = {
   "POST /api/calendar-events/bulk/reschedule": ({ body }) => ok(services.bulkRescheduleCalendarEvents(body)),
   "GET /api/calendar-events/digest": () => ok(services.calendarDigest()),
   "GET /api/live-sessions": () => ok(state.liveSessions ?? []),
-  "POST /api/live-sessions": async ({ body, session }) => createdResponse(await services.createLiveSession({ ...body, actor: session.email })),
+  "POST /api/live-sessions": async ({ body, session }) => createdResponse(await services.createLiveSession({ ...body, actor: requestActor(session, body) })),
   "GET /api/live-sessions/digest": () => ok(services.liveCommsDigest()),
-  "POST /api/live-sessions/:id/join": ({ params, body, session }) => ok(services.joinLiveSession(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/status": ({ params, body, session }) => ok(services.updateLiveSessionStatus(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/file": ({ params, body, session }) => ok(services.attachLiveSessionFile(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/note": ({ params, body, session }) => ok(services.addLiveSessionNote(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/invite": async ({ params, body, session }) => ok(await services.inviteLiveSessionParticipant(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/rsvp": async ({ params, body, session }) => ok(await services.respondLiveSessionInvitation(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/check-in": ({ params, body, session }) => ok(services.checkInLiveSessionParticipant(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/chat": ({ params, body, session }) => ok(services.addLiveSessionChat(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/decision": ({ params, body, session }) => ok(services.recordLiveSessionDecision(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/recording": ({ params, body, session }) => ok(services.updateLiveSessionRecording(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/transcript": ({ params, body, session }) => ok(services.attachLiveSessionTranscript(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/agenda": ({ params, body, session }) => ok(services.updateLiveSessionAgenda(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/screen-share": ({ params, body, session }) => ok(services.updateLiveSessionScreenShare(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/share-document": ({ params, body, session }) => ok(services.shareLiveSessionDocument(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/participant-role": ({ params, body, session }) => ok(services.assignLiveSessionParticipantRole(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/moderate": ({ params, body, session }) => ok(services.moderateLiveSessionParticipant(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/action-items": ({ params, body, session }) => createdResponse(services.extractLiveSessionActionItems(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/close": ({ params, body, session }) => ok(services.closeLiveSession(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/attendance": ({ params, body, session }) => ok(services.buildLiveSessionAttendance(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/quorum": ({ params, body, session }) => ok(services.checkLiveSessionQuorum(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/minutes": ({ params, body, session }) => createdResponse(services.createLiveSessionMinutes(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/poll": ({ params, body, session }) => ok(services.createLiveSessionPoll(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/vote": ({ params, body, session }) => ok(services.castLiveSessionVote(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/resolution": ({ params, body, session }) => ok(services.createLiveSessionResolution(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/resolution/pass": ({ params, body, session }) => ok(services.passLiveSessionResolution(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/minutes/dispatch": ({ params, body, session }) => createdResponse(services.dispatchLiveSessionMinutes(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/resolution/approval": ({ params, body, session }) => createdResponse(services.createLiveSessionResolutionApproval(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/minutes/sign": ({ params, body, session }) => ok(services.signLiveSessionMinutes(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/seal": ({ params, body, session }) => createdResponse(services.sealLiveSessionRecord(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/risk-review": ({ params, body, session }) => ok(services.reviewLiveSessionRisk(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/escalate": ({ params, body, session }) => createdResponse(services.escalateLiveSessionRisk(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/connectivity": ({ params, body, session }) => ok(services.updateLiveSessionConnectivity(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/fallback": ({ params, body, session }) => ok(services.activateLiveSessionFallback(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/continuity-alert": ({ params, body, session }) => createdResponse(services.broadcastLiveSessionAlert(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/offline-note": ({ params, body, session }) => ok(services.addLiveSessionOfflineNote(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/recovery-sync": ({ params, body, session }) => ok(services.syncLiveSessionRecovery(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/ai-brief": ({ params, body, session }) => createdResponse(services.generateLiveSessionAiBrief(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/playbook": ({ params, body, session }) => ok(services.applyLiveSessionPlaybook(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/series": ({ params, body, session }) => createdResponse(services.scheduleLiveSessionSeries(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/reminder": ({ params, body, session }) => createdResponse(services.sendLiveSessionReminder(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/follow-up-ledger": ({ params, body, session }) => ok(services.buildLiveSessionFollowUpLedger(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/summary-message": ({ params, body, session }) => createdResponse(services.sendLiveSessionSummary(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/handoff": ({ params, body, session }) => createdResponse(services.handoffLiveSessionOutcome(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/follow-up-task": ({ params, body, session }) => createdResponse(services.createLiveSessionFollowUpTask(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/calendar-event": ({ params, body, session }) => createdResponse(services.scheduleLiveSession(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/packet": ({ params, body, session }) => createdResponse(services.buildLiveSessionPacket(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/outcome-report": ({ params, body, session }) => createdResponse(services.createLiveSessionOutcomeReport(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/archive": ({ params, body, session }) => ok(services.archiveLiveSession(params.id, { ...body, actor: session.email })),
+  "POST /api/live-sessions/:id/join": ({ params, body, session }) => ok(services.joinLiveSession(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/status": ({ params, body, session }) => ok(services.updateLiveSessionStatus(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/file": ({ params, body, session }) => ok(services.attachLiveSessionFile(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/note": ({ params, body, session }) => ok(services.addLiveSessionNote(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/invite": async ({ params, body, session }) => ok(await services.inviteLiveSessionParticipant(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/rsvp": async ({ params, body, session }) => ok(await services.respondLiveSessionInvitation(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/check-in": ({ params, body, session }) => ok(services.checkInLiveSessionParticipant(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/chat": ({ params, body, session }) => ok(services.addLiveSessionChat(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/decision": ({ params, body, session }) => ok(services.recordLiveSessionDecision(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/recording": ({ params, body, session }) => ok(services.updateLiveSessionRecording(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/transcript": ({ params, body, session }) => ok(services.attachLiveSessionTranscript(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/agenda": ({ params, body, session }) => ok(services.updateLiveSessionAgenda(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/screen-share": ({ params, body, session }) => ok(services.updateLiveSessionScreenShare(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/share-document": ({ params, body, session }) => ok(services.shareLiveSessionDocument(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/participant-role": ({ params, body, session }) => ok(services.assignLiveSessionParticipantRole(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/moderate": ({ params, body, session }) => ok(services.moderateLiveSessionParticipant(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/action-items": ({ params, body, session }) => createdResponse(services.extractLiveSessionActionItems(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/close": ({ params, body, session }) => ok(services.closeLiveSession(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/attendance": ({ params, body, session }) => ok(services.buildLiveSessionAttendance(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/quorum": ({ params, body, session }) => ok(services.checkLiveSessionQuorum(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/minutes": ({ params, body, session }) => createdResponse(services.createLiveSessionMinutes(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/poll": ({ params, body, session }) => ok(services.createLiveSessionPoll(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/vote": ({ params, body, session }) => ok(services.castLiveSessionVote(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/resolution": ({ params, body, session }) => ok(services.createLiveSessionResolution(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/resolution/pass": ({ params, body, session }) => ok(services.passLiveSessionResolution(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/minutes/dispatch": ({ params, body, session }) => createdResponse(services.dispatchLiveSessionMinutes(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/resolution/approval": ({ params, body, session }) => createdResponse(services.createLiveSessionResolutionApproval(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/minutes/sign": ({ params, body, session }) => ok(services.signLiveSessionMinutes(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/seal": ({ params, body, session }) => createdResponse(services.sealLiveSessionRecord(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/risk-review": ({ params, body, session }) => ok(services.reviewLiveSessionRisk(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/escalate": ({ params, body, session }) => createdResponse(services.escalateLiveSessionRisk(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/connectivity": ({ params, body, session }) => ok(services.updateLiveSessionConnectivity(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/fallback": ({ params, body, session }) => ok(services.activateLiveSessionFallback(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/continuity-alert": ({ params, body, session }) => createdResponse(services.broadcastLiveSessionAlert(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/offline-note": ({ params, body, session }) => ok(services.addLiveSessionOfflineNote(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/recovery-sync": ({ params, body, session }) => ok(services.syncLiveSessionRecovery(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/ai-brief": ({ params, body, session }) => createdResponse(services.generateLiveSessionAiBrief(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/playbook": ({ params, body, session }) => ok(services.applyLiveSessionPlaybook(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/series": ({ params, body, session }) => createdResponse(services.scheduleLiveSessionSeries(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/reminder": ({ params, body, session }) => createdResponse(services.sendLiveSessionReminder(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/follow-up-ledger": ({ params, body, session }) => ok(services.buildLiveSessionFollowUpLedger(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/summary-message": ({ params, body, session }) => createdResponse(services.sendLiveSessionSummary(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/handoff": ({ params, body, session }) => createdResponse(services.handoffLiveSessionOutcome(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/follow-up-task": ({ params, body, session }) => createdResponse(services.createLiveSessionFollowUpTask(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/calendar-event": ({ params, body, session }) => createdResponse(services.scheduleLiveSession(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/packet": ({ params, body, session }) => createdResponse(services.buildLiveSessionPacket(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/outcome-report": ({ params, body, session }) => createdResponse(services.createLiveSessionOutcomeReport(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/archive": ({ params, body, session }) => ok(services.archiveLiveSession(params.id, { ...body, actor: requestActor(session, body) })),
   "GET /api/personnel": () => ok(state.personnel),
   "POST /api/personnel": ({ body }) => createdResponse(services.createPerson(body)),
   "POST /api/personnel/:id/assignment": ({ params, body }) => ok(services.updatePersonAssignment(params.id, body)),
@@ -548,7 +548,7 @@ const routes = {
   "POST /api/events/:id/owner": ({ params, body }) => ok(services.assignEventOwner(params.id, body)),
   "POST /api/events/:id/archive": ({ params, body }) => ok(services.archiveEvent(params.id, body)),
   "GET /api/export": ({ session }) => ok(exportSnapshot(session)),
-  "POST /api/export/archive": ({ session, body }) => createdResponse(services.archiveGovernanceSnapshot({ ...body, actor: session.email })),
+  "POST /api/export/archive": ({ session, body }) => createdResponse(services.archiveGovernanceSnapshot({ ...body, actor: requestActor(session, body) })),
   "GET /api/ai-drafts": () => ok(state.aiDrafts),
   "POST /api/ai-drafts": ({ body }) => createdResponse(services.createAiDraft(body)),
   "POST /api/ai-drafts/bulk/refresh": ({ body }) => ok(services.bulkRefreshAiDrafts(body)),
@@ -572,6 +572,16 @@ const routes = {
   }
 };
 
+function requestActor(session, body = {}) {
+  return session?.email
+    ?? body.actor
+    ?? body.createdBy
+    ?? body.hostEmail
+    ?? body.from
+    ?? body.email
+    ?? "admin@rmvi.org";
+}
+
 const server = createServer(async (request, response) => {
   try {
     if (request.method === "OPTIONS") return send(response, { status: 204, body: null });
@@ -588,7 +598,7 @@ const server = createServer(async (request, response) => {
     }
     validateRequest(match.pattern, requestBody);
     const session = authenticateRequest(request, pathname);
-    const body = session ? { ...requestBody, actor: session.email } : { ...requestBody, clientIp: clientIp(request) };
+    const body = session ? { ...requestBody, actor: requestActor(session, requestBody) } : { ...requestBody, clientIp: clientIp(request) };
     const payload = await match.handler({ body, params: match.params, session });
     if (payload?.raw) return sendRaw(response, payload);
     if (request.method !== "GET") await saveState();
