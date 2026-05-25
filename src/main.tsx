@@ -10100,9 +10100,9 @@ function App() {
       case "Export packet":
       case "Archive packet":
         archiveDocument({
-          name: `${activeStation.title} governance packet ${today}.pdf`,
-          classification: action === "Share document" ? "Shared meeting record" : "Governance record",
-          source: effectiveSection,
+          name: record?.title ? `${record.title} ${today}.pdf` : `${activeStation.title} governance packet ${today}.pdf`,
+          classification: action === "Share document" ? "Shared meeting record" : record?.meta ?? "Governance record",
+          source: record?.detail ?? effectiveSection,
           owner: activeStation.email,
           fileType: "PDF",
           status: offlineMode ? "Queued" : "Archived"
@@ -24226,6 +24226,26 @@ function AdminV2Reports({
     }));
     onOpenSection("Approvals");
   }
+  function prepareAssignmentArchivePacket() {
+    if (!latestAssignment) {
+      onOpenSection("Archive");
+      return;
+    }
+    const firstDraftNames = latestAssignedReports.slice(0, 6).map((report) => report.name);
+    window.sessionStorage.setItem("gcos.archive.prefill", JSON.stringify({
+      title: `${latestAssignment.period} Resident Pastor monthly report packet`,
+      meta: "Monthly report evidence packet",
+      detail: `${latestAssignment.targetLabel} / ${latestAssignment.generatedReportIds.length} draft reports / ${latestAssignment.templates.length} forms`,
+      status: "Ready",
+      body: [
+        `Target: ${latestAssignment.targetLabel}`,
+        `Reporting period: ${latestAssignment.period}`,
+        `Draft reports: ${latestAssignment.generatedReportIds.length}`,
+        `Forms: ${firstDraftNames.join(", ")}`
+      ].join("\n")
+    }));
+    onOpenSection("Archive");
+  }
   return (
     <div className="admin-v2-workspace admin-v2-report-board">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -24370,7 +24390,7 @@ function AdminV2Reports({
               <span>Routing handoff</span>
               <button type="button" onClick={notifyAssignedOffices}>Notify assigned offices</button>
               <button type="button" onClick={reviewAssignmentApprovalPath}>Review approval path</button>
-              <button type="button" onClick={() => onOpenSection("Archive")}>Prepare archive packet</button>
+              <button type="button" onClick={prepareAssignmentArchivePacket}>Prepare archive packet</button>
             </aside>
           </div>
         )}
@@ -24913,9 +24933,35 @@ function AdminV2Directory({
   const normalizedRecords = records.map((record) => ({ ...record, status: record.status || "Ready" }));
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const [notice, setNotice] = React.useState("");
+  const [handoffContext, setHandoffContext] = React.useState<{ title: string; meta: string; detail: string; status: string; body?: string } | null>(null);
   React.useEffect(() => {
     setSelectedIndex(0);
     setNotice("");
+    if (title !== "Records Archive") {
+      setHandoffContext(null);
+      return;
+    }
+    const rawArchive = window.sessionStorage.getItem("gcos.archive.prefill");
+    if (!rawArchive) {
+      setHandoffContext(null);
+      return;
+    }
+    window.sessionStorage.removeItem("gcos.archive.prefill");
+    try {
+      const packet = JSON.parse(rawArchive) as { title?: string; meta?: string; detail?: string; status?: string; body?: string };
+      const context = {
+        title: packet.title || "Governance archive packet",
+        meta: packet.meta || "Evidence packet",
+        detail: packet.detail || "Ready for archive",
+        status: packet.status || "Ready",
+        body: packet.body
+      };
+      setHandoffContext(context);
+      setNotice(`${context.title} is ready to archive.`);
+    } catch (error) {
+      setHandoffContext(null);
+      setNotice("Archive workspace opened. Review the packet before archiving.");
+    }
   }, [title]);
   React.useEffect(() => {
     if (selectedIndex >= normalizedRecords.length) setSelectedIndex(0);
@@ -24948,6 +24994,17 @@ function AdminV2Directory({
         ))}
       </section>
       {notice && <div className="admin-v2-live-notice" role="status">{notice}</div>}
+      {handoffContext && (
+        <section className="admin-v2-panel admin-v2-handoff-card">
+          <div>
+            <span>Ready packet</span>
+            <h3>{handoffContext.title}</h3>
+            <p>{handoffContext.detail}</p>
+            {handoffContext.body && <small>{handoffContext.body}</small>}
+          </div>
+          <button className="primary" type="button" onClick={() => runAction("Archive packet", handoffContext)}>Archive packet</button>
+        </section>
+      )}
       <div className="admin-v2-two">
       <section className="admin-v2-panel wide">
         <div className="admin-v2-panel-head"><span>Registry</span><strong>{title}</strong></div>

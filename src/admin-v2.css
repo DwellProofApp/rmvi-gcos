@@ -778,6 +778,54 @@
   min-height: 42px;
 }
 
+.admin-v2-handoff-card {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(70, 95, 255, .07), rgba(214, 166, 43, .1)),
+    #fff;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) auto;
+}
+
+.admin-v2-handoff-card span {
+  color: var(--v2-blue);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-v2-handoff-card h3 {
+  color: var(--v2-text);
+  font-size: clamp(1.05rem, 1.6vw, 1.3rem);
+  letter-spacing: -.02em;
+  margin: 4px 0 6px;
+}
+
+.admin-v2-handoff-card p,
+.admin-v2-handoff-card small {
+  color: var(--v2-muted);
+  display: block;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.admin-v2-handoff-card button {
+  background: var(--v2-blue);
+  border: 1px solid var(--v2-blue);
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-weight: 800;
+  min-height: 42px;
+  padding: 0 16px;
+  white-space: nowrap;
+}
+
 .admin-v2-report-meta {
   display: grid;
   gap: 10px;
@@ -1388,6 +1436,7 @@
 }
 
 @media (max-width: 760px) {
+  .admin-v2-handoff-card,
   .admin-v2-assignment-brief,
   .admin-v2-assignment-next,
   .admin-v2-assignment-drafts,
