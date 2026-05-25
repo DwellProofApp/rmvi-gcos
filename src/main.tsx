@@ -10238,6 +10238,7 @@ function App() {
         onArchiveReport={archiveReportRecord}
         onUpdateReportScore={updateReportScore}
         onMarkReportEvidence={markReportEvidence}
+        onArchiveEvidence={archiveReportEvidence}
         onBuildGovernancePacket={buildReportGovernancePacket}
         onAssignReportPack={assignResidentPastorReportPack}
         onCreateApproval={createApprovalRequest}
@@ -23434,6 +23435,7 @@ type AdminV2Props = {
   onArchiveReport: (id: string) => void;
   onUpdateReportScore: (id: string, score: number) => void;
   onMarkReportEvidence: (id: string) => void;
+  onArchiveEvidence: (id: string) => void;
   onBuildGovernancePacket: (id: string) => void;
   onAssignReportPack: (input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) => void;
   onCreateApproval: (approval: Omit<Approval, "id" | "state" | "signatures">) => Approval;
@@ -23546,6 +23548,7 @@ function AdminV2Shell(props: AdminV2Props) {
           onArchiveReport={onArchiveReport}
           onUpdateReportScore={onUpdateReportScore}
           onMarkReportEvidence={onMarkReportEvidence}
+          onArchiveEvidence={props.onArchiveEvidence}
           onBuildGovernancePacket={onBuildGovernancePacket}
           onAssignReportPack={onAssignReportPack}
           onQuickAction={onQuickAction}
@@ -24132,6 +24135,7 @@ function AdminV2Reports({
   onArchiveReport,
   onUpdateReportScore,
   onMarkReportEvidence,
+  onArchiveEvidence,
   onBuildGovernancePacket,
   onAssignReportPack,
   onQuickAction
@@ -24150,6 +24154,7 @@ function AdminV2Reports({
   onArchiveReport: (id: string) => void;
   onUpdateReportScore: (id: string, score: number) => void;
   onMarkReportEvidence: (id: string) => void;
+  onArchiveEvidence: (id: string) => void;
   onBuildGovernancePacket: (id: string) => void;
   onAssignReportPack: (input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) => void;
   onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
@@ -24327,6 +24332,26 @@ function AdminV2Reports({
       setPageNotice(`${selectedReport.name} approval request prepared.`);
     }
     onOpenSection("Approvals");
+  }
+  function openSelectedReportEvidenceArchive() {
+    if (!selectedReport) {
+      onOpenSection("Archive");
+      return;
+    }
+    window.sessionStorage.setItem("gcos.archive.prefill", JSON.stringify({
+      title: `${selectedReport.name} evidence packet`,
+      meta: selectedReport.type ?? "Report evidence",
+      detail: `${selectedReport.owner} / ${selectedReport.period ?? "Current"} / ${selectedReport.evidenceStatus ?? "Evidence pending"}`,
+      status: selectedReport.archived ? "Archived" : "Ready",
+      body: [
+        `Report: ${selectedReport.name}`,
+        `Owner: ${selectedReport.owner}`,
+        `Route: ${selectedReport.path}`,
+        `Evidence: ${selectedReport.evidenceStatus ?? "Evidence pending"}`,
+        `Stage: ${selectedReport.routingStage ?? selectedReport.state}`
+      ].join("\n")
+    }));
+    onArchiveEvidence(selectedReport.id);
   }
   function notifyAssignedOffices() {
     if (!focusedAssignment) {
@@ -24646,7 +24671,7 @@ function AdminV2Reports({
             <div className="admin-v2-connected-routes" aria-label="Connected report destinations">
               <button type="button" onClick={openSelectedReportApprovalRoute}><Signature size={14} /> Approval route</button>
               <button type="button" onClick={openSelectedReportChurchMailRoute}><Mail size={14} /> ChurchMail route</button>
-              <button type="button" onClick={() => onOpenSection("Archive")}><ArchiveIcon size={14} /> Evidence archive</button>
+              <button type="button" onClick={openSelectedReportEvidenceArchive}><ArchiveIcon size={14} /> Evidence archive</button>
               <button type="button" onClick={() => onOpenSection("Audit")}><ShieldCheck size={14} /> Audit trail</button>
             </div>
           </div>
