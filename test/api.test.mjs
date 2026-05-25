@@ -1673,6 +1673,18 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, financeToken);
     assert.equal(acceptedLiveSession.rsvpStatus["finance@rmvi.org"].status, "Accepted");
 
+    const declinedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/rsvp`, {
+      response: "Declined"
+    }, financeToken);
+    assert.equal(declinedLiveSession.rsvpStatus["finance@rmvi.org"].status, "Declined");
+    const deniedDeclinedJoin = await rawPost(`/api/live-sessions/${createdLiveSession.id}/join`, {}, financeToken);
+    assert.equal(deniedDeclinedJoin.status, 403);
+
+    const reacceptedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/rsvp`, {
+      response: "Accepted"
+    }, financeToken);
+    assert.equal(reacceptedLiveSession.rsvpStatus["finance@rmvi.org"].status, "Accepted");
+
     const checkedInLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/check-in`, {
       participant: "finance@rmvi.org"
     }, nationalToken);

@@ -198,6 +198,15 @@ export function createServices({ state, record, requirePermission, findById, int
     if (permissions?.canOverride) return true;
     const participants = (item.participants ?? []).map(normalizeStationEmail);
     const hostEmail = normalizeStationEmail(item.hostEmail ?? item.createdBy ?? "");
+    if (item.rsvpStatus?.[actor]?.status === "Declined") return false;
+    return actor === hostEmail || participants.includes(actor);
+  }
+
+  function canRespondLiveSession(actor, item) {
+    const permissions = actorPermissions(actor);
+    if (permissions?.canOverride) return true;
+    const participants = (item.participants ?? []).map(normalizeStationEmail);
+    const hostEmail = normalizeStationEmail(item.hostEmail ?? item.createdBy ?? "");
     return actor === hostEmail || participants.includes(actor);
   }
 
@@ -618,7 +627,7 @@ export function createServices({ state, record, requirePermission, findById, int
     async respondLiveSessionInvitation(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       const actor = normalizeStationEmail(body.actor);
-      if (!canAccessLiveSession(actor, item)) {
+      if (!canRespondLiveSession(actor, item)) {
         throw Object.assign(new Error("This station is not invited to this live session."), { status: 403 });
       }
       const status = /decline|reject|no/i.test(String(body.response ?? body.status ?? "")) ? "Declined" : "Accepted";

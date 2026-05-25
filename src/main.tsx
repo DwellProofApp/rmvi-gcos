@@ -17540,9 +17540,11 @@ function LiveComms({
 
   function canJoinSession(sessionItem: LiveSession) {
     const participants = (sessionItem.participants ?? []).map((item) => normalizeStationEmail(item));
+    const normalizedStationEmail = normalizeStationEmail(station.email);
+    if (sessionItem.rsvpStatus?.[normalizedStationEmail]?.status === "Declined") return false;
     return permissions.canOverride
-      || normalizeStationEmail(sessionItem.hostEmail ?? sessionItem.createdBy ?? "") === normalizeStationEmail(station.email)
-      || participants.includes(normalizeStationEmail(station.email));
+      || normalizeStationEmail(sessionItem.hostEmail ?? sessionItem.createdBy ?? "") === normalizedStationEmail
+      || participants.includes(normalizedStationEmail);
   }
 
   function stationRsvp(sessionItem: LiveSession) {
