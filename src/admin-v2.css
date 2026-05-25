@@ -520,6 +520,56 @@
   padding: 12px 14px;
 }
 
+.admin-v2-process-flow {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+}
+
+.admin-v2-process-flow article {
+  background: linear-gradient(180deg, #ffffff 0%, #f8fbff 100%);
+  border: 1px solid var(--v2-line);
+  border-radius: 16px;
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+  padding: 13px;
+  position: relative;
+}
+
+.admin-v2-process-flow article.active {
+  border-color: #b9c6ff;
+  box-shadow: 0 10px 24px rgba(70, 95, 255, 0.12);
+}
+
+.admin-v2-process-flow strong {
+  align-items: center;
+  background: var(--v2-blue-soft);
+  border: 1px solid #dbe7ff;
+  border-radius: 999px;
+  color: var(--v2-blue);
+  display: inline-flex;
+  font-size: 12px;
+  height: 25px;
+  justify-content: center;
+  width: 25px;
+}
+
+.admin-v2-process-flow span {
+  color: var(--v2-text);
+  font-size: 13px;
+  font-weight: 900;
+  line-height: 1.2;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-process-flow small {
+  color: var(--v2-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+
 .admin-v2-panel-head {
   align-items: start;
   border-bottom: 1px solid var(--v2-line);
@@ -593,6 +643,15 @@
   border-color: #b9c6ff;
   box-shadow: 0 10px 24px rgba(16, 24, 40, 0.08);
   transform: translateY(-1px);
+}
+
+.admin-v2-table article[role="button"] {
+  outline: none;
+}
+
+.admin-v2-table article[role="button"]:focus-visible {
+  border-color: var(--v2-blue);
+  box-shadow: 0 0 0 3px rgba(70, 95, 255, 0.16);
 }
 
 .admin-v2-table article small,
@@ -914,6 +973,7 @@
   .admin-v2-hero-metrics,
   .admin-v2-card-grid,
   .admin-v2-stat-strip,
+  .admin-v2-process-flow,
   .admin-v2-assignment-summary,
   .admin-v2-report-meta {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -974,11 +1034,13 @@
     width: 100%;
   }
 
-  .admin-v2-stat-strip {
+  .admin-v2-stat-strip,
+  .admin-v2-process-flow {
     grid-template-columns: 1fr;
   }
 
-  .admin-v2-table article {
+  .admin-v2-table article,
+  .admin-v2-table button {
     grid-template-columns: 1fr;
   }
 

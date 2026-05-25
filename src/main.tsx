@@ -24150,6 +24150,21 @@ function AdminV2Reports({
           <article><strong>{activeMonthlyDrafts.length}</strong><span>Monthly drafts</span></article>
         </div>
       </section>
+      <section className="admin-v2-process-flow" aria-label="Report workflow">
+        {[
+          ["1", "Choose template", "Start from the correct official report form."],
+          ["2", "Create draft", "Assign owner, period, route, and office path."],
+          ["3", "Attach evidence", "Add workbook, photos, signatures, or packets."],
+          ["4", "Submit upward", "Send through the reporting hierarchy."],
+          ["5", "Approval + archive", "Build packet, approve, then preserve the record."]
+        ].map(([step, label, detail]) => (
+          <article key={label}>
+            <strong>{step}</strong>
+            <span>{label}</span>
+            <small>{detail}</small>
+          </article>
+        ))}
+      </section>
       <section className="admin-v2-toolbar">
         <button className="primary" onClick={createSelectedTemplateDraft} type="button">Create selected report</button>
         <button onClick={() => runSelectedReportAction("save")} disabled={!selectedReport} type="button">Save selected draft</button>
@@ -24159,7 +24174,7 @@ function AdminV2Reports({
       {pageNotice && <div className="admin-v2-live-notice" role="status">{pageNotice}</div>}
       <section className="admin-v2-panel resident-report-assignment">
         <div className="admin-v2-panel-head">
-          <span>Super Admin Assignment</span>
+          <span>Monthly Pack Assignment</span>
           <strong>Resident Pastor Monthly Report Pack</strong>
         </div>
         <div className="admin-v2-assignment-summary">
@@ -24231,7 +24246,7 @@ function AdminV2Reports({
       </section>
       <div className="admin-v2-three">
       <section className="admin-v2-panel">
-        <div className="admin-v2-panel-head"><span>Template Library</span><strong>{visibleTemplates.length} shown</strong></div>
+        <div className="admin-v2-panel-head"><span>Step 1</span><strong>Template Library</strong></div>
         <label className="admin-v2-search-field">
           <Search size={14} />
           <input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search templates" />
@@ -24251,7 +24266,7 @@ function AdminV2Reports({
         </div>
       </section>
       <section className="admin-v2-panel wide">
-        <div className="admin-v2-panel-head"><span>Report Workspace</span><strong>{selectedReport?.name ?? "No report selected"}</strong></div>
+        <div className="admin-v2-panel-head"><span>Steps 2-5</span><strong>{selectedReport?.name ?? "No report selected"}</strong></div>
         {selectedReport && (
           <div className="admin-v2-detail">
             <span className={`admin-v2-status ${selectedReport.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selectedReport.type} / {selectedReport.state}</span>
@@ -24280,7 +24295,7 @@ function AdminV2Reports({
         )}
       </section>
       <section className="admin-v2-panel">
-        <div className="admin-v2-panel-head"><span>Work Queue</span><strong>{reports.length} reports</strong></div>
+        <div className="admin-v2-panel-head"><span>Active Work</span><strong>{reports.length} reports</strong></div>
         <div className="admin-v2-list compact admin-v2-report-queue">
           {reports.slice(0, 10).map((report) => (
             <button type="button" key={report.id} className={selectedReport?.id === report.id ? "selected" : ""} onClick={() => setSelectedReportId(report.id)}>
@@ -24300,7 +24315,18 @@ function AdminV2Reports({
 }
 
 function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickAction }: { approvals: Approval[]; onApprove: (id: string) => void; onSign: (id: string) => void; onReject: (id: string) => void; onQuickAction: (action: string) => void }) {
-  const selected = approvals[0];
+  const [selectedApprovalId, setSelectedApprovalId] = React.useState(approvals[0]?.id ?? "");
+  React.useEffect(() => {
+    if (!approvals.some((approval) => approval.id === selectedApprovalId)) setSelectedApprovalId(approvals[0]?.id ?? "");
+  }, [approvals, selectedApprovalId]);
+  const selected = approvals.find((approval) => approval.id === selectedApprovalId) ?? approvals[0];
+  const approvalStages = [
+    ["Request", "Approval is created from a report, budget, transfer, policy, or direct admin action."],
+    ["Validation", "GCOS checks the amount, office authority, required evidence, and route."],
+    ["Signature", "Required offices sign in order until the chain is complete."],
+    ["Execution", "Approved work is released, routed, or marked complete."],
+    ["Audit", "The final decision is preserved in Audit and Archive."]
+  ];
   return (
     <div className="admin-v2-workspace">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -24314,6 +24340,15 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
           <article><strong>{approvals.filter((item) => item.state === "Escalated").length}</strong><span>Escalated</span></article>
           <article><strong>{approvals.length}</strong><span>Total chains</span></article>
         </div>
+      </section>
+      <section className="admin-v2-process-flow" aria-label="Approval stage flow">
+        {approvalStages.map(([label, detail], index) => (
+          <article className={selected?.state.toLowerCase().includes(label.toLowerCase()) ? "active" : ""} key={label}>
+            <strong>{index + 1}</strong>
+            <span>{label}</span>
+            <small>{detail}</small>
+          </article>
+        ))}
       </section>
       <section className="admin-v2-toolbar">
         <button className="primary" onClick={() => onQuickAction("Create approval")} type="button">Create approval</button>
@@ -24333,7 +24368,19 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
         <div className="admin-v2-panel-head"><span>Approval Queue</span><strong>Authority review</strong></div>
         <div className="admin-v2-table">
           {approvals.map((approval) => (
-            <article key={approval.id}>
+            <article
+              className={approval.id === selected?.id ? "selected" : ""}
+              key={approval.id}
+              onClick={() => setSelectedApprovalId(approval.id)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" || event.key === " ") {
+                  event.preventDefault();
+                  setSelectedApprovalId(approval.id);
+                }
+              }}
+              role="button"
+              tabIndex={0}
+            >
               <div className="admin-v2-record-main">
                 <strong>{approval.request}</strong>
                 <span>{approval.route}</span>
@@ -24341,8 +24388,8 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
               <small>{approval.limit}</small>
               <span className={`admin-v2-status ${approval.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{approval.state}</span>
               <div className="admin-v2-row-actions">
-                <button onClick={() => onApprove(approval.id)} type="button">Approve</button>
-                <button onClick={() => onSign(approval.id)} type="button">Sign</button>
+                <button onClick={(event) => { event.stopPropagation(); onApprove(approval.id); }} type="button">Approve</button>
+                <button onClick={(event) => { event.stopPropagation(); onSign(approval.id); }} type="button">Sign</button>
               </div>
             </article>
           ))}
@@ -24355,9 +24402,16 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
             <span className={`admin-v2-status ${selected.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selected.state}</span>
             <h2>{selected.request}</h2>
             <p>{selected.route}</p>
-            <span>{selected.signatures} signatures</span>
+            <div className="admin-v2-report-meta">
+              <article><span>Stage</span><strong>{selected.state}</strong></article>
+              <article><span>Authority limit</span><strong>{selected.limit}</strong></article>
+              <article><span>Signatures</span><strong>{selected.signatures}</strong></article>
+              <article><span>Delegate</span><strong>{selected.delegate ?? "Not assigned"}</strong></article>
+            </div>
+            <p><strong>How this approval moves:</strong> validate the request, collect required signatures, execute the decision, then preserve the action in Audit and Archive.</p>
             <div className="admin-v2-actions-row">
               <button onClick={() => onApprove(selected.id)} type="button">Approve</button>
+              <button onClick={() => onSign(selected.id)} type="button">Sign</button>
               <button onClick={() => onReject(selected.id)} type="button">Reject</button>
             </div>
           </div>
