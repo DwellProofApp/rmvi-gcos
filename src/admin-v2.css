@@ -1312,8 +1312,76 @@
   font-size: 12px;
 }
 
+.admin-v2-assignment-next {
+  background: linear-gradient(135deg, rgba(20, 31, 55, .03), rgba(70, 95, 255, .06));
+  border: 1px solid rgba(148, 163, 184, .2);
+  border-radius: 16px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(0, 1fr) minmax(190px, .25fr);
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.admin-v2-assignment-next > div,
+.admin-v2-assignment-next aside {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-v2-assignment-next span {
+  color: var(--v2-blue);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-v2-assignment-next strong {
+  color: var(--v2-text);
+  font-size: 14px;
+  line-height: 1.25;
+}
+
+.admin-v2-assignment-next small {
+  color: var(--v2-muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.admin-v2-assignment-drafts {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-v2-assignment-drafts button,
+.admin-v2-assignment-next aside button {
+  background: rgba(255, 255, 255, .82);
+  border: 1px solid rgba(148, 163, 184, .28);
+  border-radius: 12px;
+  color: var(--v2-text);
+  cursor: pointer;
+  display: grid;
+  font: inherit;
+  gap: 3px;
+  min-width: 0;
+  padding: 9px 10px;
+  text-align: left;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.admin-v2-assignment-drafts button:hover,
+.admin-v2-assignment-next aside button:hover {
+  border-color: rgba(70, 95, 255, .4);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, .08);
+  transform: translateY(-1px);
+}
+
 @media (max-width: 1100px) {
   .admin-v2-assignment-brief,
+  .admin-v2-assignment-next,
   .admin-v2-assignment-grid {
     grid-template-columns: 1fr 1fr;
   }
@@ -1321,6 +1389,8 @@
 
 @media (max-width: 760px) {
   .admin-v2-assignment-brief,
+  .admin-v2-assignment-next,
+  .admin-v2-assignment-drafts,
   .admin-v2-assignment-grid,
   .admin-v2-assignment-summary,
   .admin-v2-report-meta {

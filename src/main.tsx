@@ -24100,6 +24100,18 @@ function AdminV2Reports({
   const monthlyAssignedReports = reports.filter((report) => report.assignmentId || assignedReportIds.has(report.id));
   const activeMonthlyDrafts = monthlyAssignedReports.filter((report) => report.state !== "Approved" && !report.archived);
   const latestAssignment = reportAssignments[0];
+  const latestAssignedReportIds = new Set(latestAssignment?.generatedReportIds ?? []);
+  const latestAssignmentTemplateIds = new Set(latestAssignment?.templates.map((template) => template.id) ?? []);
+  const directlyMatchedLatestReports = latestAssignment
+    ? reports.filter((report) => report.assignmentId === latestAssignment.id || latestAssignedReportIds.has(report.id))
+    : [];
+  const latestAssignedReports = latestAssignment
+    ? directlyMatchedLatestReports.length
+      ? directlyMatchedLatestReports
+      : reports
+        .filter((report) => report.period === latestAssignment.period && latestAssignmentTemplateIds.has(report.templateId ?? ""))
+        .slice(0, latestAssignment.generatedReportIds.length)
+    : [];
   const selectedTemplate = templates.find((template) => template.id === selectedTemplateId) ?? templates[0];
   const selectedReport = reports.find((report) => report.id === selectedReportId) ?? reports[0];
   const visibleTemplates = templates.filter((template) => [template.name, template.type, template.path, template.description].join(" ").toLowerCase().includes(templateSearch.trim().toLowerCase())).slice(0, 18);
@@ -24112,9 +24124,14 @@ function AdminV2Reports({
   const assignmentTargetLabel = assignmentTargetMode === "designated-office"
     ? designatedOffice?.title ?? "Selected office"
     : "All Resident Pastor / Local Branch offices";
+  const assignmentReady = assignmentTargetMode !== "designated-office" || Boolean(designatedOffice);
   React.useEffect(() => {
     if (!reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id ?? "");
   }, [reports, selectedReportId]);
+  React.useEffect(() => {
+    const firstDraft = latestAssignedReports[0];
+    if (firstDraft && selectedReportId !== firstDraft.id) setSelectedReportId(firstDraft.id);
+  }, [latestAssignment?.id, latestAssignedReports, selectedReportId]);
   function createSelectedTemplateDraft() {
     if (!selectedTemplate) {
       onQuickAction("Create report");
@@ -24267,8 +24284,12 @@ function AdminV2Reports({
           <button
             className="primary"
             type="button"
-            disabled={!permissions.canOverride || !monthlyTemplates.length}
+            disabled={!permissions.canOverride || !monthlyTemplates.length || !assignmentReady}
             onClick={() => {
+              if (!assignmentReady) {
+                setPageNotice("Choose a designated office before assigning the monthly report pack.");
+                return;
+              }
               onAssignReportPack({ targetMode: assignmentTargetMode, targetOfficeId: assignmentTargetOfficeId, period: assignmentPeriod });
               setPageNotice(`Monthly report pack assigned to ${assignmentTargetLabel}. ${projectedDraftCount} draft reports are ready in the work queue.`);
             }}
@@ -24289,6 +24310,29 @@ function AdminV2Reports({
           ))}
           {!reportAssignments.length && <small>No monthly pack has been assigned yet.</small>}
         </div>
+        {latestAssignment && (
+          <div className="admin-v2-assignment-next">
+            <div>
+              <span>Connected drafts</span>
+              <strong>{latestAssignment.period} / {latestAssignment.targetLabel}</strong>
+              <small>{latestAssignment.generatedReportIds.length} draft reports created from the monthly pack.</small>
+              <div className="admin-v2-assignment-drafts">
+                {latestAssignedReports.slice(0, 4).map((report) => (
+                  <button key={report.id} type="button" onClick={() => setSelectedReportId(report.id)}>
+                    <strong>{report.name}</strong>
+                    <small>{report.owner} / {report.state}</small>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <aside>
+              <span>Routing handoff</span>
+              <button type="button" onClick={() => onOpenSection("ChurchMail")}>Notify assigned offices</button>
+              <button type="button" onClick={() => onOpenSection("Approvals")}>Review approval path</button>
+              <button type="button" onClick={() => onOpenSection("Archive")}>Prepare archive packet</button>
+            </aside>
+          </div>
+        )}
       </section>
       <div className="admin-v2-three">
       <section className="admin-v2-panel">
