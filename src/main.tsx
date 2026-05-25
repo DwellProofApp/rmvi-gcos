@@ -9936,7 +9936,11 @@ function App() {
         setActiveSection("Tasks");
         return;
       case "Assign owner":
-        firstTask ? updateTaskAssignee(firstTask.id, activeStation.email) : handleAdminV2QuickAction("Create task");
+        if (effectiveSection === "Escalations") {
+          scopedEscalations[0] ? updateEscalationOwner(scopedEscalations[0].id, activeStation.email) : handleAdminV2QuickAction("Open escalation");
+        } else {
+          firstTask ? updateTaskAssignee(firstTask.id, activeStation.email) : handleAdminV2QuickAction("Create task");
+        }
         return;
       case "Review blockers":
         if (firstTask) {
@@ -24399,7 +24403,16 @@ function AdminV2Approvals({
         ))}
       </section>
       <section className="admin-v2-toolbar">
-        <button className="primary" onClick={() => document.getElementById("admin-v2-create-approval")?.scrollIntoView({ behavior: "smooth", block: "center" })} type="button">Create approval</button>
+        <button
+          className="primary"
+          onClick={() => {
+            setNotice("Create approval is ready. Complete the form, then choose Create and validate.");
+            document.getElementById("admin-v2-create-approval")?.scrollIntoView({ behavior: "smooth", block: "center" });
+          }}
+          type="button"
+        >
+          Create approval
+        </button>
         <button onClick={() => { onQuickAction("Digest"); setNotice("Approval digest refreshed from the live workflow status."); }} type="button">Digest</button>
         <button onClick={() => { selected ? runSelectedAction("sign") : onQuickAction("Review signatures"); }} type="button">Review signatures</button>
       </section>
@@ -24717,13 +24730,19 @@ function AdminV2Directory({
 }) {
   const normalizedRecords = records.map((record) => ({ ...record, status: record.status || "Ready" }));
   const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const [notice, setNotice] = React.useState("");
   React.useEffect(() => {
     setSelectedIndex(0);
+    setNotice("");
   }, [title]);
   React.useEffect(() => {
     if (selectedIndex >= normalizedRecords.length) setSelectedIndex(0);
   }, [normalizedRecords.length, selectedIndex]);
   const selected = normalizedRecords[Math.min(selectedIndex, Math.max(normalizedRecords.length - 1, 0))];
+  function runAction(action: string, recordTitle?: string) {
+    onQuickAction(action);
+    setNotice(recordTitle ? `${action} started for ${recordTitle}.` : `${action} started. The connected workspace has been updated.`);
+  }
   return (
     <div className="admin-v2-workspace">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -24743,9 +24762,10 @@ function AdminV2Directory({
       </section>
       <section className="admin-v2-toolbar">
         {actions.map((action, index) => (
-          <button className={index === 0 ? "primary" : ""} key={action} onClick={() => onQuickAction(action)} type="button">{action}</button>
+          <button className={index === 0 ? "primary" : ""} key={action} onClick={() => runAction(action)} type="button">{action}</button>
         ))}
       </section>
+      {notice && <div className="admin-v2-live-notice" role="status">{notice}</div>}
       <div className="admin-v2-two">
       <section className="admin-v2-panel wide">
         <div className="admin-v2-panel-head"><span>Registry</span><strong>{title}</strong></div>
@@ -24777,9 +24797,10 @@ function AdminV2Directory({
             <p>{selected.detail}</p>
             <span>{selected.meta}</span>
             <div className="admin-v2-actions-row">
-              <button onClick={() => onQuickAction(actions[0] ?? "Open")} type="button">Open</button>
-              <button onClick={() => onQuickAction(actions[1] ?? "More")} type="button">More</button>
+              <button onClick={() => runAction(actions[0] ?? "Open", selected.title)} type="button">{actions[0] ?? "Open"}</button>
+              <button onClick={() => runAction(actions[1] ?? "More", selected.title)} type="button">{actions[1] ?? "More"}</button>
             </div>
+            <div className="admin-v2-empty-state">Connected to GCOS records, audit trail, and the related workspace action above.</div>
           </div>
         ) : <p>No records available.</p>}
       </section>
