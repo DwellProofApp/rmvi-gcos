@@ -23731,6 +23731,7 @@ function AdminV2Shell(props: AdminV2Props) {
           actions={["Upload record", "Export packet", "Verify custody"]}
           records={documents.map((item) => ({ title: item.name, meta: item.classification, detail: item.source, status: item.status }))}
           onQuickAction={onQuickAction}
+          onOpenSection={openSection}
         />
       );
     }
@@ -23750,6 +23751,7 @@ function AdminV2Shell(props: AdminV2Props) {
             return { title: row.event, meta: row.actor, detail: row.object, status: row.severity };
           })}
           onQuickAction={onQuickAction}
+          onOpenSection={openSection}
         />
       );
     }
@@ -24222,7 +24224,7 @@ function AdminV2Reports({
     window.sessionStorage.removeItem("gcos.reports.focusId");
     setSelectedReportId(focusedReport.id);
     setSelectedAssignmentId(focusedReport.assignmentId ?? selectedAssignmentId);
-    setPageNotice(`${focusedReport.name} opened from the approval workflow.`);
+    setPageNotice(`${focusedReport.name} opened from the connected workflow.`);
     window.setTimeout(() => document.querySelector(".admin-v2-report-workspace")?.scrollIntoView({ behavior: "smooth", block: "center" }), 150);
   }, [reports, selectedAssignmentId]);
   React.useEffect(() => {
@@ -24343,6 +24345,7 @@ function AdminV2Reports({
       meta: selectedReport.type ?? "Report evidence",
       detail: `${selectedReport.owner} / ${selectedReport.period ?? "Current"} / ${selectedReport.evidenceStatus ?? "Evidence pending"}`,
       status: selectedReport.archived ? "Archived" : "Ready",
+      sourceReportId: selectedReport.id,
       body: [
         `Report: ${selectedReport.name}`,
         `Owner: ${selectedReport.owner}`,
@@ -24363,6 +24366,7 @@ function AdminV2Reports({
       meta: selectedReport.type ?? "Report",
       detail: `${selectedReport.owner} / ${selectedReport.period ?? "Current"} / ${selectedReport.state}`,
       status: selectedReport.verified ? "Verified" : "Info",
+      sourceReportId: selectedReport.id,
       body: [
         `Report: ${selectedReport.name}`,
         `Owner: ${selectedReport.owner}`,
@@ -25259,7 +25263,8 @@ function AdminV2Directory({
   metrics,
   actions,
   records,
-  onQuickAction
+  onQuickAction,
+  onOpenSection
 }: {
   title: string;
   description: string;
@@ -25267,11 +25272,12 @@ function AdminV2Directory({
   actions: string[];
   records: { title: string; meta: string; detail: string; status: string }[];
   onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
+  onOpenSection?: (section: Section) => void;
 }) {
   const normalizedRecords = records.map((record) => ({ ...record, status: record.status || "Ready" }));
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const [notice, setNotice] = React.useState("");
-  const [handoffContext, setHandoffContext] = React.useState<{ title: string; meta: string; detail: string; status: string; body?: string } | null>(null);
+  const [handoffContext, setHandoffContext] = React.useState<{ title: string; meta: string; detail: string; status: string; body?: string; sourceReportId?: string } | null>(null);
   React.useEffect(() => {
     setSelectedIndex(0);
     setNotice("");
@@ -25287,13 +25293,14 @@ function AdminV2Directory({
     }
     window.sessionStorage.removeItem(storageKey);
     try {
-      const packet = JSON.parse(rawContext) as { title?: string; meta?: string; detail?: string; status?: string; body?: string };
+      const packet = JSON.parse(rawContext) as { title?: string; meta?: string; detail?: string; status?: string; body?: string; sourceReportId?: string };
       const context = {
         title: packet.title || (title === "Records Archive" ? "Governance archive packet" : "Governance audit trail"),
         meta: packet.meta || (title === "Records Archive" ? "Evidence packet" : "Audit context"),
         detail: packet.detail || (title === "Records Archive" ? "Ready for archive" : "Ready for review"),
         status: packet.status || (title === "Records Archive" ? "Ready" : "Info"),
-        body: packet.body
+        body: packet.body,
+        sourceReportId: packet.sourceReportId
       };
       setHandoffContext(context);
       setNotice(title === "Records Archive" ? `${context.title} is ready to archive.` : `${context.title} opened for audit review.`);
@@ -25309,6 +25316,12 @@ function AdminV2Directory({
   function runAction(action: string, record?: { title: string; meta: string; detail: string; status: string }) {
     onQuickAction(action, record);
     setNotice(record ? `${action} started for ${record.title}.` : `${action} started. The connected workspace has been updated.`);
+  }
+  function openSourceReportFromHandoff() {
+    if (!handoffContext?.sourceReportId || !onOpenSection) return;
+    window.sessionStorage.setItem("gcos.reports.focusId", handoffContext.sourceReportId);
+    setNotice(`${handoffContext.title} source report opened.`);
+    onOpenSection("Reports");
   }
   return (
     <div className="admin-v2-workspace">
@@ -25341,7 +25354,10 @@ function AdminV2Directory({
             <p>{handoffContext.detail}</p>
             {handoffContext.body && <small>{handoffContext.body}</small>}
           </div>
-          <button className="primary" type="button" onClick={() => runAction(title === "Records Archive" ? "Archive packet" : "Export audit", handoffContext)}>{title === "Records Archive" ? "Archive packet" : "Export audit"}</button>
+          <div className="admin-v2-actions-row">
+            <button className="primary" type="button" onClick={() => runAction(title === "Records Archive" ? "Archive packet" : "Export audit", handoffContext)}>{title === "Records Archive" ? "Archive packet" : "Export audit"}</button>
+            {handoffContext.sourceReportId && onOpenSection && <button type="button" onClick={openSourceReportFromHandoff}>Open source report</button>}
+          </div>
         </section>
       )}
       <div className="admin-v2-two">
