@@ -9898,6 +9898,12 @@ function App() {
       case "Archive selected":
         (selectedMessage ?? firstMessage) ? archiveMessage((selectedMessage ?? firstMessage).id) : recordAudit("ChurchMailArchiveSkipped", activeStation.email, "No message selected");
         return;
+      case "Create report from message":
+        (selectedMessage ?? firstMessage) ? createReportFromMessage((selectedMessage ?? firstMessage).id) : handleAdminV2QuickAction("Create report");
+        return;
+      case "Request approval from message":
+        (selectedMessage ?? firstMessage) ? requestApprovalFromMessage((selectedMessage ?? firstMessage).id) : handleAdminV2QuickAction("Create approval");
+        return;
       case "Create report":
         createReportDraft({
           name: workstationProfile.defaultReportName,
@@ -24575,6 +24581,12 @@ function AdminV2Mail({
     { id: "escalated", label: "Escalated", count: messages.filter((item) => !item.archived && item.status === "Escalated").length },
     { id: "archive", label: "Archive", count: messages.filter((item) => item.archived).length }
   ];
+  const selectedRecord = selected ? {
+    title: selected.subject,
+    meta: selected.from,
+    detail: selected.to ?? selected.route ?? selected.files,
+    status: selected.status
+  } : undefined;
 
   React.useEffect(() => {
     if (visibleMessages.length && !visibleMessages.some((message) => message.id === selectedMessageId)) {
@@ -24598,6 +24610,10 @@ function AdminV2Mail({
     setActiveMailbox("sent");
     setComposerOpen(false);
   }
+  function runSelectedMessageAction(action: string, feedback: string) {
+    onQuickAction(action, selectedRecord);
+    setComposeFeedback(selected ? `${feedback}: ${selected.subject}` : feedback);
+  }
 
   return (
     <div className="admin-v2-workspace">
@@ -24616,8 +24632,8 @@ function AdminV2Mail({
       </section>
       <section className="admin-v2-toolbar">
         <button className="primary" onClick={() => setComposerOpen((open) => !open)} type="button">Compose</button>
-        <button onClick={() => onQuickAction("Route message")} type="button">Route message</button>
-        <button onClick={() => onQuickAction("Archive selected")} type="button">Archive selected</button>
+        <button onClick={() => runSelectedMessageAction("Route message", "Message route updated")} disabled={!selected} type="button">Route message</button>
+        <button onClick={() => runSelectedMessageAction("Archive selected", "Message archived")} disabled={!selected} type="button">Archive selected</button>
       </section>
       {composerOpen && (
         <section className="admin-v2-panel churchmail-composer">
@@ -24718,6 +24734,12 @@ function AdminV2Mail({
           <span>To: {selected.to ?? selected.route ?? "Governance communication"}</span>
           <span>Recipients: {(selected.recipients ?? selected.delivery?.recipients ?? []).join(", ") || "Station route"}</span>
           <span>Delivery: {selected.delivery?.provider ? `${selected.delivery.provider} / ${selected.delivery.status}` : "Internal GCOS record"}</span>
+          <div className="admin-v2-actions-row">
+            <button onClick={() => runSelectedMessageAction("Route message", "Message route updated")} type="button">Route</button>
+            <button onClick={() => runSelectedMessageAction("Create report from message", "Report created from message")} type="button">Create report</button>
+            <button onClick={() => runSelectedMessageAction("Request approval from message", "Approval requested from message")} type="button">Request approval</button>
+            <button onClick={() => runSelectedMessageAction("Archive selected", "Message archived")} type="button">Archive</button>
+          </div>
         </div>}
       </section>
       </div>
