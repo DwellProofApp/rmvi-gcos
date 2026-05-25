@@ -24366,18 +24366,43 @@ function AdminV2Reports({
             Assign monthly reports
           </button>
         </div>
-        <div className="admin-v2-source-list" aria-label="Monthly forms included">
-          {monthlyTemplates.slice(0, 6).map((template) => (
-            <span key={template.id}>{template.name}</span>
-          ))}
-        </div>
-        <div className="admin-v2-assignment-history">
-          <strong>{reportAssignments.length}</strong>
-          <span>assignment{reportAssignments.length === 1 ? "" : "s"} recorded</span>
-          {reportAssignments.slice(0, 3).map((assignment) => (
-            <small key={assignment.id}>{assignment.period} / {assignment.targetLabel} / {assignment.generatedReportIds.length} drafts</small>
-          ))}
-          {!reportAssignments.length && <small>No monthly pack has been assigned yet.</small>}
+        <div className="admin-v2-package-row">
+          <section className="admin-v2-package-card" aria-label="Monthly forms included">
+            <div className="admin-v2-package-head">
+              <span>Included forms</span>
+              <strong>{monthlyTemplates.length}</strong>
+            </div>
+            <div className="admin-v2-form-stack">
+              {monthlyTemplates.slice(0, 6).map((template, index) => (
+                <article key={template.id}>
+                  <b>{String(index + 1).padStart(2, "0")}</b>
+                  <span>{template.name}</span>
+                </article>
+              ))}
+            </div>
+          </section>
+          <section className="admin-v2-package-card">
+            <div className="admin-v2-package-head">
+              <span>Assignment history</span>
+              <strong>{reportAssignments.length}</strong>
+            </div>
+            <div className="admin-v2-history-stack">
+              {reportAssignments.slice(0, 3).map((assignment) => (
+                <article key={assignment.id}>
+                  <span>{assignment.period}</span>
+                  <strong>{assignment.targetLabel}</strong>
+                  <small>{assignment.generatedReportIds.length} draft reports</small>
+                </article>
+              ))}
+              {!reportAssignments.length && (
+                <article className="empty">
+                  <span>No assignments yet</span>
+                  <strong>Ready to launch</strong>
+                  <small>Choose a scope and assign the monthly pack when the office is ready.</small>
+                </article>
+              )}
+            </div>
+          </section>
         </div>
         {latestAssignment && (
           <div className="admin-v2-assignment-next">
