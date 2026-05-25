@@ -24097,6 +24097,7 @@ function AdminV2Reports({
   const [selectedAssignmentId, setSelectedAssignmentId] = React.useState(reportAssignments[0]?.id ?? "");
   const [pageNotice, setPageNotice] = React.useState("");
   const previousFocusedAssignmentId = React.useRef<string | undefined>(undefined);
+  const previousAssignmentCount = React.useRef(reportAssignments.length);
   const monthlyTemplates = templates.filter((template) => template.type === "Resident Pastor Monthly");
   const residentPastorTargets = stationDirectory.filter((item) => /local branch|resident pastor|mission station|pastor in charge/i.test([item.title, item.level, item.authority].join(" ")));
   const assignedReportIds = new Set(reportAssignments.flatMap((assignment) => assignment.generatedReportIds));
@@ -24143,10 +24144,18 @@ function AdminV2Reports({
     if (!reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id ?? "");
   }, [reports, selectedReportId]);
   React.useEffect(() => {
+    if (reportAssignments.length > previousAssignmentCount.current && reportAssignments[0]?.id) {
+      previousAssignmentCount.current = reportAssignments.length;
+      setSelectedAssignmentId(reportAssignments[0].id);
+      const firstReport = reportsForAssignment(reportAssignments[0])[0];
+      if (firstReport) setSelectedReportId(firstReport.id);
+      return;
+    }
+    previousAssignmentCount.current = reportAssignments.length;
     if (reportAssignments.length && !reportAssignments.some((assignment) => assignment.id === selectedAssignmentId)) {
       setSelectedAssignmentId(reportAssignments[0].id);
     }
-  }, [reportAssignments, selectedAssignmentId]);
+  }, [reportAssignments, selectedAssignmentId, reports]);
   React.useEffect(() => {
     const firstDraft = focusedAssignedReports[0];
     if (focusedAssignment?.id && previousFocusedAssignmentId.current !== focusedAssignment.id) {
