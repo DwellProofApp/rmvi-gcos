@@ -1405,20 +1405,37 @@
   gap: 8px;
 }
 
-.admin-v2-form-stack article,
+.admin-v2-form-stack button,
 .admin-v2-history-stack article {
   align-items: start;
   background: #fff;
   border: 1px solid rgba(148, 163, 184, .2);
   border-radius: 12px;
+  color: inherit;
+  cursor: pointer;
   display: grid;
+  font: inherit;
   gap: 3px;
   min-width: 0;
   padding: 9px 10px;
+  text-align: left;
+  transition: border-color .18s ease, box-shadow .18s ease, transform .18s ease;
 }
 
-.admin-v2-form-stack article {
+.admin-v2-history-stack article {
+  cursor: default;
+}
+
+.admin-v2-form-stack button {
   grid-template-columns: 34px minmax(0, 1fr);
+}
+
+.admin-v2-form-stack button:hover,
+.admin-v2-form-stack button:focus-visible {
+  border-color: rgba(70, 95, 255, .42);
+  box-shadow: 0 14px 28px rgba(15, 23, 42, .08);
+  outline: none;
+  transform: translateY(-1px);
 }
 
 .admin-v2-form-stack b {

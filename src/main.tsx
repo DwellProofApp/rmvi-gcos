@@ -24374,10 +24374,18 @@ function AdminV2Reports({
             </div>
             <div className="admin-v2-form-stack">
               {monthlyTemplates.slice(0, 6).map((template, index) => (
-                <article key={template.id}>
+                <button
+                  key={template.id}
+                  type="button"
+                  onClick={() => {
+                    setSelectedTemplateId(template.id);
+                    setPageNotice(`${template.name} selected from the Resident Pastor monthly pack.`);
+                    document.querySelector(".admin-v2-template-picker")?.scrollIntoView({ behavior: "smooth", block: "center" });
+                  }}
+                >
                   <b>{String(index + 1).padStart(2, "0")}</b>
                   <span>{template.name}</span>
-                </article>
+                </button>
               ))}
             </div>
           </section>
