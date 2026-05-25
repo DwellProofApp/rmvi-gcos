@@ -5154,6 +5154,21 @@ function App() {
     }
   }
 
+  function openAuthenticatedWorkspace(station: StationCard, nextSession: Session, landingSection: Section, options: { reload?: boolean } = {}) {
+    const path = sectionPath(landingSection);
+    window.history.replaceState({}, "", path);
+    window.localStorage.setItem("gcos.session", JSON.stringify(nextSession));
+    if (options.reload) {
+      window.location.replace(path);
+      return;
+    }
+    setActiveStation(station);
+    setActiveSection(landingSection);
+    setSearchQuery("");
+    setNotificationsOpen(false);
+    setSession(nextSession);
+  }
+
   function handleLogin(email: string, password: string) {
     const normalizedEmail = normalizeStationEmail(email);
     const station = stationDirectory.find((item) => item.email === normalizedEmail);
@@ -5172,10 +5187,6 @@ function App() {
 
     const startedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     const landingSection: Section = stationPermissions.canOverride ? "Admin Board" : "Control Center";
-    setSession({ email: normalizedEmail, startedAt, authPending: true });
-    setActiveStation(station);
-    setActiveSection(landingSection);
-    window.history.replaceState({}, "", sectionPath(landingSection));
     setAuditRows((rows) => [
       {
         id: `aud-${Date.now()}`,
@@ -5192,12 +5203,12 @@ function App() {
       method: "POST",
       body: JSON.stringify({ email: normalizedEmail, password })
     }).then((result) => {
-      const authenticatedSession = { email: normalizedEmail, startedAt, token: result.token, expiresAt: result.expiresAt };
-      window.localStorage.setItem("gcos.session", JSON.stringify(authenticatedSession));
-      setSession(authenticatedSession);
-      return refreshFromApi();
+      const serverStation = stationDirectory.find((item) => item.email === normalizeStationEmail(result.station.email)) ?? station;
+      const authenticatedSession: Session = { email: normalizedEmail, startedAt, token: result.token, expiresAt: result.expiresAt };
+      openAuthenticatedWorkspace(serverStation, authenticatedSession, landingSection, { reload: true });
     }).catch(() => {
-      if (!networkOnline) {
+      if (!networkOnline || isLocalPreview || ["127.0.0.1", "localhost"].includes(window.location.hostname)) {
+        openAuthenticatedWorkspace(station, { email: normalizedEmail, startedAt, authPending: true }, landingSection, { reload: true });
         setOfflineMode(true);
         setEvents((items) => ["OfflineLogin: cached station session active", ...items].slice(0, 8));
         return;
@@ -5324,10 +5335,18 @@ function App() {
 
   React.useEffect(() => {
     if ((!showAdminSignInGate && !showUserSignInGate) || !session) return;
+    const normalizedEmail = normalizeStationEmail(session.email);
+    const station = stationDirectory.find((item) => item.email === normalizedEmail);
+    if (station && (session.token || session.authPending)) {
+      const stationPermissions = getPermissions(station);
+      const landingSection: Section = stationPermissions.canOverride ? "Admin Board" : "Control Center";
+      openAuthenticatedWorkspace(station, { ...session, email: normalizedEmail }, landingSection);
+      return;
+    }
     window.localStorage.removeItem("gcos.session");
     setSession(null);
     setActiveSection(showAdminSignInGate ? "Admin Board" : "Control Center");
-  }, [session, setSession, showAdminSignInGate, showUserSignInGate]);
+  }, [session, setSession, showAdminSignInGate, showUserSignInGate, stationDirectory]);
 
   if (!session || showAdminSignInGate || showUserSignInGate) {
     return <LoginScreen stationDirectory={stationDirectory} pwa={pwa} onLogin={handleLogin} onCreateAccount={createAccount} />;
