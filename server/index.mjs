@@ -350,6 +350,7 @@ const routes = {
   "POST /api/live-sessions/:id/file": ({ params, body, session }) => ok(services.attachLiveSessionFile(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/note": ({ params, body, session }) => ok(services.addLiveSessionNote(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/invite": async ({ params, body, session }) => ok(await services.inviteLiveSessionParticipant(params.id, { ...body, actor: session.email })),
+  "POST /api/live-sessions/:id/rsvp": async ({ params, body, session }) => ok(await services.respondLiveSessionInvitation(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/check-in": ({ params, body, session }) => ok(services.checkInLiveSessionParticipant(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/chat": ({ params, body, session }) => ok(services.addLiveSessionChat(params.id, { ...body, actor: session.email })),
   "POST /api/live-sessions/:id/decision": ({ params, body, session }) => ok(services.recordLiveSessionDecision(params.id, { ...body, actor: session.email })),

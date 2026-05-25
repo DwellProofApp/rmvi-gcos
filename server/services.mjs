@@ -615,6 +615,70 @@ export function createServices({ state, record, requirePermission, findById, int
       return item;
     },
 
+    async respondLiveSessionInvitation(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const actor = normalizeStationEmail(body.actor);
+      if (!canAccessLiveSession(actor, item)) {
+        throw Object.assign(new Error("This station is not invited to this live session."), { status: 403 });
+      }
+      const status = /decline|reject|no/i.test(String(body.response ?? body.status ?? "")) ? "Declined" : "Accepted";
+      const respondedAt = new Date().toISOString();
+      item.rsvpStatus ??= {};
+      item.rsvpStatus[actor] = {
+        status,
+        respondedAt,
+        note: body.note ?? ""
+      };
+      item.invitationLog = (item.invitationLog ?? []).map((invitation) => (
+        normalizeStationEmail(invitation.participant) === actor
+          ? { ...invitation, status, respondedAt }
+          : invitation
+      ));
+      const hostEmail = normalizeStationEmail(item.hostEmail ?? item.createdBy ?? "");
+      const rsvpMessage = message("Meeting RSVP", `${status}: ${item.title}`, actor, "Ready", item.linkedRecord ?? "Live Comms");
+      Object.assign(rsvpMessage, {
+        to: hostEmail,
+        route: item.route,
+        body: [
+          `${actor} ${status.toLowerCase()} the invitation to ${item.title}.`,
+          `Purpose: ${item.purpose}`,
+          body.note ? `Note: ${body.note}` : ""
+        ].filter(Boolean).join("\n"),
+        priority: status === "Declined" ? "High" : "Normal",
+        recipients: hostEmail ? [hostEmail] : [],
+        linkedLiveSession: item.id,
+        classification: "Live Comms"
+      });
+      state.messages.unshift(rsvpMessage);
+      if (hostEmail) {
+        try {
+          const delivery = await integrations.email?.deliverChurchMail?.(rsvpMessage, [hostEmail]);
+          if (delivery) {
+            rsvpMessage.delivery = {
+              provider: delivery.provider,
+              status: delivery.ok ? "Sent" : "Queued",
+              mode: delivery.mode,
+              messageId: delivery.messageId,
+              recipients: delivery.to,
+              updatedAt: respondedAt
+            };
+          }
+        } catch (error) {
+          rsvpMessage.delivery = {
+            provider: integrations.email?.status?.().provider ?? "email",
+            status: "Queued",
+            mode: "deferred",
+            error: error.message,
+            recipients: [hostEmail],
+            updatedAt: respondedAt
+          };
+        }
+      }
+      item.updatedAt = respondedAt;
+      record("LiveSessionInvitationResponded", actor, item.title, status);
+      return item;
+    },
+
     checkInLiveSessionParticipant(id, body) {
       const item = findById(state.liveSessions ?? [], id);
       item.checkedInParticipants ??= [];

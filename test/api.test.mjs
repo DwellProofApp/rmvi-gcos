@@ -188,6 +188,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       password: demoPassword("finance")
     });
     assert.equal(financeLogin.station.email, "finance@rmvi.org");
+    const financeToken = financeLogin.token;
 
     const auditLogin = await postJson("/api/auth/login", {
       email: "audit@rmvi.org",
@@ -1665,6 +1666,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       participant: "finance@rmvi.org"
     }, nationalToken);
     assert.equal(invitedLiveSession.participants.includes("finance@rmvi.org"), true);
+    assert.equal(invitedLiveSession.invitationLog[0].participant, "finance@rmvi.org");
+
+    const acceptedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/rsvp`, {
+      response: "Accepted"
+    }, financeToken);
+    assert.equal(acceptedLiveSession.rsvpStatus["finance@rmvi.org"].status, "Accepted");
 
     const checkedInLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/check-in`, {
       participant: "finance@rmvi.org"
