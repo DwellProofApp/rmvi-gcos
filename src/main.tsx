@@ -5737,6 +5737,7 @@ function App() {
         body: JSON.stringify(draft)
       }).then(refreshFromApi).catch(() => undefined);
     }
+    return approval;
   }
 
   function createTask(draft: Omit<GovernanceTask, "id" | "status">) {
@@ -10154,6 +10155,7 @@ function App() {
         onMarkReportEvidence={markReportEvidence}
         onBuildGovernancePacket={buildReportGovernancePacket}
         onAssignReportPack={assignResidentPastorReportPack}
+        onCreateApproval={createApprovalRequest}
         onApprove={approveRequest}
         onSign={signApproval}
         onReject={rejectApproval}
@@ -23349,6 +23351,7 @@ type AdminV2Props = {
   onMarkReportEvidence: (id: string) => void;
   onBuildGovernancePacket: (id: string) => void;
   onAssignReportPack: (input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) => void;
+  onCreateApproval: (approval: Omit<Approval, "id" | "state" | "signatures">) => Approval;
   onApprove: (id: string) => void;
   onSign: (id: string) => void;
   onReject: (id: string) => void;
@@ -23417,6 +23420,7 @@ function AdminV2Shell(props: AdminV2Props) {
     onMarkReportEvidence,
     onBuildGovernancePacket,
     onAssignReportPack,
+    onCreateApproval,
     onApprove,
     onSign,
     onReject,
@@ -23466,6 +23470,7 @@ function AdminV2Shell(props: AdminV2Props) {
       return (
         <AdminV2Approvals
           approvals={approvals}
+          onCreateApproval={onCreateApproval}
           onApprove={onApprove}
           onSign={onSign}
           onReject={onReject}
@@ -24314,8 +24319,27 @@ function AdminV2Reports({
   );
 }
 
-function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickAction }: { approvals: Approval[]; onApprove: (id: string) => void; onSign: (id: string) => void; onReject: (id: string) => void; onQuickAction: (action: string) => void }) {
+function AdminV2Approvals({
+  approvals,
+  onCreateApproval,
+  onApprove,
+  onSign,
+  onReject,
+  onQuickAction
+}: {
+  approvals: Approval[];
+  onCreateApproval: (approval: Omit<Approval, "id" | "state" | "signatures">) => Approval;
+  onApprove: (id: string) => void;
+  onSign: (id: string) => void;
+  onReject: (id: string) => void;
+  onQuickAction: (action: string) => void;
+}) {
   const [selectedApprovalId, setSelectedApprovalId] = React.useState(approvals[0]?.id ?? "");
+  const [notice, setNotice] = React.useState("");
+  const [request, setRequest] = React.useState("New governance approval request");
+  const [route, setRoute] = React.useState("Local Office -> Area Office -> District HQ");
+  const [limit, setLimit] = React.useState("Supervisor review");
+  const [delegate, setDelegate] = React.useState("");
   React.useEffect(() => {
     if (!approvals.some((approval) => approval.id === selectedApprovalId)) setSelectedApprovalId(approvals[0]?.id ?? "");
   }, [approvals, selectedApprovalId]);
@@ -24327,6 +24351,30 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
     ["Execution", "Approved work is released, routed, or marked complete."],
     ["Audit", "The final decision is preserved in Audit and Archive."]
   ];
+  function createApproval(event: React.FormEvent) {
+    event.preventDefault();
+    const created = onCreateApproval({
+      request: request.trim() || "New governance approval request",
+      route: route.trim() || "Local Office -> Area Office -> District HQ",
+      limit: limit.trim() || "Supervisor review",
+      delegate: delegate.trim() || undefined
+    });
+    setSelectedApprovalId(created.id);
+    setNotice(`${created.request} created and ready for validation.`);
+  }
+  function runSelectedAction(action: "approve" | "sign" | "reject") {
+    if (!selected) return;
+    if (action === "approve") {
+      onApprove(selected.id);
+      setNotice(`${selected.request} approved and marked for execution.`);
+    } else if (action === "sign") {
+      onSign(selected.id);
+      setNotice(`${selected.request} signed. Signature progress updated.`);
+    } else {
+      onReject(selected.id);
+      setNotice(`${selected.request} rejected and closed.`);
+    }
+  }
   return (
     <div className="admin-v2-workspace">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -24351,10 +24399,11 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
         ))}
       </section>
       <section className="admin-v2-toolbar">
-        <button className="primary" onClick={() => onQuickAction("Create approval")} type="button">Create approval</button>
-        <button onClick={() => onQuickAction("Digest")} type="button">Digest</button>
-        <button onClick={() => onQuickAction("Review signatures")} type="button">Review signatures</button>
+        <button className="primary" onClick={() => document.getElementById("admin-v2-create-approval")?.scrollIntoView({ behavior: "smooth", block: "center" })} type="button">Create approval</button>
+        <button onClick={() => { onQuickAction("Digest"); setNotice("Approval digest refreshed from the live workflow status."); }} type="button">Digest</button>
+        <button onClick={() => { selected ? runSelectedAction("sign") : onQuickAction("Review signatures"); }} type="button">Review signatures</button>
       </section>
+      {notice && <div className="admin-v2-live-notice" role="status">{notice}</div>}
       <div className="admin-v2-three">
       <section className="admin-v2-panel">
         <div className="admin-v2-panel-head"><span>Workflow Views</span><strong>{approvals.length} records</strong></div>
@@ -24363,6 +24412,26 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
           <span>Signed {approvals.filter((item) => item.signatures === "complete").length}</span>
           <span>Escalated {approvals.filter((item) => item.state === "Escalated").length}</span>
         </div>
+        <form className="admin-v2-create-form" id="admin-v2-create-approval" onSubmit={createApproval}>
+          <strong>Create approval</strong>
+          <label>
+            <span>Request</span>
+            <input value={request} onChange={(event) => setRequest(event.target.value)} />
+          </label>
+          <label>
+            <span>Route</span>
+            <input value={route} onChange={(event) => setRoute(event.target.value)} />
+          </label>
+          <label>
+            <span>Authority limit</span>
+            <input value={limit} onChange={(event) => setLimit(event.target.value)} />
+          </label>
+          <label>
+            <span>Delegate</span>
+            <input value={delegate} onChange={(event) => setDelegate(event.target.value)} placeholder="Optional" />
+          </label>
+          <button className="primary" type="submit">Create and validate</button>
+        </form>
       </section>
       <section className="admin-v2-panel wide">
         <div className="admin-v2-panel-head"><span>Approval Queue</span><strong>Authority review</strong></div>
@@ -24388,8 +24457,8 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
               <small>{approval.limit}</small>
               <span className={`admin-v2-status ${approval.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{approval.state}</span>
               <div className="admin-v2-row-actions">
-                <button onClick={(event) => { event.stopPropagation(); onApprove(approval.id); }} type="button">Approve</button>
-                <button onClick={(event) => { event.stopPropagation(); onSign(approval.id); }} type="button">Sign</button>
+                <button onClick={(event) => { event.stopPropagation(); setSelectedApprovalId(approval.id); onApprove(approval.id); setNotice(`${approval.request} approved and marked for execution.`); }} type="button">Approve</button>
+                <button onClick={(event) => { event.stopPropagation(); setSelectedApprovalId(approval.id); onSign(approval.id); setNotice(`${approval.request} signed. Signature progress updated.`); }} type="button">Sign</button>
               </div>
             </article>
           ))}
@@ -24410,9 +24479,9 @@ function AdminV2Approvals({ approvals, onApprove, onSign, onReject, onQuickActio
             </div>
             <p><strong>How this approval moves:</strong> validate the request, collect required signatures, execute the decision, then preserve the action in Audit and Archive.</p>
             <div className="admin-v2-actions-row">
-              <button onClick={() => onApprove(selected.id)} type="button">Approve</button>
-              <button onClick={() => onSign(selected.id)} type="button">Sign</button>
-              <button onClick={() => onReject(selected.id)} type="button">Reject</button>
+              <button onClick={() => runSelectedAction("approve")} type="button">Approve</button>
+              <button onClick={() => runSelectedAction("sign")} type="button">Sign</button>
+              <button onClick={() => runSelectedAction("reject")} type="button">Reject</button>
             </div>
           </div>
         )}
