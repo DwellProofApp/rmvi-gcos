@@ -364,6 +364,10 @@ const validators = {
     if (body.password !== undefined) requireString(body.password, "password");
   },
 
+  "POST /api/stations/:id/credentials/reset": (body) => {
+    if (body.password !== undefined) requireString(body.password, "password");
+  },
+
   "POST /api/stations/:id/credential/mfa": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
@@ -374,6 +378,20 @@ const validators = {
   },
 
   "POST /api/stations/:id/credential/unlock": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/stations/:id/credentials/unlock": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/credentials/reset": (body) => {
+    requireEmail(body.email, "email");
+    if (body.password !== undefined) requireString(body.password, "password");
+  },
+
+  "POST /api/credentials/unlock": (body) => {
+    requireEmail(body.email, "email");
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
@@ -395,6 +413,16 @@ const validators = {
 
   "POST /api/messages/:id/status": (body) => {
     if (body.status !== undefined) requireEnum(body.status, statuses, "status");
+  },
+
+  "POST /api/messages/:id/read": (body) => {
+    if (body.reader !== undefined) requireString(body.reader, "reader");
+  },
+
+  "POST /api/messages/:id/acknowledge": (body) => {
+    if (body.status !== undefined) requireEnum(body.status, statuses, "status");
+    if (body.note !== undefined) requireString(body.note, "note");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
   "POST /api/messages/:id/route": (body) => {
@@ -480,6 +508,17 @@ const validators = {
     if (body.state !== undefined) requireString(body.state, "state");
   },
 
+  "POST /api/reports/:id/sign": (body) => {
+    if (body.state !== undefined) requireString(body.state, "state");
+    if (body.status !== undefined) requireString(body.status, "status");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/reports/:id/approve": (body) => {
+    if (body.note !== undefined) requireString(body.note, "note");
+    if (body.routingStage !== undefined) requireString(body.routingStage, "routingStage");
+  },
+
   "POST /api/reports/:id/packet": (body) => {
     if (body.approvalRequest !== undefined) requireString(body.approvalRequest, "approvalRequest");
     if (body.route !== undefined) requireString(body.route, "route");
@@ -533,6 +572,21 @@ const validators = {
 
   "POST /api/approvals/:id/limit": (body) => {
     if (body.limit !== undefined) requireString(body.limit, "limit");
+  },
+
+  "POST /api/approvals/:id/return": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.comment !== undefined) requireString(body.comment, "comment");
+  },
+
+  "POST /api/approvals/:id/evidence": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.comment !== undefined) requireString(body.comment, "comment");
+  },
+
+  "POST /api/approvals/:id/request-evidence": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+    if (body.comment !== undefined) requireString(body.comment, "comment");
   },
 
   "POST /api/approvals/:id/delegate": (body) => {

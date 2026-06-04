@@ -1337,6 +1337,25 @@ export function createServices({ state, record, requirePermission, findById, int
       return item;
     },
 
+    readMessage(id, body) {
+      const item = findById(state.messages, id);
+      item.readAt = new Date().toISOString();
+      item.readBy = body.actor ?? body.reader ?? item.to ?? "Recipient";
+      if (item.status === "Queued") item.status = "Ready";
+      record("EmailRead", item.readBy, item.subject, "Message opened");
+      return item;
+    },
+
+    acknowledgeMessage(id, body) {
+      const item = findById(state.messages, id);
+      item.status = body.status ?? "Approved";
+      item.acknowledgedAt = new Date().toISOString();
+      item.acknowledgedBy = body.actor ?? body.acknowledgedBy ?? item.to ?? "Recipient";
+      item.acknowledgementNote = body.note ?? body.reason ?? "Message acknowledged";
+      record("EmailAcknowledged", item.acknowledgedBy, item.subject, item.acknowledgementNote);
+      return item;
+    },
+
     updateMessageRoute(id, body) {
       const item = findById(state.messages, id);
       item.route = body.route ?? "Current station -> Supervising authority";
@@ -2435,6 +2454,30 @@ export function createServices({ state, record, requirePermission, findById, int
       return item;
     },
 
+    signReport(id, body) {
+      const item = findById(state.reports, id);
+      item.signedAt = new Date().toISOString();
+      item.signedBy = body.actor ?? body.signer ?? "Supervisor";
+      item.signatureStatus = body.status ?? "Signed";
+      item.state = body.state ?? "In Review";
+      item.score = Math.max(item.score, 90);
+      item.routingStage = "Supervisor signed";
+      record("ReportSigned", item.signedBy, item.name, body.note ?? "Report signed");
+      return item;
+    },
+
+    approveReport(id, body) {
+      const item = findById(state.reports, id);
+      item.state = "Approved";
+      item.score = 100;
+      item.approvedAt = new Date().toISOString();
+      item.approvedBy = body.actor ?? body.approver ?? "Supervisor";
+      item.routingStage = body.routingStage ?? "Approved for archive";
+      item.reviewNote = body.note ?? "Report approved";
+      record("ReportApproved", item.approvedBy, item.name, item.reviewNote);
+      return item;
+    },
+
     buildReportGovernancePacket(id, body) {
       const item = findById(state.reports, id);
       item.evidenceStatus = "Evidence packet bundled";
@@ -2613,6 +2656,29 @@ export function createServices({ state, record, requirePermission, findById, int
       item.state = "Rejected";
       item.signatures = "closed";
       record("ApprovalRejected", body.actor, item.request, body.reason ?? "Request rejected");
+      return item;
+    },
+
+    returnApprovalForCorrection(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.state = "Returned";
+      item.signatures = "correction";
+      item.correctionReason = body.reason ?? body.comment ?? "Returned for correction";
+      item.returnedAt = new Date().toISOString();
+      item.returnedBy = body.actor;
+      record("ApprovalReturnedForCorrection", body.actor, item.request, item.correctionReason);
+      return item;
+    },
+
+    requestApprovalEvidence(id, body) {
+      requirePermission(body.actor, "canApprove");
+      const item = findById(state.approvals, id);
+      item.state = "Evidence Requested";
+      item.evidenceRequest = body.reason ?? body.comment ?? "Additional evidence requested";
+      item.evidenceRequestedAt = new Date().toISOString();
+      item.evidenceRequestedBy = body.actor;
+      record("ApprovalEvidenceRequested", body.actor, item.request, item.evidenceRequest);
       return item;
     },
 

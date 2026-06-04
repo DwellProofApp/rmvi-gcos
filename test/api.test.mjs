@@ -767,6 +767,18 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(reviewedMessage.status, "In Review");
 
+    const readMessage = await postJson(`/api/messages/${createdMessage.id}/read`, {
+      reader: "finance@rmvi.org"
+    }, nationalToken);
+    assert.equal(Boolean(readMessage.readAt), true);
+    assert.equal(readMessage.readBy, "np@rmvi.org");
+
+    const acknowledgedMessage = await postJson(`/api/messages/${createdMessage.id}/acknowledge`, {
+      note: "Automated recipient acknowledgement"
+    }, nationalToken);
+    assert.equal(acknowledgedMessage.status, "Approved");
+    assert.equal(acknowledgedMessage.acknowledgementNote, "Automated recipient acknowledgement");
+
     const classifiedMessage = await postJson(`/api/messages/${createdMessage.id}/classify`, {
       kind: "Directive"
     }, nationalToken);
@@ -924,6 +936,19 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(reviewReport.state, "In Review");
     assert.equal(reviewReport.routingStage, "Supervisory review");
 
+    const signedReport = await postJson(`/api/reports/${reports[1].id}/sign`, {
+      note: "Automated report signature"
+    }, nationalToken);
+    assert.equal(signedReport.signatureStatus, "Signed");
+    assert.equal(signedReport.routingStage, "Supervisor signed");
+
+    const approvedReport = await postJson(`/api/reports/${reports[1].id}/approve`, {
+      note: "Automated report approval"
+    }, nationalToken);
+    assert.equal(approvedReport.state, "Approved");
+    assert.equal(approvedReport.score, 100);
+    assert.equal(approvedReport.routingStage, "Approved for archive");
+
     const verifiedReport = await postJson(`/api/reports/${reports[1].id}/verify`, {
       state: "Approved"
     }, nationalToken);
@@ -1053,6 +1078,18 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const signedRequest = await postJson(`/api/approvals/${createdApproval.id}/sign`, {}, nationalToken);
     assert.equal(signedRequest.state, "Signature");
     assert.equal(signedRequest.signatures, "1/2");
+
+    const evidenceRequestApproval = await postJson(`/api/approvals/${createdApproval.id}/request-evidence`, {
+      reason: "Automated evidence request"
+    }, nationalToken);
+    assert.equal(evidenceRequestApproval.state, "Evidence Requested");
+    assert.equal(evidenceRequestApproval.evidenceRequest, "Automated evidence request");
+
+    const returnedApproval = await postJson(`/api/approvals/${createdApproval.id}/return`, {
+      reason: "Automated correction return"
+    }, nationalToken);
+    assert.equal(returnedApproval.state, "Returned");
+    assert.equal(returnedApproval.correctionReason, "Automated correction return");
 
     const routedRequest = await postJson(`/api/approvals/${createdApproval.id}/route`, {
       route: "National -> Executive Review",
@@ -2436,6 +2473,33 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       reason: "Automated credential unlock"
     }, nationalToken);
     assert.equal(unlockedStationCredential.credential.status, "Active");
+
+    const pluralResetStationCredential = await postJson(`/api/stations/${stationId}/credentials/reset`, {
+      password: demoPassword("station-plural-reset")
+    }, nationalToken);
+    assert.equal(pluralResetStationCredential.credential.forceReset, true);
+
+    const pluralUnlockedStationCredential = await postJson(`/api/stations/${stationId}/credentials/unlock`, {
+      reason: "Automated plural credential unlock"
+    }, nationalToken);
+    assert.equal(pluralUnlockedStationCredential.credential.status, "Active");
+
+    const emailResetStationCredential = await postJson("/api/credentials/reset", {
+      email: stations[0].email,
+      password: demoPassword("station-email-reset")
+    }, nationalToken);
+    assert.equal(emailResetStationCredential.credential.forceReset, true);
+
+    const emailUnlockedStationCredential = await postJson("/api/credentials/unlock", {
+      email: stations[0].email,
+      reason: "Automated email credential unlock"
+    }, nationalToken);
+    assert.equal(emailUnlockedStationCredential.credential.status, "Active");
+
+    const emailMfaStationCredential = await postJson(`/api/stations/${stationId}/credential/mfa`, {
+      reason: "Automated MFA requirement after reset aliases"
+    }, nationalToken);
+    assert.equal(emailMfaStationCredential.credential.mfaRequired, true);
 
     const authDigest = await getJson("/api/station-auth/digest", nationalToken);
     assert.equal(authDigest.total >= 4, true);
