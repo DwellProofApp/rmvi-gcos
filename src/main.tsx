@@ -13894,8 +13894,15 @@ function Offices({
   const effectiveParentName = selectedParent?.name || supervisor;
   const reportingRoute = buildReportingRoute(level, effectiveParentName);
   const workflowAccess = workflowAccessForPreset(permissionPreset);
+  const primaryLanding = workflowAccess.includes("Offices")
+    ? "Control Center"
+    : workflowAccess.includes("Approvals")
+      ? "Approvals"
+      : "Reports";
   const activeOffices = offices.filter((office) => !office.archived);
   const provisionedCount = activeOffices.filter((office) => office.status === "Provisioned").length;
+  const activeCount = activeOffices.filter((office) => office.status === "Active").length;
+  const pendingCount = activeOffices.filter((office) => office.status !== "Active").length;
   const supervisorCount = new Set(offices.map((office) => office.supervisor)).size;
   const officeEmailSet = React.useMemo(() => new Set(offices.map((office) => office.email)), [offices]);
   const stationRows = React.useMemo(() => stationDirectory.map((station) => {
@@ -13946,19 +13953,26 @@ function Offices({
   }
 
   return (
-    <section className="module-grid">
-      <div className="panel module-primary">
-        <PanelHeader icon={Building2} title="Office Creation Registry" action={`${filteredOffices.length} visible`} />
-        <div className="office-summary-grid">
-          <Insight label="Total offices" value={String(offices.length)} />
+    <section className="module-grid office-builder-page">
+      <div className="panel module-primary office-command-panel">
+        <PanelHeader icon={Building2} title="Office Registry" action={`${filteredOffices.length} visible`} />
+        <div className="office-hero-strip">
+          <div>
+            <span>Office-based GCOS identity</span>
+            <h2>Create permanent offices, then assign people to serve inside them.</h2>
+            <p>Every office gets an official email, dashboard, inbox, reporting route, permission preset, workflow tools, and audit trail.</p>
+          </div>
+          <div className="office-hero-metrics">
+            <Insight label="Offices" value={String(activeOffices.length)} />
+            <Insight label="Active" value={String(activeCount)} />
+            <Insight label="Pending setup" value={String(pendingCount)} />
+          </div>
+        </div>
+        <div className="office-summary-grid office-snapshot-grid">
           <Insight label="Provisioned" value={String(provisionedCount)} />
           <Insight label="Station identities" value={String(stationDirectory.length)} />
-          <Insight label="Verified" value={String(digest?.verified ?? activeOffices.filter((office) => office.emailVerified).length)} />
-          <Insight label="Watched" value={String(digest?.watched ?? activeOffices.filter((office) => office.watchers?.length).length)} />
-          <Insight label="Noted" value={String(digest?.noted ?? activeOffices.filter((office) => office.notes?.length).length)} />
-          <Insight label="Capacity set" value={String(digest?.capacity ?? activeOffices.filter((office) => office.capacity !== undefined).length)} />
+          <Insight label="Verified emails" value={String(digest?.verified ?? activeOffices.filter((office) => office.emailVerified).length)} />
           <Insight label="Compliant" value={String(digest?.compliant ?? activeOffices.filter((office) => office.complianceStatus).length)} />
-          <Insight label="Archived" value={String(digest?.archived ?? offices.filter((office) => office.archived).length)} />
         </div>
         <div className="registry-toolbar">
           <label>
@@ -13980,44 +13994,49 @@ function Offices({
             <Insight label="Next office" value={digest.nextOffice} />
           </div>
         )}
-        <div className="data-table office-table">
-          <div className="table-row table-head">
-            <span>Office</span><span>Email</span><span>Level</span><span>Supervisor</span><span>Status</span>
-          </div>
+        <div className="office-card-list">
           {filteredOffices.map((office) => (
-            <div className="table-row" key={office.id}>
-              <strong>
-                {office.name}
-                <small>{office.nodeKind ?? "Office"} - {office.department}</small>
-              </strong>
-              <span>{office.email}</span>
-              <span>{office.level}</span>
-              <span>{office.parentName ?? office.supervisor}</span>
-              <div className="table-actions">
-                <StatusPill status={office.status} />
-                <span>{office.permissionPreset ?? "Reporter"}</span>
-                {office.reportingRoute && <span>{office.reportingRoute}</span>}
-                {office.emailVerified && <span>Verified</span>}
-                {office.watchers?.length ? <span>{office.watchers.length} watchers</span> : null}
-                {office.notes?.length ? <span>{office.notes.length} notes</span> : null}
-                {office.capacity !== undefined && <span>{office.capacity} capacity</span>}
-                {office.complianceStatus && <span>{office.complianceStatus}</span>}
-                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeSupervisor(office.id, office.supervisor === "International Headquarters" ? "National Headquarters" : "International Headquarters")}><GitBranch size={14} /> Supervisor</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeStatus(office.id, office.status === "Suspended" ? "Provisioned" : "Suspended")}><LockKeyhole size={14} /> Status</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateDepartment(office.id)}><ScrollText size={14} /> Department</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateLevel(office.id)}><Building2 size={14} /> Level</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onVerifyEmail(office.id)}><ShieldCheck size={14} /> Verify</button>
-                <button onClick={() => onWatchOffice(office.id)}><Bell size={14} /> Watch</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onNoteOffice(office.id)}><MessageSquareText size={14} /> Note</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateCapacity(office.id)}><Users size={14} /> Capacity</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onReviewCompliance(office.id)}><ClipboardCheck size={14} /> Compliance</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onActivateOffice(office.id)}><CheckCircle2 size={14} /> Activate</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onSuspendOffice(office.id)}><AlertTriangle size={14} /> Suspend</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onRotatePassword(office.id)}><RefreshCw size={14} /> Rotate</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onActivateStation(office.id)}><RadioTower size={14} /> Station</button>
-                <button disabled={!permissions.canCreateOffices} onClick={() => onArchiveOffice(office.id)}><ArchiveIcon size={14} /> Archive</button>
+            <article className="office-node-card" key={office.id}>
+              <div className="office-node-main">
+                <div className="office-node-mark">{office.name.split(/\s+/).slice(0, 2).map((word) => word[0]).join("").toUpperCase()}</div>
+                <div>
+                  <strong>{office.name}</strong>
+                  <span>{office.email}</span>
+                  <small>{office.nodeKind ?? "Office"} / {office.department}</small>
+                </div>
               </div>
-            </div>
+              <div className="office-node-meta">
+                <StatusPill status={office.status} />
+                <span>{office.level}</span>
+                <span>{office.permissionPreset ?? "Reporter"}</span>
+                <span>{office.emailVerified ? "Email verified" : "Email pending"}</span>
+              </div>
+              <div className="office-route-line">
+                <GitBranch size={14} />
+                <span>{office.reportingRoute ?? buildReportingRoute(office.level, office.parentName ?? office.supervisor)}</span>
+              </div>
+              <div className="office-node-actions">
+                <button disabled={!permissions.canCreateOffices} onClick={() => onActivateOffice(office.id)}><CheckCircle2 size={14} /> Activate</button>
+                <button disabled={!permissions.canCreateOffices} onClick={() => onVerifyEmail(office.id)}><ShieldCheck size={14} /> Verify email</button>
+                <details className="office-more-menu">
+                  <summary>More</summary>
+                  <div>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onActivateStation(office.id)}><RadioTower size={14} /> Activate station</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onRotatePassword(office.id)}><RefreshCw size={14} /> Rotate access</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeSupervisor(office.id, office.supervisor === "International Headquarters" ? "National Headquarters" : "International Headquarters")}><GitBranch size={14} /> Change supervisor</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateDepartment(office.id)}><ScrollText size={14} /> Department</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateLevel(office.id)}><Building2 size={14} /> Level</button>
+                    <button onClick={() => onWatchOffice(office.id)}><Bell size={14} /> Watch</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onNoteOffice(office.id)}><MessageSquareText size={14} /> Add note</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateCapacity(office.id)}><Users size={14} /> Capacity</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onReviewCompliance(office.id)}><ClipboardCheck size={14} /> Compliance</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onUpdateOfficeStatus(office.id, office.status === "Suspended" ? "Provisioned" : "Suspended")}><LockKeyhole size={14} /> Status</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onSuspendOffice(office.id)}><AlertTriangle size={14} /> Suspend</button>
+                    <button disabled={!permissions.canCreateOffices} onClick={() => onArchiveOffice(office.id)}><ArchiveIcon size={14} /> Archive</button>
+                  </div>
+                </details>
+              </div>
+            </article>
           ))}
           {filteredOffices.length === 0 && <div className="empty-state">No offices match the current hierarchy filter.</div>}
         </div>
@@ -14049,8 +14068,8 @@ function Offices({
         </div>
       </div>
 
-      <div className="panel module-side">
-        <PanelHeader icon={Plus} title="Create Office" action="No code" />
+      <div className="panel module-side office-create-panel">
+        <PanelHeader icon={Plus} title="Create Office" action="Guided setup" />
         {!permissions.canCreateOffices && (
           <div className="permission-warning">
             <LockKeyhole size={16} />
@@ -14058,67 +14077,84 @@ function Offices({
           </div>
         )}
         <form className="office-form" onSubmit={submit}>
-          <label>
-            <span>Office name</span>
-            <input value={name} onChange={(event) => setName(event.target.value)} />
-          </label>
-          <label>
-            <span>Station email</span>
-            <input value={email} onChange={(event) => setEmail(event.target.value)} />
-          </label>
-          <button className="secondary" type="button" onClick={() => setEmail(`${slugifyStationName(name)}@rmvi.org`)}>
-            <Mail size={14} /> Generate official email
-          </button>
-          <label>
-            <span>Node type</span>
-            <select value={nodeKind} onChange={(event) => setNodeKind(event.target.value as OrgNodeKind)}>
-              {organizationNodeKinds.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>
-          <label>
-            <span>Hierarchy level</span>
-            <select value={level} onChange={(event) => setLevel(event.target.value as StationLevel)}>
-              {hierarchy.map((node) => (
-                <option key={node.level} value={node.level}>{node.level}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Department</span>
-            <input value={department} onChange={(event) => setDepartment(event.target.value)} />
-          </label>
-          <label>
-            <span>Parent office / directorate</span>
-            <select value={parentId} onChange={(event) => setParentId(event.target.value)}>
-              <option value="">Manual parent</option>
-              {parentOptions.map((office) => (
-                <option key={office.id} value={office.id}>{office.name} - {office.level}</option>
-              ))}
-            </select>
-          </label>
-          <label>
-            <span>Manual supervisor / parent</span>
-            <input value={supervisor} onChange={(event) => setSupervisor(event.target.value)} />
-          </label>
-          <label>
-            <span>Permission preset</span>
-            <select value={permissionPreset} onChange={(event) => setPermissionPreset(event.target.value as PermissionPreset)}>
-              {permissionPresets.map((option) => <option key={option} value={option}>{option}</option>)}
-            </select>
-          </label>
-          <div className="provision-summary compact">
-            <strong>Generated structure</strong>
-            <span>{reportingRoute}</span>
-            <span>{workflowAccess.join(", ")}</span>
+          <div className="office-form-section">
+            <strong>1. Office identity</strong>
+            <label>
+              <span>Office name</span>
+              <input value={name} onChange={(event) => setName(event.target.value)} />
+            </label>
+            <label>
+              <span>Official station email</span>
+              <input value={email} onChange={(event) => setEmail(event.target.value)} />
+            </label>
+            <button className="secondary" type="button" onClick={() => setEmail(`${slugifyStationName(name)}@rmvi.org`)}>
+              <Mail size={14} /> Generate @rmvi.org email
+            </button>
+          </div>
+          <div className="office-form-section">
+            <strong>2. Placement</strong>
+            <label>
+              <span>Office type</span>
+              <select value={nodeKind} onChange={(event) => setNodeKind(event.target.value as OrgNodeKind)}>
+                {organizationNodeKinds.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Hierarchy level</span>
+              <select value={level} onChange={(event) => setLevel(event.target.value as StationLevel)}>
+                {hierarchy.map((node) => (
+                  <option key={node.level} value={node.level}>{node.level}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Department / ministry area</span>
+              <input value={department} onChange={(event) => setDepartment(event.target.value)} />
+            </label>
+            <label>
+              <span>Reports to</span>
+              <select value={parentId} onChange={(event) => setParentId(event.target.value)}>
+                <option value="">Use manual parent below</option>
+                {parentOptions.map((office) => (
+                  <option key={office.id} value={office.id}>{office.name} - {office.level}</option>
+                ))}
+              </select>
+            </label>
+            {!parentId && (
+              <label>
+                <span>Manual parent office</span>
+                <input value={supervisor} onChange={(event) => setSupervisor(event.target.value)} />
+              </label>
+            )}
+          </div>
+          <div className="office-form-section">
+            <strong>3. Access package</strong>
+            <label>
+              <span>Permission preset</span>
+              <select value={permissionPreset} onChange={(event) => setPermissionPreset(event.target.value as PermissionPreset)}>
+                {permissionPresets.map((option) => <option key={option} value={option}>{option}</option>)}
+              </select>
+            </label>
+          </div>
+          <div className="office-preview-card">
+            <strong>{name}</strong>
+            <span>{email}</span>
+            <div>
+              <small>{level}</small>
+              <small>{permissionPreset}</small>
+              <small>Landing: {primaryLanding}</small>
+            </div>
+            <p>{reportingRoute}</p>
+            <p>{workflowAccess.join(", ")}</p>
           </div>
           {feedback && <div className="login-error">{feedback}</div>}
-          <button disabled={!permissions.canCreateOffices} type="submit"><Plus size={15} /> Provision workstation</button>
+          <button disabled={!permissions.canCreateOffices} type="submit"><Plus size={15} /> Create office</button>
         </form>
 
         <div className="provision-summary">
           <strong>Generated assets</strong>
-          <span>Dashboard, inbox, reporting route, workflow access, permission profile, station email, analytics panel, audit ledger registration.</span>
-          <span>Default departments are templates only. Create AI Research Unit, Legal Affairs, RMVI Television, or any future structure from this same control.</span>
+          <span>Dashboard, ChurchMail inbox, official email, reporting path, permission profile, workflow tools, station identity, and audit record.</span>
+          <span>After creation, use Activate, Verify email, and Activate station to complete launch readiness.</span>
         </div>
       </div>
     </section>

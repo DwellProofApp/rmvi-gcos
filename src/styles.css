@@ -16835,6 +16835,314 @@ body {
   }
 }
 
+/* Office creation product pass */
+.app-shell:not(.admin-shell) .office-builder-page {
+  align-items: start;
+}
+
+.app-shell:not(.admin-shell) .office-command-panel {
+  overflow: visible;
+}
+
+.app-shell:not(.admin-shell) .office-hero-strip {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.42fr);
+  gap: 18px;
+  align-items: stretch;
+  margin-bottom: 16px;
+  padding: 22px;
+  border: 1px solid rgba(11, 47, 107, 0.14);
+  border-radius: 16px;
+  background:
+    linear-gradient(135deg, rgba(11, 47, 107, 0.97), rgba(31, 73, 146, 0.93)),
+    #0b2f6b;
+  color: #ffffff;
+  box-shadow: 0 18px 44px rgba(11, 47, 107, 0.18);
+}
+
+.app-shell:not(.admin-shell) .office-hero-strip span {
+  display: inline-flex;
+  width: fit-content;
+  margin-bottom: 8px;
+  color: #f4c542;
+  font-size: 11px;
+  font-weight: 950;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.app-shell:not(.admin-shell) .office-hero-strip h2 {
+  max-width: 780px;
+  margin: 0;
+  color: #ffffff;
+  font-size: clamp(24px, 3vw, 40px);
+  line-height: 1.06;
+}
+
+.app-shell:not(.admin-shell) .office-hero-strip p {
+  max-width: 760px;
+  margin: 10px 0 0;
+  color: rgba(255, 255, 255, 0.82);
+  line-height: 1.5;
+}
+
+.app-shell:not(.admin-shell) .office-hero-metrics,
+.app-shell:not(.admin-shell) .office-snapshot-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.app-shell:not(.admin-shell) .office-hero-metrics {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.app-shell:not(.admin-shell) .office-hero-metrics .insight {
+  border-color: rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.app-shell:not(.admin-shell) .office-snapshot-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.app-shell:not(.admin-shell) .office-card-list {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.app-shell:not(.admin-shell) .office-node-card {
+  display: grid;
+  grid-template-columns: minmax(260px, 1.1fr) minmax(220px, 0.72fr);
+  gap: 12px 16px;
+  padding: 16px;
+  border: 1px solid #d8e2f2;
+  border-radius: 16px;
+  background: #ffffff;
+  color: #10213f;
+  box-shadow: 0 12px 28px rgba(16, 33, 63, 0.06);
+}
+
+.app-shell:not(.admin-shell) .office-node-main {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  min-width: 0;
+}
+
+.app-shell:not(.admin-shell) .office-node-mark {
+  display: grid;
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  place-items: center;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #c99000, #f4c542);
+  color: #ffffff;
+  font-size: 13px;
+  font-weight: 950;
+}
+
+.app-shell:not(.admin-shell) .office-node-main strong,
+.app-shell:not(.admin-shell) .office-preview-card strong {
+  display: block;
+  color: #10213f;
+  font-size: 16px;
+  line-height: 1.2;
+}
+
+.app-shell:not(.admin-shell) .office-node-main span,
+.app-shell:not(.admin-shell) .office-preview-card span {
+  display: block;
+  margin-top: 3px;
+  color: #0b2f6b;
+  font-size: 13px;
+  font-weight: 850;
+  overflow-wrap: anywhere;
+}
+
+.app-shell:not(.admin-shell) .office-node-main small {
+  display: block;
+  margin-top: 4px;
+  color: #5b6680;
+  font-size: 12px;
+}
+
+.app-shell:not(.admin-shell) .office-node-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  align-content: start;
+  justify-content: flex-end;
+}
+
+.app-shell:not(.admin-shell) .office-node-meta > span {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 9px;
+  border: 1px solid #d8e2f2;
+  border-radius: 999px;
+  background: #f8fbff;
+  color: #47536b;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.app-shell:not(.admin-shell) .office-route-line {
+  display: flex;
+  grid-column: 1 / -1;
+  gap: 8px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #f8fbff;
+  color: #5b6680;
+  font-size: 12px;
+  line-height: 1.4;
+  overflow-wrap: anywhere;
+}
+
+.app-shell:not(.admin-shell) .office-node-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.app-shell:not(.admin-shell) .office-node-actions button,
+.app-shell:not(.admin-shell) .office-more-menu summary {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 11px;
+  border: 1px solid #d8e2f2;
+  border-radius: 10px;
+  background: #ffffff;
+  color: #0b2f6b;
+  font-size: 12px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.app-shell:not(.admin-shell) .office-node-actions > button:first-child {
+  border-color: #0b2f6b;
+  background: #0b2f6b;
+  color: #ffffff;
+}
+
+.app-shell:not(.admin-shell) .office-more-menu {
+  position: relative;
+}
+
+.app-shell:not(.admin-shell) .office-more-menu summary {
+  list-style: none;
+}
+
+.app-shell:not(.admin-shell) .office-more-menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.app-shell:not(.admin-shell) .office-more-menu[open] > div {
+  position: absolute;
+  z-index: 12;
+  right: 0;
+  top: calc(100% + 8px);
+  display: grid;
+  width: min(280px, calc(100vw - 48px));
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #d8e2f2;
+  border-radius: 14px;
+  background: #ffffff;
+  box-shadow: 0 18px 42px rgba(16, 33, 63, 0.18);
+}
+
+.app-shell:not(.admin-shell) .office-more-menu[open] button {
+  width: 100%;
+  justify-content: flex-start;
+  box-shadow: none;
+}
+
+.app-shell:not(.admin-shell) .office-create-panel {
+  position: sticky;
+  top: 16px;
+}
+
+.app-shell:not(.admin-shell) .office-form-section {
+  display: grid;
+  gap: 10px;
+  padding: 13px;
+  border: 1px solid #d8e2f2;
+  border-radius: 14px;
+  background: #f8fbff;
+}
+
+.app-shell:not(.admin-shell) .office-form-section > strong {
+  color: #10213f;
+  font-size: 13px;
+}
+
+.app-shell:not(.admin-shell) .office-preview-card {
+  display: grid;
+  gap: 8px;
+  padding: 14px;
+  border: 1px solid rgba(244, 197, 66, 0.55);
+  border-radius: 16px;
+  background: #fff8e8;
+  color: #10213f;
+}
+
+.app-shell:not(.admin-shell) .office-preview-card div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.app-shell:not(.admin-shell) .office-preview-card small {
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: #ffffff;
+  color: #755600;
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.app-shell:not(.admin-shell) .office-preview-card p {
+  margin: 0;
+  color: #5b6680;
+  font-size: 12px;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+  .app-shell:not(.admin-shell) .office-hero-strip,
+  .app-shell:not(.admin-shell) .office-node-card {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell:not(.admin-shell) .office-node-meta {
+    justify-content: flex-start;
+  }
+}
+
+@media (max-width: 760px) {
+  .app-shell:not(.admin-shell) .office-hero-metrics,
+  .app-shell:not(.admin-shell) .office-snapshot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .app-shell:not(.admin-shell) .office-create-panel {
+    position: static;
+  }
+}
+
 /* RMVI workstation redesign v2: royal-blue command surface with compact, intentional pages. */
 .admin-shell .workspace {
   background:
