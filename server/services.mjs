@@ -2,6 +2,9 @@ import {
   aiDraft,
   approval,
   calendarEvent,
+  chatMessage,
+  chatPresence,
+  chatRoom,
   documentRecord,
   escalation,
   message,
@@ -53,6 +56,9 @@ export function createServices({ state, record, requirePermission, findById, int
       policies: scoped.policies,
       calendarEvents: scoped.calendarEvents,
       liveSessions: scoped.liveSessions,
+      chatRooms: scoped.chatRooms,
+      chatMessages: scoped.chatMessages,
+      chatPresence: scoped.chatPresence,
       personnel: scoped.personnel,
       escalations: scoped.escalations,
       transfers: scoped.transfers,
@@ -77,6 +83,9 @@ export function createServices({ state, record, requirePermission, findById, int
         policies: state.policies,
         calendarEvents: state.calendarEvents,
         liveSessions: state.liveSessions ?? [],
+        chatRooms: state.chatRooms ?? [],
+        chatMessages: state.chatMessages ?? [],
+        chatPresence: state.chatPresence ?? [],
         personnel: state.personnel,
         escalations: state.escalations,
         transfers: state.transfers,
@@ -95,6 +104,12 @@ export function createServices({ state, record, requirePermission, findById, int
       policies: state.policies.filter((item) => recordMatchesScope(item, scope, ["title", "category", "owner", "summary", "distributedTo", "trainingAudience"])),
       calendarEvents: state.calendarEvents.filter((item) => recordMatchesScope(item, scope, ["title", "category", "owner", "linkedTask", "linkedReport"])),
       liveSessions: (state.liveSessions ?? []).filter((item) => recordMatchesScope(item, scope, ["title", "host", "route", "linkedRecord", "purpose"]) || (item.participants ?? []).map(normalizeStationEmail).includes(scope.email)),
+      chatRooms: (state.chatRooms ?? []).filter((room) => !room.archived && ((room.participants ?? []).map(normalizeStationEmail).includes(scope.email) || recordMatchesScope(room, scope, ["name", "department", "createdBy", "linkedRecord"]))),
+      chatMessages: (state.chatMessages ?? []).filter((message) => {
+        const visibleRoomIds = new Set((state.chatRooms ?? []).filter((room) => !room.archived && ((room.participants ?? []).map(normalizeStationEmail).includes(scope.email) || recordMatchesScope(room, scope, ["name", "department", "createdBy", "linkedRecord"]))).map((room) => room.id));
+        return visibleRoomIds.has(message.roomId) && !message.archived;
+      }),
+      chatPresence: state.chatPresence ?? [],
       personnel: state.personnel.filter((item) => recordMatchesScope(item, scope, ["name", "role", "currentStation", "assignedStation", "stationAccess", "linkedTask"])),
       escalations: state.escalations.filter((item) => recordMatchesScope(item, scope, ["source", "item", "reason", "owner", "linkedTask", "linkedReport", "linkedApproval"])),
       transfers: state.transfers.filter((item) => recordMatchesScope(item, scope, ["person", "from", "to", "step", "risk", "personnelRecord", "linkedTask", "linkedReport"])),
@@ -527,6 +542,147 @@ export function createServices({ state, record, requirePermission, findById, int
         files: sessions.reduce((sum, item) => sum + (item.files?.length ?? 0), 0),
         nextSession: sessions.find((item) => !item.archived)?.title ?? "No live sessions"
       };
+    },
+
+    chatDigest(actor) {
+      state.chatRooms ??= [];
+      state.chatMessages ??= [];
+      state.chatPresence ??= [];
+      const normalizedActor = normalizeStationEmail(actor ?? "");
+      const visibleRooms = state.chatRooms.filter((room) => !room.archived && (!actor || room.participants?.includes(normalizedActor) || normalizedActor === "admin@rmvi.org"));
+      const visibleRoomIds = new Set(visibleRooms.map((room) => room.id));
+      const visibleMessages = state.chatMessages.filter((item) => visibleRoomIds.has(item.roomId) && !item.archived);
+      return {
+        generatedAt: new Date().toISOString(),
+        rooms: visibleRooms.length,
+        messages: visibleMessages.length,
+        online: state.chatPresence.filter((item) => item.status === "Online").length,
+        unread: actor ? visibleMessages.filter((item) => !(item.readBy ?? []).includes(normalizedActor)).length : 0,
+        pinned: visibleMessages.filter((item) => item.pinned).length,
+        nextRoom: visibleRooms[0]?.name ?? "No active department rooms"
+      };
+    },
+
+    createChatRoom(body) {
+      state.chatRooms ??= [];
+      state.chatMessages ??= [];
+      const actor = normalizeStationEmail(body.actor ?? body.createdBy ?? "admin@rmvi.org");
+      const participants = Array.from(new Set([actor, ...(body.participants ?? [])].map(normalizeStationEmail)));
+      const created = chatRoom(body.name ?? "Department room", body.kind ?? "Department", body.department ?? "General", participants, actor, {
+        linkedRecord: body.linkedRecord
+      });
+      state.chatRooms.unshift(created);
+      record("DepartmentChatRoomCreated", actor, created.name, `${participants.length} office participants`);
+      return created;
+    },
+
+    sendChatMessage(roomId, body) {
+      state.chatRooms ??= [];
+      state.chatMessages ??= [];
+      const room = findById(state.chatRooms, roomId);
+      const actor = normalizeStationEmail(body.actor ?? body.sender ?? "admin@rmvi.org");
+      if (!room.participants.includes(actor)) room.participants.push(actor);
+      const created = chatMessage(room.id, actor, body.body ?? body.message ?? "New department update", {
+        linkedReport: body.linkedReport,
+        linkedApproval: body.linkedApproval,
+        linkedTask: body.linkedTask
+      });
+      room.lastMessageAt = created.createdAt;
+      state.chatMessages.unshift(created);
+      record("DepartmentChatMessageSent", actor, room.name, created.body.slice(0, 90));
+      return created;
+    },
+
+    updateChatPresence(body) {
+      state.chatPresence ??= [];
+      const actor = normalizeStationEmail(body.actor ?? body.email);
+      const existing = state.chatPresence.find((item) => item.email === actor);
+      const payload = {
+        email: actor,
+        status: body.status ?? "Online",
+        lastSeenAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        activeRoomId: body.activeRoomId
+      };
+      if (existing) Object.assign(existing, payload);
+      else state.chatPresence.unshift(chatPresence(actor, payload.status, payload));
+      record("DepartmentChatPresenceUpdated", actor, payload.status, payload.activeRoomId ?? "No active room");
+      return existing ?? state.chatPresence[0];
+    },
+
+    markChatRoomRead(roomId, body) {
+      state.chatMessages ??= [];
+      const room = findById(state.chatRooms ?? [], roomId);
+      const reader = normalizeStationEmail(body.actor ?? body.reader);
+      const updated = state.chatMessages.filter((item) => item.roomId === room.id).map((item) => {
+        item.readBy ??= [];
+        if (!item.readBy.includes(reader)) item.readBy.push(reader);
+        return item;
+      });
+      record("DepartmentChatRoomRead", reader, room.name, `${updated.length} messages marked read`);
+      return { room, messages: updated };
+    },
+
+    pinChatMessage(id, body) {
+      const item = findById(state.chatMessages ?? [], id);
+      item.pinned = body.pinned ?? !item.pinned;
+      record("DepartmentChatMessagePinned", body.actor, item.roomId, item.body.slice(0, 80));
+      return item;
+    },
+
+    archiveChatRoom(roomId, body) {
+      const room = findById(state.chatRooms ?? [], roomId);
+      room.archived = true;
+      room.archivedBy = body.actor;
+      room.archiveReason = body.reason ?? "Archived from department chat";
+      room.archivedAt = new Date().toISOString();
+      record("DepartmentChatRoomArchived", body.actor, room.name, room.archiveReason);
+      return room;
+    },
+
+    createChatTask(roomId, body) {
+      const room = findById(state.chatRooms ?? [], roomId);
+      const latest = (state.chatMessages ?? []).find((item) => item.roomId === room.id);
+      const created = task(body.title ?? `Follow up: ${room.name}`, room.department ?? "Department Chat", body.assignee ?? body.actor, body.priority ?? "Medium", body.due ?? "Today", "Queued");
+      created.linkedChatRoomId = room.id;
+      created.description = body.description ?? latest?.body ?? "Follow up from department chat";
+      state.tasks.unshift(created);
+      record("DepartmentChatTaskCreated", body.actor, created.title, room.name);
+      return created;
+    },
+
+    async startChatMeeting(roomId, body) {
+      const room = findById(state.chatRooms ?? [], roomId);
+      const created = await this.createLiveSession({
+        actor: body.actor,
+        title: body.title ?? `${room.name} meeting`,
+        host: body.actor ?? room.createdBy,
+        sessionType: "Department Room",
+        status: "Live",
+        linkedRecord: room.name,
+        route: room.participants.join(" -> "),
+        purpose: body.purpose ?? "Live department coordination",
+        participants: room.participants
+      });
+      room.liveSessionId = created.id;
+      record("DepartmentChatMeetingStarted", body.actor, room.name, created.joinUrl ?? "Meeting room created");
+      return created;
+    },
+
+    async escalateChatToChurchMail(roomId, body) {
+      const room = findById(state.chatRooms ?? [], roomId);
+      const thread = state.chatMessages.filter((item) => item.roomId === room.id).slice(0, 5).reverse();
+      const created = await this.createMessage({
+        actor: body.actor,
+        kind: body.kind ?? "Notification",
+        subject: body.subject ?? `${room.name} chat summary`,
+        from: body.actor ?? room.createdBy,
+        status: "Ready",
+        files: body.files ?? "Department chat summary",
+        body: thread.map((item) => `${item.sender}: ${item.body}`).join("\n")
+      });
+      room.summaryMessageId = created.id;
+      record("DepartmentChatSummarySent", body.actor, room.name, created.subject);
+      return created;
     },
 
     async createLiveSession(body) {

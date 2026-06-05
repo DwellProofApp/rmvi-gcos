@@ -175,6 +175,12 @@ type GovernanceTask = { id: string; title: string; owner: string; assignee: stri
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; hostEmail?: string; createdBy?: string; accessMode?: string; meetingPolicy?: string; invitedOnly?: boolean; invitationLog?: { participant: string; invitedBy: string; invitedAt: string; status: string; deliveryStatus?: string; respondedAt?: string }[]; rsvpStatus?: Record<string, { status: string; respondedAt: string; note?: string }>; videoProvider?: string; roomName?: string; joinUrl?: string; videoExpiresAt?: string | null; videoError?: string; participants?: string[]; checkedInParticipants?: string[]; joinAudit?: { actor: string; joinedAt: string; provider: string }[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; polls?: { id: string; question: string; options: string[]; votes: Record<string, string[]>; status: string; createdBy: string; createdAt: string; updatedAt?: string }[]; resolutions?: { id: string; title: string; status: string; movedBy: string; secondedBy?: string; votesFor: number; votesAgainst: number; createdAt: string; passedAt?: string; linkedApprovalId?: string }[]; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; reminderMessageId?: string; reminderSentAt?: string; handoffMessageId?: string; handoffSentAt?: string; handoffRoute?: string; followUpTaskId?: string; followUpLedger?: { status: string; missingParticipants: string[]; openActionItems: string[]; owner: string; builtAt: string }; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; outcomeReportId?: string; outcomeReportCreatedAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; minutesMessageId?: string; minutesSentAt?: string; minutesSignatures?: { signer: string; role: string; signedAt: string; attestation: string }[]; minutesSignatureStatus?: string; sealedDocumentId?: string; sealedAt?: string; sealedBy?: string; sealReason?: string; resolutionApprovalId?: string; riskReview?: { score: number; status: string; issues: string[]; reviewedAt: string; reviewedBy: string }; riskEscalationId?: string; connectivity?: { status: string; bandwidthMode: string; lastCheckedAt: string; checkedBy: string }; fallbackChannel?: { channel: string; reason: string; activatedAt: string; activatedBy: string }; continuityAlertId?: string; offlineNotes?: { id: string; author: string; body: string; station: string; createdAt: string }[]; recoverySummary?: { status: string; summary: string; syncedAt: string; syncedBy: string }; aiBrief?: { id: string; title: string; summary: string; risks: string; nextActions: string[]; generatedAt: string; generatedBy: string }; aiBriefDocumentId?: string; playbook?: { name: string; checklist: string[]; appliedAt: string; appliedBy: string; roles?: Record<string, string> }; recurringSchedule?: { frequency: string; nextRun: string; owner: string; createdAt: string }; recurringCalendarEventId?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
+type ChatPresenceStatus = "Online" | "Away" | "Offline";
+type ChatRoomKind = "Department" | "Direct" | "Operations" | "Meeting";
+type DepartmentChatRoom = { id: string; name: string; kind: ChatRoomKind | string; department: string; participants: string[]; createdBy: string; createdAt: string; lastMessageAt?: string; linkedRecord?: string; archived?: boolean; liveSessionId?: string; summaryMessageId?: string };
+type DepartmentChatMessage = { id: string; roomId: string; sender: string; body: string; createdAt: string; readBy?: string[]; pinned?: boolean; linkedReport?: string; linkedApproval?: string; linkedTask?: string; archived?: boolean };
+type ChatPresence = { email: string; status: ChatPresenceStatus | string; lastSeenAt: string; activeRoomId?: string };
+type ChatDigest = { generatedAt: string; rooms: number; messages: number; online: number; unread: number; pinned: number; nextRoom: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
@@ -2450,6 +2456,25 @@ const initialLiveSessions: LiveSession[] = [
   { id: "live-003", title: "Executive emergency briefing", host: "International Executive Workstation", sessionType: "Broadcast", status: "Priority", linkedRecord: "Construction milestone report", route: "HQ broadcast channel", purpose: "Coordinate escalation response", participants: ["international@rmvi.org", "admin@rmvi.org"], notes: ["Construction packet needs evidence confirmation"], files: [], createdAt: "08:25 PM" }
 ];
 
+const initialChatRooms: DepartmentChatRoom[] = [
+  { id: "chat-room-ops", name: "General Operations", kind: "Operations", department: "Operations", participants: ["admin@rmvi.org", "np@rmvi.org", "district_admin@rmvi.org", "local_branch_017@rmvi.org"], createdBy: "admin@rmvi.org", createdAt: "08:05 PM", lastMessageAt: "08:22 PM" },
+  { id: "chat-room-finance", name: "Finance Desk", kind: "Department", department: "Finance", participants: ["finance@rmvi.org", "audit@rmvi.org", "np@rmvi.org"], createdBy: "finance@rmvi.org", createdAt: "08:08 PM", lastMessageAt: "08:20 PM" },
+  { id: "chat-room-mission", name: "Mission Coordination", kind: "Department", department: "Mission", participants: ["mission@rmvi.org", "district_admin@rmvi.org", "local_branch_017@rmvi.org"], createdBy: "mission@rmvi.org", createdAt: "08:12 PM", lastMessageAt: "08:18 PM" }
+];
+
+const initialChatMessages: DepartmentChatMessage[] = [
+  { id: "chat-msg-001", roomId: "chat-room-ops", sender: "admin@rmvi.org", body: "Please confirm all offices can see their monthly report assignments before tomorrow's review.", createdAt: "08:14 PM", readBy: ["admin@rmvi.org", "np@rmvi.org"] },
+  { id: "chat-msg-002", roomId: "chat-room-finance", sender: "finance@rmvi.org", body: "Finance desk is ready to review the budget proposal once evidence is attached.", createdAt: "08:20 PM", readBy: ["finance@rmvi.org"], linkedReport: "Monthly Budget Proposal" },
+  { id: "chat-msg-003", roomId: "chat-room-mission", sender: "mission@rmvi.org", body: "Mission office is coordinating the church growth report route with Local Branch 017.", createdAt: "08:18 PM", readBy: ["mission@rmvi.org", "local_branch_017@rmvi.org"], linkedReport: "Monthly Church Growth Activities Report" }
+];
+
+const initialChatPresence: ChatPresence[] = [
+  { email: "admin@rmvi.org", status: "Online", lastSeenAt: "now", activeRoomId: "chat-room-ops" },
+  { email: "finance@rmvi.org", status: "Online", lastSeenAt: "2 min ago", activeRoomId: "chat-room-finance" },
+  { email: "mission@rmvi.org", status: "Away", lastSeenAt: "7 min ago", activeRoomId: "chat-room-mission" },
+  { email: "local_branch_017@rmvi.org", status: "Offline", lastSeenAt: "28 min ago" }
+];
+
 const initialPersonnel: PersonRecord[] = [
   { id: "per-001", name: "Rev. Daniel Moore", role: "District Coordinator", currentStation: "Buchanan District", assignedStation: "Riverbend Area Office", status: "Transfer Pending" },
   { id: "per-002", name: "Sis. Amelia Hart", role: "Education Desk Officer", currentStation: "Local Branch 017", assignedStation: "County Education Desk", status: "Active" },
@@ -3418,6 +3443,9 @@ function App() {
   const [policies, setPolicies] = usePersistentState("gcos.policies", initialPolicies);
   const [calendarEvents, setCalendarEvents] = usePersistentState("gcos.calendarEvents", initialCalendarEvents);
   const [liveSessions, setLiveSessions] = usePersistentState("gcos.liveSessions", initialLiveSessions);
+  const [chatRooms, setChatRooms] = usePersistentState("gcos.chatRooms", initialChatRooms);
+  const [chatMessages, setChatMessages] = usePersistentState("gcos.chatMessages", initialChatMessages);
+  const [chatPresence, setChatPresence] = usePersistentState("gcos.chatPresence", initialChatPresence);
   const [personnel, setPersonnel] = usePersistentState("gcos.personnel", initialPersonnel);
   const [transfers, setTransfers] = usePersistentState("gcos.transfers", initialTransfers);
   const [offices, setOffices] = usePersistentState("gcos.offices", initialOffices);
@@ -3453,6 +3481,7 @@ function App() {
   const [reportDigest, setReportDigest] = React.useState<ReportDigest | null>(null);
   const [approvalDigest, setApprovalDigest] = React.useState<ApprovalDigest | null>(null);
   const [aiDraftDigest, setAiDraftDigest] = React.useState<AiDraftDigest | null>(null);
+  const [chatDigest, setChatDigest] = React.useState<ChatDigest | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => {
     const directory = new Map<string, StationCard>();
     stations.filter((station) => station.status !== "Deleted").forEach((station) => {
@@ -3642,6 +3671,8 @@ function App() {
       ...policies.map((item) => ({ id: item.id, section: "Policies" as Section, title: item.title, meta: `${item.category} - ${item.owner} - ${item.summary}`, status: item.status })),
       ...calendarEvents.map((item) => ({ id: item.id, section: "Calendar" as Section, title: item.title, meta: `${item.category} - ${item.owner} - ${item.date} - ${item.priority}`, status: item.status })),
       ...liveSessions.map((item) => ({ id: item.id, section: "Live Comms" as Section, title: item.title, meta: `${item.sessionType} - ${item.host} - ${item.route} - ${item.linkedRecord}`, status: item.status })),
+      ...chatRooms.map((item) => ({ id: item.id, section: "Live Comms" as Section, title: item.name, meta: `${item.department} - ${(item.participants ?? []).join(", ")}`, status: item.kind })),
+      ...chatMessages.map((item) => ({ id: item.id, section: "Live Comms" as Section, title: item.body, meta: `${item.sender} - ${item.linkedReport ?? item.linkedApproval ?? item.linkedTask ?? "Department message"}`, status: item.pinned ? "Pinned" : "Message" })),
       ...scopedPersonnel.map((item) => ({ id: item.id, section: "Personnel" as Section, title: item.name, meta: `${item.role} - ${item.currentStation} -> ${item.assignedStation}`, status: item.status })),
       ...scopedEscalations.map((item) => ({ id: item.id, section: "Escalations" as Section, title: item.item, meta: `${item.owner} - ${item.reason}`, status: item.status })),
       ...offices.map((item) => ({ id: item.id, section: "Offices" as Section, title: item.name, meta: `${item.email} - ${item.level} - ${item.supervisor}`, status: item.status })),
@@ -3655,7 +3686,7 @@ function App() {
       .filter((record) => allowedSections.includes(record.section))
       .filter((record) => [record.title, record.meta, record.status, record.section].join(" ").toLowerCase().includes(query))
       .slice(0, 8);
-  }, [allowedSections, auditRows, calendarEvents, liveSessions, offices, policies, scopedApprovals, scopedDocuments, scopedEscalations, scopedMessages, scopedPersonnel, scopedReports, scopedTasks, scopedTransfers, searchQuery]);
+  }, [allowedSections, auditRows, calendarEvents, chatMessages, chatRooms, liveSessions, offices, policies, scopedApprovals, scopedDocuments, scopedEscalations, scopedMessages, scopedPersonnel, scopedReports, scopedTasks, scopedTransfers, searchQuery]);
 
   function openSection(section: Section) {
     const nextSection = allowedSections.includes(section) ? section : "Control Center";
@@ -3688,6 +3719,9 @@ function App() {
         policies: Policy[];
         calendarEvents: CalendarEvent[];
         liveSessions: LiveSession[];
+        chatRooms?: DepartmentChatRoom[];
+        chatMessages?: DepartmentChatMessage[];
+        chatPresence?: ChatPresence[];
         personnel: PersonRecord[];
         escalations: Escalation[];
         transfers: Transfer[];
@@ -3706,6 +3740,9 @@ function App() {
       setPolicies(data.policies ?? initialPolicies);
       setCalendarEvents(data.calendarEvents ?? initialCalendarEvents);
       setLiveSessions(data.liveSessions ?? initialLiveSessions);
+      setChatRooms(data.chatRooms ?? initialChatRooms);
+      setChatMessages(data.chatMessages ?? initialChatMessages);
+      setChatPresence(data.chatPresence ?? initialChatPresence);
       setPersonnel(data.personnel ?? initialPersonnel);
       setEscalations(data.escalations);
       setTransfers(data.transfers);
@@ -3734,6 +3771,7 @@ function App() {
       void apiRequest<ReportDigest>("/api/reports/digest").then(setReportDigest).catch(() => undefined);
       void apiRequest<ApprovalDigest>("/api/approvals/digest").then(setApprovalDigest).catch(() => undefined);
       void apiRequest<AiDraftDigest>("/api/ai-drafts/digest").then(setAiDraftDigest).catch(() => undefined);
+      void apiRequest<ChatDigest>("/api/chat/digest").then(setChatDigest).catch(() => undefined);
       void fetchBuildInfo().then(setBuildInfo).catch(() => undefined);
       const serverStation = data.stations.find((station) => station.email === activeStation.email);
       if (serverStation) {
@@ -3756,6 +3794,9 @@ function App() {
         policies: Policy[];
         calendarEvents: CalendarEvent[];
         liveSessions: LiveSession[];
+        chatRooms?: DepartmentChatRoom[];
+        chatMessages?: DepartmentChatMessage[];
+        chatPresence?: ChatPresence[];
         personnel: PersonRecord[];
         escalations: Escalation[];
         transfers: Transfer[];
@@ -3774,6 +3815,9 @@ function App() {
       setPolicies(data.policies ?? initialPolicies);
       setCalendarEvents(data.calendarEvents ?? initialCalendarEvents);
       setLiveSessions(data.liveSessions ?? initialLiveSessions);
+      setChatRooms(data.chatRooms ?? initialChatRooms);
+      setChatMessages(data.chatMessages ?? initialChatMessages);
+      setChatPresence(data.chatPresence ?? initialChatPresence);
       setPersonnel(data.personnel ?? initialPersonnel);
       setEscalations(data.escalations);
       setTransfers(data.transfers);
@@ -3882,6 +3926,161 @@ function App() {
     }
     setAuditRows((rows) => [row, ...rows]);
     setEvents((items) => [`${event}: ${object}`, ...items].slice(0, 8));
+  }
+
+  function createChatRoom(draft: { name: string; department: string; kind?: ChatRoomKind; participants: string[] }) {
+    const created: DepartmentChatRoom = {
+      id: `chat-room-${Date.now()}`,
+      name: draft.name.trim() || "Department room",
+      kind: draft.kind ?? "Department",
+      department: draft.department.trim() || stationDepartment(activeStation),
+      participants: Array.from(new Set([activeStation.email, ...draft.participants.filter(Boolean).map(normalizeStationEmail)])),
+      createdBy: activeStation.email,
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    setChatRooms((items) => [created, ...items]);
+    recordAudit("DepartmentChatRoomCreated", created.name, `${created.participants.length} office participants`);
+    if (!offlineMode) {
+      void apiRequest<DepartmentChatRoom>("/api/chat/rooms", {
+        method: "POST",
+        body: JSON.stringify(draft)
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function sendChatMessage(roomId: string, body: string) {
+    if (!body.trim()) return;
+    const created: DepartmentChatMessage = {
+      id: `chat-msg-${Date.now()}`,
+      roomId,
+      sender: activeStation.email,
+      body: body.trim(),
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      readBy: [activeStation.email]
+    };
+    setChatMessages((items) => [created, ...items]);
+    setChatRooms((items) => items.map((room) => room.id === roomId ? { ...room, lastMessageAt: created.createdAt, participants: Array.from(new Set([...(room.participants ?? []), activeStation.email])) } : room));
+    recordAudit("DepartmentChatMessageSent", "Department chat", created.body.slice(0, 80));
+    if (!offlineMode) {
+      void apiRequest<DepartmentChatMessage>(`/api/chat/rooms/${roomId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ body: created.body })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateChatPresence(status: ChatPresenceStatus, activeRoomId?: string) {
+    const payload: ChatPresence = {
+      email: activeStation.email,
+      status,
+      activeRoomId,
+      lastSeenAt: status === "Online" ? "now" : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    setChatPresence((items) => [payload, ...items.filter((item) => normalizeStationEmail(item.email) !== normalizeStationEmail(activeStation.email))]);
+    if (!offlineMode) {
+      void apiRequest<ChatPresence>("/api/chat/presence", {
+        method: "POST",
+        body: JSON.stringify({ status, activeRoomId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function markChatRoomRead(roomId: string) {
+    setChatMessages((items) => items.map((item) => item.roomId === roomId ? { ...item, readBy: Array.from(new Set([...(item.readBy ?? []), activeStation.email])) } : item));
+    if (!offlineMode) {
+      void apiRequest(`/api/chat/rooms/${roomId}/read`, { method: "POST", body: JSON.stringify({}) }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function pinChatMessage(id: string) {
+    const target = chatMessages.find((item) => item.id === id);
+    setChatMessages((items) => items.map((item) => item.id === id ? { ...item, pinned: !item.pinned } : item));
+    if (!offlineMode) {
+      void apiRequest<DepartmentChatMessage>(`/api/chat/messages/${id}/pin`, {
+        method: "POST",
+        body: JSON.stringify({ pinned: !target?.pinned })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveChatRoom(roomId: string) {
+    setChatRooms((items) => items.map((item) => item.id === roomId ? { ...item, archived: true } : item));
+    if (!offlineMode) {
+      void apiRequest<DepartmentChatRoom>(`/api/chat/rooms/${roomId}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Archived from Department Chat" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function createChatTask(roomId: string) {
+    const room = chatRooms.find((item) => item.id === roomId);
+    const latest = chatMessages.find((item) => item.roomId === roomId);
+    const created: GovernanceTask = {
+      id: `tsk-chat-${Date.now()}`,
+      title: `Follow up: ${room?.name ?? "Department chat"}`,
+      owner: room?.department ?? "Department Chat",
+      assignee: activeStation.email,
+      priority: "Medium",
+      due: "Today",
+      status: "Queued",
+      linkedReport: latest?.linkedReport
+    };
+    setTasks((items) => [created, ...items]);
+    recordAudit("DepartmentChatTaskCreated", created.title, room?.name ?? "Department chat");
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/chat/rooms/${roomId}/task`, {
+        method: "POST",
+        body: JSON.stringify({ title: created.title })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function startChatMeeting(roomId: string) {
+    const room = chatRooms.find((item) => item.id === roomId);
+    const created: LiveSession = {
+      id: `live-chat-${Date.now()}`,
+      title: `${room?.name ?? "Department"} meeting`,
+      host: activeStation.title,
+      sessionType: "Department Room",
+      status: "Live",
+      linkedRecord: room?.name ?? "Department Chat",
+      route: room?.participants.join(" -> ") ?? activeStation.email,
+      purpose: "Live department coordination",
+      participants: room?.participants ?? [activeStation.email],
+      notes: [],
+      files: [],
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    setLiveSessions((items) => [created, ...items]);
+    recordAudit("DepartmentChatMeetingStarted", created.title, created.route);
+    if (!offlineMode) {
+      void apiRequest<LiveSession>(`/api/chat/rooms/${roomId}/meeting`, {
+        method: "POST",
+        body: JSON.stringify({ title: created.title })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function sendChatToChurchMail(roomId: string) {
+    const room = chatRooms.find((item) => item.id === roomId);
+    const message: Message = {
+      id: `msg-chat-${Date.now()}`,
+      kind: "Notification",
+      subject: `${room?.name ?? "Department chat"} summary`,
+      from: `${activeStation.email} -> ChurchMail`,
+      age: "now",
+      status: "Ready",
+      files: "Department chat summary"
+    };
+    setMessages((items) => [message, ...items]);
+    recordAudit("DepartmentChatSummarySent", room?.name ?? "Department chat", message.subject);
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/chat/rooms/${roomId}/churchmail`, {
+        method: "POST",
+        body: JSON.stringify({ subject: message.subject })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
   }
 
   async function createLiveSession(draft: Omit<LiveSession, "id" | "createdAt"> & Partial<Pick<LiveSession, "id">>) {
@@ -10305,6 +10504,10 @@ function App() {
         transfers={scopedTransfers}
         documents={scopedDocuments}
         liveSessions={liveSessions}
+        chatRooms={chatRooms}
+        chatMessages={chatMessages}
+        chatPresence={chatPresence}
+        chatDigest={chatDigest}
         events={events}
         apiStatus={apiStatus}
         offlineMode={offlineMode}
@@ -10327,6 +10530,15 @@ function App() {
         onApprove={approveRequest}
         onSign={signApproval}
         onReject={rejectApproval}
+        onCreateChatRoom={createChatRoom}
+        onSendChatMessage={sendChatMessage}
+        onChatPresence={updateChatPresence}
+        onMarkChatRead={markChatRoomRead}
+        onPinChatMessage={pinChatMessage}
+        onArchiveChatRoom={archiveChatRoom}
+        onCreateChatTask={createChatTask}
+        onStartChatMeeting={startChatMeeting}
+        onSendChatChurchMail={sendChatToChurchMail}
         onQuickAction={handleAdminV2QuickAction}
         onOpenSearchResult={openSearchResult}
         searchResults={searchResults}
@@ -23548,6 +23760,10 @@ type AdminV2Props = {
   transfers: Transfer[];
   documents: DocumentRecord[];
   liveSessions: LiveSession[];
+  chatRooms: DepartmentChatRoom[];
+  chatMessages: DepartmentChatMessage[];
+  chatPresence: ChatPresence[];
+  chatDigest: ChatDigest | null;
   events: AuditEvent[];
   apiStatus: ApiStatus | null;
   offlineMode: boolean;
@@ -23572,6 +23788,15 @@ type AdminV2Props = {
   onApprove: (id: string) => void;
   onSign: (id: string) => void;
   onReject: (id: string) => void;
+  onCreateChatRoom: (draft: { name: string; department: string; kind?: ChatRoomKind; participants: string[] }) => void;
+  onSendChatMessage: (roomId: string, body: string) => void;
+  onChatPresence: (status: ChatPresenceStatus, activeRoomId?: string) => void;
+  onMarkChatRead: (roomId: string) => void;
+  onPinChatMessage: (id: string) => void;
+  onArchiveChatRoom: (roomId: string) => void;
+  onCreateChatTask: (roomId: string) => void;
+  onStartChatMeeting: (roomId: string) => void;
+  onSendChatChurchMail: (roomId: string) => void;
   onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 };
 
@@ -23677,6 +23902,10 @@ function AdminV2Shell(props: AdminV2Props) {
     transfers,
     documents,
     liveSessions,
+    chatRooms,
+    chatMessages,
+    chatPresence,
+    chatDigest,
     events,
     apiStatus,
     offlineMode,
@@ -23700,6 +23929,15 @@ function AdminV2Shell(props: AdminV2Props) {
     onApprove,
     onSign,
     onReject,
+    onCreateChatRoom,
+    onSendChatMessage,
+    onChatPresence,
+    onMarkChatRead,
+    onPinChatMessage,
+    onArchiveChatRoom,
+    onCreateChatTask,
+    onStartChatMeeting,
+    onSendChatChurchMail,
     onQuickAction
   } = props;
 
@@ -23893,17 +24131,23 @@ function AdminV2Shell(props: AdminV2Props) {
     }
     if (section === "Live Comms") {
       return (
-        <AdminV2Directory
-          title="Live Communication Rooms"
-          description="Coordinate official meetings, office chats, broadcasts, document reviews, and decision follow-up."
-          metrics={[
-            ["Sessions", liveSessions.length],
-            ["Active", liveSessions.filter((item) => item.status === "Active").length],
-            ["Linked records", liveSessions.filter((item) => item.linkedRecord).length]
-          ]}
-          actions={["Start meeting", "Send broadcast", "Share document"]}
-          records={liveSessions.map((item) => ({ title: item.title, meta: item.host, detail: item.purpose, status: item.status }))}
-          onQuickAction={onQuickAction}
+        <AdminV2DepartmentChat
+          station={station}
+          rooms={chatRooms}
+          messages={chatMessages}
+          presence={chatPresence}
+          stationDirectory={stationDirectory}
+          digest={chatDigest}
+          liveSessions={liveSessions}
+          onCreateRoom={onCreateChatRoom}
+          onSendMessage={onSendChatMessage}
+          onPresence={onChatPresence}
+          onMarkRead={onMarkChatRead}
+          onPinMessage={onPinChatMessage}
+          onArchiveRoom={onArchiveChatRoom}
+          onCreateTask={onCreateChatTask}
+          onStartMeeting={onStartChatMeeting}
+          onSendChurchMail={onSendChatChurchMail}
         />
       );
     }
@@ -25510,6 +25754,210 @@ function AdminV2Mail({
         </div>}
       </section>
       </div>
+    </div>
+  );
+}
+
+function AdminV2DepartmentChat({
+  station,
+  rooms,
+  messages,
+  presence,
+  stationDirectory,
+  digest,
+  liveSessions,
+  onCreateRoom,
+  onSendMessage,
+  onPresence,
+  onMarkRead,
+  onPinMessage,
+  onArchiveRoom,
+  onCreateTask,
+  onStartMeeting,
+  onSendChurchMail
+}: {
+  station: StationCard;
+  rooms: DepartmentChatRoom[];
+  messages: DepartmentChatMessage[];
+  presence: ChatPresence[];
+  stationDirectory: StationCard[];
+  digest: ChatDigest | null;
+  liveSessions: LiveSession[];
+  onCreateRoom: (draft: { name: string; department: string; kind?: ChatRoomKind; participants: string[] }) => void;
+  onSendMessage: (roomId: string, body: string) => void;
+  onPresence: (status: ChatPresenceStatus, activeRoomId?: string) => void;
+  onMarkRead: (roomId: string) => void;
+  onPinMessage: (id: string) => void;
+  onArchiveRoom: (roomId: string) => void;
+  onCreateTask: (roomId: string) => void;
+  onStartMeeting: (roomId: string) => void;
+  onSendChurchMail: (roomId: string) => void;
+}) {
+  const normalizedStationEmail = normalizeStationEmail(station.email);
+  const isAdmin = normalizedStationEmail === "admin@rmvi.org";
+  const activeRooms = rooms.filter((room) => !room.archived && (isAdmin || (room.participants ?? []).map(normalizeStationEmail).includes(normalizedStationEmail)));
+  const visibleRooms = activeRooms.length ? activeRooms : rooms.filter((room) => !room.archived);
+  const [selectedRoomId, setSelectedRoomId] = React.useState(visibleRooms[0]?.id ?? "");
+  const selectedRoom = rooms.find((room) => room.id === selectedRoomId) ?? visibleRooms[0];
+  const roomMessages = selectedRoom
+    ? messages.filter((message) => message.roomId === selectedRoom.id && !message.archived).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
+    : [];
+  const [draft, setDraft] = React.useState("");
+  const [roomName, setRoomName] = React.useState("Department coordination");
+  const [department, setDepartment] = React.useState(stationDepartment(station));
+  const [participant, setParticipant] = React.useState(stationDirectory.find((item) => normalizeStationEmail(item.email) !== normalizedStationEmail)?.email ?? "");
+  const onlineCount = presence.filter((item) => item.status === "Online").length;
+  const unreadCount = messages.filter((message) => selectedRoom && message.roomId === selectedRoom.id && !(message.readBy ?? []).map(normalizeStationEmail).includes(normalizedStationEmail)).length;
+
+  React.useEffect(() => {
+    if (!selectedRoom && visibleRooms[0]) setSelectedRoomId(visibleRooms[0].id);
+  }, [selectedRoom, visibleRooms]);
+
+  function submitMessage(event: React.FormEvent) {
+    event.preventDefault();
+    if (!selectedRoom || !draft.trim()) return;
+    onSendMessage(selectedRoom.id, draft);
+    setDraft("");
+  }
+
+  function submitRoom(event: React.FormEvent) {
+    event.preventDefault();
+    onCreateRoom({ name: roomName, department, kind: "Department", participants: participant ? [participant] : [] });
+    setRoomName("Department coordination");
+  }
+
+  return (
+    <div className="admin-v2-workspace admin-v2-chat-workspace">
+      <section className="admin-v2-panel admin-v2-workspace-intro">
+        <div>
+          <span>Workspace</span>
+          <h2>Department Chat</h2>
+          <p>Live office-to-office rooms with presence, read status, meeting handoff, task follow-up, and ChurchMail summary routing.</p>
+        </div>
+        <div className="admin-v2-stat-strip">
+          <article><strong>{digest?.rooms ?? visibleRooms.length}</strong><span>Rooms</span></article>
+          <article><strong>{digest?.messages ?? messages.length}</strong><span>Messages</span></article>
+          <article><strong>{digest?.online ?? onlineCount}</strong><span>Online</span></article>
+          <article><strong>{digest?.unread ?? unreadCount}</strong><span>Unread</span></article>
+        </div>
+      </section>
+
+      <section className="admin-v2-toolbar">
+        <button className="primary" type="button" onClick={() => onPresence("Online", selectedRoom?.id)}>Go online</button>
+        <button type="button" onClick={() => onPresence("Away", selectedRoom?.id)}>Set away</button>
+        <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onStartMeeting(selectedRoom.id)}>Start meeting</button>
+        <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onSendChurchMail(selectedRoom.id)}>Send ChurchMail summary</button>
+      </section>
+
+      <section className="admin-v2-chat-layout">
+        <aside className="admin-v2-panel admin-v2-chat-rooms">
+          <div className="admin-v2-panel-head">
+            <span>Rooms</span>
+            <strong>{visibleRooms.length} available</strong>
+          </div>
+          <div className="admin-v2-chat-room-list">
+            {visibleRooms.map((room) => {
+              const roomUnread = messages.filter((message) => message.roomId === room.id && !(message.readBy ?? []).map(normalizeStationEmail).includes(normalizedStationEmail)).length;
+              return (
+                <button className={selectedRoom?.id === room.id ? "active" : ""} key={room.id} type="button" onClick={() => setSelectedRoomId(room.id)}>
+                  <span>
+                    <strong>{room.name}</strong>
+                    <small>{room.department} / {(room.participants ?? []).length} offices</small>
+                  </span>
+                  {roomUnread ? <b>{roomUnread}</b> : <CircleDot size={14} />}
+                </button>
+              );
+            })}
+            {!visibleRooms.length && <div className="admin-v2-empty-state">No department rooms yet.</div>}
+          </div>
+
+          <form className="admin-v2-chat-create" onSubmit={submitRoom}>
+            <div className="admin-v2-panel-head compact">
+              <span>Create</span>
+              <strong>New room</strong>
+            </div>
+            <input value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="Room name" />
+            <input value={department} onChange={(event) => setDepartment(event.target.value)} placeholder="Department" />
+            <select value={participant} onChange={(event) => setParticipant(event.target.value)}>
+              {stationDirectory.map((item) => <option key={item.email} value={item.email}>{item.email}</option>)}
+            </select>
+            <button className="primary" type="submit">Create room</button>
+          </form>
+        </aside>
+
+        <section className="admin-v2-panel admin-v2-chat-thread">
+          {selectedRoom ? (
+            <>
+              <div className="admin-v2-chat-thread-head">
+                <div>
+                  <span>{selectedRoom.kind}</span>
+                  <h3>{selectedRoom.name}</h3>
+                  <p>{(selectedRoom.participants ?? []).join(" / ")}</p>
+                </div>
+                <button type="button" onClick={() => onMarkRead(selectedRoom.id)}>Mark read</button>
+              </div>
+              <div className="admin-v2-chat-messages">
+                {roomMessages.length ? roomMessages.map((message) => (
+                  <article className={normalizeStationEmail(message.sender) === normalizedStationEmail ? "mine" : ""} key={message.id}>
+                    <div>
+                      <strong>{message.sender}</strong>
+                      <small>{message.createdAt} / read by {(message.readBy ?? []).length}</small>
+                    </div>
+                    <p>{message.body}</p>
+                    <footer>
+                      {message.linkedReport && <span>Report: {message.linkedReport}</span>}
+                      {message.linkedApproval && <span>Approval: {message.linkedApproval}</span>}
+                      {message.linkedTask && <span>Task: {message.linkedTask}</span>}
+                      {message.pinned && <span>Pinned</span>}
+                      <button type="button" onClick={() => onPinMessage(message.id)}>{message.pinned ? "Unpin" : "Pin"}</button>
+                    </footer>
+                  </article>
+                )) : <div className="admin-v2-empty-state">No messages yet. Send the first department update.</div>}
+              </div>
+              <form className="admin-v2-chat-compose" onSubmit={submitMessage}>
+                <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={`Write as ${station.email}`} />
+                <button className="primary" type="submit"><Send size={16} /> Send</button>
+              </form>
+            </>
+          ) : (
+            <div className="admin-v2-empty-state">Create a room to begin live department coordination.</div>
+          )}
+        </section>
+
+        <aside className="admin-v2-panel admin-v2-chat-side">
+          <div className="admin-v2-panel-head">
+            <span>Presence</span>
+            <strong>{onlineCount} online</strong>
+          </div>
+          <div className="admin-v2-presence-list">
+            {presence.map((item) => (
+              <div key={item.email}>
+                <i className={String(item.status).toLowerCase()} />
+                <span>
+                  <strong>{item.email}</strong>
+                  <small>{item.status} / {item.lastSeenAt}</small>
+                </span>
+              </div>
+            ))}
+          </div>
+          <div className="admin-v2-panel-head">
+            <span>Connected Actions</span>
+            <strong>{liveSessions.length} sessions</strong>
+          </div>
+          <div className="admin-v2-chat-actions">
+            <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onStartMeeting(selectedRoom.id)}><Video size={16} /> Start meeting</button>
+            <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onCreateTask(selectedRoom.id)}>Create task</button>
+            <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onSendChurchMail(selectedRoom.id)}>ChurchMail summary</button>
+            <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onArchiveRoom(selectedRoom.id)}>Archive room</button>
+          </div>
+          <div className="admin-v2-chat-identity">
+            <span>Office Identity</span>
+            <strong>{station.title}</strong>
+            <small>{station.email}</small>
+            <p>Chat belongs to the permanent office account, so work remains with the department when personnel change.</p>
+          </div>
+        </aside>
+      </section>
     </div>
   );
 }
