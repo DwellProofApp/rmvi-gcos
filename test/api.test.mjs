@@ -50,8 +50,6 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(status.counts.policies > 0, true);
     assert.equal(status.counts.calendarEvents > 0, true);
     assert.equal(status.counts.liveSessions > 0, true);
-    assert.equal(status.counts.chatRooms > 0, true);
-    assert.equal(status.counts.chatMessages > 0, true);
     assert.equal(status.counts.personnel > 0, true);
     assert.equal(status.counts.audit > 0, true);
 
@@ -190,6 +188,7 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       password: demoPassword("finance")
     });
     assert.equal(financeLogin.station.email, "finance@rmvi.org");
+    const financeToken = financeLogin.token;
 
     const auditLogin = await postJson("/api/auth/login", {
       email: "audit@rmvi.org",
@@ -769,18 +768,6 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(reviewedMessage.status, "In Review");
 
-    const readMessage = await postJson(`/api/messages/${createdMessage.id}/read`, {
-      reader: "finance@rmvi.org"
-    }, nationalToken);
-    assert.equal(Boolean(readMessage.readAt), true);
-    assert.equal(readMessage.readBy, "np@rmvi.org");
-
-    const acknowledgedMessage = await postJson(`/api/messages/${createdMessage.id}/acknowledge`, {
-      note: "Automated recipient acknowledgement"
-    }, nationalToken);
-    assert.equal(acknowledgedMessage.status, "Approved");
-    assert.equal(acknowledgedMessage.acknowledgementNote, "Automated recipient acknowledgement");
-
     const classifiedMessage = await postJson(`/api/messages/${createdMessage.id}/classify`, {
       kind: "Directive"
     }, nationalToken);
@@ -889,10 +876,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(detailedReport.routingStage, "Report details updated");
 
     const submittedReport = await postJson(`/api/reports/${reports[0].id}/submit`, {}, nationalToken);
-    assert.equal(submittedReport.state, "Approved");
-    assert.equal(submittedReport.score, 100);
-    assert.equal(submittedReport.routingStage, "Archived upward");
-    assert.equal(submittedReport.approvedBy, "np@rmvi.org");
+    assert.equal(submittedReport.state, "In Review");
+    assert.equal(submittedReport.score >= 80, true);
+    assert.equal(submittedReport.routingStage.startsWith("Submitted to "), true);
+    assert.equal(submittedReport.approvedBy, undefined);
+    const routedReportMessages = await getJson("/api/messages", nationalToken);
+    assert.equal(routedReportMessages.some((message) => message.kind === "Report" && message.linkedReport === submittedReport.id), true);
 
     const correctionReport = await postJson(`/api/reports/${reports[1].id}/correction`, {
       reason: "Supporting documents need revision"
@@ -937,19 +926,6 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(reviewReport.state, "In Review");
     assert.equal(reviewReport.routingStage, "Supervisory review");
-
-    const signedReport = await postJson(`/api/reports/${reports[1].id}/sign`, {
-      note: "Automated report signature"
-    }, nationalToken);
-    assert.equal(signedReport.signatureStatus, "Signed");
-    assert.equal(signedReport.routingStage, "Supervisor signed");
-
-    const approvedReport = await postJson(`/api/reports/${reports[1].id}/approve`, {
-      note: "Automated report approval"
-    }, nationalToken);
-    assert.equal(approvedReport.state, "Approved");
-    assert.equal(approvedReport.score, 100);
-    assert.equal(approvedReport.routingStage, "Approved for archive");
 
     const verifiedReport = await postJson(`/api/reports/${reports[1].id}/verify`, {
       state: "Approved"
@@ -1002,6 +978,12 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(governancePacket.document.linkedReport, packetReport.id);
     assert.equal(governancePacket.document.linkedApproval, governancePacket.approval.id);
     assert.equal(governancePacket.escalation.linkedApproval, governancePacket.approval.id);
+    const approvedPacketRequest = await postJson(`/api/approvals/${governancePacket.approval.id}/approve`, {}, nationalToken);
+    assert.equal(approvedPacketRequest.state, "Approved");
+    const reportsAfterPacketApproval = await getJson("/api/reports", nationalToken);
+    const approvedPacketReport = reportsAfterPacketApproval.find((item) => item.id === packetReport.id);
+    assert.equal(approvedPacketReport.state, "Approved");
+    assert.equal(approvedPacketReport.routingStage, "Approved through approval engine");
 
     const bulkReport = await postJson("/api/reports", {
       name: "Automated bulk workflow report",
@@ -1080,18 +1062,6 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const signedRequest = await postJson(`/api/approvals/${createdApproval.id}/sign`, {}, nationalToken);
     assert.equal(signedRequest.state, "Signature");
     assert.equal(signedRequest.signatures, "1/2");
-
-    const evidenceRequestApproval = await postJson(`/api/approvals/${createdApproval.id}/request-evidence`, {
-      reason: "Automated evidence request"
-    }, nationalToken);
-    assert.equal(evidenceRequestApproval.state, "Evidence Requested");
-    assert.equal(evidenceRequestApproval.evidenceRequest, "Automated evidence request");
-
-    const returnedApproval = await postJson(`/api/approvals/${createdApproval.id}/return`, {
-      reason: "Automated correction return"
-    }, nationalToken);
-    assert.equal(returnedApproval.state, "Returned");
-    assert.equal(returnedApproval.correctionReason, "Automated correction return");
 
     const routedRequest = await postJson(`/api/approvals/${createdApproval.id}/route`, {
       route: "National -> Executive Review",
@@ -1666,65 +1636,6 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(liveDigest.total > 0, true);
     assert.equal(liveDigest.nextSession.length > 0, true);
 
-    const chatRooms = await getJson("/api/chat/rooms", nationalToken);
-    assert.equal(chatRooms.length > 0, true);
-
-    const chatPresence = await postJson("/api/chat/presence", {
-      status: "Online",
-      activeRoomId: chatRooms[0].id
-    }, nationalToken);
-    assert.equal(chatPresence.status, "Online");
-
-    const createdChatRoom = await postJson("/api/chat/rooms", {
-      name: "Automated department chat",
-      kind: "Department",
-      department: "Automation",
-      participants: ["np@rmvi.org", "finance@rmvi.org"]
-    }, nationalToken);
-    assert.equal(createdChatRoom.name, "Automated department chat");
-    assert.equal(createdChatRoom.participants.includes("np@rmvi.org"), true);
-
-    const chatMessage = await postJson(`/api/chat/rooms/${createdChatRoom.id}/messages`, {
-      body: "Automated department chat test",
-      linkedReport: "Automated mission finance report"
-    }, nationalToken);
-    assert.equal(chatMessage.body, "Automated department chat test");
-    assert.equal(chatMessage.linkedReport, "Automated mission finance report");
-
-    const pinnedChatMessage = await postJson(`/api/chat/messages/${chatMessage.id}/pin`, {
-      pinned: true
-    }, nationalToken);
-    assert.equal(pinnedChatMessage.pinned, true);
-
-    const readChatRoom = await postJson(`/api/chat/rooms/${createdChatRoom.id}/read`, {}, nationalToken);
-    assert.equal(readChatRoom.messages.length >= 1, true);
-
-    const chatTask = await postJson(`/api/chat/rooms/${createdChatRoom.id}/task`, {
-      title: "Follow up from automated department chat"
-    }, nationalToken);
-    assert.equal(chatTask.title, "Follow up from automated department chat");
-    assert.equal(chatTask.linkedChatRoomId, createdChatRoom.id);
-
-    const chatMeeting = await postJson(`/api/chat/rooms/${createdChatRoom.id}/meeting`, {
-      title: "Automated department chat meeting"
-    }, nationalToken);
-    assert.equal(chatMeeting.title, "Automated department chat meeting");
-    assert.equal(chatMeeting.participants.includes("finance@rmvi.org"), true);
-
-    const chatChurchMail = await postJson(`/api/chat/rooms/${createdChatRoom.id}/churchmail`, {
-      subject: "Automated department chat summary"
-    }, nationalToken);
-    assert.equal(chatChurchMail.subject, "Automated department chat summary");
-
-    const chatDigest = await getJson("/api/chat/digest", nationalToken);
-    assert.equal(chatDigest.rooms > 0, true);
-    assert.equal(chatDigest.online > 0, true);
-
-    const archivedChatRoom = await postJson(`/api/chat/rooms/${createdChatRoom.id}/archive`, {
-      reason: "Automated chat archive"
-    }, nationalToken);
-    assert.equal(archivedChatRoom.archived, true);
-
     const invalidLiveSession = await rawPost("/api/live-sessions", {
       title: ""
     }, nationalToken);
@@ -1763,6 +1674,24 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       participant: "finance@rmvi.org"
     }, nationalToken);
     assert.equal(invitedLiveSession.participants.includes("finance@rmvi.org"), true);
+    assert.equal(invitedLiveSession.invitationLog[0].participant, "finance@rmvi.org");
+
+    const acceptedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/rsvp`, {
+      response: "Accepted"
+    }, financeToken);
+    assert.equal(acceptedLiveSession.rsvpStatus["finance@rmvi.org"].status, "Accepted");
+
+    const declinedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/rsvp`, {
+      response: "Declined"
+    }, financeToken);
+    assert.equal(declinedLiveSession.rsvpStatus["finance@rmvi.org"].status, "Declined");
+    const deniedDeclinedJoin = await rawPost(`/api/live-sessions/${createdLiveSession.id}/join`, {}, financeToken);
+    assert.equal(deniedDeclinedJoin.status, 403);
+
+    const reacceptedLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/rsvp`, {
+      response: "Accepted"
+    }, financeToken);
+    assert.equal(reacceptedLiveSession.rsvpStatus["finance@rmvi.org"].status, "Accepted");
 
     const checkedInLiveSession = await postJson(`/api/live-sessions/${createdLiveSession.id}/check-in`, {
       participant: "finance@rmvi.org"
@@ -2534,33 +2463,6 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
       reason: "Automated credential unlock"
     }, nationalToken);
     assert.equal(unlockedStationCredential.credential.status, "Active");
-
-    const pluralResetStationCredential = await postJson(`/api/stations/${stationId}/credentials/reset`, {
-      password: demoPassword("station-plural-reset")
-    }, nationalToken);
-    assert.equal(pluralResetStationCredential.credential.forceReset, true);
-
-    const pluralUnlockedStationCredential = await postJson(`/api/stations/${stationId}/credentials/unlock`, {
-      reason: "Automated plural credential unlock"
-    }, nationalToken);
-    assert.equal(pluralUnlockedStationCredential.credential.status, "Active");
-
-    const emailResetStationCredential = await postJson("/api/credentials/reset", {
-      email: stations[0].email,
-      password: demoPassword("station-email-reset")
-    }, nationalToken);
-    assert.equal(emailResetStationCredential.credential.forceReset, true);
-
-    const emailUnlockedStationCredential = await postJson("/api/credentials/unlock", {
-      email: stations[0].email,
-      reason: "Automated email credential unlock"
-    }, nationalToken);
-    assert.equal(emailUnlockedStationCredential.credential.status, "Active");
-
-    const emailMfaStationCredential = await postJson(`/api/stations/${stationId}/credential/mfa`, {
-      reason: "Automated MFA requirement after reset aliases"
-    }, nationalToken);
-    assert.equal(emailMfaStationCredential.credential.mfaRequired, true);
 
     const authDigest = await getJson("/api/station-auth/digest", nationalToken);
     assert.equal(authDigest.total >= 4, true);

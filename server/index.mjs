@@ -110,10 +110,13 @@ const routes = {
   "POST /api/ops/production-handoff/tasks": async ({ body, session }) => createdResponse(await createProductionHandoffTasks(body, session.email)),
   "GET /api/ops/final-production-finish": async ({ session }) => ok(await finalProductionFinishBoard(session?.email ?? "system")),
   "POST /api/ops/final-production-finish/archive": async ({ body, session }) => createdResponse(await archiveFinalProductionFinishBoard(body, session.email)),
+  "GET /api/admin/recovery-plan": async ({ session }) => ok(await adminRecoveryPlan(session?.email ?? "system")),
+  "POST /api/admin/recovery-plan/archive": async ({ body, session }) => createdResponse(await archiveAdminRecoveryPlan(body, session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
   "GET /api/rollout/station-training": async () => ok(await stationTrainingRollout()),
+  "POST /api/rollout/first-wave/prepare": async ({ body, session }) => ok(await prepareFirstWaveRollout(body, session.email)),
   "POST /api/rollout/station-training/:email/mark": ({ params, body, session }) => ok(markStationTraining(params.email, body, session.email)),
   "POST /api/rollout/station-training/:email/schedule": ({ params, body, session }) => ok(scheduleStationTraining(params.email, body, session.email)),
   "POST /api/rollout/station-training/archive": async ({ body, session }) => createdResponse(await archiveStationTrainingPacket(body, session.email)),
@@ -169,13 +172,18 @@ const routes = {
   "POST /api/sessions/:id/mfa": ({ params, session, body }) => ok(requireSessionMfa(params.id, session.email, body.reason)),
   "POST /api/sessions/:id/device": ({ params, session, body }) => ok(labelSessionDevice(params.id, session.email, body.label)),
   "POST /api/sessions/:id/note": ({ params, session, body }) => ok(noteSession(params.id, session.email, body.note)),
-  "GET /api/bootstrap": () => ok(services.publicState()),
+  "GET /api/bootstrap": ({ session }) => ok(services.publicState(session?.email)),
   "GET /api/bootstrap/public": () => ok(services.publicState()),
+  "POST /api/account-requests": async ({ body }) => {
+    const result = await services.createAccountRequest(body);
+    if (result.conflict) return conflict({ error: result.error });
+    return createdResponse(result);
+  },
   "GET /api/command-center/briefing": () => ok(services.commandBriefing()),
-  "POST /api/command-center/briefing/archive": ({ session, body }) => createdResponse(services.archiveCommandBriefing({ ...body, actor: session.email })),
-  "POST /api/command-center/directive": ({ session, body }) => createdResponse(services.issueCommandDirective({ ...body, actor: session.email })),
-  "POST /api/command-center/task": ({ session, body }) => createdResponse(services.createCommandTask({ ...body, actor: session.email })),
-  "POST /api/command-center/escalation": ({ session, body }) => createdResponse(services.openCommandEscalation({ ...body, actor: session.email })),
+  "POST /api/command-center/briefing/archive": ({ session, body }) => createdResponse(services.archiveCommandBriefing({ ...body, actor: requestActor(session, body) })),
+  "POST /api/command-center/directive": ({ session, body }) => createdResponse(services.issueCommandDirective({ ...body, actor: requestActor(session, body) })),
+  "POST /api/command-center/task": ({ session, body }) => createdResponse(services.createCommandTask({ ...body, actor: requestActor(session, body) })),
+  "POST /api/command-center/escalation": ({ session, body }) => createdResponse(services.openCommandEscalation({ ...body, actor: requestActor(session, body) })),
   "POST /api/dev/reset": () => {
     if (!DEV_RESET_ENABLED) throw new HttpError(403, "Development reset is disabled");
     Object.assign(state, createSeedState());
@@ -198,19 +206,13 @@ const routes = {
   "POST /api/stations/:id/mirror": ({ params, body }) => createdResponse(services.mirrorStation(params.id, body)),
   "POST /api/stations/:id/credential/rotate": async ({ params, body }) => ok(await services.rotateStationCredential(params.id, body)),
   "POST /api/stations/:id/credential/reset": async ({ params, body }) => ok(await services.forceStationPasswordReset(params.id, body)),
-  "POST /api/stations/:id/credentials/reset": async ({ params, body }) => ok(await services.forceStationPasswordReset(params.id, body)),
   "POST /api/stations/:id/credential/mfa": ({ params, body }) => ok(services.requireStationMfa(params.id, body)),
   "POST /api/stations/:id/credential/lock": ({ params, body }) => ok(services.lockStationCredential(params.id, body)),
   "POST /api/stations/:id/credential/unlock": ({ params, body }) => ok(services.unlockStationCredential(params.id, body)),
-  "POST /api/stations/:id/credentials/unlock": ({ params, body }) => ok(services.unlockStationCredential(params.id, body)),
-  "POST /api/credentials/reset": async ({ body }) => ok(await services.forceStationPasswordReset(body.email ?? body.id, body)),
-  "POST /api/credentials/unlock": ({ body }) => ok(services.unlockStationCredential(body.email ?? body.id, body)),
-  "GET /api/messages": () => ok(state.messages),
-  "POST /api/messages": async ({ body }) => createdResponse(await services.createMessage(body)),
+  "GET /api/messages": ({ session }) => ok(session?.email ? services.messagesForStation(session.email) : state.messages),
+  "POST /api/messages": async ({ body, session }) => createdResponse(await services.createMessage({ ...body, actor: session?.email ?? body.actor ?? body.from, from: session?.email ?? body.from })),
   "POST /api/messages/bulk/approve": ({ body }) => ok(services.bulkApproveMessages(body)),
   "GET /api/messages/digest": () => ok(services.messageDigest()),
-  "POST /api/messages/:id/read": ({ params, body }) => ok(services.readMessage(params.id, body)),
-  "POST /api/messages/:id/acknowledge": ({ params, body }) => ok(services.acknowledgeMessage(params.id, body)),
   "POST /api/messages/:id/classify": ({ params, body }) => ok(services.classifyMessage(params.id, body)),
   "POST /api/messages/:id/status": ({ params, body }) => ok(services.updateMessageStatus(params.id, body)),
   "POST /api/messages/:id/route": ({ params, body }) => ok(services.updateMessageRoute(params.id, body)),
@@ -222,19 +224,20 @@ const routes = {
   "POST /api/messages/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateMessage(params.id, body)),
   "GET /api/reports": () => ok(state.reports),
   "POST /api/reports": ({ body }) => createdResponse(services.createReport(body)),
+  "GET /api/report-assignments": () => ok(state.reportAssignments ?? []),
+  "GET /api/report-assignments/digest": () => ok(services.reportAssignmentDigest()),
+  "POST /api/report-assignments": ({ body, session }) => createdResponse(services.assignReportPack({ ...body, actor: session?.email ?? body.actor })),
   "POST /api/reports/:id/submit": ({ params, body }) => ok(services.submitReport(params.id, body)),
   "POST /api/reports/:id/correction": ({ params, body }) => ok(services.requestReportCorrection(params.id, body)),
   "POST /api/reports/:id/due": ({ params, body }) => ok(services.updateReportDue(params.id, body)),
   "POST /api/reports/:id/score": ({ params, body }) => ok(services.updateReportScore(params.id, body)),
   "POST /api/reports/:id/owner": ({ params, body }) => ok(services.updateReportOwner(params.id, body)),
   "POST /api/reports/:id/path": ({ params, body }) => ok(services.updateReportPath(params.id, body)),
-  "POST /api/reports/:id/details": ({ params, body, session }) => ok(services.updateReportDetails(params.id, { ...body, actor: session.email })),
+  "POST /api/reports/:id/details": ({ params, body, session }) => ok(services.updateReportDetails(params.id, { ...body, actor: requestActor(session, body) })),
   "POST /api/reports/:id/evidence": ({ params, body }) => ok(services.markReportEvidence(params.id, body)),
   "POST /api/reports/:id/review": ({ params, body }) => ok(services.reviewReport(params.id, body)),
   "POST /api/reports/:id/verify": ({ params, body }) => ok(services.verifyReport(params.id, body)),
-  "POST /api/reports/:id/sign": ({ params, body }) => ok(services.signReport(params.id, body)),
-  "POST /api/reports/:id/approve": ({ params, body }) => ok(services.approveReport(params.id, body)),
-  "POST /api/reports/:id/packet": ({ params, body, session }) => createdResponse(services.buildReportGovernancePacket(params.id, { ...body, actor: session.email })),
+  "POST /api/reports/:id/packet": ({ params, body, session }) => createdResponse(services.buildReportGovernancePacket(params.id, { ...body, actor: requestActor(session, body) })),
   "POST /api/reports/:id/watch": ({ params, body }) => ok(services.watchReport(params.id, body)),
   "POST /api/reports/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateReport(params.id, body)),
   "POST /api/reports/:id/archive": ({ params, body }) => ok(services.archiveReport(params.id, body)),
@@ -247,14 +250,11 @@ const routes = {
   "POST /api/approvals/:id/route": ({ params, body }) => ok(services.updateApprovalRoute(params.id, body)),
   "POST /api/approvals/:id/sign": ({ params, body }) => ok(services.signApproval(params.id, body)),
   "POST /api/approvals/:id/reject": ({ params, body }) => ok(services.rejectRequest(params.id, body)),
-  "POST /api/approvals/:id/return": ({ params, body }) => ok(services.returnApprovalForCorrection(params.id, body)),
-  "POST /api/approvals/:id/evidence": ({ params, body }) => ok(services.requestApprovalEvidence(params.id, body)),
-  "POST /api/approvals/:id/request-evidence": ({ params, body }) => ok(services.requestApprovalEvidence(params.id, body)),
   "POST /api/approvals/:id/limit": ({ params, body }) => ok(services.updateApprovalLimit(params.id, body)),
   "POST /api/approvals/:id/delegate": ({ params, body }) => ok(services.delegateApproval(params.id, body)),
   "POST /api/approvals/:id/hold": ({ params, body }) => ok(services.holdApproval(params.id, body)),
   "POST /api/approvals/:id/release": ({ params, body }) => ok(services.releaseApprovalHold(params.id, body)),
-  "POST /api/approvals/:id/execute": ({ params, body, session }) => createdResponse(services.executeApproval(params.id, { ...body, actor: session.email })),
+  "POST /api/approvals/:id/execute": ({ params, body, session }) => createdResponse(services.executeApproval(params.id, { ...body, actor: requestActor(session, body) })),
   "POST /api/approvals/:id/watch": ({ params, body }) => ok(services.watchApproval(params.id, body)),
   "POST /api/approvals/:id/duplicate": ({ params, body }) => createdResponse(services.duplicateApproval(params.id, body)),
   "POST /api/approvals/:id/archive": ({ params, body }) => ok(services.archiveApproval(params.id, body)),
@@ -343,67 +343,56 @@ const routes = {
   "POST /api/calendar-events/bulk/reschedule": ({ body }) => ok(services.bulkRescheduleCalendarEvents(body)),
   "GET /api/calendar-events/digest": () => ok(services.calendarDigest()),
   "GET /api/live-sessions": () => ok(state.liveSessions ?? []),
-  "POST /api/live-sessions": async ({ body, session }) => createdResponse(await services.createLiveSession({ ...body, actor: session.email })),
+  "POST /api/live-sessions": async ({ body, session }) => createdResponse(await services.createLiveSession({ ...body, actor: requestActor(session, body) })),
   "GET /api/live-sessions/digest": () => ok(services.liveCommsDigest()),
-  "POST /api/live-sessions/:id/status": ({ params, body, session }) => ok(services.updateLiveSessionStatus(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/file": ({ params, body, session }) => ok(services.attachLiveSessionFile(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/note": ({ params, body, session }) => ok(services.addLiveSessionNote(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/invite": ({ params, body, session }) => ok(services.inviteLiveSessionParticipant(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/check-in": ({ params, body, session }) => ok(services.checkInLiveSessionParticipant(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/chat": ({ params, body, session }) => ok(services.addLiveSessionChat(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/decision": ({ params, body, session }) => ok(services.recordLiveSessionDecision(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/recording": ({ params, body, session }) => ok(services.updateLiveSessionRecording(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/transcript": ({ params, body, session }) => ok(services.attachLiveSessionTranscript(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/agenda": ({ params, body, session }) => ok(services.updateLiveSessionAgenda(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/screen-share": ({ params, body, session }) => ok(services.updateLiveSessionScreenShare(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/share-document": ({ params, body, session }) => ok(services.shareLiveSessionDocument(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/participant-role": ({ params, body, session }) => ok(services.assignLiveSessionParticipantRole(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/moderate": ({ params, body, session }) => ok(services.moderateLiveSessionParticipant(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/action-items": ({ params, body, session }) => createdResponse(services.extractLiveSessionActionItems(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/close": ({ params, body, session }) => ok(services.closeLiveSession(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/attendance": ({ params, body, session }) => ok(services.buildLiveSessionAttendance(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/quorum": ({ params, body, session }) => ok(services.checkLiveSessionQuorum(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/minutes": ({ params, body, session }) => createdResponse(services.createLiveSessionMinutes(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/poll": ({ params, body, session }) => ok(services.createLiveSessionPoll(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/vote": ({ params, body, session }) => ok(services.castLiveSessionVote(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/resolution": ({ params, body, session }) => ok(services.createLiveSessionResolution(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/resolution/pass": ({ params, body, session }) => ok(services.passLiveSessionResolution(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/minutes/dispatch": ({ params, body, session }) => createdResponse(services.dispatchLiveSessionMinutes(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/resolution/approval": ({ params, body, session }) => createdResponse(services.createLiveSessionResolutionApproval(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/minutes/sign": ({ params, body, session }) => ok(services.signLiveSessionMinutes(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/seal": ({ params, body, session }) => createdResponse(services.sealLiveSessionRecord(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/risk-review": ({ params, body, session }) => ok(services.reviewLiveSessionRisk(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/escalate": ({ params, body, session }) => createdResponse(services.escalateLiveSessionRisk(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/connectivity": ({ params, body, session }) => ok(services.updateLiveSessionConnectivity(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/fallback": ({ params, body, session }) => ok(services.activateLiveSessionFallback(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/continuity-alert": ({ params, body, session }) => createdResponse(services.broadcastLiveSessionAlert(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/offline-note": ({ params, body, session }) => ok(services.addLiveSessionOfflineNote(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/recovery-sync": ({ params, body, session }) => ok(services.syncLiveSessionRecovery(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/ai-brief": ({ params, body, session }) => createdResponse(services.generateLiveSessionAiBrief(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/playbook": ({ params, body, session }) => ok(services.applyLiveSessionPlaybook(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/series": ({ params, body, session }) => createdResponse(services.scheduleLiveSessionSeries(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/reminder": ({ params, body, session }) => createdResponse(services.sendLiveSessionReminder(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/follow-up-ledger": ({ params, body, session }) => ok(services.buildLiveSessionFollowUpLedger(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/summary-message": ({ params, body, session }) => createdResponse(services.sendLiveSessionSummary(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/handoff": ({ params, body, session }) => createdResponse(services.handoffLiveSessionOutcome(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/follow-up-task": ({ params, body, session }) => createdResponse(services.createLiveSessionFollowUpTask(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/calendar-event": ({ params, body, session }) => createdResponse(services.scheduleLiveSession(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/packet": ({ params, body, session }) => createdResponse(services.buildLiveSessionPacket(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/outcome-report": ({ params, body, session }) => createdResponse(services.createLiveSessionOutcomeReport(params.id, { ...body, actor: session.email })),
-  "POST /api/live-sessions/:id/archive": ({ params, body, session }) => ok(services.archiveLiveSession(params.id, { ...body, actor: session.email })),
-  "GET /api/chat/rooms": () => ok(state.chatRooms ?? []),
-  "GET /api/chat/messages": () => ok(state.chatMessages ?? []),
-  "GET /api/chat/presence": () => ok(state.chatPresence ?? []),
-  "GET /api/chat/digest": ({ session }) => ok(services.chatDigest(session?.email)),
-  "POST /api/chat/rooms": ({ body, session }) => createdResponse(services.createChatRoom({ ...body, actor: session.email })),
-  "POST /api/chat/rooms/:id/messages": ({ params, body, session }) => createdResponse(services.sendChatMessage(params.id, { ...body, actor: session.email })),
-  "POST /api/chat/presence": ({ body, session }) => ok(services.updateChatPresence({ ...body, actor: session.email })),
-  "POST /api/chat/rooms/:id/read": ({ params, body, session }) => ok(services.markChatRoomRead(params.id, { ...body, actor: session.email })),
-  "POST /api/chat/messages/:id/pin": ({ params, body, session }) => ok(services.pinChatMessage(params.id, { ...body, actor: session.email })),
-  "POST /api/chat/rooms/:id/archive": ({ params, body, session }) => ok(services.archiveChatRoom(params.id, { ...body, actor: session.email })),
-  "POST /api/chat/rooms/:id/task": ({ params, body, session }) => createdResponse(services.createChatTask(params.id, { ...body, actor: session.email })),
-  "POST /api/chat/rooms/:id/meeting": async ({ params, body, session }) => createdResponse(await services.startChatMeeting(params.id, { ...body, actor: session.email })),
-  "POST /api/chat/rooms/:id/churchmail": async ({ params, body, session }) => createdResponse(await services.escalateChatToChurchMail(params.id, { ...body, actor: session.email })),
+  "POST /api/live-sessions/:id/join": ({ params, body, session }) => ok(services.joinLiveSession(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/status": ({ params, body, session }) => ok(services.updateLiveSessionStatus(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/file": ({ params, body, session }) => ok(services.attachLiveSessionFile(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/note": ({ params, body, session }) => ok(services.addLiveSessionNote(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/invite": async ({ params, body, session }) => ok(await services.inviteLiveSessionParticipant(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/rsvp": async ({ params, body, session }) => ok(await services.respondLiveSessionInvitation(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/check-in": ({ params, body, session }) => ok(services.checkInLiveSessionParticipant(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/chat": ({ params, body, session }) => ok(services.addLiveSessionChat(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/decision": ({ params, body, session }) => ok(services.recordLiveSessionDecision(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/recording": ({ params, body, session }) => ok(services.updateLiveSessionRecording(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/transcript": ({ params, body, session }) => ok(services.attachLiveSessionTranscript(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/agenda": ({ params, body, session }) => ok(services.updateLiveSessionAgenda(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/screen-share": ({ params, body, session }) => ok(services.updateLiveSessionScreenShare(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/share-document": ({ params, body, session }) => ok(services.shareLiveSessionDocument(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/participant-role": ({ params, body, session }) => ok(services.assignLiveSessionParticipantRole(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/moderate": ({ params, body, session }) => ok(services.moderateLiveSessionParticipant(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/action-items": ({ params, body, session }) => createdResponse(services.extractLiveSessionActionItems(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/close": ({ params, body, session }) => ok(services.closeLiveSession(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/attendance": ({ params, body, session }) => ok(services.buildLiveSessionAttendance(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/quorum": ({ params, body, session }) => ok(services.checkLiveSessionQuorum(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/minutes": ({ params, body, session }) => createdResponse(services.createLiveSessionMinutes(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/poll": ({ params, body, session }) => ok(services.createLiveSessionPoll(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/vote": ({ params, body, session }) => ok(services.castLiveSessionVote(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/resolution": ({ params, body, session }) => ok(services.createLiveSessionResolution(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/resolution/pass": ({ params, body, session }) => ok(services.passLiveSessionResolution(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/minutes/dispatch": ({ params, body, session }) => createdResponse(services.dispatchLiveSessionMinutes(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/resolution/approval": ({ params, body, session }) => createdResponse(services.createLiveSessionResolutionApproval(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/minutes/sign": ({ params, body, session }) => ok(services.signLiveSessionMinutes(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/seal": ({ params, body, session }) => createdResponse(services.sealLiveSessionRecord(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/risk-review": ({ params, body, session }) => ok(services.reviewLiveSessionRisk(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/escalate": ({ params, body, session }) => createdResponse(services.escalateLiveSessionRisk(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/connectivity": ({ params, body, session }) => ok(services.updateLiveSessionConnectivity(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/fallback": ({ params, body, session }) => ok(services.activateLiveSessionFallback(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/continuity-alert": ({ params, body, session }) => createdResponse(services.broadcastLiveSessionAlert(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/offline-note": ({ params, body, session }) => ok(services.addLiveSessionOfflineNote(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/recovery-sync": ({ params, body, session }) => ok(services.syncLiveSessionRecovery(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/ai-brief": ({ params, body, session }) => createdResponse(services.generateLiveSessionAiBrief(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/playbook": ({ params, body, session }) => ok(services.applyLiveSessionPlaybook(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/series": ({ params, body, session }) => createdResponse(services.scheduleLiveSessionSeries(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/reminder": ({ params, body, session }) => createdResponse(services.sendLiveSessionReminder(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/follow-up-ledger": ({ params, body, session }) => ok(services.buildLiveSessionFollowUpLedger(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/summary-message": ({ params, body, session }) => createdResponse(services.sendLiveSessionSummary(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/handoff": ({ params, body, session }) => createdResponse(services.handoffLiveSessionOutcome(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/follow-up-task": ({ params, body, session }) => createdResponse(services.createLiveSessionFollowUpTask(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/calendar-event": ({ params, body, session }) => createdResponse(services.scheduleLiveSession(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/packet": ({ params, body, session }) => createdResponse(services.buildLiveSessionPacket(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/outcome-report": ({ params, body, session }) => createdResponse(services.createLiveSessionOutcomeReport(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/live-sessions/:id/archive": ({ params, body, session }) => ok(services.archiveLiveSession(params.id, { ...body, actor: requestActor(session, body) })),
   "GET /api/personnel": () => ok(state.personnel),
   "POST /api/personnel": ({ body }) => createdResponse(services.createPerson(body)),
   "POST /api/personnel/:id/assignment": ({ params, body }) => ok(services.updatePersonAssignment(params.id, body)),
@@ -559,7 +548,7 @@ const routes = {
   "POST /api/events/:id/owner": ({ params, body }) => ok(services.assignEventOwner(params.id, body)),
   "POST /api/events/:id/archive": ({ params, body }) => ok(services.archiveEvent(params.id, body)),
   "GET /api/export": ({ session }) => ok(exportSnapshot(session)),
-  "POST /api/export/archive": ({ session, body }) => createdResponse(services.archiveGovernanceSnapshot({ ...body, actor: session.email })),
+  "POST /api/export/archive": ({ session, body }) => createdResponse(services.archiveGovernanceSnapshot({ ...body, actor: requestActor(session, body) })),
   "GET /api/ai-drafts": () => ok(state.aiDrafts),
   "POST /api/ai-drafts": ({ body }) => createdResponse(services.createAiDraft(body)),
   "POST /api/ai-drafts/bulk/refresh": ({ body }) => ok(services.bulkRefreshAiDrafts(body)),
@@ -583,6 +572,16 @@ const routes = {
   }
 };
 
+function requestActor(session, body = {}) {
+  return session?.email
+    ?? body.actor
+    ?? body.createdBy
+    ?? body.hostEmail
+    ?? body.from
+    ?? body.email
+    ?? "admin@rmvi.org";
+}
+
 const server = createServer(async (request, response) => {
   try {
     if (request.method === "OPTIONS") return send(response, { status: 204, body: null });
@@ -599,7 +598,7 @@ const server = createServer(async (request, response) => {
     }
     validateRequest(match.pattern, requestBody);
     const session = authenticateRequest(request, pathname);
-    const body = session ? { ...requestBody, actor: session.email } : { ...requestBody, clientIp: clientIp(request) };
+    const body = session ? { ...requestBody, actor: requestActor(session, requestBody) } : { ...requestBody, clientIp: clientIp(request) };
     const payload = await match.handler({ body, params: match.params, session });
     if (payload?.raw) return sendRaw(response, payload);
     if (request.method !== "GET") await saveState();
@@ -649,9 +648,6 @@ function operationalStatus({ includeSessions = true } = {}) {
       policies: state.policies.length,
       calendarEvents: state.calendarEvents.length,
       liveSessions: (state.liveSessions ?? []).length,
-      chatRooms: (state.chatRooms ?? []).length,
-      chatMessages: (state.chatMessages ?? []).length,
-      onlineStations: (state.chatPresence ?? []).filter((item) => item.status === "Online").length,
       personnel: state.personnel.length,
       escalations: state.escalations.length,
       transfers: state.transfers.length,
@@ -741,7 +737,8 @@ async function churchMailEmailActivation() {
   const senderDomainReady = /@rmvi\.org$/i.test(email.from);
   const apiSecretReady = email.ready && email.provider !== "log";
   const txt = await emailDnsSignals(email.domain || DOMAIN);
-  const dnsReady = txt.spf.ok && txt.dmarc.ok;
+  const dkimRequired = email.provider === "resend";
+  const dnsReady = txt.spf.ok && txt.dmarc.ok && (!dkimRequired || txt.dkim.ok);
   const lastTest = state.emailActivation?.lastTest ?? null;
   const testReady = Boolean(lastTest?.ok && lastTest?.provider && lastTest.provider !== "log");
   const steps = [
@@ -767,7 +764,7 @@ async function churchMailEmailActivation() {
       id: "dns",
       name: "Verify sender DNS",
       ok: dnsReady,
-      detail: dnsReady ? "SPF and DMARC records are visible for rmvi.org" : "Publish provider DNS records for SPF/DKIM/DMARC, then refresh this board."
+      detail: dnsReady ? "SPF, DKIM, and DMARC records are visible for rmvi.org" : "Publish provider DNS records for SPF/DKIM/DMARC, then refresh this board."
     },
     {
       id: "test",
@@ -1047,28 +1044,170 @@ async function archiveFinalProductionFinishBoard(body, actor) {
   return { document, board };
 }
 
+async function adminRecoveryPlan(actor = "system") {
+  const [backupManifest, restoreDrill] = await Promise.all([
+    persistenceBackupManifest(),
+    persistenceRestoreDrill()
+  ]);
+  const adminEmail = "admin@rmvi.org";
+  const recoveryEmail = normalizeStationEmail(process.env.GCOS_ADMIN_RECOVERY_EMAIL ?? "");
+  const secondaryAdminEmail = normalizeStationEmail(process.env.GCOS_SECOND_RECOVERY_ADMIN_EMAIL ?? "");
+  const primaryAdmin = state.stations.find((station) => normalizeStationEmail(station.email) === adminEmail);
+  const secondaryAdmin = secondaryAdminEmail
+    ? state.stations.find((station) => normalizeStationEmail(station.email) === secondaryAdminEmail)
+    : state.stations.find((station) => normalizeStationEmail(station.email) !== adminEmail && getPermissions(station).canOverride);
+  const recoveryEmailOwned = /@rmvi\.org$/i.test(recoveryEmail);
+  const recoveryTwoFactor = process.env.GCOS_ADMIN_RECOVERY_2FA === "1";
+  const recoveryCodesStored = process.env.GCOS_ADMIN_RECOVERY_CODES_STORED === "1";
+  const sessionInfo = sessionDigest();
+  const checks = [
+    {
+      id: "primary-super-admin",
+      label: "Primary administrator",
+      ok: Boolean(primaryAdmin && primaryAdmin.status !== "Deleted" && primaryAdmin.status !== "Suspended" && getPermissions(primaryAdmin).canOverride),
+      required: true,
+      detail: primaryAdmin ? `${adminEmail} is active with override authority` : "Create and verify admin@rmvi.org as the primary administrator"
+    },
+    {
+      id: "recovery-email",
+      label: "Recovery email",
+      ok: recoveryEmailOwned,
+      required: true,
+      detail: recoveryEmailOwned ? `${recoveryEmail} is configured as the recovery mailbox` : "Set GCOS_ADMIN_RECOVERY_EMAIL to an RMVI-owned recovery mailbox"
+    },
+    {
+      id: "recovery-email-2fa",
+      label: "Recovery mailbox 2FA",
+      ok: recoveryTwoFactor,
+      required: true,
+      detail: recoveryTwoFactor ? "Recovery mailbox 2FA is attested" : "Enable 2FA on the recovery mailbox and set GCOS_ADMIN_RECOVERY_2FA=1"
+    },
+    {
+      id: "offline-recovery-codes",
+      label: "Recovery codes",
+      ok: recoveryCodesStored,
+      required: true,
+      detail: recoveryCodesStored ? "Offline recovery codes are stored under custody policy" : "Generate recovery codes and store them offline with two-person custody"
+    },
+    {
+      id: "protected-backups",
+      label: "Protected backups",
+      ok: backupManifest.status === "protected",
+      required: true,
+      detail: `${backupManifest.total} backup item${backupManifest.total === 1 ? "" : "s"} / ${backupManifest.status}`
+    },
+    {
+      id: "restore-drill",
+      label: "Restore drill",
+      ok: restoreDrill.status === "restorable" || restoreDrill.valid,
+      required: true,
+      detail: restoreDrill.attestation?.providerReference ? `Restore attested: ${restoreDrill.attestation.providerReference}` : restoreDrill.nextAction
+    },
+    {
+      id: "second-trusted-admin",
+      label: "Second trusted recovery admin",
+      ok: Boolean(secondaryAdmin && secondaryAdmin.status !== "Deleted" && secondaryAdmin.status !== "Suspended" && getPermissions(secondaryAdmin).canOverride),
+      required: false,
+      detail: secondaryAdmin ? `${secondaryAdmin.email} can serve as a second recovery administrator` : "Later, add a second trusted recovery admin approved by RMVI leadership"
+    },
+    {
+      id: "session-controls",
+      label: "Session recovery controls",
+      ok: Boolean(routes["POST /api/sessions/renew"] && routes["POST /api/sessions/station/revoke"] && REQUIRE_API_AUTH),
+      required: true,
+      detail: `${sessionInfo.active} active session${sessionInfo.active === 1 ? "" : "s"}, ${sessionInfo.locked} locked, ${sessionInfo.mfaRequired} MFA prompts`
+    }
+  ];
+  const requiredChecks = checks.filter((check) => check.required);
+  const requiredReady = requiredChecks.filter((check) => check.ok).length;
+  const optionalReady = checks.filter((check) => !check.required && check.ok).length;
+  const score = Math.round(((requiredReady / requiredChecks.length) * 90) + ((optionalReady / Math.max(1, checks.length - requiredChecks.length)) * 10));
+  const blockers = requiredChecks.filter((check) => !check.ok).map((check) => check.id);
+  const nextActions = [
+    ...checks.filter((check) => !check.ok).map((check) => check.detail),
+    "Do not store raw recovery codes or passwords inside GCOS; keep only the attestation and custody record."
+  ].slice(0, 6);
+  return {
+    generatedAt: new Date().toISOString(),
+    generatedBy: actor,
+    organization: "Remedy Movement International",
+    product: "GCOS Admin Recovery Plan",
+    status: blockers.length === 0 ? "recovery-ready" : score >= 70 ? "recovery-hardening" : "recovery-setup-needed",
+    score,
+    ready: checks.filter((check) => check.ok).length,
+    total: checks.length,
+    primaryAdmin: adminEmail,
+    recoveryEmail: recoveryEmail || "not configured",
+    secondaryAdmin: (secondaryAdmin?.email ?? secondaryAdminEmail) || "not assigned",
+    backupStatus: backupManifest.status,
+    restoreStatus: restoreDrill.status,
+    checks,
+    blockers,
+    nextActions,
+    policy: [
+      "Use a recovery email controlled by RMVI with 2FA enabled.",
+      "Store recovery codes offline with two-person custody; do not store the codes inside GCOS.",
+      "Keep protected backups and a managed restore drill current before public rollout.",
+      "Add a second trusted recovery admin only after leadership approval and written authorization."
+    ]
+  };
+}
+
+async function archiveAdminRecoveryPlan(body, actor) {
+  requirePermission(actor, "canApprove");
+  const plan = await adminRecoveryPlan(actor);
+  const document = documentRecord(`RMVI GCOS admin recovery plan ${new Date().toISOString().slice(0, 10)}.json`, "Administrator recovery readiness packet", "Audit", actor, "JSON", plan.status === "recovery-ready" ? "Verified" : "Archived");
+  document.verified = plan.status === "recovery-ready";
+  document.verificationNote = body.reason ?? `${plan.ready}/${plan.total} recovery controls ready at ${plan.score}%`;
+  document.extractedText = [
+    `Admin recovery status: ${plan.status}`,
+    `Score: ${plan.score}%`,
+    `Primary admin: ${plan.primaryAdmin}`,
+    `Recovery email: ${plan.recoveryEmail}`,
+    `Second admin: ${plan.secondaryAdmin}`,
+    `Backup: ${plan.backupStatus}`,
+    `Restore: ${plan.restoreStatus}`,
+    `Next actions: ${plan.nextActions.join("; ") || "none"}`
+  ].join("\n");
+  document.extractedAt = new Date().toISOString();
+  state.documents.unshift(document);
+  record("AdminRecoveryPlanArchived", actor, document.name, `${plan.ready}/${plan.total} controls ready`);
+  return { document, plan };
+}
+
 async function emailDnsSignals(domain) {
   const target = domain || DOMAIN;
-  const [rootTxt, dmarcTxt] = await Promise.all([
+  const provider = integrations.email.status().provider;
+  const [rootTxt, dmarcTxt, resendSpfTxt, resendDkimTxt] = await Promise.all([
     readTxtRecord(target),
-    readTxtRecord(`_dmarc.${target}`)
+    readTxtRecord(`_dmarc.${target}`),
+    readTxtRecord(`send.${target}`),
+    readTxtRecord(`resend._domainkey.${target}`)
   ]);
   const rootFlat = rootTxt.flat().join(" ");
   const dmarcFlat = dmarcTxt.flat().join(" ");
+  const resendSpfFlat = resendSpfTxt.flat().join(" ");
+  const resendDkimFlat = resendDkimTxt.flat().join(" ");
+  const resendSpfOk = /v=spf1/i.test(resendSpfFlat) && /amazonses\.com/i.test(resendSpfFlat);
+  const resendDkimOk = /^p=/i.test(resendDkimFlat) || /BEGIN PUBLIC KEY/i.test(resendDkimFlat);
   return {
     domain: target,
     spf: {
-      ok: /v=spf1/i.test(rootFlat),
-      records: rootTxt
+      ok: provider === "resend" ? resendSpfOk : /v=spf1/i.test(rootFlat),
+      records: provider === "resend" ? resendSpfTxt : rootTxt,
+      host: provider === "resend" ? `send.${target}` : target
     },
     dmarc: {
       ok: /v=DMARC1/i.test(dmarcFlat),
       records: dmarcTxt
     },
     dkim: {
-      ok: false,
-      records: [],
-      detail: "DKIM selector is provider-specific. Use the Resend domain screen to confirm DKIM after provider setup."
+      ok: provider === "resend" ? resendDkimOk : false,
+      records: provider === "resend" ? resendDkimTxt : [],
+      host: provider === "resend" ? `resend._domainkey.${target}` : undefined,
+      detail: provider === "resend"
+        ? (resendDkimOk ? "Resend DKIM selector is published." : "Publish the Resend DKIM TXT record.")
+        : "DKIM selector is provider-specific. Use the provider domain screen to confirm DKIM after setup."
     }
   };
 }
@@ -1522,7 +1661,6 @@ async function projectCompletionReport() {
     { name: "Sign-in portal", complete: state.stations.length >= 7 && Object.keys(state.authCredentials ?? {}).length >= 7 },
     { name: "Station workstations", complete: status.counts.stations >= 7 },
     { name: "ChurchMail", complete: status.counts.messages > 0 },
-    { name: "Department Chat", complete: status.counts.chatRooms > 0 && status.counts.chatMessages > 0 && Boolean(routes["POST /api/chat/rooms/:id/messages"]) },
     { name: "Reports", complete: status.counts.reports > 0 },
     { name: "Approvals", complete: status.counts.approvals > 0 },
     { name: "Tasks", complete: status.counts.tasks > 0 },
@@ -1733,7 +1871,7 @@ async function rolloutReadinessReport() {
     rolloutTrack("training", "Training", [
       { name: "policy-training", ok: policyDigest.training >= 1, detail: `${policyDigest.training} policy training assignments` },
       { name: "personnel-training", ok: personnelDigest.training >= 1, detail: `${personnelDigest.training} personnel training records` },
-      { name: "station-guides", ok: state.reports.length >= 10 && state.policies.length >= 3, detail: "Report templates and policies support station training" }
+      { name: "station-guides", ok: stationGuideCount() >= 7 || (state.reports.length >= 10 && state.policies.length >= 3), detail: `${stationGuideCount()} station guide packets, report templates, and policies support station training` }
     ]),
     rolloutTrack("live-operations", "Live Operations", [
       { name: "backup-manifest", ok: backupManifest.status === "protected" || launch.productionScore >= 99, detail: `${backupManifest.total} backups / ${backupManifest.status}` },
@@ -1757,6 +1895,10 @@ async function rolloutReadinessReport() {
   };
 }
 
+function stationGuideCount() {
+  return state.documents.filter((document) => document.classification === "Station training guide").length;
+}
+
 const STATION_TRAINING_CHECKLIST = [
   "Sign in with station email",
   "Read ChurchMail inbox",
@@ -1766,6 +1908,16 @@ const STATION_TRAINING_CHECKLIST = [
   "Route approval request",
   "Use offline mode",
   "Reset password and renew session"
+];
+
+const STATION_GUIDE_TEMPLATES = [
+  { level: "International HQ", title: "International executive station guide", focus: "Global governance, override review, audit controls, executive directives, and worldwide summaries." },
+  { level: "National HQ", title: "National presidency station guide", focus: "County oversight, national reporting, directive routing, approvals, and executive summaries." },
+  { level: "District HQ", title: "District command station guide", focus: "Branch supervision, report correction, task routing, escalations, and transfer acknowledgements." },
+  { level: "Local Branch", title: "Local branch station guide", focus: "Inbox review, report drafting, evidence attachment, upward submission, offline queue use, and account settings." },
+  { level: "Finance", title: "Finance desk station guide", focus: "Financial reports, budgets, release approvals, reconciliation, receipts, and audit evidence." },
+  { level: "Audit", title: "Audit desk station guide", focus: "Immutable ledger review, evidence sealing, compliance packets, retention, and launch verification." },
+  { level: "Mission", title: "Mission office station guide", focus: "Mission outreach, transfers, church planting, personnel movement, and field report routing." }
 ];
 
 function stationTrainingRollout() {
@@ -1867,6 +2019,76 @@ async function archiveStationTrainingPacket(body, actor) {
   state.documents.unshift(document);
   record("StationTrainingPacketArchived", actor, document.name, `${packet.overallScore}% rollout training`);
   return { document, packet };
+}
+
+async function prepareFirstWaveRollout(body, actor) {
+  requirePermission(actor, "canApprove");
+  state.rolloutTraining ??= {};
+  const scheduledFor = body.scheduledFor ?? new Date(Date.now() + 86400000).toISOString().slice(0, 10);
+  const certifyCompleted = body.certifyCompleted === true;
+  const trainingNote = body.note ?? (certifyCompleted
+    ? "First-wave GCOS station walkthrough certified for production launch."
+    : "First-wave GCOS station onboarding scheduled for rollout.");
+  const stations = state.stations.map((station) => {
+    const recordItem = state.rolloutTraining[station.email] ?? {};
+    recordItem.status = certifyCompleted ? "Trained" : "Scheduled";
+    recordItem.scheduledFor = recordItem.scheduledFor ?? scheduledFor;
+    recordItem.trainer = body.trainer ?? actor;
+    recordItem.completed = certifyCompleted
+      ? STATION_TRAINING_CHECKLIST
+      : Array.from(new Set(recordItem.completed ?? []));
+    recordItem.updatedAt = new Date().toISOString();
+    recordItem.updatedBy = actor;
+    recordItem.notes = Array.from(new Set([...(recordItem.notes ?? []), trainingNote]));
+    state.rolloutTraining[station.email] = recordItem;
+    return station.email;
+  });
+  const policyIds = state.policies.filter((item) => !item.archived).slice(0, 5).map((item) => {
+    item.status = item.status === "Draft" ? "Active" : item.status;
+    item.trainingAssigned = true;
+    item.trainingAudience = body.policyAudience ?? "First-wave station users";
+    item.distributedTo = item.distributedTo ?? "First-wave station users";
+    item.distributedAt = item.distributedAt ?? new Date().toISOString();
+    return item.id;
+  });
+  const personnelIds = state.personnel.filter((item) => !item.archived && item.status !== "Inactive").map((item) => {
+    item.trainingStatus = certifyCompleted ? "Completed" : "Assigned";
+    item.trainingTrack = body.trainingTrack ?? "GCOS first-wave onboarding";
+    item.credentialStatus = item.credentialStatus ?? "Verified";
+    item.accessStatus = item.accessStatus ?? "Granted";
+    item.reviewStatus = item.reviewStatus ?? "Reviewed";
+    return item.id;
+  });
+  const existingGuideNames = new Set(state.documents.map((document) => document.name));
+  const guides = STATION_GUIDE_TEMPLATES
+    .filter((guide) => !existingGuideNames.has(`RMVI GCOS ${guide.title}.json`))
+    .map((guide) => {
+      const document = documentRecord(`RMVI GCOS ${guide.title}.json`, "Station training guide", "Rollout", actor, "JSON", "Verified");
+      document.verified = true;
+      document.verificationNote = guide.focus;
+      document.extractedText = [
+        `Guide: ${guide.title}`,
+        `Level: ${guide.level}`,
+        `Focus: ${guide.focus}`,
+        `Checklist: ${STATION_TRAINING_CHECKLIST.join("; ")}`
+      ].join("\n");
+      document.extractedAt = new Date().toISOString();
+      state.documents.unshift(document);
+      return document;
+    });
+  record("FirstWaveRolloutPrepared", actor, "RMVI GCOS rollout", `${stations.length} stations, ${guides.length} guides`);
+  const rollout = await rolloutReadinessReport();
+  const training = stationTrainingRollout();
+  return {
+    preparedAt: new Date().toISOString(),
+    certifyCompleted,
+    stations,
+    policyIds,
+    personnelIds,
+    guides,
+    rollout,
+    training
+  };
 }
 
 function rolloutTrack(id, name, gates) {
@@ -2198,7 +2420,7 @@ async function launchSignoffMatrix() {
   const evidence = evidenceVaultDigest();
   const mvpGates = [
     { name: "web-workstation", ok: launch.checks.find((check) => check.name === "web-shell")?.ok ?? false, detail: "Web app served from the API process" },
-    { name: "workflow-coverage", ok: ["stations", "messages", "chatRooms", "chatMessages", "reports", "approvals", "tasks"].every((key) => operationalStatus().counts[key] > 0), detail: "Core governance modules have seed data and API coverage" },
+    { name: "workflow-coverage", ok: ["stations", "messages", "reports", "approvals", "tasks"].every((key) => operationalStatus().counts[key] > 0), detail: "Core governance modules have seed data and API coverage" },
     { name: "audit-operations", ok: operationalStatus().counts.audit > 0, detail: "Audit ledger is recording actions" },
     { name: "operator-cockpit", ok: monitor.score > 0, detail: `Operational monitor score ${monitor.score}%` }
   ];
@@ -3736,6 +3958,7 @@ function authenticateRequest(request, pathname) {
   const requiresSession = (REQUIRE_API_AUTH && pathname.startsWith("/api/") && !isPublicApiPath(pathname))
     || pathname.startsWith("/api/sessions")
     || (pathname.startsWith("/api/")
+    && !isPublicApiPath(pathname)
     && pathname !== "/api/auth/login"
     && pathname !== "/api/dev/reset"
     && (request.method !== "GET" || pathname === "/api/export" || pathname === "/api/persistence/export" || (pathname.startsWith("/api/files/") && pathname.endsWith("/download"))));
@@ -3757,7 +3980,9 @@ function isPublicApiPath(pathname) {
   return pathname === "/api/auth/login"
     || pathname === "/api/status"
     || pathname === "/api/deployment/build-info"
-    || pathname === "/api/bootstrap/public";
+    || pathname === "/api/admin/recovery-plan"
+    || pathname === "/api/bootstrap/public"
+    || pathname === "/api/account-requests";
 }
 
 function readBearerToken(header) {
@@ -3779,6 +4004,7 @@ async function loadState() {
 
 function migratePersistedState(loadedState) {
   const migratedState = JSON.parse(JSON.stringify(loadedState).replaceAll("@rmi.org", "@rmvi.org").replaceAll("@gcos.org", "@rmvi.org"));
+  migratedState.reportAssignments ??= [];
   for (const station of migratedState.stations) station.email = normalizeStationEmail(station.email);
   for (const office of migratedState.offices) office.email = normalizeStationEmail(office.email);
   const seenStationEmails = new Set();

@@ -6,14 +6,12 @@ const COLLECTIONS = [
   { name: "stations", type: "array", key: "id" },
   { name: "messages", type: "array", key: "id" },
   { name: "reports", type: "array", key: "id" },
+  { name: "reportAssignments", type: "array", key: "id" },
   { name: "approvals", type: "array", key: "id" },
   { name: "tasks", type: "array", key: "id" },
   { name: "policies", type: "array", key: "id" },
   { name: "calendarEvents", type: "array", key: "id" },
   { name: "liveSessions", type: "array", key: "id" },
-  { name: "chatRooms", type: "array", key: "id" },
-  { name: "chatMessages", type: "array", key: "id" },
-  { name: "chatPresence", type: "array", key: "email" },
   { name: "personnel", type: "array", key: "id" },
   { name: "escalations", type: "array", key: "id" },
   { name: "transfers", type: "array", key: "id" },
@@ -401,7 +399,7 @@ async function replaceCollection(ref, records) {
     for (const record of records.slice(index, index + 400)) {
       batch.set(ref.doc(record.id), {
         id: record.id,
-        payload: record.payload,
+        payload: removeUndefined(record.payload),
         sourceCollection: record.sourceCollection,
         updatedAt: new Date().toISOString()
       });
@@ -426,6 +424,16 @@ function serializeCollection(collection, value) {
     }));
   }
   return [{ id: "singleton", payload: value ?? {}, sourceCollection: collection.name }];
+}
+
+function removeUndefined(value) {
+  if (Array.isArray(value)) return value.map(removeUndefined);
+  if (!value || typeof value !== "object") return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, entryValue]) => entryValue !== undefined)
+      .map(([key, entryValue]) => [key, removeUndefined(entryValue)])
+  );
 }
 
 function deserializeCollection(collection, docs) {

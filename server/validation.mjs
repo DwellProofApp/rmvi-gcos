@@ -19,7 +19,7 @@ const policyStatuses = ["Draft", "Active", "Review", "Retired"];
 const calendarPriorities = ["Low", "Medium", "High", "Critical"];
 const calendarStatuses = ["Scheduled", "At Risk", "Complete"];
 const personnelStatuses = ["Active", "Transfer Pending", "Assigned", "Inactive", "Onboarding", "On Leave"];
-const officeStatuses = ["Provisioned", "Suspended", "Active"];
+const officeStatuses = ["Pending Approval", "Provisioned", "Ready", "Suspended", "Active", "Archived"];
 const auditSeverities = ["Info", "Low", "Medium", "High", "Critical"];
 const securityControlStatuses = ["Active", "Warning", "Exception", "Disabled", "Testing"];
 const complianceRisks = ["Low", "Medium", "High", "Critical"];
@@ -94,6 +94,15 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
     if (body.owner !== undefined) requireString(body.owner, "owner");
     if (body.severity !== undefined) requireEnum(body.severity, severities, "severity");
+  },
+
+  "POST /api/account-requests": (body) => {
+    requireString(body.fullName, "fullName");
+    requireString(body.officeName, "officeName");
+    requireRmviEmail(body.email, "email");
+    requireEnum(body.level, stationLevels, "level");
+    if (body.department !== undefined) requireString(body.department, "department");
+    requireString(body.password, "password");
   },
 
   "POST /api/readiness/:name/acknowledge": (body) => {
@@ -364,10 +373,6 @@ const validators = {
     if (body.password !== undefined) requireString(body.password, "password");
   },
 
-  "POST /api/stations/:id/credentials/reset": (body) => {
-    if (body.password !== undefined) requireString(body.password, "password");
-  },
-
   "POST /api/stations/:id/credential/mfa": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
@@ -381,20 +386,6 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
-  "POST /api/stations/:id/credentials/unlock": (body) => {
-    if (body.reason !== undefined) requireString(body.reason, "reason");
-  },
-
-  "POST /api/credentials/reset": (body) => {
-    requireEmail(body.email, "email");
-    if (body.password !== undefined) requireString(body.password, "password");
-  },
-
-  "POST /api/credentials/unlock": (body) => {
-    requireEmail(body.email, "email");
-    if (body.reason !== undefined) requireString(body.reason, "reason");
-  },
-
   "POST /api/stations/bulk/verify": (body) => {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
   },
@@ -405,6 +396,9 @@ const validators = {
     requireString(body.from, "from");
     if (body.status !== undefined) requireEnum(body.status, statuses, "status");
     if (body.files !== undefined) requireString(body.files, "files");
+    if (body.body !== undefined) requireString(body.body, "body");
+    if (body.priority !== undefined) requireEnum(body.priority, ["Low", "Medium", "High", "Critical"], "priority");
+    if (body.recipients !== undefined) requireStringArray(body.recipients, "recipients");
   },
 
   "POST /api/messages/:id/classify": (body) => {
@@ -413,16 +407,6 @@ const validators = {
 
   "POST /api/messages/:id/status": (body) => {
     if (body.status !== undefined) requireEnum(body.status, statuses, "status");
-  },
-
-  "POST /api/messages/:id/read": (body) => {
-    if (body.reader !== undefined) requireString(body.reader, "reader");
-  },
-
-  "POST /api/messages/:id/acknowledge": (body) => {
-    if (body.status !== undefined) requireEnum(body.status, statuses, "status");
-    if (body.note !== undefined) requireString(body.note, "note");
-    if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
   "POST /api/messages/:id/route": (body) => {
@@ -454,55 +438,6 @@ const validators = {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
   },
 
-  "POST /api/chat/rooms": (body) => {
-    requireString(body.name, "name");
-    if (body.kind !== undefined) requireEnum(body.kind, ["Department", "Direct", "Operations", "Meeting"], "kind");
-    if (body.department !== undefined) requireString(body.department, "department");
-    if (body.participants !== undefined) requireStringArray(body.participants, "participants");
-    if (body.linkedRecord !== undefined) requireString(body.linkedRecord, "linkedRecord");
-  },
-
-  "POST /api/chat/rooms/:id/messages": (body) => {
-    requireString(body.body, "body");
-    if (body.linkedReport !== undefined) requireString(body.linkedReport, "linkedReport");
-    if (body.linkedApproval !== undefined) requireString(body.linkedApproval, "linkedApproval");
-    if (body.linkedTask !== undefined) requireString(body.linkedTask, "linkedTask");
-  },
-
-  "POST /api/chat/presence": (body) => {
-    requireEnum(body.status, ["Online", "Away", "Offline"], "status");
-    if (body.activeRoomId !== undefined) requireString(body.activeRoomId, "activeRoomId");
-  },
-
-  "POST /api/chat/rooms/:id/read": (body) => {
-    if (body.reader !== undefined) requireString(body.reader, "reader");
-  },
-
-  "POST /api/chat/messages/:id/pin": (body) => {
-    if (body.pinned !== undefined && typeof body.pinned !== "boolean") throw validationError("pinned must be boolean");
-  },
-
-  "POST /api/chat/rooms/:id/archive": (body) => {
-    if (body.reason !== undefined) requireString(body.reason, "reason");
-  },
-
-  "POST /api/chat/rooms/:id/task": (body) => {
-    if (body.title !== undefined) requireString(body.title, "title");
-    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
-    if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
-    if (body.due !== undefined) requireString(body.due, "due");
-  },
-
-  "POST /api/chat/rooms/:id/meeting": (body) => {
-    if (body.title !== undefined) requireString(body.title, "title");
-    if (body.purpose !== undefined) requireString(body.purpose, "purpose");
-  },
-
-  "POST /api/chat/rooms/:id/churchmail": (body) => {
-    if (body.subject !== undefined) requireString(body.subject, "subject");
-    if (body.kind !== undefined) requireEnum(body.kind, messageKinds, "kind");
-  },
-
   "POST /api/reports": (body) => {
     requireString(body.name, "name");
     requireString(body.path, "path");
@@ -516,6 +451,22 @@ const validators = {
     if (body.approvalLimit !== undefined) requireString(body.approvalLimit, "approvalLimit");
     if (body.templateChecklist !== undefined) requireStringArray(body.templateChecklist, "templateChecklist");
     if (body.reportFields !== undefined && (body.reportFields === null || typeof body.reportFields !== "object" || Array.isArray(body.reportFields))) throw validationError("reportFields must be an object");
+  },
+
+  "POST /api/report-assignments": (body) => {
+    if (body.name !== undefined) requireString(body.name, "name");
+    if (body.targetMode !== undefined) requireEnum(body.targetMode, ["resident-pastor-offices", "designated-office"], "targetMode");
+    if (body.targetOfficeId !== undefined) requireString(body.targetOfficeId, "targetOfficeId");
+    if (body.period !== undefined) requireString(body.period, "period");
+    if (body.cadence !== undefined) requireString(body.cadence, "cadence");
+    if (!Array.isArray(body.templates) || body.templates.length === 0) throw validationError("templates must be a non-empty array");
+    for (const template of body.templates) {
+      if (!template || typeof template !== "object") throw validationError("templates must contain objects");
+      requireString(template.id, "template.id");
+      requireString(template.name, "template.name");
+      requireString(template.path, "template.path");
+      if (template.checklist !== undefined) requireStringArray(template.checklist, "template.checklist");
+    }
   },
 
   "POST /api/reports/:id/score": (body) => {
@@ -555,17 +506,6 @@ const validators = {
 
   "POST /api/reports/:id/verify": (body) => {
     if (body.state !== undefined) requireString(body.state, "state");
-  },
-
-  "POST /api/reports/:id/sign": (body) => {
-    if (body.state !== undefined) requireString(body.state, "state");
-    if (body.status !== undefined) requireString(body.status, "status");
-    if (body.note !== undefined) requireString(body.note, "note");
-  },
-
-  "POST /api/reports/:id/approve": (body) => {
-    if (body.note !== undefined) requireString(body.note, "note");
-    if (body.routingStage !== undefined) requireString(body.routingStage, "routingStage");
   },
 
   "POST /api/reports/:id/packet": (body) => {
@@ -621,21 +561,6 @@ const validators = {
 
   "POST /api/approvals/:id/limit": (body) => {
     if (body.limit !== undefined) requireString(body.limit, "limit");
-  },
-
-  "POST /api/approvals/:id/return": (body) => {
-    if (body.reason !== undefined) requireString(body.reason, "reason");
-    if (body.comment !== undefined) requireString(body.comment, "comment");
-  },
-
-  "POST /api/approvals/:id/evidence": (body) => {
-    if (body.reason !== undefined) requireString(body.reason, "reason");
-    if (body.comment !== undefined) requireString(body.comment, "comment");
-  },
-
-  "POST /api/approvals/:id/request-evidence": (body) => {
-    if (body.reason !== undefined) requireString(body.reason, "reason");
-    if (body.comment !== undefined) requireString(body.comment, "comment");
   },
 
   "POST /api/approvals/:id/delegate": (body) => {
@@ -888,7 +813,22 @@ const validators = {
     if (body.note !== undefined) requireString(body.note, "note");
   },
 
+  "POST /api/rollout/first-wave/prepare": (body) => {
+    if (body.scheduledFor !== undefined) requireString(body.scheduledFor, "scheduledFor");
+    if (body.trainer !== undefined) requireString(body.trainer, "trainer");
+    if (body.note !== undefined) requireString(body.note, "note");
+    if (body.policyAudience !== undefined) requireString(body.policyAudience, "policyAudience");
+    if (body.trainingTrack !== undefined) requireString(body.trainingTrack, "trainingTrack");
+    if (body.certifyCompleted !== undefined && typeof body.certifyCompleted !== "boolean") {
+      throw new ValidationError("certifyCompleted must be a boolean");
+    }
+  },
+
   "POST /api/rollout/station-training/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/admin/recovery-plan/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 

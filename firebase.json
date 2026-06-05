@@ -104,7 +104,7 @@
         "headers": [
           {
             "key": "Content-Security-Policy",
-            "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://rmvi-gcos-api-487881041428.us-central1.run.app; frame-src 'self' https://meet.jit.si; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+            "value": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; font-src 'self' data:; connect-src 'self' https://rmvi-gcos-api-487881041428.us-central1.run.app; manifest-src 'self'; worker-src 'self'; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
           },
           {
             "key": "X-Frame-Options",
@@ -120,7 +120,7 @@
           },
           {
             "key": "Permissions-Policy",
-            "value": "camera=(self \"https://meet.jit.si\"), microphone=(self \"https://meet.jit.si\"), geolocation=()"
+            "value": "camera=(), microphone=(), geolocation=()"
           },
           {
             "key": "Cross-Origin-Opener-Policy",

@@ -12248,6 +12248,496 @@ h1 {
   }
 }
 
+/* LAST RULESET: visible admin/public gateway identity labels. */
+.login-shell.public-software-gateway {
+  background:
+    radial-gradient(circle at 16% 8%, rgba(244, 197, 66, 0.24), transparent 280px),
+    radial-gradient(circle at 92% 12%, rgba(255, 255, 255, 0.13), transparent 320px),
+    linear-gradient(180deg, #061733 0%, #08265b 54%, #0b3478 100%) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .admin-access-hero,
+.login-shell.public-software-gateway .software-download-hero,
+.login-shell.public-software-gateway .login-card,
+.login-shell.public-software-gateway .gateway-flow-steps article,
+.login-shell.public-software-gateway .public-download-footer {
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
+    rgba(6, 23, 51, 0.8) !important;
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .login-emblem,
+.login-shell.public-software-gateway .brand-mark {
+  display: grid !important;
+  place-items: center !important;
+  width: 84px !important;
+  height: 84px !important;
+  padding: 8px !important;
+  border: 1px solid rgba(244, 197, 66, 0.4) !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  color: #061733 !important;
+  overflow: hidden !important;
+}
+
+.login-shell.public-software-gateway .login-emblem img,
+.login-shell.public-software-gateway .brand-mark img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+.login-shell.public-software-gateway .download-kicker {
+  display: inline-grid !important;
+  gap: 4px !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  padding: 10px 13px !important;
+  border: 1px solid rgba(244, 197, 66, 0.48) !important;
+  border-radius: 14px !important;
+  background: rgba(244, 197, 66, 0.16) !important;
+}
+
+.login-shell.public-software-gateway .download-kicker span,
+.login-shell.public-software-gateway .download-kicker strong {
+  display: block !important;
+  color: #f4c542 !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25) !important;
+}
+
+.login-shell.public-software-gateway .download-kicker span {
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+.login-shell.public-software-gateway .download-kicker strong {
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+.login-shell.public-software-gateway .download-hero-copy h1,
+.login-shell.public-software-gateway .download-hero-copy p,
+.login-shell.public-software-gateway .download-hero-copy strong:not(.download-kicker strong),
+.login-shell.public-software-gateway .download-hero-copy small,
+.login-shell.public-software-gateway .login-heading h2,
+.login-shell.public-software-gateway .login-heading p,
+.login-shell.public-software-gateway .login-form label,
+.login-shell.public-software-gateway .login-form label span,
+.login-shell.public-software-gateway .login-card-footer span,
+.login-shell.public-software-gateway .station-flow-note p,
+.login-shell.public-software-gateway .gateway-flow-steps strong,
+.login-shell.public-software-gateway .gateway-flow-steps p,
+.login-shell.public-software-gateway .public-download-footer strong,
+.login-shell.public-software-gateway .public-download-footer span,
+.login-shell.public-software-gateway .login-support span,
+.login-shell.public-software-gateway .admin-login-capabilities strong,
+.login-shell.public-software-gateway .admin-login-capabilities small {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.login-shell.public-software-gateway .login-heading span,
+.login-shell.public-software-gateway .station-flow-note span,
+.login-shell.public-software-gateway .download-panel-header span,
+.login-shell.public-software-gateway .download-panel-header strong {
+  color: #f4c542 !important;
+}
+
+.login-shell.public-software-gateway .login-trust-row span,
+.login-shell.public-software-gateway .admin-login-capabilities article,
+.login-shell.public-software-gateway .station-flow-note,
+.login-shell.public-software-gateway .login-support,
+.login-shell.public-software-gateway .download-card,
+.login-shell.public-software-gateway .auth-mode-toggle,
+.login-shell.public-software-gateway .login-card-footer {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-card span,
+.login-shell.public-software-gateway .download-card strong,
+.login-shell.public-software-gateway .download-card small,
+.login-shell.public-software-gateway .download-card b {
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions button,
+.login-shell.public-software-gateway .public-download-footer button,
+.login-shell.public-software-gateway .auth-mode-toggle button,
+.login-shell.public-software-gateway .secondary-auth-action {
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions .primary-download-action,
+.login-shell.public-software-gateway .login-form button[type="submit"] {
+  border-color: #f4c542 !important;
+  background: #f4c542 !important;
+  color: #061733 !important;
+}
+
+.login-shell.public-software-gateway .login-form input,
+.login-shell.public-software-gateway .login-form select,
+.login-shell.public-software-gateway .login-form textarea {
+  border-color: rgba(255, 255, 255, 0.42) !important;
+  background: #ffffff !important;
+  color: #10213f !important;
+}
+
+.login-shell.public-software-gateway .station-avatar,
+.login-shell.public-software-gateway .gateway-flow-steps article > div:first-child span {
+  background: #ffffff !important;
+  color: #0b2f6b !important;
+}
+
+/* TRUE FINAL OVERRIDE: keep RMVI and admin sign-in gateways blue and readable. */
+.login-shell.public-software-gateway,
+.login-shell.public-software-gateway.station-signin-gateway,
+.login-shell.public-software-gateway.admin-login-gateway {
+  min-height: 100vh !important;
+  background:
+    radial-gradient(circle at 16% 8%, rgba(244, 197, 66, 0.24), transparent 280px),
+    radial-gradient(circle at 92% 12%, rgba(255, 255, 255, 0.13), transparent 320px),
+    linear-gradient(180deg, #061733 0%, #08265b 54%, #0b3478 100%) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .public-gateway-header,
+.login-shell.public-software-gateway .public-download-footer,
+.login-shell.public-software-gateway .software-download-hero,
+.login-shell.public-software-gateway .admin-access-hero,
+.login-shell.public-software-gateway .login-card,
+.login-shell.public-software-gateway .gateway-flow-steps article,
+.login-shell.public-software-gateway .download-platform-panel {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.12), rgba(255, 255, 255, 0.05)),
+    rgba(6, 23, 51, 0.78) !important;
+  color: #ffffff !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.28) !important;
+  backdrop-filter: blur(18px);
+}
+
+.login-shell.public-software-gateway .download-hero-copy,
+.login-shell.public-software-gateway .login-card,
+.login-shell.public-software-gateway .gateway-flow-steps,
+.login-shell.public-software-gateway .public-download-footer {
+  isolation: isolate;
+}
+
+.login-shell.public-software-gateway .login-emblem,
+.login-shell.public-software-gateway .brand-mark {
+  display: grid !important;
+  place-items: center !important;
+  width: 82px !important;
+  height: 82px !important;
+  padding: 8px !important;
+  border: 1px solid rgba(244, 197, 66, 0.35) !important;
+  border-radius: 20px !important;
+  background: #ffffff !important;
+  color: #061733 !important;
+  overflow: hidden !important;
+}
+
+.login-shell.public-software-gateway .login-emblem img,
+.login-shell.public-software-gateway .brand-mark img {
+  display: block !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+.login-shell.public-software-gateway .download-kicker {
+  display: inline-grid !important;
+  gap: 4px !important;
+  width: fit-content !important;
+  max-width: 100% !important;
+  padding: 10px 13px !important;
+  border: 1px solid rgba(244, 197, 66, 0.42) !important;
+  border-radius: 14px !important;
+  background: rgba(244, 197, 66, 0.13) !important;
+}
+
+.login-shell.public-software-gateway .download-kicker span,
+.login-shell.public-software-gateway .download-kicker strong {
+  display: block !important;
+  color: #f4c542 !important;
+  opacity: 1 !important;
+  text-shadow: 0 1px 1px rgba(0, 0, 0, 0.25);
+}
+
+.login-shell.public-software-gateway .download-kicker span {
+  font-size: 12px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.08em !important;
+  text-transform: uppercase !important;
+}
+
+.login-shell.public-software-gateway .download-kicker strong {
+  font-size: 13px !important;
+  font-weight: 950 !important;
+  letter-spacing: 0.04em !important;
+  text-transform: uppercase !important;
+}
+
+.login-shell.public-software-gateway .download-hero-copy h1,
+.login-shell.public-software-gateway .download-hero-copy h2,
+.login-shell.public-software-gateway .download-hero-copy h3,
+.login-shell.public-software-gateway .download-hero-copy p,
+.login-shell.public-software-gateway .download-hero-copy strong:not(.download-kicker strong),
+.login-shell.public-software-gateway .download-hero-copy small,
+.login-shell.public-software-gateway .login-heading h2,
+.login-shell.public-software-gateway .login-heading p,
+.login-shell.public-software-gateway .login-form label,
+.login-shell.public-software-gateway .login-form label span,
+.login-shell.public-software-gateway .login-card-footer span,
+.login-shell.public-software-gateway .station-flow-note p,
+.login-shell.public-software-gateway .gateway-flow-steps strong,
+.login-shell.public-software-gateway .gateway-flow-steps p,
+.login-shell.public-software-gateway .public-download-footer strong,
+.login-shell.public-software-gateway .public-download-footer span,
+.login-shell.public-software-gateway .login-support span,
+.login-shell.public-software-gateway .admin-login-capabilities strong,
+.login-shell.public-software-gateway .admin-login-capabilities small {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.login-shell.public-software-gateway .login-heading span,
+.login-shell.public-software-gateway .station-flow-note span,
+.login-shell.public-software-gateway .download-panel-header span,
+.login-shell.public-software-gateway .download-panel-header strong {
+  color: #f4c542 !important;
+}
+
+.login-shell.public-software-gateway .login-trust-row span,
+.login-shell.public-software-gateway .admin-login-capabilities article,
+.login-shell.public-software-gateway .station-flow-note,
+.login-shell.public-software-gateway .login-support,
+.login-shell.public-software-gateway .download-card,
+.login-shell.public-software-gateway .auth-mode-toggle,
+.login-shell.public-software-gateway .login-card-footer {
+  border-color: rgba(255, 255, 255, 0.2) !important;
+  background: rgba(255, 255, 255, 0.11) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-card span,
+.login-shell.public-software-gateway .download-card strong,
+.login-shell.public-software-gateway .download-card small,
+.login-shell.public-software-gateway .download-card b {
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions button,
+.login-shell.public-software-gateway .public-download-footer button,
+.login-shell.public-software-gateway .auth-mode-toggle button,
+.login-shell.public-software-gateway .secondary-auth-action {
+  border-color: rgba(255, 255, 255, 0.24) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions .primary-download-action,
+.login-shell.public-software-gateway .login-form button[type="submit"] {
+  border-color: #f4c542 !important;
+  background: #f4c542 !important;
+  color: #061733 !important;
+}
+
+.login-shell.public-software-gateway .login-form input,
+.login-shell.public-software-gateway .login-form select,
+.login-shell.public-software-gateway .login-form textarea {
+  border-color: rgba(255, 255, 255, 0.42) !important;
+  background: #ffffff !important;
+  color: #10213f !important;
+}
+
+.login-shell.public-software-gateway .station-avatar,
+.login-shell.public-software-gateway .gateway-flow-steps article > div:first-child span {
+  background: #ffffff !important;
+  color: #0b2f6b !important;
+}
+
+.login-shell.public-software-gateway .gateway-flow-steps article > div:first-child svg,
+.login-shell.public-software-gateway .login-card svg,
+.login-shell.public-software-gateway .download-card svg {
+  color: #f4c542 !important;
+}
+
+/* FINAL SIGN-IN CONTRAST FIX: blue public/admin gateways with readable text. */
+.login-shell.public-software-gateway,
+.login-shell.public-software-gateway.station-signin-gateway,
+.login-shell.public-software-gateway.admin-login-gateway {
+  min-height: 100vh !important;
+  background:
+    radial-gradient(circle at 16% 8%, rgba(244, 197, 66, 0.22), transparent 280px),
+    radial-gradient(circle at 92% 12%, rgba(255, 255, 255, 0.12), transparent 300px),
+    linear-gradient(180deg, #061733 0%, #08265b 54%, #0b3478 100%) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .public-gateway-header,
+.login-shell.public-software-gateway .public-download-footer,
+.login-shell.public-software-gateway .software-download-hero,
+.login-shell.public-software-gateway .admin-access-hero,
+.login-shell.public-software-gateway .login-card,
+.login-shell.public-software-gateway .gateway-flow-steps article,
+.login-shell.public-software-gateway .download-platform-panel {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background:
+    linear-gradient(135deg, rgba(255, 255, 255, 0.105), rgba(255, 255, 255, 0.045)),
+    rgba(6, 23, 51, 0.72) !important;
+  color: #ffffff !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.26) !important;
+  backdrop-filter: blur(18px);
+}
+
+.login-shell.public-software-gateway .software-download-hero,
+.login-shell.public-software-gateway .admin-access-hero,
+.login-shell.public-software-gateway .login-card {
+  position: relative;
+  overflow: hidden;
+}
+
+.login-shell.public-software-gateway .software-download-hero::before,
+.login-shell.public-software-gateway .admin-access-hero::before,
+.login-shell.public-software-gateway .login-card::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 6px;
+  background: linear-gradient(90deg, #f4c542, #fff2b0, #1f66c5);
+}
+
+.login-shell.public-software-gateway .brand strong,
+.login-shell.public-software-gateway .brand span,
+.login-shell.public-software-gateway .public-gateway-header a,
+.login-shell.public-software-gateway .gateway-status-pill,
+.login-shell.public-software-gateway .download-hero-copy h1,
+.login-shell.public-software-gateway .download-hero-copy h2,
+.login-shell.public-software-gateway .download-hero-copy h3,
+.login-shell.public-software-gateway .download-hero-copy p,
+.login-shell.public-software-gateway .download-hero-copy strong,
+.login-shell.public-software-gateway .download-hero-copy small,
+.login-shell.public-software-gateway .login-heading h2,
+.login-shell.public-software-gateway .login-heading p,
+.login-shell.public-software-gateway .login-form label,
+.login-shell.public-software-gateway .login-form label span,
+.login-shell.public-software-gateway .login-card-footer span,
+.login-shell.public-software-gateway .station-flow-note p,
+.login-shell.public-software-gateway .gateway-flow-steps strong,
+.login-shell.public-software-gateway .gateway-flow-steps p,
+.login-shell.public-software-gateway .public-download-footer strong,
+.login-shell.public-software-gateway .public-download-footer span,
+.login-shell.public-software-gateway .login-support span,
+.login-shell.public-software-gateway .admin-login-capabilities strong,
+.login-shell.public-software-gateway .admin-login-capabilities small {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+.login-shell.public-software-gateway .download-kicker span,
+.login-shell.public-software-gateway .download-kicker strong,
+.login-shell.public-software-gateway .login-heading span,
+.login-shell.public-software-gateway .station-flow-note span,
+.login-shell.public-software-gateway .download-panel-header span,
+.login-shell.public-software-gateway .download-panel-header strong {
+  color: #f4c542 !important;
+}
+
+.login-shell.public-software-gateway .login-trust-row span,
+.login-shell.public-software-gateway .admin-login-capabilities article,
+.login-shell.public-software-gateway .station-flow-note,
+.login-shell.public-software-gateway .login-support,
+.login-shell.public-software-gateway .download-card,
+.login-shell.public-software-gateway .auth-mode-toggle,
+.login-shell.public-software-gateway .login-card-footer {
+  border: 1px solid rgba(255, 255, 255, 0.18) !important;
+  background: rgba(255, 255, 255, 0.10) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-card span,
+.login-shell.public-software-gateway .download-card strong,
+.login-shell.public-software-gateway .download-card small,
+.login-shell.public-software-gateway .download-card b {
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-card.primary,
+.login-shell.public-software-gateway .download-card:hover,
+.login-shell.public-software-gateway .auth-mode-toggle button.active {
+  border-color: rgba(244, 197, 66, 0.72) !important;
+  background: rgba(244, 197, 66, 0.16) !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions button,
+.login-shell.public-software-gateway .public-download-footer button,
+.login-shell.public-software-gateway .auth-mode-toggle button,
+.login-shell.public-software-gateway .secondary-auth-action {
+  border-color: rgba(255, 255, 255, 0.22) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+.login-shell.public-software-gateway .download-hero-actions .primary-download-action,
+.login-shell.public-software-gateway .login-form button[type="submit"] {
+  border-color: #f4c542 !important;
+  background: #f4c542 !important;
+  color: #061733 !important;
+}
+
+.login-shell.public-software-gateway .login-form input,
+.login-shell.public-software-gateway .login-form select,
+.login-shell.public-software-gateway .login-form textarea {
+  border: 1px solid rgba(255, 255, 255, 0.38) !important;
+  background: #ffffff !important;
+  color: #10213f !important;
+}
+
+.login-shell.public-software-gateway .login-form input::placeholder,
+.login-shell.public-software-gateway .login-form textarea::placeholder {
+  color: #6b7890 !important;
+}
+
+.login-shell.public-software-gateway .station-avatar,
+.login-shell.public-software-gateway .login-emblem,
+.login-shell.public-software-gateway .brand-mark,
+.login-shell.public-software-gateway .gateway-flow-steps article > div:first-child span {
+  background: #ffffff !important;
+  color: #0b2f6b !important;
+}
+
+.login-shell.public-software-gateway .gateway-flow-steps article > div:first-child svg,
+.login-shell.public-software-gateway .login-card svg,
+.login-shell.public-software-gateway .download-card svg {
+  color: #f4c542 !important;
+}
+
+@media (max-width: 880px) {
+  .login-shell.public-software-gateway .login-panel {
+    grid-template-columns: 1fr !important;
+  }
+
+  .login-shell.public-software-gateway .software-download-hero,
+  .login-shell.public-software-gateway .admin-access-hero,
+  .login-shell.public-software-gateway .login-card {
+    padding: 22px !important;
+  }
+}
+
 /* ==========================================================================
    GCOS DESIGN SYSTEM V3
    Investor-ready visual polish for the public gateway, app workspace,
@@ -16342,606 +16832,6 @@ body {
   .admin-action-list,
   .admin-station-summary {
     grid-template-columns: 1fr !important;
-  }
-}
-
-/* Department Chat product layer */
-.department-chat-workspace {
-  grid-template-columns: minmax(0, 1fr) 320px;
-  align-items: start;
-}
-
-.department-chat-main,
-.department-chat-side {
-  min-width: 0;
-}
-
-.chat-metrics {
-  margin: 18px 0;
-}
-
-.department-chat-layout {
-  display: grid;
-  grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
-  gap: 16px;
-  min-height: 560px;
-}
-
-.chat-room-list,
-.chat-thread-panel,
-.department-chat-side {
-  background: rgba(255, 255, 255, 0.82);
-  border: 1px solid rgba(25, 48, 91, 0.12);
-  border-radius: 24px;
-  box-shadow: 0 18px 48px rgba(17, 32, 61, 0.08);
-}
-
-.chat-room-list {
-  padding: 16px;
-  display: grid;
-  align-content: start;
-  gap: 10px;
-}
-
-.chat-room-button {
-  width: 100%;
-  border: 1px solid rgba(25, 48, 91, 0.1);
-  border-radius: 18px;
-  background: #fffaf0;
-  color: #17213a;
-  padding: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  text-align: left;
-  cursor: pointer;
-}
-
-.chat-room-button.active {
-  background: linear-gradient(135deg, #173c88, #11285d);
-  color: #fff;
-  border-color: rgba(216, 178, 82, 0.8);
-}
-
-.chat-room-button strong,
-.presence-row strong {
-  display: block;
-  font-size: 0.92rem;
-}
-
-.chat-room-button small,
-.presence-row small {
-  display: block;
-  margin-top: 4px;
-  color: inherit;
-  opacity: 0.72;
-  line-height: 1.35;
-}
-
-.chat-room-button b {
-  min-width: 26px;
-  height: 26px;
-  display: inline-grid;
-  place-items: center;
-  border-radius: 999px;
-  background: #d19a00;
-  color: #fff;
-  font-size: 0.78rem;
-}
-
-.chat-create-room {
-  margin-top: 12px;
-  border-top: 1px solid rgba(25, 48, 91, 0.1);
-  padding-top: 14px;
-  display: grid;
-  gap: 10px;
-}
-
-.chat-create-room input,
-.chat-create-room select,
-.chat-compose textarea {
-  width: 100%;
-  border: 1px solid rgba(25, 48, 91, 0.14);
-  border-radius: 16px;
-  background: rgba(255, 255, 255, 0.96);
-  color: #17213a;
-  padding: 12px 14px;
-  font: inherit;
-}
-
-.chat-thread-panel {
-  display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
-  overflow: hidden;
-}
-
-.chat-thread-header {
-  padding: 18px;
-  border-bottom: 1px solid rgba(25, 48, 91, 0.1);
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 14px;
-}
-
-.chat-thread-header h3,
-.chat-readiness-card h3 {
-  margin: 4px 0;
-  color: #13224a;
-}
-
-.chat-thread-header p,
-.chat-readiness-card p {
-  margin: 0;
-  color: #61708a;
-  line-height: 1.45;
-}
-
-.chat-message-list {
-  min-height: 0;
-  overflow-y: auto;
-  padding: 18px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.chat-message {
-  width: min(82%, 680px);
-  border: 1px solid rgba(25, 48, 91, 0.1);
-  border-radius: 20px;
-  background: #fffdf7;
-  padding: 14px;
-  color: #17213a;
-}
-
-.chat-message.mine {
-  align-self: flex-end;
-  background: linear-gradient(135deg, #173c88, #11285d);
-  color: #fff;
-  border-color: rgba(216, 178, 82, 0.6);
-}
-
-.chat-message div:first-child {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 8px;
-}
-
-.chat-message small {
-  color: inherit;
-  opacity: 0.68;
-  font-size: 0.76rem;
-}
-
-.chat-message p {
-  margin: 0;
-  line-height: 1.5;
-}
-
-.chat-message-meta {
-  margin-top: 10px;
-  display: flex;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.chat-message-meta span,
-.chat-message-meta button {
-  border: 1px solid rgba(216, 178, 82, 0.35);
-  border-radius: 999px;
-  background: rgba(216, 178, 82, 0.12);
-  color: inherit;
-  padding: 5px 9px;
-  font-size: 0.72rem;
-}
-
-.chat-message-meta button {
-  cursor: pointer;
-}
-
-.chat-compose {
-  padding: 16px;
-  border-top: 1px solid rgba(25, 48, 91, 0.1);
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) auto;
-  gap: 12px;
-  align-items: end;
-}
-
-.chat-compose textarea {
-  min-height: 72px;
-  resize: vertical;
-}
-
-.department-chat-side {
-  padding: 18px;
-  display: grid;
-  gap: 18px;
-}
-
-.presence-list,
-.chat-action-stack {
-  display: grid;
-  gap: 10px;
-}
-
-.presence-row {
-  display: grid;
-  grid-template-columns: auto minmax(0, 1fr);
-  gap: 10px;
-  align-items: center;
-  padding: 10px;
-  border-radius: 16px;
-  background: #fffaf0;
-  color: #17213a;
-}
-
-.presence-dot {
-  width: 11px;
-  height: 11px;
-  border-radius: 999px;
-  background: #94a3b8;
-  box-shadow: 0 0 0 4px rgba(148, 163, 184, 0.16);
-}
-
-.presence-dot.online {
-  background: #16a34a;
-  box-shadow: 0 0 0 4px rgba(22, 163, 74, 0.16);
-}
-
-.presence-dot.away {
-  background: #d19a00;
-  box-shadow: 0 0 0 4px rgba(209, 154, 0, 0.16);
-}
-
-.chat-action-stack button {
-  justify-content: center;
-}
-
-.chat-readiness-card {
-  border-radius: 20px;
-  background: linear-gradient(135deg, rgba(23, 60, 136, 0.96), rgba(17, 40, 93, 0.96));
-  color: #fff;
-  padding: 18px;
-}
-
-.chat-readiness-card h3,
-.chat-readiness-card p {
-  color: #fff;
-}
-
-@media (max-width: 1100px) {
-  .department-chat-workspace,
-  .department-chat-layout {
-    grid-template-columns: 1fr;
-  }
-}
-
-@media (max-width: 720px) {
-  .chat-thread-header,
-  .chat-compose {
-    grid-template-columns: 1fr;
-  }
-
-  .chat-thread-header {
-    display: grid;
-  }
-
-  .chat-message {
-    width: 100%;
-  }
-}
-
-/* Office creation product pass */
-.app-shell:not(.admin-shell) .office-builder-page {
-  align-items: start;
-}
-
-.app-shell:not(.admin-shell) .office-command-panel {
-  overflow: visible;
-}
-
-.app-shell:not(.admin-shell) .office-hero-strip {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.42fr);
-  gap: 18px;
-  align-items: stretch;
-  margin-bottom: 16px;
-  padding: 22px;
-  border: 1px solid rgba(11, 47, 107, 0.14);
-  border-radius: 16px;
-  background:
-    linear-gradient(135deg, rgba(11, 47, 107, 0.97), rgba(31, 73, 146, 0.93)),
-    #0b2f6b;
-  color: #ffffff;
-  box-shadow: 0 18px 44px rgba(11, 47, 107, 0.18);
-}
-
-.app-shell:not(.admin-shell) .office-hero-strip span {
-  display: inline-flex;
-  width: fit-content;
-  margin-bottom: 8px;
-  color: #f4c542;
-  font-size: 11px;
-  font-weight: 950;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-}
-
-.app-shell:not(.admin-shell) .office-hero-strip h2 {
-  max-width: 780px;
-  margin: 0;
-  color: #ffffff;
-  font-size: clamp(24px, 3vw, 40px);
-  line-height: 1.06;
-}
-
-.app-shell:not(.admin-shell) .office-hero-strip p {
-  max-width: 760px;
-  margin: 10px 0 0;
-  color: rgba(255, 255, 255, 0.82);
-  line-height: 1.5;
-}
-
-.app-shell:not(.admin-shell) .office-hero-metrics,
-.app-shell:not(.admin-shell) .office-snapshot-grid {
-  display: grid;
-  gap: 10px;
-}
-
-.app-shell:not(.admin-shell) .office-hero-metrics {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-}
-
-.app-shell:not(.admin-shell) .office-hero-metrics .insight {
-  border-color: rgba(255, 255, 255, 0.2);
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
-}
-
-.app-shell:not(.admin-shell) .office-snapshot-grid {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  margin-bottom: 14px;
-}
-
-.app-shell:not(.admin-shell) .office-card-list {
-  display: grid;
-  gap: 12px;
-  margin-top: 14px;
-}
-
-.app-shell:not(.admin-shell) .office-node-card {
-  display: grid;
-  grid-template-columns: minmax(260px, 1.1fr) minmax(220px, 0.72fr);
-  gap: 12px 16px;
-  padding: 16px;
-  border: 1px solid #d8e2f2;
-  border-radius: 16px;
-  background: #ffffff;
-  color: #10213f;
-  box-shadow: 0 12px 28px rgba(16, 33, 63, 0.06);
-}
-
-.app-shell:not(.admin-shell) .office-node-main {
-  display: flex;
-  gap: 12px;
-  align-items: center;
-  min-width: 0;
-}
-
-.app-shell:not(.admin-shell) .office-node-mark {
-  display: grid;
-  width: 46px;
-  height: 46px;
-  flex: 0 0 46px;
-  place-items: center;
-  border-radius: 14px;
-  background: linear-gradient(135deg, #c99000, #f4c542);
-  color: #ffffff;
-  font-size: 13px;
-  font-weight: 950;
-}
-
-.app-shell:not(.admin-shell) .office-node-main strong,
-.app-shell:not(.admin-shell) .office-preview-card strong {
-  display: block;
-  color: #10213f;
-  font-size: 16px;
-  line-height: 1.2;
-}
-
-.app-shell:not(.admin-shell) .office-node-main span,
-.app-shell:not(.admin-shell) .office-preview-card span {
-  display: block;
-  margin-top: 3px;
-  color: #0b2f6b;
-  font-size: 13px;
-  font-weight: 850;
-  overflow-wrap: anywhere;
-}
-
-.app-shell:not(.admin-shell) .office-node-main small {
-  display: block;
-  margin-top: 4px;
-  color: #5b6680;
-  font-size: 12px;
-}
-
-.app-shell:not(.admin-shell) .office-node-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  align-content: start;
-  justify-content: flex-end;
-}
-
-.app-shell:not(.admin-shell) .office-node-meta > span {
-  display: inline-flex;
-  align-items: center;
-  min-height: 26px;
-  padding: 5px 9px;
-  border: 1px solid #d8e2f2;
-  border-radius: 999px;
-  background: #f8fbff;
-  color: #47536b;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.app-shell:not(.admin-shell) .office-route-line {
-  display: flex;
-  grid-column: 1 / -1;
-  gap: 8px;
-  align-items: center;
-  padding: 10px 12px;
-  border-radius: 12px;
-  background: #f8fbff;
-  color: #5b6680;
-  font-size: 12px;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
-}
-
-.app-shell:not(.admin-shell) .office-node-actions {
-  display: flex;
-  grid-column: 1 / -1;
-  flex-wrap: wrap;
-  gap: 8px;
-  align-items: center;
-}
-
-.app-shell:not(.admin-shell) .office-node-actions button,
-.app-shell:not(.admin-shell) .office-more-menu summary {
-  display: inline-flex;
-  min-height: 36px;
-  align-items: center;
-  justify-content: center;
-  gap: 7px;
-  padding: 8px 11px;
-  border: 1px solid #d8e2f2;
-  border-radius: 10px;
-  background: #ffffff;
-  color: #0b2f6b;
-  font-size: 12px;
-  font-weight: 900;
-  cursor: pointer;
-}
-
-.app-shell:not(.admin-shell) .office-node-actions > button:first-child {
-  border-color: #0b2f6b;
-  background: #0b2f6b;
-  color: #ffffff;
-}
-
-.app-shell:not(.admin-shell) .office-more-menu {
-  position: relative;
-}
-
-.app-shell:not(.admin-shell) .office-more-menu summary {
-  list-style: none;
-}
-
-.app-shell:not(.admin-shell) .office-more-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.app-shell:not(.admin-shell) .office-more-menu[open] > div {
-  position: absolute;
-  z-index: 12;
-  right: 0;
-  top: calc(100% + 8px);
-  display: grid;
-  width: min(280px, calc(100vw - 48px));
-  gap: 6px;
-  padding: 10px;
-  border: 1px solid #d8e2f2;
-  border-radius: 14px;
-  background: #ffffff;
-  box-shadow: 0 18px 42px rgba(16, 33, 63, 0.18);
-}
-
-.app-shell:not(.admin-shell) .office-more-menu[open] button {
-  width: 100%;
-  justify-content: flex-start;
-  box-shadow: none;
-}
-
-.app-shell:not(.admin-shell) .office-create-panel {
-  position: sticky;
-  top: 16px;
-}
-
-.app-shell:not(.admin-shell) .office-form-section {
-  display: grid;
-  gap: 10px;
-  padding: 13px;
-  border: 1px solid #d8e2f2;
-  border-radius: 14px;
-  background: #f8fbff;
-}
-
-.app-shell:not(.admin-shell) .office-form-section > strong {
-  color: #10213f;
-  font-size: 13px;
-}
-
-.app-shell:not(.admin-shell) .office-preview-card {
-  display: grid;
-  gap: 8px;
-  padding: 14px;
-  border: 1px solid rgba(244, 197, 66, 0.55);
-  border-radius: 16px;
-  background: #fff8e8;
-  color: #10213f;
-}
-
-.app-shell:not(.admin-shell) .office-preview-card div {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-}
-
-.app-shell:not(.admin-shell) .office-preview-card small {
-  padding: 5px 8px;
-  border-radius: 999px;
-  background: #ffffff;
-  color: #755600;
-  font-size: 11px;
-  font-weight: 900;
-}
-
-.app-shell:not(.admin-shell) .office-preview-card p {
-  margin: 0;
-  color: #5b6680;
-  font-size: 12px;
-  line-height: 1.45;
-  overflow-wrap: anywhere;
-}
-
-@media (max-width: 1100px) {
-  .app-shell:not(.admin-shell) .office-hero-strip,
-  .app-shell:not(.admin-shell) .office-node-card {
-    grid-template-columns: 1fr;
-  }
-
-  .app-shell:not(.admin-shell) .office-node-meta {
-    justify-content: flex-start;
-  }
-}
-
-@media (max-width: 760px) {
-  .app-shell:not(.admin-shell) .office-hero-metrics,
-  .app-shell:not(.admin-shell) .office-snapshot-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .app-shell:not(.admin-shell) .office-create-panel {
-    position: static;
   }
 }
 

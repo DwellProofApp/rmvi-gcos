@@ -2,9 +2,6 @@ import {
   aiDraft,
   approval,
   calendarEvent,
-  chatMessage,
-  chatPresence,
-  chatRoom,
   documentRecord,
   escalation,
   message,
@@ -15,11 +12,12 @@ import {
   liveSession,
   normalizeStationEmail,
   station,
+  getPermissions,
   stationPasswords,
   task,
   transfer
 } from "./domain.mjs";
-import { pbkdf2Sync, randomBytes, timingSafeEqual } from "node:crypto";
+import { pbkdf2Sync, randomBytes, randomUUID, timingSafeEqual } from "node:crypto";
 
 const LOCKOUT_ATTEMPTS = 3;
 const LOCKOUT_MINUTES = 15;
@@ -43,29 +41,233 @@ export function createServices({ state, record, requirePermission, findById, int
     throw Object.assign(new Error("Event not found"), { status: 404 });
   }
 
-  function publicState() {
+  function publicState(actor) {
+    const scoped = scopedPlatformState(actor);
     return {
       stations: state.stations,
-      messages: state.messages,
-      reports: state.reports,
-      approvals: state.approvals,
-      tasks: state.tasks,
-      policies: state.policies,
-      calendarEvents: state.calendarEvents,
-      liveSessions: state.liveSessions ?? [],
-      chatRooms: state.chatRooms ?? [],
-      chatMessages: state.chatMessages ?? [],
-      chatPresence: state.chatPresence ?? [],
-      personnel: state.personnel,
-      escalations: state.escalations,
-      transfers: state.transfers,
-      offices: state.offices,
-      documents: state.documents,
+      messages: scoped.messages,
+      reports: scoped.reports,
+      reportAssignments: scoped.reportAssignments,
+      approvals: scoped.approvals,
+      tasks: scoped.tasks,
+      policies: scoped.policies,
+      calendarEvents: scoped.calendarEvents,
+      liveSessions: scoped.liveSessions,
+      personnel: scoped.personnel,
+      escalations: scoped.escalations,
+      transfers: scoped.transfers,
+      offices: scoped.offices,
+      documents: scoped.documents,
       files: state.files ?? [],
-      aiDrafts: state.aiDrafts,
-      audit: state.audit,
+      aiDrafts: scoped.aiDrafts,
+      audit: scoped.audit,
       events: state.events
     };
+  }
+
+  function scopedPlatformState(actor) {
+    const scope = stationScope(actor);
+    if (!scope || scope.canOverride) {
+      return {
+        messages: state.messages,
+        reports: state.reports,
+        reportAssignments: state.reportAssignments ?? [],
+        approvals: state.approvals,
+        tasks: state.tasks,
+        policies: state.policies,
+        calendarEvents: state.calendarEvents,
+        liveSessions: state.liveSessions ?? [],
+        personnel: state.personnel,
+        escalations: state.escalations,
+        transfers: state.transfers,
+        offices: state.offices,
+        documents: state.documents,
+        aiDrafts: state.aiDrafts,
+        audit: state.audit
+      };
+    }
+    return {
+      messages: messagesForStation(scope.email),
+      reports: state.reports.filter((item) => recordMatchesScope(item, scope, ["name", "owner", "path", "type", "routingStage", "preparedBy", "assignedToEmail"])),
+      reportAssignments: (state.reportAssignments ?? []).filter((item) => recordMatchesScope(item, scope, ["targetLabel", "targetMode", "targetOfficeId", "assignedBy", "period"])),
+      approvals: state.approvals.filter((item) => recordMatchesScope(item, scope, ["request", "route", "delegate", "linkedReport", "linkedTask"])),
+      tasks: state.tasks.filter((item) => recordMatchesScope(item, scope, ["title", "owner", "assignee", "linkedReport", "linkedApproval", "handoffTo"])),
+      policies: state.policies.filter((item) => recordMatchesScope(item, scope, ["title", "category", "owner", "summary", "distributedTo", "trainingAudience"])),
+      calendarEvents: state.calendarEvents.filter((item) => recordMatchesScope(item, scope, ["title", "category", "owner", "linkedTask", "linkedReport"])),
+      liveSessions: (state.liveSessions ?? []).filter((item) => recordMatchesScope(item, scope, ["title", "host", "route", "linkedRecord", "purpose"]) || (item.participants ?? []).map(normalizeStationEmail).includes(scope.email)),
+      personnel: state.personnel.filter((item) => recordMatchesScope(item, scope, ["name", "role", "currentStation", "assignedStation", "stationAccess", "linkedTask"])),
+      escalations: state.escalations.filter((item) => recordMatchesScope(item, scope, ["source", "item", "reason", "owner", "linkedTask", "linkedReport", "linkedApproval"])),
+      transfers: state.transfers.filter((item) => recordMatchesScope(item, scope, ["person", "from", "to", "step", "risk", "personnelRecord", "linkedTask", "linkedReport"])),
+      offices: state.offices.filter((item) => recordMatchesScope(item, scope, ["name", "email", "level", "department", "supervisor", "parentName", "reportingRoute"])),
+      documents: state.documents.filter((item) => recordMatchesScope(item, scope, ["name", "classification", "source", "owner", "linkedReport", "linkedApproval"])),
+      aiDrafts: state.aiDrafts.filter((item) => recordMatchesScope(item, scope, ["kind", "title", "body", "sourceNote", "publishedBy"])),
+      audit: state.audit.filter((item) => recordMatchesScope(item, scope, ["event", "actor", "object", "result", "category", "reviewer"]))
+    };
+  }
+
+  function stationScope(actor) {
+    if (!actor) return null;
+    const email = normalizeStationEmail(actor);
+    const stationRecord = state.stations.find((entry) => normalizeStationEmail(entry.email) === email);
+    const officeRecord = state.offices.find((entry) => normalizeStationEmail(entry.email) === email);
+    const level = stationRecord?.level ?? officeRecord?.level ?? "";
+    const keywords = Array.from(new Set([
+      email,
+      email.split("@")[0],
+      stationRecord?.title,
+      stationRecord?.level,
+      stationRecord?.authority,
+      officeRecord?.name,
+      officeRecord?.level,
+      officeRecord?.department,
+      officeRecord?.supervisor,
+      officeRecord?.parentName,
+      officeRecord?.reportingRoute
+    ].filter(Boolean).flatMap((value) => String(value).toLowerCase().split(/[^a-z0-9@.]+/)).filter((value) => value.length > 2)));
+    return {
+      email,
+      level,
+      canOverride: Boolean(stationRecord && getPermissions(stationRecord).canOverride),
+      keywords
+    };
+  }
+
+  function recordMatchesScope(item, scope, fields) {
+    const text = fields.map((field) => item?.[field]).concat(item?.watchers ?? [], item?.recipients ?? []).filter(Boolean).join(" ").toLowerCase();
+    return text.includes(scope.email) || scope.keywords.some((keyword) => text.includes(keyword));
+  }
+
+  function messagesForStation(actor) {
+    const stationEmail = normalizeStationEmail(actor);
+    const stationRecord = state.stations.find((entry) => normalizeStationEmail(entry.email) === stationEmail);
+    if (stationRecord && getPermissions(stationRecord).canOverride) return state.messages;
+    return state.messages.filter((item) => messageBelongsToStation(item, stationEmail));
+  }
+
+  function messageBelongsToStation(item, stationEmail) {
+    const from = normalizeStationEmail(item.from ?? "");
+    if (from === stationEmail) return true;
+    const recipients = messageRecipients(item).map(normalizeStationEmail);
+    if (recipients.includes(stationEmail)) return true;
+    return messageRouteIsBroadcast(item) && !item.archived;
+  }
+
+  function messageRecipients(item) {
+    return Array.from(new Set([
+      ...(Array.isArray(item.recipients) ? item.recipients : []),
+      ...(Array.isArray(item.delivery?.recipients) ? item.delivery.recipients : []),
+      item.recipient,
+      item.routeTo
+    ].filter((value) => String(value ?? "").includes("@"))));
+  }
+
+  function messageRouteIsBroadcast(item) {
+    return /all active gcos accounts|everyone on gcos|all national and regional offices|resident pastor offices/i.test(String(item.to ?? item.route ?? ""));
+  }
+
+  function actorPermissions(actor) {
+    const email = normalizeStationEmail(actor);
+    const stationRecord = state.stations.find((entry) => normalizeStationEmail(entry.email) === email);
+    if (!stationRecord) return null;
+    return getPermissions(stationRecord);
+  }
+
+  function liveSessionPolicy(sessionType) {
+    if (/broadcast|emergency/i.test(String(sessionType))) return "Executive broadcast only";
+    if (/approval/i.test(String(sessionType))) return "Approval authority required";
+    if (/video|report review/i.test(String(sessionType))) return "Office lead or administrator";
+    return "Signed-in station collaboration";
+  }
+
+  async function createLiveSessionInvite(item, participant, actor) {
+    const normalizedParticipant = normalizeStationEmail(participant);
+    item.invitationLog ??= [];
+    const invitation = {
+      participant: normalizedParticipant,
+      invitedBy: normalizeStationEmail(actor),
+      invitedAt: new Date().toISOString(),
+      status: "Sent"
+    };
+    item.invitationLog.unshift(invitation);
+    const inviteMessage = message("Meeting Invite", `Invitation: ${item.title}`, actor, "Ready", item.linkedRecord ?? "Live Comms");
+    Object.assign(inviteMessage, {
+      to: normalizedParticipant,
+      route: item.route,
+      body: [
+        `You have been invited to ${item.title}.`,
+        `Purpose: ${item.purpose}`,
+        `Linked record: ${item.linkedRecord}`,
+        `Access: ${item.accessMode ?? "Invite Only"}`,
+        item.joinUrl ? `Join link: ${item.joinUrl}` : "Meeting room link is pending."
+      ].join("\n"),
+      priority: item.status === "Priority" ? "High" : "Normal",
+      recipients: [normalizedParticipant],
+      linkedLiveSession: item.id,
+      classification: "Live Comms"
+    });
+    state.messages.unshift(inviteMessage);
+    try {
+      const delivery = await integrations.email?.deliverChurchMail?.(inviteMessage, [normalizedParticipant]);
+      if (delivery) {
+        inviteMessage.delivery = {
+          provider: delivery.provider,
+          status: delivery.ok ? "Sent" : "Queued",
+          mode: delivery.mode,
+          messageId: delivery.messageId,
+          recipients: delivery.to,
+          updatedAt: new Date().toISOString()
+        };
+        invitation.deliveryStatus = inviteMessage.delivery.status;
+      }
+    } catch (error) {
+      inviteMessage.delivery = {
+        provider: integrations.email?.status?.().provider ?? "email",
+        status: "Queued",
+        mode: "deferred",
+        error: error.message,
+        recipients: [normalizedParticipant],
+        updatedAt: new Date().toISOString()
+      };
+      invitation.deliveryStatus = "Queued";
+    }
+    return inviteMessage;
+  }
+
+  function enforceLiveSessionCreateAuthority(actor, sessionType) {
+    const permissions = actorPermissions(actor);
+    if (!permissions) throw Object.assign(new Error("Signed-in station required to create live sessions."), { status: 403 });
+    if (/broadcast|emergency/i.test(String(sessionType)) && !permissions.canOverride && !permissions.canCreateOffices) {
+      throw Object.assign(new Error("Broadcast sessions require executive or office administration authority."), { status: 403 });
+    }
+    if (/approval/i.test(String(sessionType)) && !permissions.canApprove && !permissions.canOverride) {
+      throw Object.assign(new Error("Approval rooms require approval authority."), { status: 403 });
+    }
+    if (/video|report review/i.test(String(sessionType)) && !permissions.canApprove && !permissions.canCreateOffices && !permissions.canOverride) {
+      throw Object.assign(new Error("Video meetings require office lead, approval, or administrator authority."), { status: 403 });
+    }
+  }
+
+  function canAccessLiveSession(actor, item) {
+    const permissions = actorPermissions(actor);
+    if (permissions?.canOverride) return true;
+    const participants = (item.participants ?? []).map(normalizeStationEmail);
+    const hostEmail = normalizeStationEmail(item.hostEmail ?? item.createdBy ?? "");
+    if (item.rsvpStatus?.[actor]?.status === "Declined") return false;
+    return actor === hostEmail || participants.includes(actor);
+  }
+
+  function canRespondLiveSession(actor, item) {
+    const permissions = actorPermissions(actor);
+    if (permissions?.canOverride) return true;
+    const participants = (item.participants ?? []).map(normalizeStationEmail);
+    const hostEmail = normalizeStationEmail(item.hostEmail ?? item.createdBy ?? "");
+    return actor === hostEmail || participants.includes(actor);
+  }
+
+  function canManageLiveSession(actor, item) {
+    const permissions = actorPermissions(actor);
+    if (permissions?.canOverride) return true;
+    return actor === normalizeStationEmail(item.hostEmail ?? item.createdBy ?? "");
   }
 
   function ensureAuthCredentials() {
@@ -85,6 +287,42 @@ export function createServices({ state, record, requirePermission, findById, int
       state.authCredentials[normalizedEmail] = credentialRecord(normalizedEmail, password ?? `gcos-${normalizedEmail.split("@")[0]}`);
     }
     return state.authCredentials[normalizedEmail];
+  }
+
+  function resolveReportAssignmentTargets(body) {
+    const offices = (state.offices ?? []).map((entry) => ({
+      id: entry.id,
+      email: entry.email,
+      owner: entry.name,
+      level: entry.level,
+      department: entry.department,
+      path: entry.reportingRoute ?? `${entry.level} -> ${entry.supervisor ?? "Supervising Office"}`
+    }));
+    const stations = (state.stations ?? []).map((entry) => ({
+      id: entry.id,
+      email: entry.email,
+      owner: entry.title,
+      level: entry.level,
+      department: entry.authority,
+      path: entry.reportingRoute ?? `${entry.level} -> Supervising Office`
+    }));
+    const directory = [...offices, ...stations];
+    if (body.targetMode === "designated-office") {
+      const targetId = String(body.targetOfficeId ?? "").toLowerCase();
+      return directory.filter((entry) => [entry.id, entry.email, entry.owner].map((value) => String(value ?? "").toLowerCase()).includes(targetId));
+    }
+    return directory.filter((entry) => {
+      const haystack = [entry.owner, entry.level, entry.department, entry.path].join(" ").toLowerCase();
+      return haystack.includes("resident pastor")
+        || haystack.includes("pastor in charge")
+        || haystack.includes("local branch")
+        || haystack.includes("mission station");
+    });
+  }
+
+  function targetLabelForAssignment(body, targets) {
+    if (body.targetMode === "designated-office") return targets[0]?.owner ?? "Designated office";
+    return "All Resident Pastor / Local Branch offices";
   }
 
   function credentialRecord(email, password) {
@@ -211,6 +449,7 @@ export function createServices({ state, record, requirePermission, findById, int
 
   return {
     publicState,
+    messagesForStation,
 
     commandBriefing(body = {}) {
       const openEscalations = state.escalations.filter((item) => item.status !== "Resolved");
@@ -290,158 +529,26 @@ export function createServices({ state, record, requirePermission, findById, int
       };
     },
 
-    chatDigest(actor) {
-      state.chatRooms ??= [];
-      state.chatMessages ??= [];
-      state.chatPresence ??= [];
-      const visibleRooms = state.chatRooms.filter((room) => !room.archived && (!actor || room.participants?.includes(normalizeStationEmail(actor)) || actor === "admin@rmvi.org"));
-      const visibleRoomIds = new Set(visibleRooms.map((room) => room.id));
-      const visibleMessages = state.chatMessages.filter((item) => visibleRoomIds.has(item.roomId) && !item.archived);
-      return {
-        generatedAt: new Date().toISOString(),
-        rooms: visibleRooms.length,
-        messages: visibleMessages.length,
-        online: state.chatPresence.filter((item) => item.status === "Online").length,
-        unread: actor ? visibleMessages.filter((item) => !(item.readBy ?? []).includes(normalizeStationEmail(actor))).length : 0,
-        pinned: visibleMessages.filter((item) => item.pinned).length,
-        nextRoom: visibleRooms[0]?.name ?? "No active department rooms"
-      };
-    },
-
-    createChatRoom(body) {
-      state.chatRooms ??= [];
-      state.chatMessages ??= [];
-      const actor = normalizeStationEmail(body.actor ?? body.createdBy ?? "admin@rmvi.org");
-      const participants = Array.from(new Set([actor, ...(body.participants ?? [])].map(normalizeStationEmail)));
-      const created = chatRoom(body.name ?? "Department room", body.kind ?? "Department", body.department ?? "General", participants, actor, {
-        linkedRecord: body.linkedRecord
-      });
-      state.chatRooms.unshift(created);
-      record("DepartmentChatRoomCreated", actor, created.name, `${participants.length} office participants`);
-      return created;
-    },
-
-    sendChatMessage(roomId, body) {
-      state.chatRooms ??= [];
-      state.chatMessages ??= [];
-      const room = findById(state.chatRooms, roomId);
-      const actor = normalizeStationEmail(body.actor ?? body.sender ?? "admin@rmvi.org");
-      if (!room.participants.includes(actor)) room.participants.push(actor);
-      const created = chatMessage(room.id, actor, body.body ?? body.message ?? "New department update", {
-        linkedReport: body.linkedReport,
-        linkedApproval: body.linkedApproval,
-        linkedTask: body.linkedTask
-      });
-      room.lastMessageAt = created.createdAt;
-      state.chatMessages.unshift(created);
-      record("DepartmentChatMessageSent", actor, room.name, created.body.slice(0, 90));
-      return created;
-    },
-
-    updateChatPresence(body) {
-      state.chatPresence ??= [];
-      const actor = normalizeStationEmail(body.actor ?? body.email);
-      const existing = state.chatPresence.find((item) => item.email === actor);
-      const payload = {
-        email: actor,
-        status: body.status ?? "Online",
-        lastSeenAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-        activeRoomId: body.activeRoomId
-      };
-      if (existing) Object.assign(existing, payload);
-      else state.chatPresence.unshift(chatPresence(actor, payload.status, payload));
-      record("DepartmentChatPresenceUpdated", actor, payload.status, payload.activeRoomId ?? "No active room");
-      return existing ?? state.chatPresence[0];
-    },
-
-    markChatRoomRead(roomId, body) {
-      state.chatMessages ??= [];
-      const room = findById(state.chatRooms ?? [], roomId);
-      const reader = normalizeStationEmail(body.actor ?? body.reader);
-      const updated = state.chatMessages.filter((item) => item.roomId === room.id).map((item) => {
-        item.readBy ??= [];
-        if (!item.readBy.includes(reader)) item.readBy.push(reader);
-        return item;
-      });
-      record("DepartmentChatRoomRead", reader, room.name, `${updated.length} messages marked read`);
-      return { room, messages: updated };
-    },
-
-    pinChatMessage(id, body) {
-      const item = findById(state.chatMessages ?? [], id);
-      item.pinned = body.pinned ?? !item.pinned;
-      record("DepartmentChatMessagePinned", body.actor, item.roomId, item.body.slice(0, 80));
-      return item;
-    },
-
-    archiveChatRoom(roomId, body) {
-      const room = findById(state.chatRooms ?? [], roomId);
-      room.archived = true;
-      room.archivedBy = body.actor;
-      room.archiveReason = body.reason ?? "Archived from department chat";
-      room.archivedAt = new Date().toISOString();
-      record("DepartmentChatRoomArchived", body.actor, room.name, room.archiveReason);
-      return room;
-    },
-
-    createChatTask(roomId, body) {
-      const room = findById(state.chatRooms ?? [], roomId);
-      const latest = (state.chatMessages ?? []).find((item) => item.roomId === room.id);
-      const created = task(body.title ?? `Follow up: ${room.name}`, room.department ?? "Department Chat", body.assignee ?? body.actor, body.priority ?? "Medium", body.due ?? "Today", "Queued");
-      created.linkedChatRoomId = room.id;
-      created.description = body.description ?? latest?.body ?? "Follow up from department chat";
-      state.tasks.unshift(created);
-      record("DepartmentChatTaskCreated", body.actor, created.title, room.name);
-      return created;
-    },
-
-    async startChatMeeting(roomId, body) {
-      const room = findById(state.chatRooms ?? [], roomId);
-      const created = await this.createLiveSession({
-        actor: body.actor,
-        title: body.title ?? `${room.name} meeting`,
-        host: body.actor ?? room.createdBy,
-        sessionType: "Department Room",
-        status: "Live",
-        linkedRecord: room.name,
-        route: room.participants.join(" -> "),
-        purpose: body.purpose ?? "Live department coordination",
-        participants: room.participants
-      });
-      room.liveSessionId = created.id;
-      record("DepartmentChatMeetingStarted", body.actor, room.name, created.joinUrl ?? "Meeting room created");
-      return created;
-    },
-
-    async escalateChatToChurchMail(roomId, body) {
-      const room = findById(state.chatRooms ?? [], roomId);
-      const thread = state.chatMessages.filter((item) => item.roomId === room.id).slice(0, 5).reverse();
-      const created = await this.createMessage({
-        actor: body.actor,
-        kind: body.kind ?? "Notification",
-        subject: body.subject ?? `${room.name} chat summary`,
-        from: body.actor ?? room.createdBy,
-        status: "Ready",
-        files: body.files ?? "Department chat summary",
-        body: thread.map((item) => `${item.sender}: ${item.body}`).join("\n")
-      });
-      room.summaryMessageId = created.id;
-      record("DepartmentChatSummarySent", body.actor, room.name, created.subject);
-      return created;
-    },
-
     async createLiveSession(body) {
       state.liveSessions ??= [];
+      const actor = normalizeStationEmail(body.actor);
+      enforceLiveSessionCreateAuthority(actor, body.sessionType ?? "Video Meeting");
       const created = liveSession(
         body.title ?? "GCOS live session",
-        body.host ?? body.actor ?? "Live Comms",
+        body.host ?? actor ?? "Live Comms",
         body.sessionType ?? "Video Meeting",
         body.status ?? "Live",
         body.linkedRecord ?? "Unlinked record",
         body.route ?? "Current station -> invited offices",
         body.purpose ?? "Live administrative collaboration"
       );
-      created.participants = body.participants ?? [body.actor].filter(Boolean);
+      if (body.id) created.id = body.id;
+      created.createdBy = actor;
+      created.hostEmail = actor;
+      created.accessMode = body.accessMode ?? "Invite Only";
+      created.meetingPolicy = liveSessionPolicy(created.sessionType);
+      created.participants = Array.from(new Set([actor, ...(body.participants ?? [])].filter(Boolean).map(normalizeStationEmail)));
+      created.invitedOnly = true;
       try {
         const room = await integrations.video?.createRoom?.(created);
         if (room) {
@@ -455,8 +562,36 @@ export function createServices({ state, record, requirePermission, findById, int
         created.videoError = error.message;
       }
       state.liveSessions.unshift(created);
+      const invitees = created.participants.filter((participant) => normalizeStationEmail(participant) !== actor);
+      for (const participant of invitees) {
+        await createLiveSessionInvite(created, participant, actor);
+      }
       record("LiveSessionCreated", body.actor, created.title, `${created.sessionType} linked to ${created.linkedRecord}`);
       return created;
+    },
+
+    joinLiveSession(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const actor = normalizeStationEmail(body.actor);
+      if (!canAccessLiveSession(actor, item)) {
+        record("LiveSessionJoinDenied", actor, item.title, "Station is not host, invited participant, or administrator");
+        throw Object.assign(new Error("This station is not invited to this live session."), { status: 403 });
+      }
+      item.checkedInParticipants ??= [];
+      if (!item.checkedInParticipants.map(normalizeStationEmail).includes(actor)) item.checkedInParticipants.push(actor);
+      item.joinAudit ??= [];
+      item.joinAudit.unshift({ actor, joinedAt: new Date().toISOString(), provider: item.videoProvider ?? "internal" });
+      item.lastActionBy = actor;
+      item.updatedAt = new Date().toISOString();
+      record("LiveSessionJoined", actor, item.title, item.videoProvider ?? "internal");
+      return {
+        id: item.id,
+        title: item.title,
+        provider: item.videoProvider ?? "internal",
+        joinUrl: item.joinUrl ?? "",
+        accessMode: item.accessMode ?? "Invite Only",
+        checkedInParticipants: item.checkedInParticipants
+      };
     },
 
     updateLiveSessionStatus(id, body) {
@@ -486,13 +621,129 @@ export function createServices({ state, record, requirePermission, findById, int
       return item;
     },
 
-    inviteLiveSessionParticipant(id, body) {
+    async inviteLiveSessionParticipant(id, body) {
       const item = findById(state.liveSessions ?? [], id);
+      if (!canManageLiveSession(normalizeStationEmail(body.actor), item)) {
+        throw Object.assign(new Error("Only the meeting host or an administrator can invite participants."), { status: 403 });
+      }
       item.participants ??= [];
-      const participant = body.participant ?? body.email ?? body.actor;
-      item.participants = Array.from(new Set([participant, ...item.participants].filter(Boolean)));
+      const participant = normalizeStationEmail(body.participant ?? body.email ?? body.actor);
+      item.participants = Array.from(new Set([participant, ...item.participants].filter(Boolean).map(normalizeStationEmail)));
+      item.invitationLog ??= [];
+      const invitation = {
+        participant,
+        invitedBy: normalizeStationEmail(body.actor),
+        invitedAt: new Date().toISOString(),
+        status: "Sent"
+      };
+      item.invitationLog.unshift(invitation);
+      const inviteMessage = message("Meeting Invite", `Invitation: ${item.title}`, body.actor, "Ready", item.linkedRecord ?? "Live Comms");
+      Object.assign(inviteMessage, {
+        to: participant,
+        route: item.route,
+        body: [
+          `You have been invited to ${item.title}.`,
+          `Purpose: ${item.purpose}`,
+          `Linked record: ${item.linkedRecord}`,
+          `Access: ${item.accessMode ?? "Invite Only"}`,
+          item.joinUrl ? "Open Live Comms to join the secured meeting room." : "Meeting room link is pending."
+        ].join("\n"),
+        priority: item.status === "Priority" ? "High" : "Normal",
+        recipients: [participant],
+        linkedLiveSession: item.id,
+        classification: "Live Comms"
+      });
+      state.messages.unshift(inviteMessage);
+      try {
+        const delivery = await integrations.email?.deliverChurchMail?.(inviteMessage, [participant]);
+        if (delivery) {
+          inviteMessage.delivery = {
+            provider: delivery.provider,
+            status: delivery.ok ? "Sent" : "Queued",
+            mode: delivery.mode,
+            messageId: delivery.messageId,
+            recipients: delivery.to,
+            updatedAt: new Date().toISOString()
+          };
+          invitation.deliveryStatus = inviteMessage.delivery.status;
+        }
+      } catch (error) {
+        inviteMessage.delivery = {
+          provider: integrations.email?.status?.().provider ?? "email",
+          status: "Queued",
+          mode: "deferred",
+          error: error.message,
+          recipients: [participant],
+          updatedAt: new Date().toISOString()
+        };
+        invitation.deliveryStatus = "Queued";
+      }
       item.updatedAt = new Date().toISOString();
-      record("LiveSessionParticipantInvited", body.actor, item.title, participant);
+      record("LiveSessionParticipantInvited", body.actor, item.title, `${participant} notified through ChurchMail`);
+      return item;
+    },
+
+    async respondLiveSessionInvitation(id, body) {
+      const item = findById(state.liveSessions ?? [], id);
+      const actor = normalizeStationEmail(body.actor);
+      if (!canRespondLiveSession(actor, item)) {
+        throw Object.assign(new Error("This station is not invited to this live session."), { status: 403 });
+      }
+      const status = /decline|reject|no/i.test(String(body.response ?? body.status ?? "")) ? "Declined" : "Accepted";
+      const respondedAt = new Date().toISOString();
+      item.rsvpStatus ??= {};
+      item.rsvpStatus[actor] = {
+        status,
+        respondedAt,
+        note: body.note ?? ""
+      };
+      item.invitationLog = (item.invitationLog ?? []).map((invitation) => (
+        normalizeStationEmail(invitation.participant) === actor
+          ? { ...invitation, status, respondedAt }
+          : invitation
+      ));
+      const hostEmail = normalizeStationEmail(item.hostEmail ?? item.createdBy ?? "");
+      const rsvpMessage = message("Meeting RSVP", `${status}: ${item.title}`, actor, "Ready", item.linkedRecord ?? "Live Comms");
+      Object.assign(rsvpMessage, {
+        to: hostEmail,
+        route: item.route,
+        body: [
+          `${actor} ${status.toLowerCase()} the invitation to ${item.title}.`,
+          `Purpose: ${item.purpose}`,
+          body.note ? `Note: ${body.note}` : ""
+        ].filter(Boolean).join("\n"),
+        priority: status === "Declined" ? "High" : "Normal",
+        recipients: hostEmail ? [hostEmail] : [],
+        linkedLiveSession: item.id,
+        classification: "Live Comms"
+      });
+      state.messages.unshift(rsvpMessage);
+      if (hostEmail) {
+        try {
+          const delivery = await integrations.email?.deliverChurchMail?.(rsvpMessage, [hostEmail]);
+          if (delivery) {
+            rsvpMessage.delivery = {
+              provider: delivery.provider,
+              status: delivery.ok ? "Sent" : "Queued",
+              mode: delivery.mode,
+              messageId: delivery.messageId,
+              recipients: delivery.to,
+              updatedAt: respondedAt
+            };
+          }
+        } catch (error) {
+          rsvpMessage.delivery = {
+            provider: integrations.email?.status?.().provider ?? "email",
+            status: "Queued",
+            mode: "deferred",
+            error: error.message,
+            recipients: [hostEmail],
+            updatedAt: respondedAt
+          };
+        }
+      }
+      item.updatedAt = respondedAt;
+      record("LiveSessionInvitationResponded", actor, item.title, status);
       return item;
     },
 
@@ -1444,13 +1695,17 @@ export function createServices({ state, record, requirePermission, findById, int
     },
 
     async createMessage(body) {
-      const created = message(body.kind, body.subject, body.from, body.status ?? "Ready", body.files ?? "No attachments");
+      const actor = normalizeStationEmail(body.actor ?? body.from ?? "ChurchMail");
+      const created = message(body.kind, body.subject, actor, body.status ?? "Ready", body.files ?? "No attachments");
       created.to = body.to ?? body.recipient ?? body.routeTo;
       created.route = body.route ?? body.routingPath;
+      created.body = body.body;
+      created.priority = body.priority;
+      created.recipients = Array.isArray(body.recipients) ? body.recipients : [body.to, body.recipient, body.routeTo].filter(Boolean);
       state.messages.unshift(created);
-      record("EmailSent", body.actor ?? body.from ?? "ChurchMail", created.subject, `${created.kind} routed`);
+      record("EmailSent", actor, created.subject, `${created.kind} routed to ${created.recipients.length || 1} recipient(s)`);
       try {
-        const delivery = await integrations.email?.deliverChurchMail?.(created, [body.to, body.recipient].filter(Boolean));
+        const delivery = await integrations.email?.deliverChurchMail?.(created, created.recipients);
         if (delivery) {
           created.delivery = {
             provider: delivery.provider,
@@ -1460,11 +1715,11 @@ export function createServices({ state, record, requirePermission, findById, int
             recipients: delivery.to,
             updatedAt: new Date().toISOString()
           };
-          record("ChurchMailDeliveryQueued", body.actor ?? body.from ?? "ChurchMail", created.subject, `${created.delivery.provider}:${created.delivery.status}`);
+          record("ChurchMailDeliveryQueued", actor, created.subject, `${created.delivery.provider}:${created.delivery.status}`);
         }
       } catch (error) {
         created.delivery = { provider: integrations.email?.provider ?? "unknown", status: "Failed", error: error.message, updatedAt: new Date().toISOString() };
-        record("ChurchMailDeliveryFailed", body.actor ?? body.from ?? "ChurchMail", created.subject, error.message);
+        record("ChurchMailDeliveryFailed", actor, created.subject, error.message);
       }
       return created;
     },
@@ -1480,25 +1735,6 @@ export function createServices({ state, record, requirePermission, findById, int
       const item = findById(state.messages, id);
       item.status = body.status ?? "In Review";
       record("EmailStatusUpdated", body.actor, item.subject, item.status);
-      return item;
-    },
-
-    readMessage(id, body) {
-      const item = findById(state.messages, id);
-      item.readAt = new Date().toISOString();
-      item.readBy = body.actor ?? body.reader ?? item.to ?? "Recipient";
-      if (item.status === "Queued") item.status = "Ready";
-      record("EmailRead", item.readBy, item.subject, "Message opened");
-      return item;
-    },
-
-    acknowledgeMessage(id, body) {
-      const item = findById(state.messages, id);
-      item.status = body.status ?? "Approved";
-      item.acknowledgedAt = new Date().toISOString();
-      item.acknowledgedBy = body.actor ?? body.acknowledgedBy ?? item.to ?? "Recipient";
-      item.acknowledgementNote = body.note ?? body.reason ?? "Message acknowledged";
-      record("EmailAcknowledged", item.acknowledgedBy, item.subject, item.acknowledgementNote);
       return item;
     },
 
@@ -1604,6 +1840,88 @@ export function createServices({ state, record, requirePermission, findById, int
       state.reports.unshift(created);
       record("ReportDrafted", body.actor, created.name, "Created in reporting center");
       return created;
+    },
+
+    assignReportPack(body) {
+      requirePermission(body.actor, "canOverride");
+      state.reportAssignments ??= [];
+      const templates = Array.isArray(body.templates) ? body.templates : [];
+      if (!templates.length) throw Object.assign(new Error("At least one report template is required"), { status: 400 });
+      const targets = resolveReportAssignmentTargets(body);
+      if (!targets.length) throw Object.assign(new Error("No matching office or station found for this assignment"), { status: 400 });
+      const assignment = {
+        id: randomUUID(),
+        name: body.name ?? "Resident Pastor Monthly Report Pack",
+        targetMode: body.targetMode ?? "resident-pastor-offices",
+        targetOfficeId: body.targetOfficeId,
+        targetLabel: body.targetLabel ?? targetLabelForAssignment(body, targets),
+        period: body.period ?? "Current month",
+        cadence: body.cadence ?? "Monthly",
+        status: "Active",
+        assignedBy: body.actor,
+        assignedAt: new Date().toISOString(),
+        templates: templates.map((template) => ({
+          id: template.id,
+          name: template.name,
+          type: template.type,
+          sourceFiles: template.sourceFiles ?? []
+        })),
+        targetCount: targets.length,
+        generatedReportIds: []
+      };
+      const createdReports = [];
+      for (const target of targets) {
+        for (const template of templates) {
+          const duplicate = state.reports.find((item) => (
+            item.templateId === template.id
+            && item.owner === target.owner
+            && item.period === assignment.period
+            && item.assignmentTarget === target.email
+          ));
+          if (duplicate) continue;
+          const created = report(template.name, target.owner, template.path ?? target.path, "Monthly", "Ready", 10, {
+            type: template.type,
+            period: assignment.period,
+            routingStage: "Assigned to office",
+            evidenceStatus: template.evidenceStatus ?? "Monthly report evidence pending",
+            templateId: template.id,
+            preparedBy: target.email,
+            approvalLimit: template.approvalLimit,
+            reportFields: Object.fromEntries((template.checklist ?? []).map((section) => [section, ""])),
+            templateChecklist: template.checklist ?? []
+          });
+          created.assignmentId = assignment.id;
+          created.assignmentTarget = target.email;
+          created.assignmentTargetName = target.owner;
+          created.assignmentCadence = assignment.cadence;
+          created.sourceFiles = template.sourceFiles ?? [];
+          state.reports.unshift(created);
+          createdReports.push(created);
+          assignment.generatedReportIds.push(created.id);
+        }
+      }
+      state.reportAssignments.unshift(assignment);
+      record("ReportPackAssigned", body.actor, assignment.name, `${createdReports.length} monthly reports assigned to ${targets.length} office(s)`);
+      return { assignment, reports: createdReports, targets };
+    },
+
+    reportAssignmentDigest() {
+      const assignments = state.reportAssignments ?? [];
+      const residentPastorTargets = resolveReportAssignmentTargets({ targetMode: "resident-pastor-offices" });
+      const assignedReportIds = new Set(assignments.flatMap((assignment) => assignment.generatedReportIds ?? []));
+      const assignedReports = state.reports.filter((item) => item.assignmentId || assignedReportIds.has(item.id));
+      const activeReports = assignedReports.filter((item) => !item.archived && item.state !== "Approved");
+      return {
+        generatedAt: new Date().toISOString(),
+        assignments: assignments.length,
+        activeAssignments: assignments.filter((item) => item.status !== "Archived").length,
+        residentPastorTargets: residentPastorTargets.length,
+        assignedReports: assignedReports.length,
+        activeReports: activeReports.length,
+        templatesAssigned: assignments.reduce((sum, item) => sum + (item.templates?.length ?? 0), 0),
+        latestAssignment: assignments[0] ?? null,
+        nextTarget: residentPastorTargets[0]?.owner ?? "No Resident Pastor office found"
+      };
     },
 
     createApproval(body) {
@@ -2504,12 +2822,28 @@ export function createServices({ state, record, requirePermission, findById, int
 
     submitReport(id, body) {
       const item = findById(state.reports, id);
-      item.state = "Approved";
-      item.score = 100;
-      item.routingStage = "Archived upward";
+      const routeParts = String(item.path ?? "").split("->").map((part) => part.trim()).filter(Boolean);
+      const routeTarget = body.routeTarget ?? (routeParts.length > 1 ? routeParts[1] : routeParts[0] ?? "Supervising Office");
+      const wasUrgent = item.due === "Overdue" || item.state === "Escalated";
+      item.state = "In Review";
+      item.score = Math.max(item.score ?? 0, 80);
+      item.routingStage = `Submitted to ${routeTarget}`;
       item.submittedAt = new Date().toISOString();
-      item.approvedBy = body.actor;
-      record("ReportSubmitted", body.actor, item.name, "Forwarded upward");
+      item.reviewNote = `Submitted upward to ${routeTarget} through ChurchMail`;
+      const routedMessage = message("Report", item.name, body.actor ?? item.preparedBy ?? item.owner, "In Review", item.evidenceStatus ?? "Report packet pending");
+      routedMessage.to = routeTarget;
+      routedMessage.route = item.path;
+      routedMessage.priority = wasUrgent ? "High" : "Medium";
+      routedMessage.linkedReport = item.id;
+      routedMessage.body = [
+        `${item.name} has been submitted upward for review.`,
+        `Owner: ${item.owner}`,
+        `Period: ${item.period ?? "Current"}`,
+        `Route: ${item.path}`,
+        `Evidence: ${item.evidenceStatus ?? "Pending"}`
+      ].join("\n");
+      state.messages.unshift(routedMessage);
+      record("ReportSubmitted", body.actor, item.name, `Forwarded upward to ${routeTarget}`);
       return item;
     },
 
@@ -2597,30 +2931,6 @@ export function createServices({ state, record, requirePermission, findById, int
       item.evidenceStatus = "Evidence verified";
       item.approvedBy = body.actor;
       record("ReportVerified", body.actor, item.name, "Report verified");
-      return item;
-    },
-
-    signReport(id, body) {
-      const item = findById(state.reports, id);
-      item.signedAt = new Date().toISOString();
-      item.signedBy = body.actor ?? body.signer ?? "Supervisor";
-      item.signatureStatus = body.status ?? "Signed";
-      item.state = body.state ?? "In Review";
-      item.score = Math.max(item.score, 90);
-      item.routingStage = "Supervisor signed";
-      record("ReportSigned", item.signedBy, item.name, body.note ?? "Report signed");
-      return item;
-    },
-
-    approveReport(id, body) {
-      const item = findById(state.reports, id);
-      item.state = "Approved";
-      item.score = 100;
-      item.approvedAt = new Date().toISOString();
-      item.approvedBy = body.actor ?? body.approver ?? "Supervisor";
-      item.routingStage = body.routingStage ?? "Approved for archive";
-      item.reviewNote = body.note ?? "Report approved";
-      record("ReportApproved", item.approvedBy, item.name, item.reviewNote);
       return item;
     },
 
@@ -2765,6 +3075,16 @@ export function createServices({ state, record, requirePermission, findById, int
       const item = findById(state.approvals, id);
       item.state = "Approved";
       item.signatures = "complete";
+      if (item.linkedReport) {
+        const reportItem = state.reports.find((report) => report.id === item.linkedReport);
+        if (reportItem) {
+          reportItem.state = "Approved";
+          reportItem.score = Math.max(reportItem.score ?? 0, 95);
+          reportItem.routingStage = "Approved through approval engine";
+          reportItem.approvedBy = body.actor;
+          reportItem.verified = true;
+        }
+      }
       record("ApprovalGranted", body.actor, item.request, "Execution authorized");
       return item;
     },
@@ -2792,6 +3112,16 @@ export function createServices({ state, record, requirePermission, findById, int
         item.signatures = body.signatures ?? "1/2";
         item.state = body.state ?? "Signature";
       }
+      if (item.state === "Approved" && item.linkedReport) {
+        const reportItem = state.reports.find((report) => report.id === item.linkedReport);
+        if (reportItem) {
+          reportItem.state = "Approved";
+          reportItem.score = Math.max(reportItem.score ?? 0, 95);
+          reportItem.routingStage = "Approved through signature chain";
+          reportItem.approvedBy = body.actor;
+          reportItem.verified = true;
+        }
+      }
       record("ApprovalSigned", body.actor, item.request, `${item.signatures} signatures`);
       return item;
     },
@@ -2802,29 +3132,6 @@ export function createServices({ state, record, requirePermission, findById, int
       item.state = "Rejected";
       item.signatures = "closed";
       record("ApprovalRejected", body.actor, item.request, body.reason ?? "Request rejected");
-      return item;
-    },
-
-    returnApprovalForCorrection(id, body) {
-      requirePermission(body.actor, "canApprove");
-      const item = findById(state.approvals, id);
-      item.state = "Returned";
-      item.signatures = "correction";
-      item.correctionReason = body.reason ?? body.comment ?? "Returned for correction";
-      item.returnedAt = new Date().toISOString();
-      item.returnedBy = body.actor;
-      record("ApprovalReturnedForCorrection", body.actor, item.request, item.correctionReason);
-      return item;
-    },
-
-    requestApprovalEvidence(id, body) {
-      requirePermission(body.actor, "canApprove");
-      const item = findById(state.approvals, id);
-      item.state = "Evidence Requested";
-      item.evidenceRequest = body.reason ?? body.comment ?? "Additional evidence requested";
-      item.evidenceRequestedAt = new Date().toISOString();
-      item.evidenceRequestedBy = body.actor;
-      record("ApprovalEvidenceRequested", body.actor, item.request, item.evidenceRequest);
       return item;
     },
 
@@ -3186,6 +3493,55 @@ export function createServices({ state, record, requirePermission, findById, int
         archived: archived.length,
         primary: critical[0]?.item ?? open[0]?.item ?? "No open escalations",
         owner: critical[0]?.owner ?? open[0]?.owner ?? "None"
+      };
+    },
+
+    async createAccountRequest(body) {
+      const normalizedEmail = normalizeStationEmail(body.email);
+      const cleanOfficeName = String(body.officeName ?? body.name ?? "").trim();
+      const cleanFullName = String(body.fullName ?? "New station administrator").trim();
+      const cleanDepartment = String(body.department ?? "Church Administration").trim() || "Church Administration";
+      const level = body.level ?? "Local Branch";
+      if (state.stations.some((entry) => entry.email === normalizedEmail) || state.offices.some((entry) => entry.email === normalizedEmail)) {
+        return { conflict: true, error: "Station email already exists" };
+      }
+      const parentName = body.parentName ?? body.supervisor ?? (level === "Local Branch" ? "Area Office" : "International HQ");
+      const created = office(cleanOfficeName, normalizedEmail, level, cleanDepartment, parentName, {
+        nodeKind: body.nodeKind ?? "Office",
+        parentId: body.parentId,
+        parentName,
+        permissionPreset: body.permissionPreset ?? "Reporter",
+        reportingRoute: body.reportingRoute,
+        workflowAccess: body.workflowAccess
+      });
+      created.password = body.password;
+      created.status = "Pending Approval";
+      created.emailVerified = false;
+      created.notes = [
+        `Requested by ${cleanFullName} from the RMVI software sign-up portal.`,
+        "Awaiting administrator review."
+      ];
+      created.complianceStatus = "Onboarding";
+      state.offices.unshift(created);
+      const createdStation = station(created.email, `${created.name} Workstation`, created.level, `${created.department}, pending administrator approval`);
+      Object.assign(createdStation, {
+        status: "Pending Approval",
+        verified: false,
+        nodeKind: created.nodeKind,
+        parentId: created.parentId,
+        parentName: created.parentName,
+        permissionPreset: created.permissionPreset,
+        reportingRoute: created.reportingRoute,
+        workflowAccess: created.workflowAccess
+      });
+      state.stations.push(createdStation);
+      ensureStationCredential(created.email, created.password);
+      record("AccountApprovalRequested", created.email, createdStation.title, "Pending administrator approval");
+      return {
+        office: created,
+        station: createdStation,
+        status: "Pending Approval",
+        message: "Account request submitted. An administrator must approve this station before sign-in."
       };
     },
 
@@ -4395,6 +4751,10 @@ export function createServices({ state, record, requirePermission, findById, int
         state.stations.push(foundStation);
       }
       if (!foundStation) return { unauthorized: true, error: "Invalid station credentials" };
+      if (["Pending Approval", "Rejected", "Deleted", "Archived"].includes(foundStation.status ?? "")) {
+        record("LoginBlocked", normalizedEmail, foundStation.title, foundStation.status ?? "Pending administrator approval");
+        return { unauthorized: true, error: foundStation.status === "Pending Approval" ? "Station pending administrator approval" : "Station not active" };
+      }
       if (foundStation.status === "Suspended") return { unauthorized: true, error: "Station suspended" };
       credential.status = "Active";
       credential.failedAttempts = 0;
