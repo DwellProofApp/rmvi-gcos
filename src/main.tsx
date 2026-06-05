@@ -24343,16 +24343,9 @@ function AdminV2Shell(props: AdminV2Props) {
     }
     if (section === "Transfers") {
       return (
-        <AdminV2Directory
-          title="Transfer Management"
-          description="Manage reassignment letters, acknowledgements, access changes, and station activation."
-          metrics={[
-            ["Transfers", transfers.length],
-            ["Pending", transfers.filter((item) => item.status !== "Complete").length],
-            ["Ready", transfers.filter((item) => item.status === "Ready").length]
-          ]}
-          actions={["Create transfer", "Verify access", "Archive letter"]}
-          records={transfers.map((item) => ({ title: item.person, meta: `${item.from} -> ${item.to}`, detail: item.risk, status: item.step }))}
+        <AdminV2Transfers
+          transfers={transfers}
+          permissions={permissions}
           onQuickAction={onQuickAction}
         />
       );
@@ -26619,6 +26612,208 @@ function formatAuditFieldDate(value?: string) {
 
 function splitWorkflowPath(path?: string) {
   return String(path ?? "").split(/\s*->\s*/).map((stop) => stop.trim()).filter(Boolean);
+}
+
+type AdminV2TransferCase = {
+  key: string;
+  transfer: Transfer;
+  records: Transfer[];
+  duplicateCount: number;
+  routeStops: string[];
+  readiness: number;
+  state: string;
+};
+
+function getTransferReadiness(transfer: Transfer) {
+  const text = `${transfer.step} ${transfer.risk}`.toLowerCase();
+  if (/verified|complete|ready/.test(text)) return 100;
+  if (/activated|new station/.test(text)) return 82;
+  if (/revoked|access/.test(text)) return 68;
+  if (/acknowledg/.test(text)) return 54;
+  if (/prepared|checklist/.test(text)) return 38;
+  return 24;
+}
+
+function getTransferState(transfer: Transfer) {
+  const text = `${transfer.step} ${transfer.risk}`.toLowerCase();
+  if (/verified|complete/.test(text)) return "Verified";
+  if (/activated|ready/.test(text)) return "Ready";
+  if (/acknowledg|pending|waiting/.test(text)) return "Pending";
+  if (/risk|required/.test(text)) return "Review";
+  return transfer.step || "Open";
+}
+
+function dedupeTransferCases(transfers: Transfer[]) {
+  const groups = new Map<string, Transfer[]>();
+  transfers.filter((transfer) => !transfer.archived).forEach((transfer) => {
+    const key = [transfer.person, transfer.from, transfer.to].map((value) => value.trim().toLowerCase()).join("|");
+    groups.set(key, [...(groups.get(key) ?? []), transfer]);
+  });
+  return Array.from(groups.entries()).map<AdminV2TransferCase>(([key, records]) => {
+    const transfer = records.find((record) => getTransferState(record) !== "Verified") ?? records[0];
+    return {
+      key,
+      transfer,
+      records,
+      duplicateCount: Math.max(0, records.length - 1),
+      routeStops: [transfer.from, transfer.to].filter(Boolean),
+      readiness: getTransferReadiness(transfer),
+      state: getTransferState(transfer)
+    };
+  });
+}
+
+function AdminV2Transfers({
+  transfers,
+  permissions,
+  onQuickAction
+}: {
+  transfers: Transfer[];
+  permissions: Permissions;
+  onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
+}) {
+  const transferCases = React.useMemo(() => dedupeTransferCases(transfers), [transfers]);
+  const [selectedKey, setSelectedKey] = React.useState("");
+  React.useEffect(() => {
+    if (!transferCases.length) {
+      setSelectedKey("");
+      return;
+    }
+    if (!transferCases.some((item) => item.key === selectedKey)) {
+      setSelectedKey(transferCases[0].key);
+    }
+  }, [selectedKey, transferCases]);
+  const selected = transferCases.find((item) => item.key === selectedKey) ?? transferCases[0] ?? null;
+  const pendingCount = transferCases.filter((item) => item.state !== "Verified").length;
+  const verifiedCount = transferCases.filter((item) => item.state === "Verified").length;
+  const duplicateCount = transferCases.reduce((total, item) => total + item.duplicateCount, 0);
+
+  function actionRecord(item: AdminV2TransferCase) {
+    return {
+      title: item.transfer.person,
+      meta: `${item.transfer.from} -> ${item.transfer.to}`,
+      detail: item.transfer.risk,
+      status: item.state
+    };
+  }
+
+  function runAction(action: string, item = selected) {
+    if (!item) {
+      onQuickAction(action);
+      return;
+    }
+    onQuickAction(action, actionRecord(item));
+  }
+
+  const selectedSteps = selected ? [
+    ["Letter", selected.transfer.letterStatus ?? "Needed"],
+    ["Acknowledgement", /acknowledg|verified|ready/i.test(`${selected.transfer.step} ${selected.transfer.risk}`) ? "Tracked" : "Pending"],
+    ["Access reset", /revoked|activated|verified|ready/i.test(`${selected.transfer.step} ${selected.transfer.risk}`) ? "Complete" : "Required"],
+    ["Station activation", /activated|verified|ready/i.test(`${selected.transfer.step} ${selected.transfer.risk}`) ? "Ready" : "Pending"],
+    ["Verification", selected.state]
+  ] : [];
+
+  return (
+    <div className="admin-v2-workspace admin-v2-transfer-workspace">
+      <section className="admin-v2-panel admin-v2-workspace-intro admin-v2-transfer-hero">
+        <div>
+          <span>Workspace</span>
+          <h2>Transfer Management</h2>
+          <p>Manage reassignment letters, acknowledgements, access changes, session reset, and new station activation from one organized transfer queue.</p>
+        </div>
+        <div className="admin-v2-stat-strip">
+          <article><strong>{transferCases.length}</strong><span>Transfer cases</span></article>
+          <article><strong>{pendingCount}</strong><span>Pending handoffs</span></article>
+          <article><strong>{verifiedCount}</strong><span>Verified</span></article>
+          <article><strong>{duplicateCount}</strong><span>Duplicates merged</span></article>
+        </div>
+      </section>
+
+      <section className="admin-v2-toolbar admin-v2-transfer-toolbar">
+        <button className="primary" type="button" disabled={!permissions.canExecuteTransfers} onClick={() => runAction("Create transfer")}>Create transfer</button>
+        <button type="button" disabled={!permissions.canExecuteTransfers || !selected} onClick={() => runAction("Verify access")}>Verify access</button>
+        <button type="button" disabled={!permissions.canExecuteTransfers || !selected} onClick={() => runAction("Archive letter")}>Archive letter</button>
+      </section>
+
+      <section className="admin-v2-transfer-layout">
+        <div className="admin-v2-panel admin-v2-transfer-queue">
+          <div className="admin-v2-panel-head">
+            <span>Transfer queue</span>
+            <strong>{transferCases.length} active</strong>
+          </div>
+          <div className="admin-v2-transfer-list">
+            {transferCases.map((item) => (
+              <button
+                className={item.key === selected?.key ? "selected" : ""}
+                key={item.key}
+                type="button"
+                onClick={() => setSelectedKey(item.key)}
+              >
+                <div>
+                  <strong>{item.transfer.person}</strong>
+                  <span>{item.transfer.from} to {item.transfer.to}</span>
+                </div>
+                <em className={`admin-v2-status ${item.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{item.state}</em>
+                <small>{item.transfer.risk}</small>
+                {item.duplicateCount > 0 && <b>{item.duplicateCount + 1} related records merged</b>}
+              </button>
+            ))}
+            {!transferCases.length && <p className="admin-v2-empty">No active transfer cases are available.</p>}
+          </div>
+        </div>
+
+        <div className="admin-v2-panel admin-v2-transfer-detail">
+          <div className="admin-v2-panel-head">
+            <span>Transfer inspector</span>
+            <strong>{selected?.state ?? "No case"}</strong>
+          </div>
+          {selected ? (
+            <>
+              <div className="admin-v2-transfer-person">
+                <div>
+                  <span>Selected transfer</span>
+                  <h3>{selected.transfer.person}</h3>
+                  <p>{selected.transfer.risk}</p>
+                </div>
+                <strong>{selected.readiness}%</strong>
+              </div>
+              <div className="admin-v2-route-chipline" aria-label="Transfer route">
+                {selected.routeStops.map((stop, index) => (
+                  <React.Fragment key={`${stop}-${index}`}>
+                    <span>{stop}</span>
+                    {index < selected.routeStops.length - 1 && <i />}
+                  </React.Fragment>
+                ))}
+              </div>
+              <div className="admin-v2-transfer-progress">
+                <span>Migration readiness</span>
+                <div><i style={{ width: `${selected.readiness}%` }} /></div>
+              </div>
+              <div className="admin-v2-transfer-checklist">
+                {selectedSteps.map(([label, value]) => (
+                  <article key={label}>
+                    <span>{label}</span>
+                    <strong>{value}</strong>
+                  </article>
+                ))}
+              </div>
+              <div className="admin-v2-actions-row">
+                <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => runAction("Create transfer")}>Create transfer</button>
+                <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => runAction("Verify access")}>Verify access</button>
+                <button type="button" disabled={!permissions.canExecuteTransfers} onClick={() => runAction("Archive letter")}>Archive letter</button>
+              </div>
+              <div className="admin-v2-transfer-note">
+                <strong>Connected workflow</strong>
+                <span>This transfer stays connected to GCOS audit records, access reset history, ChurchMail letters, and the permanent office identity.</span>
+              </div>
+            </>
+          ) : (
+            <p>No transfer selected.</p>
+          )}
+        </div>
+      </section>
+    </div>
+  );
 }
 
 function AdminV2Directory({

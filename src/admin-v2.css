@@ -2523,6 +2523,265 @@
   min-height: 44px;
 }
 
+.admin-v2-transfer-workspace {
+  gap: 18px;
+}
+
+.admin-v2-transfer-hero {
+  align-items: center;
+  background:
+    radial-gradient(circle at top left, rgba(34, 211, 238, .1), transparent 34%),
+    linear-gradient(135deg, rgba(15, 23, 42, .94), rgba(2, 6, 23, .88));
+  border-color: rgba(125, 211, 252, .18);
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(0, 1.15fr) minmax(360px, .85fr);
+}
+
+.admin-v2-transfer-hero > div:first-child {
+  min-width: 0;
+}
+
+.admin-v2-transfer-hero h2 {
+  color: var(--v2-text);
+  font-size: clamp(2rem, 4vw, 3.15rem);
+  letter-spacing: -.05em;
+  margin: 8px 0;
+}
+
+.admin-v2-transfer-hero p {
+  color: var(--v2-muted);
+  line-height: 1.55;
+  margin: 0;
+  max-width: 780px;
+}
+
+.admin-v2-transfer-hero .admin-v2-stat-strip {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-v2-transfer-toolbar {
+  background: rgba(15, 23, 42, .68);
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 18px;
+  padding: 12px;
+}
+
+.admin-v2-transfer-layout {
+  align-items: start;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(360px, .95fr) minmax(460px, 1.05fr);
+}
+
+.admin-v2-transfer-list {
+  display: grid;
+  gap: 10px;
+  max-height: 66vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.admin-v2-transfer-list button {
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, .06), transparent 44%),
+    rgba(15, 23, 42, .56);
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 16px;
+  color: var(--v2-text);
+  cursor: pointer;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 14px;
+  text-align: left;
+  transition: border-color 160ms ease, transform 160ms ease, box-shadow 160ms ease;
+}
+
+.admin-v2-transfer-list button:hover,
+.admin-v2-transfer-list button.selected {
+  border-color: rgba(34, 211, 238, .42);
+  box-shadow: 0 16px 34px rgba(2, 6, 23, .18);
+  transform: translateY(-1px);
+}
+
+.admin-v2-transfer-list button > div {
+  min-width: 0;
+}
+
+.admin-v2-transfer-list strong,
+.admin-v2-transfer-list span,
+.admin-v2-transfer-list small {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-transfer-list strong {
+  color: var(--v2-text);
+}
+
+.admin-v2-transfer-list span,
+.admin-v2-transfer-list small {
+  color: var(--v2-muted);
+  font-size: 12px;
+  line-height: 1.45;
+}
+
+.admin-v2-transfer-list small {
+  grid-column: 1 / -1;
+}
+
+.admin-v2-transfer-list b {
+  background: rgba(250, 204, 21, .11);
+  border: 1px solid rgba(250, 204, 21, .22);
+  border-radius: 999px;
+  color: #fde68a;
+  font-size: 11px;
+  justify-self: start;
+  padding: 5px 9px;
+}
+
+.admin-v2-transfer-list em {
+  font-style: normal;
+}
+
+.admin-v2-transfer-detail {
+  min-width: 0;
+}
+
+.admin-v2-transfer-person {
+  align-items: start;
+  background:
+    radial-gradient(circle at top right, rgba(250, 204, 21, .12), transparent 34%),
+    rgba(15, 23, 42, .58);
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 18px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.admin-v2-transfer-person > div {
+  min-width: 0;
+}
+
+.admin-v2-transfer-person span {
+  color: var(--v2-cyan);
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.admin-v2-transfer-person h3 {
+  color: var(--v2-text);
+  font-size: clamp(1.5rem, 3vw, 2.2rem);
+  letter-spacing: -.04em;
+  margin: 8px 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-transfer-person p {
+  color: var(--v2-muted);
+  line-height: 1.5;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-transfer-person > strong {
+  align-items: center;
+  background: rgba(34, 211, 238, .1);
+  border: 1px solid rgba(34, 211, 238, .2);
+  border-radius: 16px;
+  color: var(--v2-text);
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 26px;
+  min-height: 66px;
+  padding: 0 14px;
+}
+
+.admin-v2-transfer-progress {
+  display: grid;
+  gap: 8px;
+  margin: 16px 0;
+}
+
+.admin-v2-transfer-progress span {
+  color: var(--v2-muted);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.admin-v2-transfer-progress div {
+  background: rgba(2, 6, 23, .54);
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 999px;
+  height: 12px;
+  overflow: hidden;
+}
+
+.admin-v2-transfer-progress i {
+  background: linear-gradient(90deg, #06b6d4, #22c55e);
+  display: block;
+  height: 100%;
+}
+
+.admin-v2-transfer-checklist {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  margin: 16px 0;
+}
+
+.admin-v2-transfer-checklist article {
+  background: rgba(15, 23, 42, .5);
+  border: 1px solid rgba(148, 163, 184, .14);
+  border-radius: 14px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.admin-v2-transfer-checklist span {
+  color: var(--v2-muted);
+  display: block;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+
+.admin-v2-transfer-checklist strong {
+  color: var(--v2-text);
+  display: block;
+  font-size: 13px;
+  margin-top: 7px;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-transfer-note {
+  background: rgba(34, 211, 238, .08);
+  border: 1px solid rgba(34, 211, 238, .16);
+  border-radius: 16px;
+  color: var(--v2-muted);
+  display: grid;
+  gap: 6px;
+  line-height: 1.5;
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.admin-v2-transfer-note strong {
+  color: var(--v2-text);
+}
+
 @media (max-width: 1180px) {
   .admin-v2-assignment-summary,
   .admin-v2-assignment-grid,
@@ -2537,6 +2796,11 @@
   }
 
   .admin-v2-workspace-hero {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-v2-transfer-hero,
+  .admin-v2-transfer-layout {
     grid-template-columns: 1fr;
   }
 
@@ -2577,6 +2841,15 @@
 
   .admin-v2-rule-preview {
     grid-column: auto;
+  }
+
+  .admin-v2-transfer-hero .admin-v2-stat-strip,
+  .admin-v2-transfer-checklist {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .admin-v2-transfer-person {
+    display: grid;
   }
 
   .admin-v2-handoff-card {
