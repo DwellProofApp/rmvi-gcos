@@ -25,6 +25,7 @@ if (!activeAccount) {
 console.log(`Active gcloud account: ${activeAccount}`);
 console.log(`Deploying ${service} in ${project}/${region} from ${commit} (${branch})...`);
 
+const existingEnv = readExistingCloudRunEnv();
 const envVars = {
   NODE_ENV: "production",
   GCOS_DOMAIN: "rmvi.org",
@@ -33,10 +34,14 @@ const envVars = {
   GCOS_FIREBASE_PROJECT_ID: project,
   GCOS_FIREBASE_NAMESPACE: process.env.GCOS_FIREBASE_NAMESPACE ?? "production",
   GCOS_AUTH_PROVIDER: process.env.GCOS_AUTH_PROVIDER ?? "firebase",
+  GCOS_FIREBASE_WEB_API_KEY: process.env.GCOS_FIREBASE_WEB_API_KEY ?? existingEnv.GCOS_FIREBASE_WEB_API_KEY,
+  GCOS_AUTH_FALLBACK_LOCAL: process.env.GCOS_AUTH_FALLBACK_LOCAL ?? existingEnv.GCOS_AUTH_FALLBACK_LOCAL ?? "0",
   GCOS_OBJECT_STORAGE_PROVIDER: "firebase-storage",
   GCOS_FIREBASE_STORAGE_BUCKET: process.env.GCOS_FIREBASE_STORAGE_BUCKET ?? "rmvi-gcos.firebasestorage.app",
-  GCOS_EMAIL_PROVIDER: process.env.GCOS_EMAIL_PROVIDER ?? "log",
+  GCOS_EMAIL_PROVIDER: process.env.GCOS_EMAIL_PROVIDER ?? "resend",
   GCOS_EMAIL_FROM: process.env.GCOS_EMAIL_FROM ?? "churchmail@rmvi.org",
+  GCOS_EMAIL_REPLY_TO: process.env.GCOS_EMAIL_REPLY_TO ?? existingEnv.GCOS_EMAIL_REPLY_TO ?? "admin@rmvi.org",
+  GCOS_RESEND_API_KEY: process.env.GCOS_RESEND_API_KEY ?? existingEnv.GCOS_RESEND_API_KEY,
   GCOS_VIDEO_PROVIDER: process.env.GCOS_VIDEO_PROVIDER ?? "jitsi",
   GCOS_SERVE_WEB: "1",
   GCOS_ALLOWED_ORIGIN: "https://rmvi.org",
@@ -52,7 +57,7 @@ const envVars = {
   GCOS_INCIDENT_RESPONSE_OWNER: process.env.GCOS_INCIDENT_RESPONSE_OWNER ?? "admin@rmvi.org",
   GCOS_SUPPORT_CONTACT: process.env.GCOS_SUPPORT_CONTACT ?? "admin@rmvi.org",
   GCOS_MONITORING_MODE: "cloud-run-healthcheck",
-  GCOS_MANAGED_RESTORE_DRILL: process.env.GCOS_MANAGED_RESTORE_DRILL ?? "0",
+  GCOS_MANAGED_RESTORE_DRILL: process.env.GCOS_MANAGED_RESTORE_DRILL ?? existingEnv.GCOS_MANAGED_RESTORE_DRILL ?? "0",
   GCOS_BUILD_COMMIT: commit,
   GCOS_BUILD_BRANCH: branch
 };
@@ -69,7 +74,7 @@ await run("gcloud", [
   region,
   "--allow-unauthenticated",
   "--set-env-vars",
-  Object.entries(envVars).map(([key, value]) => `${key}=${value}`).join(",")
+  Object.entries(envVars).filter(([, value]) => value !== undefined && value !== "").map(([key, value]) => `${key}=${value}`).join(",")
 ]);
 
 await run("npm", ["run", "deployment:align"], {
@@ -101,6 +106,28 @@ function capture(command, args) {
     return execFileSync(command, args, { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   } catch {
     return "";
+  }
+}
+
+function readExistingCloudRunEnv() {
+  const output = capture("gcloud", [
+    "run",
+    "services",
+    "describe",
+    service,
+    "--project",
+    project,
+    "--region",
+    region,
+    "--format=json"
+  ]);
+  if (!output) return {};
+  try {
+    const serviceJson = JSON.parse(output);
+    const env = serviceJson.spec?.template?.spec?.containers?.[0]?.env ?? [];
+    return Object.fromEntries(env.filter((item) => item.name && "value" in item).map((item) => [item.name, item.value]));
+  } catch {
+    return {};
   }
 }
 
