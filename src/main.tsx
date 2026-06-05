@@ -26122,6 +26122,7 @@ function AdminV2DepartmentChat({
   const [roomName, setRoomName] = React.useState("Department coordination");
   const [department, setDepartment] = React.useState(stationDepartment(station));
   const [participant, setParticipant] = React.useState(stationDirectory.find((item) => normalizeStationEmail(item.email) !== normalizedStationEmail)?.email ?? "");
+  const [chatWindowOpen, setChatWindowOpen] = React.useState(false);
   const onlineCount = presence.filter((item) => item.status === "Online").length;
   const unreadCount = messages.filter((message) => selectedRoom && message.roomId === selectedRoom.id && !(message.readBy ?? []).map(normalizeStationEmail).includes(normalizedStationEmail)).length;
 
@@ -26175,6 +26176,7 @@ function AdminV2DepartmentChat({
         >
           {selectedRoomSession ? "Open meeting" : "Start meeting"}
         </button>
+        <button type="button" disabled={!selectedRoom} onClick={() => setChatWindowOpen(true)}>Pop out chat</button>
         <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onSendChurchMail(selectedRoom.id)}>Send ChurchMail summary</button>
       </section>
 
@@ -26229,7 +26231,10 @@ function AdminV2DepartmentChat({
                   <h3>{selectedRoom.name}</h3>
                   <p>{selectedRoom.department} coordination room for {(selectedRoom.participants ?? []).length} office{(selectedRoom.participants ?? []).length === 1 ? "" : "s"}.</p>
                 </div>
-                <button type="button" onClick={() => onMarkRead(selectedRoom.id)}>Mark read</button>
+                <div className="admin-v2-chat-head-actions">
+                  <button type="button" onClick={() => setChatWindowOpen(true)}>Pop out</button>
+                  <button type="button" onClick={() => onMarkRead(selectedRoom.id)}>Mark read</button>
+                </div>
               </div>
               <div className="admin-v2-chat-room-context">
                 <span>Participants</span>
@@ -26315,6 +26320,37 @@ function AdminV2DepartmentChat({
           </div>
         </aside>
       </section>
+
+      {chatWindowOpen && selectedRoom && (
+        <section className="admin-v2-messenger-window" aria-label="Popped out department chat">
+          <header>
+            <div>
+              <span>{selectedRoom.department}</span>
+              <strong>{selectedRoom.name}</strong>
+              <small>{onlineCount} online / {roomMessages.length} messages</small>
+            </div>
+            <button type="button" onClick={() => setChatWindowOpen(false)} aria-label="Close chat window">Close</button>
+          </header>
+          <div className="admin-v2-messenger-participants">
+            {(selectedRoom.participants ?? []).map((participantEmail) => (
+              <span className={normalizeStationEmail(participantEmail) === normalizedStationEmail ? "active" : ""} key={participantEmail}>{participantEmail}</span>
+            ))}
+          </div>
+          <div className="admin-v2-messenger-messages">
+            {roomMessages.length ? roomMessages.map((message) => (
+              <article className={normalizeStationEmail(message.sender) === normalizedStationEmail ? "mine" : ""} key={message.id}>
+                <strong>{message.sender}</strong>
+                <p>{message.body}</p>
+                <small>{message.createdAt} / read by {(message.readBy ?? []).length}</small>
+              </article>
+            )) : <div className="admin-v2-empty-state">No messages yet. Send the first department update.</div>}
+          </div>
+          <form className="admin-v2-messenger-compose" onSubmit={submitMessage}>
+            <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={`Message as ${station.email}`} />
+            <button className="primary" type="submit"><Send size={15} /> Send</button>
+          </form>
+        </section>
+      )}
     </div>
   );
 }

@@ -1732,3 +1732,279 @@ body:has(.app-shell),
     width: 100% !important;
   }
 }
+
+/* Final Department Chat composition */
+.admin-v2-shell .admin-v2-chat-workspace .admin-v2-workspace-intro {
+  background:
+    radial-gradient(circle at top left, rgba(0, 212, 255, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(12, 18, 32, 0.96), rgba(4, 9, 18, 0.92)) !important;
+  border-color: rgba(0, 212, 255, 0.2) !important;
+}
+
+.admin-v2-shell .admin-v2-chat-layout {
+  align-items: start !important;
+  grid-template-columns: minmax(260px, 320px) minmax(0, 1fr) minmax(260px, 320px) !important;
+}
+
+.admin-v2-shell .admin-v2-chat-rooms,
+.admin-v2-shell .admin-v2-chat-side,
+.admin-v2-shell .admin-v2-chat-thread {
+  background: rgba(8, 13, 24, 0.92) !important;
+  border-color: rgba(148, 168, 200, 0.16) !important;
+}
+
+.admin-v2-shell .admin-v2-chat-room-list button {
+  min-height: auto !important;
+  padding: 13px !important;
+}
+
+.admin-v2-shell .admin-v2-chat-room-list button strong,
+.admin-v2-shell .admin-v2-chat-message-head strong,
+.admin-v2-shell .admin-v2-presence-list strong,
+.admin-v2-shell .admin-v2-chat-identity strong {
+  color: #f8fbff !important;
+  overflow-wrap: anywhere !important;
+}
+
+.admin-v2-shell .admin-v2-chat-room-list button small,
+.admin-v2-shell .admin-v2-presence-list small,
+.admin-v2-shell .admin-v2-chat-identity small {
+  color: #9fb2d0 !important;
+}
+
+.admin-v2-shell .admin-v2-chat-thread {
+  border-radius: 18px !important;
+  grid-template-rows: auto auto minmax(360px, 1fr) auto !important;
+  min-height: 660px !important;
+}
+
+.admin-v2-shell .admin-v2-chat-thread-head {
+  align-items: center !important;
+  background:
+    linear-gradient(135deg, rgba(0, 212, 255, 0.16), rgba(29, 78, 216, 0.12)),
+    rgba(12, 18, 32, 0.9) !important;
+}
+
+.admin-v2-shell .admin-v2-chat-head-actions {
+  align-items: center;
+  display: flex;
+  flex: 0 0 auto;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.admin-v2-shell .admin-v2-chat-head-actions button {
+  background: rgba(0, 212, 255, 0.1) !important;
+  border: 1px solid rgba(0, 212, 255, 0.28) !important;
+  border-radius: 999px !important;
+  color: #dff8ff !important;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 0 12px !important;
+}
+
+.admin-v2-shell .admin-v2-chat-room-context {
+  align-items: start !important;
+  grid-template-columns: 1fr !important;
+}
+
+.admin-v2-shell .admin-v2-chat-messages {
+  max-height: none !important;
+  min-height: 360px !important;
+}
+
+.admin-v2-shell .admin-v2-chat-messages article {
+  box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+}
+
+.admin-v2-shell .admin-v2-chat-compose textarea,
+.admin-v2-shell .admin-v2-messenger-compose textarea {
+  background: rgba(5, 8, 16, 0.92) !important;
+  border: 1px solid rgba(148, 168, 200, 0.22) !important;
+  border-radius: 14px !important;
+  color: #f8fbff !important;
+  padding: 12px !important;
+}
+
+.admin-v2-shell .admin-v2-chat-compose textarea::placeholder,
+.admin-v2-shell .admin-v2-messenger-compose textarea::placeholder {
+  color: #7186a8 !important;
+}
+
+.admin-v2-messenger-window {
+  background:
+    radial-gradient(circle at top left, rgba(0, 212, 255, 0.16), transparent 34%),
+    linear-gradient(160deg, rgba(12, 18, 32, 0.98), rgba(4, 9, 18, 0.98));
+  border: 1px solid rgba(0, 212, 255, 0.3);
+  border-radius: 22px;
+  bottom: 24px;
+  box-shadow: 0 28px 80px rgba(0, 0, 0, 0.42), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  display: grid;
+  grid-template-rows: auto auto minmax(220px, 1fr) auto;
+  max-height: min(720px, calc(100vh - 48px));
+  overflow: hidden;
+  position: fixed;
+  right: 24px;
+  width: min(430px, calc(100vw - 32px));
+  z-index: 80;
+}
+
+.admin-v2-messenger-window header {
+  align-items: center;
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.18), rgba(29, 78, 216, 0.14));
+  border-bottom: 1px solid rgba(0, 212, 255, 0.18);
+  display: flex;
+  gap: 14px;
+  justify-content: space-between;
+  padding: 15px;
+}
+
+.admin-v2-messenger-window header div {
+  display: grid;
+  gap: 3px;
+  min-width: 0;
+}
+
+.admin-v2-messenger-window header span,
+.admin-v2-messenger-window header small {
+  color: #9fb2d0;
+  font-size: 0.76rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-messenger-window header span {
+  color: #00d4ff;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-weight: 900;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+.admin-v2-messenger-window header strong {
+  color: #f8fbff;
+  font-size: 1.05rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-messenger-window header button {
+  background: rgba(5, 8, 16, 0.72);
+  border: 1px solid rgba(148, 168, 200, 0.22);
+  border-radius: 999px;
+  color: #f8fbff;
+  cursor: pointer;
+  font-weight: 900;
+  min-height: 34px;
+  padding: 0 12px;
+}
+
+.admin-v2-messenger-participants {
+  border-bottom: 1px solid rgba(148, 168, 200, 0.12);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding: 10px 14px;
+}
+
+.admin-v2-messenger-participants span {
+  background: rgba(148, 168, 200, 0.08);
+  border: 1px solid rgba(148, 168, 200, 0.16);
+  border-radius: 999px;
+  color: #9fb2d0;
+  font-size: 0.72rem;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 5px 8px;
+}
+
+.admin-v2-messenger-participants span.active {
+  background: rgba(0, 212, 255, 0.14);
+  border-color: rgba(0, 212, 255, 0.32);
+  color: #00d4ff;
+}
+
+.admin-v2-messenger-messages {
+  align-content: start;
+  display: grid;
+  gap: 10px;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 14px;
+}
+
+.admin-v2-messenger-messages article {
+  background: rgba(12, 18, 32, 0.92);
+  border: 1px solid rgba(148, 168, 200, 0.16);
+  border-radius: 15px;
+  display: grid;
+  gap: 6px;
+  justify-self: start;
+  max-width: 92%;
+  padding: 11px 12px;
+}
+
+.admin-v2-messenger-messages article.mine {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.18), rgba(0, 168, 204, 0.08));
+  border-color: rgba(0, 212, 255, 0.3);
+  justify-self: end;
+}
+
+.admin-v2-messenger-messages strong {
+  color: #f8fbff;
+  font-size: 0.82rem;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-messenger-messages p {
+  color: #edf7ff;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-messenger-messages small {
+  color: #8aa0c1;
+  font-size: 0.72rem;
+}
+
+.admin-v2-messenger-compose {
+  background: rgba(12, 18, 32, 0.94);
+  border-top: 1px solid rgba(148, 168, 200, 0.16);
+  display: grid;
+  gap: 10px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 12px;
+}
+
+.admin-v2-messenger-compose textarea {
+  min-height: 54px;
+  resize: vertical;
+}
+
+.admin-v2-messenger-compose button {
+  align-self: end;
+  min-height: 42px;
+}
+
+@media (max-width: 1180px) {
+  .admin-v2-shell .admin-v2-chat-layout {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-v2-shell .admin-v2-chat-thread {
+    min-height: 560px !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-v2-messenger-window {
+    bottom: 12px;
+    left: 12px;
+    right: 12px;
+    width: auto;
+  }
+
+  .admin-v2-messenger-compose {
+    grid-template-columns: 1fr;
+  }
+}
