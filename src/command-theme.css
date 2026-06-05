@@ -1,453 +1,502 @@
-/* GCOS dark command-center theme
-   Restores the navy/cyan operational interface requested after the light ministry theme pass. */
+/* GCOS sample-matched internal app theme.
+   This file is intentionally scoped to authenticated app shells only.
+   The public/admin sign-in gateway keeps its separate original styling. */
 
 :root {
-  --cmd-bg: #050b16;
-  --cmd-bg-grid: rgba(20, 199, 255, 0.055);
-  --cmd-shell: #0a1221;
-  --cmd-sidebar: #111a2b;
-  --cmd-sidebar-soft: #0d1524;
-  --cmd-panel: #0d1627;
-  --cmd-panel-2: #101c30;
-  --cmd-card: #0c1424;
-  --cmd-card-2: #101b2e;
-  --cmd-line: #203551;
-  --cmd-line-strong: #2c4b71;
-  --cmd-text: #edf5ff;
-  --cmd-muted: #9fb0c8;
-  --cmd-faint: #62748f;
-  --cmd-cyan: #18d7ff;
-  --cmd-cyan-soft: rgba(24, 215, 255, 0.16);
-  --cmd-cyan-line: rgba(24, 215, 255, 0.58);
-  --cmd-green: #20e6a8;
-  --cmd-warning: #f3c75b;
-  --cmd-danger: #ff6b7a;
-  --cmd-radius: 18px;
-  --cmd-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
-}
-
-html,
-body,
-#root {
-  background: var(--cmd-bg) !important;
-  color: var(--cmd-text) !important;
-}
-
-body {
-  background:
-    linear-gradient(rgba(24, 215, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(24, 215, 255, 0.045) 1px, transparent 1px),
-    radial-gradient(circle at 20% 0%, rgba(24, 215, 255, 0.08), transparent 30%),
-    radial-gradient(circle at 82% 18%, rgba(72, 70, 170, 0.16), transparent 36%),
-    var(--cmd-bg) !important;
-  background-size: 46px 46px, 46px 46px, auto, auto, auto !important;
+  --cmd-bg: #0b0f1a;
+  --cmd-bg-2: #111827;
+  --cmd-bg-3: #1a2235;
+  --cmd-bg-4: #1e2d45;
+  --cmd-border: #1e3a5f;
+  --cmd-border-2: #2a4a6e;
+  --cmd-blue: #2563eb;
+  --cmd-blue-2: #3b82f6;
+  --cmd-blue-3: #60a5fa;
+  --cmd-gold: #f59e0b;
+  --cmd-gold-2: #fbbf24;
+  --cmd-green: #10b981;
+  --cmd-red: #ef4444;
+  --cmd-orange: #f97316;
+  --cmd-purple: #8b5cf6;
+  --cmd-text: #e2e8f0;
+  --cmd-muted: #94a3b8;
+  --cmd-faint: #64748b;
+  --cmd-radius: 8px;
+  --cmd-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
 }
 
 .app-shell,
 .app-shell.admin-shell,
 .app-shell:not(.admin-shell) {
+  background: var(--cmd-bg) !important;
+  color: var(--cmd-text) !important;
+  min-height: 100vh !important;
+}
+
+.app-shell::before,
+.app-shell.admin-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(37, 99, 235, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(37, 99, 235, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  z-index: 0;
+}
+
+.app-shell::after,
+.app-shell.admin-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
   background:
-    linear-gradient(rgba(24, 215, 255, 0.045) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(24, 215, 255, 0.045) 1px, transparent 1px),
-    radial-gradient(circle at 60% 12%, rgba(32, 63, 121, 0.22), transparent 28%),
-    var(--cmd-bg) !important;
-  background-size: 44px 44px, 44px 44px, auto, auto !important;
-  color: var(--cmd-text) !important;
+    radial-gradient(ellipse at 10% 12%, rgba(37, 99, 235, 0.08), transparent 46%),
+    radial-gradient(ellipse at 86% 82%, rgba(139, 92, 246, 0.06), transparent 48%);
+  z-index: 0;
 }
 
-.sidebar,
-.admin-shell .sidebar,
-.app-shell:not(.admin-shell) .sidebar {
-  background: linear-gradient(180deg, #121d31 0%, #0d1727 100%) !important;
-  border-right: 1px solid var(--cmd-line) !important;
-  box-shadow: inset -1px 0 0 rgba(24, 215, 255, 0.04) !important;
+.app-shell > *,
+.app-shell.admin-shell > * {
+  position: relative;
+  z-index: 1;
 }
 
-.brand,
-.station-switcher,
-.station-directory,
-.sidebar-footer {
+.app-shell .workspace,
+.app-shell .main,
+.app-shell .content,
+.app-shell .dashboard-grid,
+.app-shell .module-grid,
+.app-shell .station-home,
+.app-shell .admin-portal-shell {
   background: transparent !important;
-  border-color: transparent !important;
-}
-
-.brand strong,
-.brand span,
-.nav-label,
-.sidebar h4,
-.station-directory strong,
-.station-directory span,
-.sidebar-footer,
-.sidebar-footer * {
   color: var(--cmd-text) !important;
 }
 
-.nav-label,
-.sidebar h4,
-.eyebrow,
-.section-banner .eyebrow,
-.panel .eyebrow,
-.subsection-title {
-  color: var(--cmd-cyan) !important;
-  letter-spacing: 0.18em !important;
-  text-transform: uppercase !important;
-  font-weight: 900 !important;
+.app-shell .sidebar,
+.app-shell.admin-shell .sidebar,
+.app-shell:not(.admin-shell) .sidebar {
+  background: var(--cmd-bg-2) !important;
+  border-right: 1px solid var(--cmd-border) !important;
+  box-shadow: none !important;
 }
 
-.nav-item,
-.sidebar button,
+.app-shell .brand,
+.app-shell .station-switcher,
+.app-shell .station-directory,
+.app-shell .sidebar-footer {
+  background: transparent !important;
+  border-color: var(--cmd-border) !important;
+}
+
+.app-shell .brand strong,
+.app-shell .brand span,
+.app-shell .station-directory strong,
+.app-shell .station-directory span,
+.app-shell .sidebar-footer,
+.app-shell .sidebar-footer * {
+  color: var(--cmd-text) !important;
+}
+
+.app-shell .nav-label,
+.app-shell .sidebar h4,
+.app-shell .eyebrow,
+.app-shell .section-banner .eyebrow,
+.app-shell .panel .eyebrow,
+.app-shell .subsection-title,
+.app-shell .organization-kicker {
+  color: var(--cmd-faint) !important;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
+  font-size: 10px !important;
+  letter-spacing: 0.15em !important;
+  text-transform: uppercase !important;
+  font-weight: 700 !important;
+}
+
+.app-shell .nav-item,
+.app-shell .sidebar button,
 .app-shell:not(.admin-shell) .nav-item {
-  background: rgba(9, 16, 31, 0.74) !important;
-  border: 1px solid rgba(32, 53, 81, 0.34) !important;
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: 6px !important;
   color: var(--cmd-muted) !important;
   box-shadow: none !important;
 }
 
-.nav-item:hover,
-.sidebar button:hover {
-  border-color: var(--cmd-cyan-line) !important;
+.app-shell .nav-item:hover,
+.app-shell .sidebar button:hover {
+  background: var(--cmd-bg-3) !important;
+  border-color: transparent !important;
   color: var(--cmd-text) !important;
-  background: rgba(16, 32, 52, 0.88) !important;
 }
 
-.nav-item.active,
-.sidebar button.active,
+.app-shell .nav-item.active,
+.app-shell .sidebar button.active,
 .app-shell:not(.admin-shell) .nav-item.active {
-  background: linear-gradient(135deg, rgba(24, 215, 255, 0.18), rgba(24, 215, 255, 0.07)) !important;
-  border-color: var(--cmd-cyan-line) !important;
-  color: var(--cmd-text) !important;
-  box-shadow: inset 4px 0 0 var(--cmd-cyan), 0 0 32px rgba(24, 215, 255, 0.12) !important;
+  background: var(--cmd-bg-4) !important;
+  border-color: transparent !important;
+  border-right: 2px solid var(--cmd-blue) !important;
+  color: var(--cmd-blue-3) !important;
+  box-shadow: none !important;
 }
 
-.nav-item svg,
-.sidebar button svg,
-.nav-item.active svg {
-  color: var(--cmd-muted) !important;
+.app-shell .nav-item svg,
+.app-shell .sidebar button svg {
+  color: currentColor !important;
   stroke: currentColor !important;
 }
 
-.nav-item.active svg {
-  color: var(--cmd-cyan) !important;
-}
-
-.main,
-.content,
-.dashboard-grid,
-.module-grid,
-.station-home,
-.admin-portal-shell {
-  background: transparent !important;
-  color: var(--cmd-text) !important;
-}
-
-.topbar,
-.user-topbar,
-.app-header,
-.section-banner,
-.station-landing,
-.station-home-hero,
-.reports-hero,
-.churchmail-hero {
-  background: rgba(14, 24, 41, 0.90) !important;
-  border: 1px solid var(--cmd-line) !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  color: var(--cmd-text) !important;
-}
-
-.section-banner {
-  backdrop-filter: blur(10px);
-}
-
-.section-banner h1,
-.section-banner h2,
-.station-landing h1,
-.station-home-hero h2,
-.reports-hero h2,
-.churchmail-hero h2,
-.panel h2,
-.panel h3,
-.admin-portal-shell h1,
-.admin-portal-shell h2,
-.admin-portal-shell h3,
-.command-card strong,
-.metric-card strong,
-.stat-card strong,
-.station-title h1,
-.user-topbar h1 {
-  color: var(--cmd-text) !important;
-  text-shadow: none !important;
-}
-
-.section-banner p,
-.station-landing p,
-.station-home-hero p,
-.reports-hero p,
-.churchmail-hero p,
-.panel p,
-.panel span,
-.panel small,
-.metric-card span,
-.metric-card small,
-.command-card span,
-.command-card small,
-.station-title p,
-.user-topbar p {
-  color: var(--cmd-muted) !important;
-}
-
-.global-command-card,
-.section-banner + .metric-grid,
-.metrics,
-.metric-card,
-.command-deck,
-.command-card,
-.panel,
-.module-panel,
-.inspector-panel,
-.station-panel,
-.role-system-panel,
-.station-home-actions button,
-.admin-portal-card,
-.admin-console-panel,
-.admin-app-tile,
-.office-command-panel,
-.office-node-card,
-.office-preview-card,
-.department-chat-main,
-.department-chat-side,
-.chat-room-list,
-.chat-thread-panel,
-.report-workspace,
-.approval-workspace,
-.churchmail-workspace,
-.calendar-workspace,
-.personnel-workspace,
-.archive-workspace,
-.audit-workspace {
-  background: linear-gradient(180deg, rgba(16, 27, 46, 0.94), rgba(9, 16, 31, 0.96)) !important;
-  border: 1px solid var(--cmd-line) !important;
+.app-shell .topbar,
+.app-shell .user-topbar,
+.app-shell .app-header,
+.app-shell .section-banner,
+.app-shell .station-landing,
+.app-shell .station-home-hero,
+.app-shell .reports-hero,
+.app-shell .churchmail-hero,
+.app-shell .admin-portal-topbar,
+.app-shell .admin-portal-hero,
+.app-shell .admin-dashboard-hero {
+  background: var(--cmd-bg-2) !important;
+  border: 1px solid var(--cmd-border) !important;
   border-radius: var(--cmd-radius) !important;
   box-shadow: var(--cmd-shadow) !important;
   color: var(--cmd-text) !important;
 }
 
-.global-command-card,
-.station-home-hero,
-.section-banner-main,
-.command-hero,
-.office-hero-strip {
-  background:
-    radial-gradient(circle at 20% 0%, rgba(24, 215, 255, 0.10), transparent 34%),
-    linear-gradient(135deg, rgba(18, 43, 68, 0.95), rgba(16, 18, 42, 0.96) 72%) !important;
+.app-shell .global-command-card,
+.app-shell .section-banner + .metric-grid,
+.app-shell .metrics,
+.app-shell .metric-card,
+.app-shell .command-deck,
+.app-shell .command-card,
+.app-shell .panel,
+.app-shell .module-panel,
+.app-shell .inspector-panel,
+.app-shell .station-panel,
+.app-shell .role-system-panel,
+.app-shell .station-home-actions button,
+.app-shell .admin-portal-card,
+.app-shell .admin-console-panel,
+.app-shell .admin-app-tile,
+.app-shell .office-command-panel,
+.app-shell .office-node-card,
+.app-shell .office-preview-card,
+.app-shell .department-chat-main,
+.app-shell .department-chat-side,
+.app-shell .chat-room-list,
+.app-shell .chat-thread-panel,
+.app-shell .report-workspace,
+.app-shell .approval-workspace,
+.app-shell .churchmail-workspace,
+.app-shell .calendar-workspace,
+.app-shell .personnel-workspace,
+.app-shell .archive-workspace,
+.app-shell .audit-workspace {
+  background: var(--cmd-bg-2) !important;
+  border: 1px solid var(--cmd-border) !important;
+  border-radius: var(--cmd-radius) !important;
+  box-shadow: var(--cmd-shadow) !important;
+  color: var(--cmd-text) !important;
 }
 
-.metric-card,
-.command-card,
-.stat-card,
-.section-banner-status div,
-.mini-metric-grid article,
-.office-metric,
-.chat-metrics .metric-card {
-  background: rgba(9, 16, 31, 0.82) !important;
-  border: 1px solid var(--cmd-line-strong) !important;
-  border-radius: 14px !important;
+.app-shell .global-command-card,
+.app-shell .station-home-hero,
+.app-shell .section-banner-main,
+.app-shell .command-hero,
+.app-shell .office-hero-strip {
+  background:
+    radial-gradient(circle at 82% 18%, rgba(245, 158, 11, 0.12), transparent 32%),
+    linear-gradient(135deg, rgba(17, 24, 39, 0.98), rgba(30, 45, 69, 0.96)) !important;
+}
+
+.app-shell .metric-card,
+.app-shell .command-card,
+.app-shell .stat-card,
+.app-shell .section-banner-status div,
+.app-shell .mini-metric-grid article,
+.app-shell .office-metric,
+.app-shell .chat-metrics .metric-card {
+  background: var(--cmd-bg-2) !important;
+  border: 1px solid var(--cmd-border) !important;
+  border-radius: var(--cmd-radius) !important;
   box-shadow: none !important;
 }
 
-.metric-card strong,
-.command-card strong,
-.stat-card strong,
-.section-banner-status strong {
+.app-shell h1,
+.app-shell h2,
+.app-shell h3,
+.app-shell .section-banner h1,
+.app-shell .section-banner h2,
+.app-shell .station-landing h1,
+.app-shell .station-home-hero h2,
+.app-shell .reports-hero h2,
+.app-shell .churchmail-hero h2,
+.app-shell .panel h2,
+.app-shell .panel h3,
+.app-shell .admin-portal-shell h1,
+.app-shell .admin-portal-shell h2,
+.app-shell .admin-portal-shell h3,
+.app-shell .command-card strong,
+.app-shell .metric-card strong,
+.app-shell .stat-card strong,
+.app-shell .station-title h1,
+.app-shell .user-topbar h1 {
+  color: var(--cmd-text) !important;
+  text-shadow: none !important;
+}
+
+.app-shell p,
+.app-shell small,
+.app-shell span,
+.app-shell .section-banner p,
+.app-shell .station-landing p,
+.app-shell .station-home-hero p,
+.app-shell .reports-hero p,
+.app-shell .churchmail-hero p,
+.app-shell .panel p,
+.app-shell .panel span,
+.app-shell .panel small,
+.app-shell .metric-card span,
+.app-shell .metric-card small,
+.app-shell .command-card span,
+.app-shell .command-card small,
+.app-shell .station-title p,
+.app-shell .user-topbar p {
+  color: var(--cmd-muted) !important;
+}
+
+.app-shell .metric-card strong,
+.app-shell .command-card strong,
+.app-shell .stat-card strong,
+.app-shell .section-banner-status strong {
+  color: var(--cmd-text) !important;
   font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
   letter-spacing: 0.03em !important;
 }
 
-.search-box,
-.search-box input,
-.topbar-actions input,
-input,
-select,
-textarea,
-.chat-create-room input,
-.chat-create-room select,
-.chat-compose textarea {
-  background: rgba(7, 13, 27, 0.82) !important;
-  border: 1px solid var(--cmd-line-strong) !important;
+.app-shell .search-box,
+.app-shell .search-box input,
+.app-shell .topbar-actions input,
+.app-shell input,
+.app-shell select,
+.app-shell textarea,
+.app-shell .chat-create-room input,
+.app-shell .chat-create-room select,
+.app-shell .chat-compose textarea {
+  background: var(--cmd-bg-3) !important;
+  border: 1px solid var(--cmd-border) !important;
+  border-radius: 6px !important;
   color: var(--cmd-text) !important;
   box-shadow: none !important;
 }
 
-input::placeholder,
-textarea::placeholder,
-.search-box input::placeholder {
+.app-shell input::placeholder,
+.app-shell textarea::placeholder,
+.app-shell .search-box input::placeholder {
   color: var(--cmd-faint) !important;
 }
 
-button,
-.primary-action,
-.secondary-action,
-.button-row button,
-.station-form button,
-.station-inline-task button,
-.station-inbox-actions button {
-  border-radius: 10px !important;
-  font-weight: 900 !important;
+.app-shell button,
+.app-shell .primary-action,
+.app-shell .secondary-action,
+.app-shell .button-row button,
+.app-shell .station-form button,
+.app-shell .station-inline-task button,
+.app-shell .station-inbox-actions button {
+  border-radius: 6px !important;
+  font-weight: 700 !important;
 }
 
-.primary-action,
-.button-row button:first-child,
-.station-form button,
-.station-inline-task button,
-.station-inbox-actions button,
-.tabs button.active {
-  background: var(--cmd-cyan) !important;
-  border-color: var(--cmd-cyan) !important;
-  color: #04111d !important;
-  box-shadow: 0 0 24px rgba(24, 215, 255, 0.18) !important;
+.app-shell .primary-action,
+.app-shell .button-row button:first-child,
+.app-shell .station-form button,
+.app-shell .station-inline-task button,
+.app-shell .station-inbox-actions button,
+.app-shell .tabs button.active {
+  background: var(--cmd-blue) !important;
+  border-color: var(--cmd-blue) !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
 }
 
-.secondary-action,
-.button-row button,
-.tabs button,
-.panel button,
-.station-home-actions button {
-  background: rgba(9, 16, 31, 0.78) !important;
-  border: 1px solid var(--cmd-line-strong) !important;
-  color: var(--cmd-text) !important;
+.app-shell .primary-action:hover,
+.app-shell .button-row button:first-child:hover,
+.app-shell .station-form button:hover,
+.app-shell .station-inline-task button:hover,
+.app-shell .station-inbox-actions button:hover {
+  background: var(--cmd-blue-2) !important;
+  border-color: var(--cmd-blue-2) !important;
 }
 
-.secondary-action:hover,
-.button-row button:hover,
-.tabs button:hover,
-.panel button:hover,
-.station-home-actions button:hover {
-  border-color: var(--cmd-cyan-line) !important;
-  background: rgba(24, 215, 255, 0.10) !important;
-}
-
-.status-pill,
-.badge,
-.chip,
-.pill,
-.tag,
-.section-banner-status span,
-.message-kind,
-.workflow-status {
-  background: rgba(24, 215, 255, 0.10) !important;
-  border: 1px solid rgba(24, 215, 255, 0.28) !important;
-  color: var(--cmd-cyan) !important;
-}
-
-.sync-status,
-.api-status,
-.status-ok {
-  background: rgba(32, 230, 168, 0.10) !important;
-  border-color: rgba(32, 230, 168, 0.26) !important;
-  color: var(--cmd-text) !important;
-}
-
-.sync-status svg,
-.api-status svg {
-  color: var(--cmd-green) !important;
-}
-
-table,
-.table,
-.registry-table,
-.data-table {
+.app-shell .secondary-action,
+.app-shell .button-row button,
+.app-shell .tabs button,
+.app-shell .panel button,
+.app-shell .station-home-actions button {
   background: transparent !important;
-  color: var(--cmd-text) !important;
-}
-
-th,
-td,
-.row,
-.list-row,
-.message-row,
-.report-row,
-.approval-row,
-.task-card,
-.policy-row,
-.calendar-event,
-.person-row,
-.archive-row,
-.audit-row,
-.chat-room-button,
-.presence-row,
-.chat-message {
-  background: rgba(7, 13, 27, 0.58) !important;
-  border-color: var(--cmd-line) !important;
-  color: var(--cmd-text) !important;
-}
-
-.chat-room-button.active,
-.chat-message.mine,
-.chat-readiness-card {
-  background: linear-gradient(135deg, rgba(24, 215, 255, 0.18), rgba(8, 16, 31, 0.96)) !important;
-  border-color: var(--cmd-cyan-line) !important;
-  color: var(--cmd-text) !important;
-}
-
-.chat-thread-header,
-.chat-compose,
-.panel-header,
-.section-heading {
-  border-color: var(--cmd-line) !important;
-}
-
-.empty-state {
-  background: rgba(7, 13, 27, 0.58) !important;
-  border: 1px dashed var(--cmd-line-strong) !important;
+  border: 1px solid var(--cmd-border) !important;
   color: var(--cmd-muted) !important;
 }
 
-.progress,
-.progress-track {
-  background: rgba(255, 255, 255, 0.07) !important;
+.app-shell .secondary-action:hover,
+.app-shell .button-row button:hover,
+.app-shell .tabs button:hover,
+.app-shell .panel button:hover,
+.app-shell .station-home-actions button:hover {
+  border-color: var(--cmd-blue) !important;
+  color: var(--cmd-blue-3) !important;
+  background: var(--cmd-bg-3) !important;
 }
 
-.progress i,
-.progress-bar,
-.progress-fill {
-  background: linear-gradient(90deg, var(--cmd-cyan), #4b7dff) !important;
+.app-shell .status-pill,
+.app-shell .badge,
+.app-shell .chip,
+.app-shell .pill,
+.app-shell .tag,
+.app-shell .section-banner-status span,
+.app-shell .message-kind,
+.app-shell .workflow-status {
+  background: rgba(37, 99, 235, 0.15) !important;
+  border: 1px solid rgba(37, 99, 235, 0.30) !important;
+  color: var(--cmd-blue-3) !important;
 }
 
-.floating-scroll-controls button,
-.scroll-button,
-.scroll-control {
-  background: rgba(8, 20, 35, 0.92) !important;
-  border: 1px solid var(--cmd-cyan-line) !important;
-  color: var(--cmd-cyan) !important;
+.app-shell .badge.pending,
+.app-shell .status-pill.pending,
+.app-shell .chip.pending,
+.app-shell .tag.pending,
+.app-shell .badge.gold,
+.app-shell .chip.gold {
+  background: rgba(245, 158, 11, 0.15) !important;
+  border-color: rgba(245, 158, 11, 0.30) !important;
+  color: var(--cmd-gold-2) !important;
 }
 
-a {
-  color: var(--cmd-cyan) !important;
+.app-shell .badge.approved,
+.app-shell .status-ok,
+.app-shell .sync-status,
+.app-shell .api-status {
+  background: rgba(16, 185, 129, 0.15) !important;
+  border-color: rgba(16, 185, 129, 0.30) !important;
+  color: var(--cmd-green) !important;
 }
 
-svg {
-  stroke: currentColor;
+.app-shell .badge.rejected,
+.app-shell .badge.danger,
+.app-shell .status-pill.danger {
+  background: rgba(239, 68, 68, 0.15) !important;
+  border-color: rgba(239, 68, 68, 0.30) !important;
+  color: var(--cmd-red) !important;
 }
 
-.admin-portal-shell,
-.admin-shell .admin-portal-shell {
+.app-shell .badge.review,
+.app-shell .badge.purple {
+  background: rgba(139, 92, 246, 0.15) !important;
+  border-color: rgba(139, 92, 246, 0.30) !important;
+  color: var(--cmd-purple) !important;
+}
+
+.app-shell table,
+.app-shell .table,
+.app-shell .registry-table,
+.app-shell .data-table {
   background: transparent !important;
-}
-
-.admin-portal-topbar,
-.admin-portal-hero,
-.admin-dashboard-hero {
-  background: rgba(14, 24, 41, 0.92) !important;
-  border: 1px solid var(--cmd-line) !important;
   color: var(--cmd-text) !important;
 }
 
-.admin-portal-logo,
-.section-banner-icon,
-.command-icon {
-  background: rgba(24, 215, 255, 0.12) !important;
-  border: 1px solid rgba(24, 215, 255, 0.24) !important;
-  color: var(--cmd-cyan) !important;
+.app-shell th {
+  color: var(--cmd-faint) !important;
+  border-color: var(--cmd-border) !important;
+}
+
+.app-shell td,
+.app-shell .row,
+.app-shell .list-row,
+.app-shell .message-row,
+.app-shell .report-row,
+.app-shell .approval-row,
+.app-shell .task-card,
+.app-shell .policy-row,
+.app-shell .calendar-event,
+.app-shell .person-row,
+.app-shell .archive-row,
+.app-shell .audit-row,
+.app-shell .chat-room-button,
+.app-shell .presence-row,
+.app-shell .chat-message {
+  background: transparent !important;
+  border-color: var(--cmd-border) !important;
+  color: var(--cmd-muted) !important;
+}
+
+.app-shell tr:hover td,
+.app-shell .message-row:hover,
+.app-shell .report-row:hover,
+.app-shell .approval-row:hover,
+.app-shell .chat-room-button:hover {
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: var(--cmd-text) !important;
+}
+
+.app-shell .chat-room-button.active,
+.app-shell .chat-message.mine,
+.app-shell .chat-readiness-card {
+  background: var(--cmd-bg-3) !important;
+  border-color: var(--cmd-border) !important;
+  color: var(--cmd-text) !important;
+}
+
+.app-shell .chat-thread-header,
+.app-shell .chat-compose,
+.app-shell .panel-header,
+.app-shell .section-heading {
+  border-color: var(--cmd-border) !important;
+}
+
+.app-shell .empty-state {
+  background: var(--cmd-bg-3) !important;
+  border: 1px dashed var(--cmd-border-2) !important;
+  color: var(--cmd-muted) !important;
+}
+
+.app-shell .progress,
+.app-shell .progress-track {
+  background: var(--cmd-bg-3) !important;
+}
+
+.app-shell .progress i,
+.app-shell .progress-bar,
+.app-shell .progress-fill {
+  background: linear-gradient(90deg, var(--cmd-blue), var(--cmd-blue-3)) !important;
+}
+
+.app-shell .floating-scroll-controls button,
+.app-shell .scroll-button,
+.app-shell .scroll-control {
+  background: var(--cmd-bg-3) !important;
+  border: 1px solid var(--cmd-border-2) !important;
+  color: var(--cmd-blue-3) !important;
+}
+
+.app-shell a {
+  color: var(--cmd-blue-3) !important;
+}
+
+.app-shell svg {
+  stroke: currentColor;
+}
+
+.app-shell .admin-portal-logo,
+.app-shell .section-banner-icon,
+.app-shell .command-icon,
+.app-shell .stat-icon,
+.app-shell .metric-icon {
+  background: rgba(37, 99, 235, 0.15) !important;
+  border: 1px solid rgba(37, 99, 235, 0.30) !important;
+  color: var(--cmd-blue-3) !important;
 }
 
 @media (max-width: 760px) {
@@ -457,11 +506,11 @@ svg {
     background: var(--cmd-bg) !important;
   }
 
-  .topbar,
-  .user-topbar,
-  .section-banner,
-  .station-home-hero,
-  .panel {
-    border-radius: 16px !important;
+  .app-shell .topbar,
+  .app-shell .user-topbar,
+  .app-shell .section-banner,
+  .app-shell .station-home-hero,
+  .app-shell .panel {
+    border-radius: var(--cmd-radius) !important;
   }
 }
