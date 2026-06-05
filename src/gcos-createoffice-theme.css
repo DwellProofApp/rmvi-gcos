@@ -1397,3 +1397,338 @@ body:has(.app-shell),
     grid-template-columns: 1fr;
   }
 }
+
+/* Product composition cleanup: keep the authenticated GCOS rooms in one
+   professional dark system and remove the older white/blue report fragments. */
+.admin-v2-shell .admin-v2-report-board {
+  gap: 18px !important;
+}
+
+.admin-v2-shell .admin-v2-report-board,
+.admin-v2-shell .admin-v2-report-board * {
+  min-width: 0 !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-template-picker button,
+  .admin-v2-report-queue button,
+  .admin-v2-workflow-status,
+  .admin-v2-workflow-status article,
+  .admin-v2-report-meta article,
+  .admin-v2-next-step-card,
+  .admin-v2-connected-routes,
+  .admin-v2-assignment-brief aside,
+  .admin-v2-package-card,
+  .admin-v2-form-stack button,
+  .admin-v2-history-stack button,
+  .admin-v2-history-stack article,
+  .admin-v2-assignment-next,
+  .admin-v2-assignment-status em,
+  .admin-v2-assignment-drafts button,
+  .admin-v2-assignment-next aside button,
+  .admin-v2-search-field
+) {
+  background: linear-gradient(180deg, rgba(12, 18, 32, 0.92), rgba(9, 14, 24, 0.9)) !important;
+  border-color: #253550 !important;
+  color: #e8f0fe !important;
+  box-shadow: none !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-template-picker button:hover,
+  .admin-v2-template-picker button.selected,
+  .admin-v2-report-queue button:hover,
+  .admin-v2-report-queue button.selected,
+  .admin-v2-form-stack button:hover,
+  .admin-v2-history-stack button:hover,
+  .admin-v2-history-stack button.selected,
+  .admin-v2-assignment-drafts button:hover,
+  .admin-v2-assignment-drafts button.selected,
+  .admin-v2-assignment-next aside button:hover,
+  .admin-v2-connected-routes button:hover
+) {
+  background: linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(168, 85, 247, 0.08)) !important;
+  border-color: rgba(0, 212, 255, 0.42) !important;
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.24) !important;
+  color: #e8f0fe !important;
+  transform: translateY(-1px);
+}
+
+.admin-v2-shell :is(
+  .admin-v2-template-picker button strong,
+  .admin-v2-template-picker button span,
+  .admin-v2-report-queue button strong,
+  .admin-v2-report-queue button span,
+  .admin-v2-report-meta strong,
+  .admin-v2-workflow-status strong,
+  .admin-v2-next-step-card strong,
+  .admin-v2-form-stack span,
+  .admin-v2-history-stack strong,
+  .admin-v2-assignment-next strong,
+  .admin-v2-assignment-drafts strong,
+  .admin-v2-connected-routes button
+) {
+  color: #e8f0fe !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-template-picker button small,
+  .admin-v2-report-queue button small,
+  .admin-v2-report-meta span,
+  .admin-v2-workflow-status span,
+  .admin-v2-next-step-card p,
+  .admin-v2-assignment-brief p,
+  .admin-v2-assignment-brief aside small,
+  .admin-v2-history-stack small,
+  .admin-v2-assignment-next small,
+  .admin-v2-assignment-drafts small
+) {
+  color: #94a8c8 !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-assignment-brief aside span,
+  .admin-v2-assignment-route span,
+  .admin-v2-package-head span,
+  .admin-v2-history-stack span,
+  .admin-v2-assignment-next span,
+  .admin-v2-panel-head span,
+  .admin-v2-report-meta span,
+  .admin-v2-workflow-status span
+) {
+  color: #00d4ff !important;
+}
+
+.admin-v2-shell .admin-v2-three {
+  align-items: start !important;
+  grid-template-columns: minmax(280px, 0.72fr) minmax(420px, 1.55fr) minmax(300px, 0.82fr) !important;
+}
+
+.admin-v2-shell .admin-v2-template-picker {
+  max-height: 620px !important;
+  padding-right: 6px !important;
+}
+
+.admin-v2-shell .admin-v2-template-picker button {
+  gap: 7px !important;
+  padding: 13px !important;
+}
+
+.admin-v2-shell .admin-v2-template-picker button strong {
+  font-size: 0.9rem !important;
+  line-height: 1.2 !important;
+}
+
+.admin-v2-shell .admin-v2-template-picker button span {
+  align-self: start !important;
+  background: rgba(0, 212, 255, 0.1) !important;
+  border: 1px solid rgba(0, 212, 255, 0.22) !important;
+  border-radius: 999px !important;
+  color: #00d4ff !important;
+  display: inline-flex !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  font-size: 0.68rem !important;
+  font-weight: 900 !important;
+  letter-spacing: 0.08em !important;
+  padding: 4px 8px !important;
+  text-transform: uppercase !important;
+  width: fit-content !important;
+}
+
+.admin-v2-shell .admin-v2-template-picker button small {
+  border-top: 1px solid rgba(37, 53, 80, 0.78) !important;
+  display: block !important;
+  line-height: 1.35 !important;
+  padding-top: 7px !important;
+}
+
+.admin-v2-shell .admin-v2-detail > p {
+  background: rgba(0, 212, 255, 0.06) !important;
+  border: 1px solid rgba(0, 212, 255, 0.16) !important;
+  border-radius: 14px !important;
+  color: #c7d6ee !important;
+  line-height: 1.45 !important;
+  padding: 11px 12px !important;
+}
+
+.admin-v2-shell .admin-v2-report-meta,
+.admin-v2-shell .admin-v2-workflow-status {
+  gap: 10px !important;
+}
+
+.admin-v2-shell .admin-v2-report-meta article,
+.admin-v2-shell .admin-v2-workflow-status article {
+  min-height: 72px !important;
+  padding: 12px !important;
+}
+
+.admin-v2-shell .admin-v2-workflow-status {
+  background: rgba(8, 12, 20, 0.54) !important;
+  border-radius: 18px !important;
+  grid-template-columns: repeat(5, minmax(108px, 1fr)) !important;
+  overflow-x: auto !important;
+  padding: 10px !important;
+}
+
+.admin-v2-shell .admin-v2-workflow-status article.complete {
+  background: rgba(0, 229, 160, 0.08) !important;
+  border-color: rgba(0, 229, 160, 0.24) !important;
+}
+
+.admin-v2-shell .admin-v2-next-step-card {
+  align-items: center !important;
+  background:
+    linear-gradient(135deg, rgba(0, 212, 255, 0.12), rgba(255, 184, 0, 0.08)),
+    rgba(12, 18, 32, 0.9) !important;
+  border-color: rgba(0, 212, 255, 0.3) !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+}
+
+.admin-v2-shell .admin-v2-next-step-card button {
+  background: linear-gradient(135deg, #00d4ff, #00a8cc) !important;
+  border-color: transparent !important;
+  color: #051018 !important;
+}
+
+.admin-v2-shell .admin-v2-connected-routes {
+  border-top: 1px solid #253550 !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.admin-v2-shell .resident-report-assignment {
+  background:
+    linear-gradient(135deg, rgba(0, 212, 255, 0.05), rgba(168, 85, 247, 0.04)),
+    rgba(16, 24, 40, 0.78) !important;
+}
+
+.admin-v2-shell .admin-v2-assignment-summary {
+  grid-template-columns: repeat(4, minmax(130px, 1fr)) !important;
+}
+
+.admin-v2-shell .admin-v2-assignment-grid {
+  grid-template-columns: minmax(180px, 0.9fr) minmax(220px, 1.2fr) minmax(170px, 0.75fr) minmax(220px, 1fr) minmax(160px, 0.65fr) !important;
+}
+
+.admin-v2-shell .admin-v2-assignment-grid input,
+.admin-v2-shell .admin-v2-assignment-grid select {
+  min-height: 46px !important;
+}
+
+.admin-v2-shell .admin-v2-package-row {
+  grid-template-columns: minmax(0, 1.15fr) minmax(300px, 0.85fr) !important;
+}
+
+.admin-v2-shell .admin-v2-form-stack button {
+  align-items: center !important;
+  grid-template-columns: 42px minmax(0, 1fr) !important;
+  min-height: 54px !important;
+}
+
+.admin-v2-shell .admin-v2-form-stack b {
+  align-items: center !important;
+  background: rgba(255, 184, 0, 0.1) !important;
+  border: 1px solid rgba(255, 184, 0, 0.24) !important;
+  border-radius: 12px !important;
+  color: #ffcf4d !important;
+  display: grid !important;
+  height: 34px !important;
+  justify-items: center !important;
+  place-items: center !important;
+  width: 34px !important;
+}
+
+.admin-v2-shell .admin-v2-assignment-next {
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 0.28fr) !important;
+}
+
+.admin-v2-shell .admin-v2-assignment-status em {
+  color: #c7d6ee !important;
+}
+
+.admin-v2-shell .admin-v2-actions-row button:disabled {
+  background: rgba(12, 18, 32, 0.42) !important;
+  border-color: rgba(37, 53, 80, 0.58) !important;
+  color: #526783 !important;
+  opacity: 1 !important;
+}
+
+@media (max-width: 1180px) {
+  .admin-v2-shell .admin-v2-three,
+  .admin-v2-shell .admin-v2-workspace-intro,
+  .admin-v2-shell .admin-v2-assignment-brief,
+  .admin-v2-shell .admin-v2-package-row,
+  .admin-v2-shell .admin-v2-assignment-next {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-v2-shell .admin-v2-assignment-grid,
+  .admin-v2-shell .admin-v2-assignment-summary,
+  .admin-v2-shell .admin-v2-report-meta,
+  .admin-v2-shell .admin-v2-connected-routes {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-v2-shell {
+    grid-template-columns: 74px minmax(0, 1fr) !important;
+  }
+
+  .admin-v2-shell .admin-v2-sidebar {
+    gap: 10px !important;
+    padding: 12px 8px !important;
+  }
+
+  .admin-v2-shell .admin-v2-station,
+  .admin-v2-shell .admin-v2-brand div,
+  .admin-v2-shell .admin-v2-brand strong,
+  .admin-v2-shell .admin-v2-brand span,
+  .admin-v2-shell .admin-v2-brand small,
+  .admin-v2-shell .admin-v2-nav p,
+  .admin-v2-shell .admin-v2-nav button span {
+    display: none !important;
+  }
+
+  .admin-v2-shell .admin-v2-brand {
+    display: flex !important;
+    justify-content: center !important;
+    padding: 2px !important;
+  }
+
+  .admin-v2-shell .admin-v2-brand img {
+    height: 36px !important;
+    width: 36px !important;
+  }
+
+  .admin-v2-shell .admin-v2-nav button {
+    justify-content: center !important;
+    min-height: 42px !important;
+    padding: 9px !important;
+  }
+
+  .admin-v2-shell .admin-v2-topbar,
+  .admin-v2-shell .admin-v2-actions {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-v2-shell .admin-v2-main {
+    padding: 14px !important;
+  }
+
+  .admin-v2-shell .admin-v2-assignment-grid,
+  .admin-v2-shell .admin-v2-assignment-summary,
+  .admin-v2-shell .admin-v2-report-meta,
+  .admin-v2-shell .admin-v2-connected-routes,
+  .admin-v2-shell .admin-v2-stat-strip,
+  .admin-v2-shell .admin-v2-process-flow {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-v2-shell .admin-v2-next-step-card {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-v2-shell .admin-v2-next-step-card button {
+    width: 100% !important;
+  }
+}
