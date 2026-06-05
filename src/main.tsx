@@ -26455,6 +26455,29 @@ function AdminV2OfficeRoutingCenter({
   );
 }
 
+function parseHandoffBody(body?: string) {
+  if (!body) return {} as Record<string, string>;
+  return body.split(/\n+/).reduce<Record<string, string>>((fields, line) => {
+    const match = line.match(/^([^:]+):\s*(.+)$/);
+    if (!match) return fields;
+    fields[match[1].trim()] = match[2].trim();
+    return fields;
+  }, {});
+}
+
+function formatAuditFieldDate(value?: string) {
+  if (!value || value === "Not submitted") return value;
+  const timestamp = Date.parse(value);
+  if (Number.isNaN(timestamp)) return value;
+  return new Date(timestamp).toLocaleString([], {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit"
+  });
+}
+
 function AdminV2Directory({
   title,
   description,
@@ -26521,6 +26544,8 @@ function AdminV2Directory({
     setNotice(`${handoffContext.title} source report opened.`);
     onOpenSection("Reports");
   }
+  const handoffFields = React.useMemo(() => parseHandoffBody(handoffContext?.body), [handoffContext?.body]);
+  const routeStops = (handoffFields.Route ?? "").split(/\s*->\s*/).filter(Boolean);
   return (
     <div className="admin-v2-workspace">
       <section className="admin-v2-panel admin-v2-workspace-intro">
@@ -26547,10 +26572,45 @@ function AdminV2Directory({
       {handoffContext && (
         <section className="admin-v2-panel admin-v2-handoff-card">
           <div>
-            <span>{title === "Records Archive" ? "Ready packet" : "Audit focus"}</span>
+            <div className="admin-v2-handoff-kicker">
+              <span>{title === "Records Archive" ? "Ready packet" : "Audit focus"}</span>
+              <span className={`admin-v2-status ${handoffContext.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{handoffContext.status}</span>
+            </div>
             <h3>{handoffContext.title}</h3>
             <p>{handoffContext.detail}</p>
-            {handoffContext.body && <small>{handoffContext.body}</small>}
+            {Object.keys(handoffFields).length > 0 && (
+              <div className="admin-v2-audit-summary">
+                <div className="admin-v2-audit-summary-main">
+                  <span>Official record</span>
+                  <strong>{handoffFields.Report ?? handoffContext.title}</strong>
+                  <small>{handoffFields.Owner ?? handoffContext.meta}</small>
+                </div>
+                {routeStops.length > 0 && (
+                  <div className="admin-v2-audit-route" aria-label="Audit route">
+                    {routeStops.map((stop, index) => (
+                      <React.Fragment key={`${stop}-${index}`}>
+                        <span>{stop}</span>
+                        {index < routeStops.length - 1 && <i aria-hidden="true">→</i>}
+                      </React.Fragment>
+                    ))}
+                  </div>
+                )}
+                <div className="admin-v2-audit-field-grid">
+                  {[
+                    ["Stage", handoffFields.Stage],
+                    ["Evidence", handoffFields.Evidence],
+                    ["Submitted", formatAuditFieldDate(handoffFields.Submitted)],
+                    ["Approved by", handoffFields["Approved by"]]
+                  ].filter(([, value]) => Boolean(value)).map(([label, value]) => (
+                    <article key={label}>
+                      <span>{label}</span>
+                      <strong>{value}</strong>
+                    </article>
+                  ))}
+                </div>
+              </div>
+            )}
+            {handoffContext.body && Object.keys(handoffFields).length === 0 && <small>{handoffContext.body}</small>}
           </div>
           <div className="admin-v2-actions-row">
             <button className="primary" type="button" onClick={() => runAction(title === "Records Archive" ? "Archive packet" : "Export audit", handoffContext)}>{title === "Records Archive" ? "Archive packet" : "Export audit"}</button>
