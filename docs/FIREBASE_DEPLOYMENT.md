@@ -32,6 +32,15 @@ The browser does not write directly to Firestore or Firebase Storage yet. All da
 From the project root:
 
 ```bash
+git pull origin main
+npm run cloudrun:deploy
+```
+
+The helper above deploys the Cloud Run source build, sets the production Firebase/Firestore/Storage environment variables, stamps the API with the current Git commit, and runs the deployment alignment check.
+
+Manual equivalent:
+
+```bash
 gcloud run deploy rmvi-gcos-api \
   --source . \
   --region us-central1 \
