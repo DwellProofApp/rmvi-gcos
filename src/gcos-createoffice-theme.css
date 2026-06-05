@@ -1,0 +1,622 @@
+/* GCOS Create Office reference theme
+   Source of truth: user-provided GCOS_CreateOffice.html.
+   Applies the dark operational GCOS shell across the authenticated app while
+   preserving the underlying workflow functionality. */
+
+:root {
+  --gcos-bg: #080c14;
+  --gcos-bg-2: #0c1220;
+  --gcos-surface: #101828;
+  --gcos-surface-2: #151f30;
+  --gcos-surface-3: #1a2540;
+  --gcos-border: #1e2d45;
+  --gcos-border-2: #253550;
+  --gcos-ink: #e8f0fe;
+  --gcos-ink-2: #94a8c8;
+  --gcos-ink-3: #4a6080;
+  --gcos-cyan: #00d4ff;
+  --gcos-cyan-2: #00a8cc;
+  --gcos-cyan-glow: rgba(0, 212, 255, 0.12);
+  --gcos-green: #00e5a0;
+  --gcos-green-glow: rgba(0, 229, 160, 0.1);
+  --gcos-amber: #ffb800;
+  --gcos-amber-glow: rgba(255, 184, 0, 0.1);
+  --gcos-red: #ff4560;
+  --gcos-red-glow: rgba(255, 69, 96, 0.1);
+  --gcos-purple: #a855f7;
+  --gcos-purple-glow: rgba(168, 85, 247, 0.1);
+  --gcos-radius: 10px;
+  --gcos-radius-sm: 6px;
+  --gcos-shadow: 0 4px 24px rgba(0, 0, 0, 0.4);
+  --gcos-shadow-lg: 0 8px 48px rgba(0, 0, 0, 0.6);
+}
+
+html:has(.app-shell),
+body:has(.app-shell),
+#root:has(.app-shell) {
+  background: var(--gcos-bg) !important;
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell,
+.app-shell:not(.admin-shell),
+.app-shell.admin-shell {
+  min-height: 100vh !important;
+  background: var(--gcos-bg) !important;
+  color: var(--gcos-ink) !important;
+  position: relative !important;
+  overflow: hidden !important;
+}
+
+.app-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.03) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.03) 1px, transparent 1px);
+  background-size: 40px 40px;
+  z-index: 0;
+}
+
+.app-shell::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 10% 20%, rgba(0, 212, 255, 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 90% 80%, rgba(168, 85, 247, 0.05) 0%, transparent 50%);
+  z-index: 0;
+}
+
+.app-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.app-shell .workspace,
+.app-shell .content,
+.app-shell .main,
+.app-shell .dashboard-grid,
+.app-shell .module-grid,
+.app-shell .station-home,
+.app-shell .admin-portal-shell,
+.app-shell .admin-portal-main {
+  background: transparent !important;
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell .workspace,
+.app-shell .admin-portal-main,
+.app-shell .content {
+  scrollbar-width: thin;
+  scrollbar-color: var(--gcos-border-2) transparent;
+}
+
+.app-shell .workspace::-webkit-scrollbar,
+.app-shell .admin-portal-main::-webkit-scrollbar,
+.app-shell .content::-webkit-scrollbar,
+.app-shell .sidebar::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
+}
+
+.app-shell .workspace::-webkit-scrollbar-thumb,
+.app-shell .admin-portal-main::-webkit-scrollbar-thumb,
+.app-shell .content::-webkit-scrollbar-thumb,
+.app-shell .sidebar::-webkit-scrollbar-thumb {
+  background: var(--gcos-border-2);
+  border-radius: 999px;
+}
+
+/* Sidebar */
+.app-shell .sidebar,
+.app-shell:not(.admin-shell) .sidebar,
+.app-shell.admin-shell .sidebar,
+.app-shell .admin-portal-rail {
+  background: var(--gcos-surface) !important;
+  border-right: 1px solid var(--gcos-border) !important;
+  box-shadow: none !important;
+}
+
+.app-shell .sidebar::before,
+.app-shell .admin-portal-rail::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  width: 1px;
+  background: linear-gradient(180deg, var(--gcos-cyan), transparent 60%);
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.app-shell .brand,
+.app-shell .sidebar-logo,
+.app-shell .admin-portal-brand,
+.app-shell .station-switcher,
+.app-shell .station-directory,
+.app-shell .sidebar-footer,
+.app-shell .sb-context,
+.app-shell .admin-workspace-card {
+  background: transparent !important;
+  border-color: var(--gcos-border) !important;
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell .brand-mark,
+.app-shell .admin-portal-logo,
+.app-shell .section-banner-icon,
+.app-shell .command-icon,
+.app-shell .station-avatar,
+.app-shell .metric-icon {
+  background: linear-gradient(135deg, var(--gcos-cyan-2), var(--gcos-purple)) !important;
+  border: 1px solid rgba(0, 212, 255, 0.22) !important;
+  color: #ffffff !important;
+  box-shadow: 0 0 20px rgba(0, 212, 255, 0.08) !important;
+}
+
+.app-shell .brand strong,
+.app-shell .brand span,
+.app-shell .admin-portal-brand strong,
+.app-shell .admin-portal-brand span,
+.app-shell .station-directory strong,
+.app-shell .station-directory span {
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell .nav-label,
+.app-shell .sidebar h4,
+.app-shell .admin-nav-group p,
+.app-shell .eyebrow,
+.app-shell .organization-kicker,
+.app-shell .section-banner .eyebrow,
+.app-shell .panel .eyebrow,
+.app-shell .subsection-title,
+.app-shell .panel-header > span,
+.app-shell .section-heading span {
+  color: var(--gcos-ink-3) !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  font-size: 9px !important;
+  letter-spacing: 1.5px !important;
+  text-transform: uppercase !important;
+  font-weight: 500 !important;
+}
+
+.app-shell .nav-item,
+.app-shell .sidebar button,
+.app-shell .admin-nav-group button,
+.app-shell:not(.admin-shell) .nav-item {
+  background: transparent !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--gcos-radius-sm) !important;
+  color: var(--gcos-ink-2) !important;
+  box-shadow: none !important;
+}
+
+.app-shell .nav-item:hover,
+.app-shell .sidebar button:hover,
+.app-shell .admin-nav-group button:hover {
+  background: var(--gcos-cyan-glow) !important;
+  border-color: transparent !important;
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell .nav-item.active,
+.app-shell .sidebar button.active,
+.app-shell .admin-nav-group button.active,
+.app-shell:not(.admin-shell) .nav-item.active {
+  background: var(--gcos-cyan-glow) !important;
+  border: 1px solid rgba(0, 212, 255, 0.2) !important;
+  color: var(--gcos-cyan) !important;
+  box-shadow: inset 2px 0 0 var(--gcos-cyan), 0 0 8px rgba(0, 212, 255, 0.08) !important;
+}
+
+.app-shell svg {
+  stroke: currentColor;
+}
+
+/* Top bars and page headers */
+.app-shell .topbar,
+.app-shell .user-topbar,
+.app-shell .app-header,
+.app-shell .admin-portal-topbar {
+  min-height: 56px !important;
+  background: var(--gcos-surface) !important;
+  border: 1px solid var(--gcos-border) !important;
+  border-radius: 0 !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: none !important;
+}
+
+.app-shell .section-banner,
+.app-shell .station-landing,
+.app-shell .station-home-hero,
+.app-shell .reports-hero,
+.app-shell .churchmail-hero,
+.app-shell .admin-command-hero,
+.app-shell .admin-dashboard-hero,
+.app-shell .admin-portal-hero {
+  background: var(--gcos-surface) !important;
+  border: 1px solid var(--gcos-border) !important;
+  border-radius: var(--gcos-radius) !important;
+  box-shadow: var(--gcos-shadow) !important;
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell .global-command-card,
+.app-shell .station-home-hero,
+.app-shell .section-banner-main,
+.app-shell .command-hero,
+.app-shell .office-hero-strip,
+.app-shell .admin-command-hero {
+  background:
+    radial-gradient(ellipse at 10% 20%, rgba(0, 212, 255, 0.08) 0%, transparent 52%),
+    radial-gradient(ellipse at 90% 80%, rgba(168, 85, 247, 0.07) 0%, transparent 48%),
+    linear-gradient(135deg, var(--gcos-surface), var(--gcos-surface-2)) !important;
+}
+
+/* Cards and panels */
+.app-shell .panel,
+.app-shell .module-panel,
+.app-shell .inspector-panel,
+.app-shell .station-panel,
+.app-shell .role-system-panel,
+.app-shell .metric-card,
+.app-shell .command-card,
+.app-shell .stat-card,
+.app-shell .admin-portal-card,
+.app-shell .admin-console-panel,
+.app-shell .admin-app-tile,
+.app-shell .admin-focus-card,
+.app-shell .admin-system-card,
+.app-shell .office-command-panel,
+.app-shell .office-node-card,
+.app-shell .office-preview-card,
+.app-shell .department-chat-main,
+.app-shell .department-chat-side,
+.app-shell .chat-room-list,
+.app-shell .chat-thread-panel,
+.app-shell .report-workspace,
+.app-shell .approval-workspace,
+.app-shell .churchmail-workspace,
+.app-shell .calendar-workspace,
+.app-shell .personnel-workspace,
+.app-shell .archive-workspace,
+.app-shell .audit-workspace,
+.app-shell .section-banner-status div,
+.app-shell .mini-metric-grid article,
+.app-shell .office-metric,
+.app-shell .chat-metrics .metric-card,
+.app-shell .station-home-actions button,
+.app-shell .admin-action-list button,
+.app-shell .admin-queue-list button {
+  background: var(--gcos-surface) !important;
+  border: 1px solid var(--gcos-border) !important;
+  border-radius: var(--gcos-radius) !important;
+  box-shadow: var(--gcos-shadow) !important;
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell .panel-header,
+.app-shell .card-header,
+.app-shell .chat-thread-header,
+.app-shell .chat-compose,
+.app-shell .section-heading,
+.app-shell .admin-suite-head,
+.app-shell .admin-focus-title {
+  background: transparent !important;
+  border-color: var(--gcos-border) !important;
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell h1,
+.app-shell h2,
+.app-shell h3,
+.app-shell h4,
+.app-shell .section-banner h1,
+.app-shell .section-banner h2,
+.app-shell .station-landing h1,
+.app-shell .station-home-hero h2,
+.app-shell .reports-hero h2,
+.app-shell .churchmail-hero h2,
+.app-shell .panel h2,
+.app-shell .panel h3,
+.app-shell .admin-portal-shell h1,
+.app-shell .admin-portal-shell h2,
+.app-shell .admin-portal-shell h3,
+.app-shell .command-card strong,
+.app-shell .metric-card strong,
+.app-shell .stat-card strong,
+.app-shell .station-title h1,
+.app-shell .user-topbar h1 {
+  color: var(--gcos-ink) !important;
+  letter-spacing: 0 !important;
+  text-shadow: none !important;
+}
+
+.app-shell p,
+.app-shell small,
+.app-shell span,
+.app-shell label,
+.app-shell td,
+.app-shell .section-banner p,
+.app-shell .station-landing p,
+.app-shell .station-home-hero p,
+.app-shell .reports-hero p,
+.app-shell .churchmail-hero p,
+.app-shell .panel p,
+.app-shell .panel span,
+.app-shell .panel small,
+.app-shell .metric-card span,
+.app-shell .metric-card small,
+.app-shell .command-card span,
+.app-shell .command-card small,
+.app-shell .station-title p,
+.app-shell .user-topbar p {
+  color: var(--gcos-ink-2) !important;
+}
+
+.app-shell .metric-card strong,
+.app-shell .command-card strong,
+.app-shell .stat-card strong,
+.app-shell .section-banner-status strong,
+.app-shell .admin-command-summary strong {
+  color: var(--gcos-ink) !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+/* Forms */
+.app-shell .search-box,
+.app-shell .search-box input,
+.app-shell .topbar-actions input,
+.app-shell input,
+.app-shell select,
+.app-shell textarea,
+.app-shell .chat-create-room input,
+.app-shell .chat-create-room select,
+.app-shell .chat-compose textarea {
+  background: var(--gcos-bg-2) !important;
+  border: 1px solid var(--gcos-border-2) !important;
+  border-radius: var(--gcos-radius-sm) !important;
+  color: var(--gcos-ink) !important;
+  box-shadow: none !important;
+}
+
+.app-shell input:focus,
+.app-shell select:focus,
+.app-shell textarea:focus {
+  border-color: var(--gcos-cyan) !important;
+  box-shadow: 0 0 0 2px rgba(0, 212, 255, 0.08) !important;
+  outline: none !important;
+}
+
+.app-shell input::placeholder,
+.app-shell textarea::placeholder,
+.app-shell .search-box input::placeholder {
+  color: var(--gcos-ink-3) !important;
+}
+
+/* Buttons */
+.app-shell button,
+.app-shell .btn,
+.app-shell .primary-action,
+.app-shell .secondary-action,
+.app-shell .button-row button,
+.app-shell .station-form button,
+.app-shell .station-inline-task button,
+.app-shell .station-inbox-actions button,
+.app-shell .tb-btn {
+  border-radius: var(--gcos-radius-sm) !important;
+  font-weight: 600 !important;
+}
+
+.app-shell .primary-action,
+.app-shell .btn-primary,
+.app-shell .button-row button:first-child,
+.app-shell .station-form button,
+.app-shell .station-inline-task button,
+.app-shell .station-inbox-actions button,
+.app-shell .tabs button.active,
+.app-shell .tb-btn.primary,
+.app-shell .tb-btn.active {
+  background: var(--gcos-cyan) !important;
+  border-color: var(--gcos-cyan) !important;
+  color: var(--gcos-bg) !important;
+  box-shadow: 0 0 16px rgba(0, 212, 255, 0.08) !important;
+}
+
+.app-shell .secondary-action,
+.app-shell .btn-ghost,
+.app-shell .button-row button,
+.app-shell .tabs button,
+.app-shell .panel button,
+.app-shell .station-home-actions button,
+.app-shell .tb-btn {
+  background: transparent !important;
+  border: 1px solid var(--gcos-border-2) !important;
+  color: var(--gcos-ink-2) !important;
+}
+
+.app-shell .secondary-action:hover,
+.app-shell .btn-ghost:hover,
+.app-shell .button-row button:hover,
+.app-shell .tabs button:hover,
+.app-shell .panel button:hover,
+.app-shell .station-home-actions button:hover,
+.app-shell .tb-btn:hover {
+  border-color: var(--gcos-cyan) !important;
+  color: var(--gcos-cyan) !important;
+  background: var(--gcos-cyan-glow) !important;
+}
+
+/* Badges / status */
+.app-shell .status-pill,
+.app-shell .badge,
+.app-shell .chip,
+.app-shell .pill,
+.app-shell .tag,
+.app-shell .section-banner-status span,
+.app-shell .message-kind,
+.app-shell .workflow-status,
+.app-shell .nav-badge {
+  background: var(--gcos-cyan-glow) !important;
+  border: 1px solid rgba(0, 212, 255, 0.24) !important;
+  color: var(--gcos-cyan) !important;
+  border-radius: 4px !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+.app-shell .badge.pending,
+.app-shell .status-pill.pending,
+.app-shell .chip.pending,
+.app-shell .tag.pending,
+.app-shell .badge.gold,
+.app-shell .chip.gold,
+.app-shell .btn-gold {
+  background: var(--gcos-amber-glow) !important;
+  border-color: rgba(255, 184, 0, 0.3) !important;
+  color: var(--gcos-amber) !important;
+}
+
+.app-shell .badge.approved,
+.app-shell .status-ok,
+.app-shell .sync-status,
+.app-shell .api-status,
+.app-shell .btn-success {
+  background: var(--gcos-green-glow) !important;
+  border-color: rgba(0, 229, 160, 0.28) !important;
+  color: var(--gcos-green) !important;
+}
+
+.app-shell .badge.rejected,
+.app-shell .badge.danger,
+.app-shell .status-pill.danger,
+.app-shell .btn-danger {
+  background: var(--gcos-red-glow) !important;
+  border-color: rgba(255, 69, 96, 0.28) !important;
+  color: var(--gcos-red) !important;
+}
+
+.app-shell .badge.review,
+.app-shell .badge.purple,
+.app-shell .btn-purple {
+  background: var(--gcos-purple-glow) !important;
+  border-color: rgba(168, 85, 247, 0.28) !important;
+  color: var(--gcos-purple) !important;
+}
+
+/* Tables / rows / lists */
+.app-shell table,
+.app-shell .table,
+.app-shell .registry-table,
+.app-shell .data-table {
+  background: transparent !important;
+  color: var(--gcos-ink) !important;
+  border-color: var(--gcos-border) !important;
+}
+
+.app-shell th {
+  color: var(--gcos-ink-3) !important;
+  border-color: var(--gcos-border) !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+}
+
+.app-shell td,
+.app-shell .row,
+.app-shell .list-row,
+.app-shell .message-row,
+.app-shell .report-row,
+.app-shell .approval-row,
+.app-shell .task-card,
+.app-shell .policy-row,
+.app-shell .calendar-event,
+.app-shell .person-row,
+.app-shell .archive-row,
+.app-shell .audit-row,
+.app-shell .chat-room-button,
+.app-shell .presence-row,
+.app-shell .chat-message,
+.app-shell .msg-item,
+.app-shell .admin-station-row,
+.app-shell .admin-session-list article,
+.app-shell .admin-event-list article,
+.app-shell .admin-approval-queue article {
+  background: transparent !important;
+  border-color: var(--gcos-border) !important;
+  color: var(--gcos-ink-2) !important;
+}
+
+.app-shell tr:hover td,
+.app-shell .message-row:hover,
+.app-shell .report-row:hover,
+.app-shell .approval-row:hover,
+.app-shell .chat-room-button:hover,
+.app-shell .msg-item:hover,
+.app-shell .admin-station-row:hover {
+  background: rgba(255, 255, 255, 0.02) !important;
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell .chat-room-button.active,
+.app-shell .chat-message.mine,
+.app-shell .msg-item.active,
+.app-shell .chat-readiness-card {
+  background: var(--gcos-cyan-glow) !important;
+  border-color: rgba(0, 212, 255, 0.2) !important;
+  color: var(--gcos-ink) !important;
+}
+
+.app-shell .empty-state {
+  background: var(--gcos-bg-2) !important;
+  border: 1px dashed var(--gcos-border-2) !important;
+  color: var(--gcos-ink-2) !important;
+}
+
+.app-shell .progress,
+.app-shell .progress-track {
+  background: var(--gcos-bg-2) !important;
+}
+
+.app-shell .progress i,
+.app-shell .progress-bar,
+.app-shell .progress-fill {
+  background: linear-gradient(90deg, var(--gcos-cyan), var(--gcos-purple)) !important;
+}
+
+.app-shell .floating-scroll-controls button,
+.app-shell .scroll-button,
+.app-shell .scroll-control {
+  background: var(--gcos-surface) !important;
+  border: 1px solid var(--gcos-border-2) !important;
+  color: var(--gcos-cyan) !important;
+}
+
+.app-shell a {
+  color: var(--gcos-cyan) !important;
+}
+
+@media (max-width: 760px) {
+  .app-shell,
+  .app-shell:not(.admin-shell),
+  .app-shell.admin-shell {
+    background: var(--gcos-bg) !important;
+  }
+
+  .app-shell .workspace,
+  .app-shell .content,
+  .app-shell .admin-portal-main {
+    padding: 14px !important;
+  }
+
+  .app-shell .section-banner,
+  .app-shell .station-home-hero,
+  .app-shell .panel,
+  .app-shell .metric-card,
+  .app-shell .command-card {
+    border-radius: var(--gcos-radius) !important;
+  }
+}
