@@ -18,6 +18,7 @@ export function createJsonStorageAdapter({ dataPath }) {
           messages: persisted.messages ?? seed.messages,
           reports: persisted.reports ?? seed.reports,
           reportAssignments: persisted.reportAssignments ?? seed.reportAssignments ?? [],
+          routingRules: persisted.routingRules ?? seed.routingRules ?? [],
           approvals: persisted.approvals ?? seed.approvals,
           tasks: persisted.tasks ?? seed.tasks,
           policies: persisted.policies ?? seed.policies,

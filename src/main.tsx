@@ -189,6 +189,19 @@ type OfflineSyncRecord = { id: string; status: "Synced" | "Deferred" | "Conflict
 type OfflineConflict = { id: string; object: string; count: number; latestEvent: string; priority: "Review" | "High" };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string; authPending?: boolean };
 type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; nodeKind?: OrgNodeKind; parentId?: string; parentName?: string; permissionPreset?: PermissionPreset; reportingRoute?: string; workflowAccess?: string[]; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
+type RoutingRule = {
+  id: string;
+  name: string;
+  sourceOfficePattern: string;
+  workType: "Report" | "Approval" | "ChurchMail" | "Escalation" | "Task" | string;
+  category: string;
+  destinationOffice: string;
+  route: string;
+  priority: "Normal" | "High" | "Critical";
+  active: boolean;
+  updatedAt?: string;
+  updatedBy?: string;
+};
 type CreateAccountInput = { fullName: string; officeName: string; email: string; password: string; level: StationLevel; department: string; autoApprove?: boolean };
 type AuthActionResult = { ok: boolean; message?: string };
 type Escalation = { id: string; source: string; item: string; reason: string; severity: "Medium" | "High" | "Critical"; status: "Open" | "Upward" | "Resolved" | "Watching" | "Merged"; owner: string; sla?: string; watchers?: string[]; evidence?: string; comments?: string[]; resolutionNote?: string; due?: string; linkedTask?: string; linkedReport?: string; linkedApproval?: string; impactScore?: number; impactSummary?: string; archived?: boolean; archiveReason?: string };
@@ -1361,6 +1374,13 @@ const stations: StationCard[] = [
     level: "National HQ",
     authority: "Mission outreach, transfers, church planting, personnel movement",
     icon: Globe2
+  },
+  {
+    email: "pioneer@rmvi.org",
+    title: "Pioneer Office Workstation",
+    level: "International HQ",
+    authority: "Head pastor authority, executive review, doctrine, final governance oversight",
+    icon: ShieldCheck
   }
 ];
 
@@ -1374,7 +1394,8 @@ const seedStationPasswords: Record<string, string> = {
   "local_branch_017@rmvi.org": demoStationPassword("local"),
   "finance@rmvi.org": demoStationPassword("finance"),
   "audit@rmvi.org": demoStationPassword("audit"),
-  "mission@rmvi.org": demoStationPassword("mission")
+  "mission@rmvi.org": demoStationPassword("mission"),
+  "pioneer@rmvi.org": demoStationPassword("pioneer")
 };
 
 const API_BASE = (import.meta.env.VITE_GCOS_API_BASE ?? (import.meta.env.DEV ? "http://127.0.0.1:8787" : "")).replace(/\/$/, "");
@@ -1439,6 +1460,25 @@ function slugifyStationName(value: string) {
 
 function buildReportingRoute(level: StationLevel, parentName: string) {
   return [level, parentName || "Parent office", "Supervising authority", "Archive vault"].join(" -> ");
+}
+
+function resolveWorkflowRoute(rules: RoutingRule[], input: { workType: string; category?: string; source?: string; fallback: string }) {
+  const source = String(input.source ?? "").toLowerCase();
+  const category = String(input.category ?? "").toLowerCase();
+  const workType = String(input.workType ?? "").toLowerCase();
+  const candidates = rules.filter((rule) => rule.active && rule.workType.toLowerCase() === workType);
+  const scored = candidates
+    .map((rule) => {
+      const categoryScore = category && [rule.category, rule.name, rule.destinationOffice].join(" ").toLowerCase().includes(category) ? 4 : 0;
+      const sourceTokens = rule.sourceOfficePattern.toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length > 2 && token !== "all");
+      const sourceScore = rule.sourceOfficePattern.toLowerCase().includes("all offices")
+        ? 1
+        : sourceTokens.filter((token) => source.includes(token)).length;
+      return { rule, score: categoryScore + sourceScore };
+    })
+    .filter((item) => item.score > 0)
+    .sort((a, b) => b.score - a.score);
+  return scored[0]?.rule.route ?? input.fallback;
 }
 
 function workflowAccessForPreset(permissionPreset: PermissionPreset) {
@@ -2515,6 +2555,22 @@ const initialTransfers: Transfer[] = [
 
 const initialOffices: Office[] = [
   {
+    id: "ofc-pioneer",
+    name: "Pioneer Office",
+    email: "pioneer@rmvi.org",
+    level: "International HQ",
+    department: "Pioneer / Head Pastor Office",
+    supervisor: "International HQ",
+    nodeKind: "Office",
+    parentName: "International HQ",
+    permissionPreset: "Executive Override",
+    reportingRoute: "Pioneer Office -> International HQ -> Archive vault",
+    workflowAccess: workflowAccessForPreset("Executive Override"),
+    password: demoStationPassword("pioneer"),
+    status: "Active",
+    emailVerified: true
+  },
+  {
     id: "ofc-001",
     name: "Riverbend Area Office",
     email: "riverbend_area@rmvi.org",
@@ -2529,6 +2585,17 @@ const initialOffices: Office[] = [
     password: demoStationPassword("riverbend"),
     status: "Provisioned"
   }
+];
+
+const initialRoutingRules: RoutingRule[] = [
+  { id: "route-resident-admin", name: "Resident Pastor administration reports", sourceOfficePattern: "local branch resident pastor mission station", workType: "Report", category: "Administrative", destinationOffice: "Area Office", route: "Local Branch -> Area Office -> District HQ", priority: "Normal", active: true },
+  { id: "route-resident-finance", name: "Resident Pastor finance reports", sourceOfficePattern: "local branch resident pastor mission station finance", workType: "Report", category: "Financial", destinationOffice: "District Finance Office", route: "Mission Station -> District Finance -> County Finance -> Audit Desk", priority: "High", active: true },
+  { id: "route-resident-mission", name: "Mission and church growth reports", sourceOfficePattern: "local branch resident pastor mission station mission church growth", workType: "Report", category: "Mission", destinationOffice: "Mission and Church Growth Department", route: "Mission Station -> Area Office -> District HQ -> Church Growth Department", priority: "Normal", active: true },
+  { id: "route-audit-evidence", name: "Audit evidence packets", sourceOfficePattern: "all offices audit evidence compliance", workType: "Report", category: "Audit", destinationOffice: "Audit Desk", route: "Station Audit -> County Audit -> National Audit", priority: "Critical", active: true },
+  { id: "route-pioneer-executive-report", name: "Pioneer executive reports", sourceOfficePattern: "international national executive pioneer head pastor", workType: "Report", category: "Executive", destinationOffice: "Pioneer Office", route: "Originating Office -> National HQ -> International HQ -> Pioneer Office", priority: "Critical", active: true },
+  { id: "route-approval-finance", name: "Finance approval requests", sourceOfficePattern: "all offices finance budget expense release", workType: "Approval", category: "Financial", destinationOffice: "Finance Desk", route: "Requesting Office -> District Finance -> County Finance -> National Finance", priority: "High", active: true },
+  { id: "route-pioneer-executive-approval", name: "Pioneer executive approvals", sourceOfficePattern: "international national executive pioneer head pastor", workType: "Approval", category: "Executive", destinationOffice: "Pioneer Office", route: "Originating Office -> National HQ -> International HQ -> Pioneer Office", priority: "Critical", active: true },
+  { id: "route-escalation-executive", name: "Critical governance escalations", sourceOfficePattern: "all offices escalation critical executive", workType: "Escalation", category: "Governance", destinationOffice: "International HQ", route: "Originating Office -> District HQ -> National HQ -> International HQ", priority: "Critical", active: true }
 ];
 
 const initialEscalations: Escalation[] = [
@@ -3511,6 +3578,7 @@ function App() {
   const [personnel, setPersonnel] = usePersistentState("gcos.personnel", initialPersonnel);
   const [transfers, setTransfers] = usePersistentState("gcos.transfers", initialTransfers);
   const [offices, setOffices] = usePersistentState("gcos.offices", initialOffices);
+  const [routingRules, setRoutingRules] = usePersistentState("gcos.routingRules", initialRoutingRules);
   const [apiStations, setApiStations] = usePersistentState<StationCard[]>("gcos.stations", stations);
   const [stationPasswordOverrides, setStationPasswordOverrides] = usePersistentState<Record<string, string>>("gcos.stationPasswordOverrides", {});
   const [escalations, setEscalations] = usePersistentState("gcos.escalations", initialEscalations);
@@ -3788,6 +3856,7 @@ function App() {
         escalations: Escalation[];
         transfers: Transfer[];
         offices: Office[];
+        routingRules?: RoutingRule[];
         documents: DocumentRecord[];
         aiDrafts: AiDraft[];
         audit: AuditRow[];
@@ -3809,6 +3878,7 @@ function App() {
       setEscalations(data.escalations);
       setTransfers(data.transfers);
       setOffices(data.offices);
+      setRoutingRules(data.routingRules?.length ? data.routingRules : initialRoutingRules);
       setDocuments(data.documents ?? initialDocuments);
       setAiDrafts(data.aiDrafts.length ? data.aiDrafts : initialAiDrafts);
       setAuditRows(data.audit);
@@ -3863,6 +3933,7 @@ function App() {
         escalations: Escalation[];
         transfers: Transfer[];
         offices: Office[];
+        routingRules?: RoutingRule[];
         documents: DocumentRecord[];
         aiDrafts: AiDraft[];
         audit: AuditRow[];
@@ -3884,6 +3955,7 @@ function App() {
       setEscalations(data.escalations);
       setTransfers(data.transfers);
       setOffices(data.offices);
+      setRoutingRules(data.routingRules?.length ? data.routingRules : initialRoutingRules);
     setDocuments(data.documents ?? initialDocuments);
     setAiDrafts(data.aiDrafts.length ? data.aiDrafts : initialAiDrafts);
     setAuditRows(data.audit);
@@ -5904,11 +5976,12 @@ function App() {
   function createReportFromMessage(id: string) {
     const message = messages.find((item) => item.id === id);
     if (!message) return;
+    const fallbackPath = `${activeStation.level} -> Supervising Office`;
     const report: Report = {
       id: `rep-${Date.now()}`,
       name: `${message.kind} follow-up report`,
       owner: activeStation.level,
-      path: `${activeStation.level} -> Supervising Office`,
+      path: resolveWorkflowRoute(routingRules, { workType: "Report", category: message.kind, source: [activeStation.title, activeStation.level, activeStation.authority].join(" "), fallback: fallbackPath }),
       due: "Draft",
       state: "Ready",
       score: 32,
@@ -5923,8 +5996,15 @@ function App() {
   }
 
   function createReportDraft(reportDraft: Omit<Report, "id" | "state" | "score">) {
+    const resolvedPath = resolveWorkflowRoute(routingRules, {
+      workType: "Report",
+      category: reportDraft.type ?? reportDraft.name,
+      source: [activeStation.title, activeStation.level, activeStation.authority, reportDraft.owner, reportDraft.preparedBy].join(" "),
+      fallback: reportDraft.path
+    });
     const report: Report = {
       ...reportDraft,
+      path: resolvedPath,
       id: `rep-${Date.now()}`,
       state: offlineMode ? "Queued" : "Ready",
       score: 18,
@@ -5938,7 +6018,7 @@ function App() {
     if (!offlineMode) {
       void apiRequest<Report>("/api/reports", {
         method: "POST",
-        body: JSON.stringify(reportDraft)
+        body: JSON.stringify({ ...reportDraft, path: resolvedPath })
       }).then(refreshFromApi).catch(() => undefined);
     }
     return report;
@@ -5968,7 +6048,12 @@ function App() {
         id: `rep-${assignmentId}-${target.email.replace(/[^a-z0-9]/gi, "-")}-${index}`,
         name: template.name,
         owner: target.title,
-        path: target.reportingRoute ?? template.path,
+        path: resolveWorkflowRoute(routingRules, {
+          workType: "Report",
+          category: template.type,
+          source: [target.owner, target.level, target.department, target.path].join(" "),
+          fallback: target.reportingRoute ?? template.path
+        }),
         due: "Monthly",
         state: "Ready",
         score: 10,
@@ -6082,10 +6167,11 @@ function App() {
   function requestApprovalFromMessage(id: string) {
     const message = messages.find((item) => item.id === id);
     if (!message) return;
+    const fallbackRoute = `${activeStation.level} -> Delegated Authority`;
     const approval: Approval = {
       id: `app-${Date.now()}`,
       request: `${message.kind} authorization request`,
-      route: `${activeStation.level} -> Delegated Authority`,
+      route: resolveWorkflowRoute(routingRules, { workType: "Approval", category: message.kind, source: [activeStation.title, activeStation.level, activeStation.authority, message.subject].join(" "), fallback: fallbackRoute }),
       limit: "Policy check",
       state: "Validation",
       signatures: "0/2"
@@ -6096,8 +6182,15 @@ function App() {
   }
 
   function createApprovalRequest(draft: Omit<Approval, "id" | "state" | "signatures">) {
+    const resolvedRoute = resolveWorkflowRoute(routingRules, {
+      workType: "Approval",
+      category: [draft.limit, draft.request].join(" "),
+      source: [activeStation.title, activeStation.level, activeStation.authority, draft.delegate].join(" "),
+      fallback: draft.route
+    });
     const approval: Approval = {
       ...draft,
+      route: resolvedRoute,
       id: `app-${Date.now()}`,
       state: offlineMode ? "Queued" : "Validation",
       signatures: "0/2"
@@ -6107,7 +6200,7 @@ function App() {
     if (!offlineMode) {
       void apiRequest<Approval>("/api/approvals", {
         method: "POST",
-        body: JSON.stringify(draft)
+        body: JSON.stringify({ ...draft, route: resolvedRoute })
       }).then(refreshFromApi).catch(() => undefined);
     }
     return approval;
@@ -8291,7 +8384,7 @@ function App() {
       .catch(() => undefined);
   }
 
-  function createOffice(office: Omit<Office, "id" | "password" | "status">) {
+	  function createOffice(office: Omit<Office, "id" | "password" | "status">) {
     const normalizedEmail = office.email.toLowerCase();
     const exists = stationDirectory.some((station) => station.email === normalizedEmail);
     if (exists) return false;
@@ -8318,10 +8411,70 @@ function App() {
         body: JSON.stringify({ ...createdOffice, actor: activeStation.email })
       }).then(refreshFromApi).catch(() => undefined);
     }
-    return true;
-  }
+	    return true;
+	  }
 
-  function updateOfficeStatus(id: string, status: Office["status"]) {
+	  function createRoutingRule(draft: Omit<RoutingRule, "id" | "active" | "updatedAt" | "updatedBy">) {
+	    const rule: RoutingRule = {
+	      ...draft,
+	      id: `route-${Date.now()}`,
+	      active: true,
+	      updatedAt: new Date().toISOString(),
+	      updatedBy: activeStation.email
+	    };
+	    setRoutingRules((items) => [rule, ...items]);
+	    recordAudit("RoutingRuleCreated", rule.name, `${rule.workType}: ${rule.route}`);
+	    if (!offlineMode) {
+	      void apiRequest<RoutingRule>("/api/routing-rules", {
+	        method: "POST",
+	        body: JSON.stringify({ ...rule, actor: activeStation.email })
+	      }).then(refreshFromApi).catch(() => undefined);
+	    }
+	    return rule;
+	  }
+
+	  function toggleRoutingRule(id: string) {
+	    const rule = routingRules.find((item) => item.id === id);
+	    if (!rule) return;
+	    const active = !rule.active;
+	    setRoutingRules((items) => items.map((item) => item.id === id ? { ...item, active, updatedAt: new Date().toISOString(), updatedBy: activeStation.email } : item));
+	    recordAudit("RoutingRuleToggled", rule.name, active ? "Active" : "Paused");
+	    if (!offlineMode) {
+	      void apiRequest<RoutingRule>(`/api/routing-rules/${id}/toggle`, {
+	        method: "POST",
+	        body: JSON.stringify({ active, actor: activeStation.email })
+	      }).then(refreshFromApi).catch(() => undefined);
+	    }
+	  }
+
+	  function applyRoutingRule(id: string) {
+	    const rule = routingRules.find((item) => item.id === id);
+	    if (!rule) return;
+	    if (rule.workType === "Report") {
+	      setReports((items) => items.map((item) => resolveWorkflowRoute([rule], {
+	        workType: "Report",
+	        category: item.type ?? item.name,
+	        source: [item.owner, item.preparedBy, item.assignmentTargetName, item.path].join(" "),
+	        fallback: item.path
+	      }) === rule.route ? { ...item, path: rule.route, routingStage: `${rule.destinationOffice} routing` } : item));
+	    } else if (rule.workType === "Approval") {
+	      setApprovals((items) => items.map((item) => resolveWorkflowRoute([rule], {
+	        workType: "Approval",
+	        category: [item.limit, item.request].join(" "),
+	        source: [item.delegate, item.route, item.request].join(" "),
+	        fallback: item.route
+	      }) === rule.route ? { ...item, route: rule.route, auditTrail: [`Routing rule applied: ${rule.name}`, ...(item.auditTrail ?? [])].slice(0, 8) } : item));
+	    }
+	    recordAudit("RoutingRuleApplied", rule.name, rule.route);
+	    if (!offlineMode) {
+	      void apiRequest<{ rule: RoutingRule; updated: number }>(`/api/routing-rules/${id}/apply`, {
+	        method: "POST",
+	        body: JSON.stringify({ actor: activeStation.email })
+	      }).then(refreshFromApi).catch(() => undefined);
+	    }
+	  }
+
+	  function updateOfficeStatus(id: string, status: Office["status"]) {
     const office = offices.find((item) => item.id === id);
     if (!office) return;
     setOffices((items) => items.map((item) => item.id === id ? { ...item, status } : item));
@@ -10600,9 +10753,10 @@ function App() {
         station={activeStation}
         permissions={permissions}
         allowedSections={allowedSections}
-        workstationProfile={workstationProfile}
-        stationDirectory={visibleStationDirectory}
-        churchMailRecipientDirectory={churchMailRecipientDirectory}
+	        workstationProfile={workstationProfile}
+	        stationDirectory={visibleStationDirectory}
+	        churchMailRecipientDirectory={churchMailRecipientDirectory}
+	        routingRules={routingRules}
         messages={scopedMessages}
         reports={scopedReports}
         reportAssignments={reportAssignments}
@@ -10635,9 +10789,12 @@ function App() {
         onUpdateReportScore={updateReportScore}
         onMarkReportEvidence={markReportEvidence}
         onArchiveEvidence={archiveReportEvidence}
-        onBuildGovernancePacket={buildReportGovernancePacket}
-        onAssignReportPack={assignResidentPastorReportPack}
-        onCreateApproval={createApprovalRequest}
+	        onBuildGovernancePacket={buildReportGovernancePacket}
+	        onAssignReportPack={assignResidentPastorReportPack}
+	        onCreateRoutingRule={createRoutingRule}
+	        onToggleRoutingRule={toggleRoutingRule}
+	        onApplyRoutingRule={applyRoutingRule}
+	        onCreateApproval={createApprovalRequest}
         onApprove={approveRequest}
         onSign={signApproval}
         onReject={rejectApproval}
@@ -23861,6 +24018,7 @@ type AdminV2Props = {
   allowedSections: Section[];
   workstationProfile: WorkstationProfile;
   stationDirectory: StationCard[];
+  routingRules: RoutingRule[];
   messages: Message[];
   reports: Report[];
   approvals: Approval[];
@@ -23896,6 +24054,9 @@ type AdminV2Props = {
   onArchiveEvidence: (id: string) => void;
   onBuildGovernancePacket: (id: string) => void;
   onAssignReportPack: (input: { targetMode: ReportAssignment["targetMode"]; targetOfficeId?: string; period: string }) => void;
+  onCreateRoutingRule: (rule: Omit<RoutingRule, "id" | "active" | "updatedAt" | "updatedBy">) => RoutingRule;
+  onToggleRoutingRule: (id: string) => void;
+  onApplyRoutingRule: (id: string) => void;
   onCreateApproval: (approval: Omit<Approval, "id" | "state" | "signatures">) => Approval;
   onApprove: (id: string) => void;
   onSign: (id: string) => void;
@@ -24001,8 +24162,9 @@ function AdminV2Shell(props: AdminV2Props) {
     permissions,
     allowedSections,
     workstationProfile,
-    stationDirectory,
-    churchMailRecipientDirectory,
+	    stationDirectory,
+	    churchMailRecipientDirectory,
+	    routingRules,
     messages,
     reports,
     reportAssignments,
@@ -24036,9 +24198,12 @@ function AdminV2Shell(props: AdminV2Props) {
     onArchiveReport,
     onUpdateReportScore,
     onMarkReportEvidence,
-    onBuildGovernancePacket,
-    onAssignReportPack,
-    onCreateApproval,
+	    onBuildGovernancePacket,
+	    onAssignReportPack,
+	    onCreateRoutingRule,
+	    onToggleRoutingRule,
+	    onApplyRoutingRule,
+	    onCreateApproval,
     onApprove,
     onSign,
     onReject,
@@ -24192,22 +24357,22 @@ function AdminV2Shell(props: AdminV2Props) {
         />
       );
     }
-    if (section === "Offices" || section === "Hierarchy") {
-      return (
-        <AdminV2Directory
-          title={section === "Offices" ? "Office Registry" : "Hierarchy Map"}
-          description={section === "Offices" ? "Create offices, assign reporting lines, set permissions, and manage official workstations." : "Review the office node structure that routes reports upward and directives downward."}
-          metrics={[
-            ["Stations", stationDirectory.length],
-            ["Ready", stationDirectory.filter((item) => (item.status ?? "Ready") === "Ready").length],
-            ["Levels", new Set(stationDirectory.map((item) => item.level)).size]
-          ]}
-          actions={section === "Offices" ? ["Create office", "Open registry", "Review permissions"] : ["View graph", "Open registry", "Validate routes"]}
-          records={stationDirectory.map((item) => ({ title: item.title, meta: item.level, detail: item.authority, status: item.status ?? "Ready" }))}
-          onQuickAction={onQuickAction}
-        />
-      );
-    }
+	    if (section === "Offices" || section === "Hierarchy") {
+	      return (
+	        <AdminV2OfficeRoutingCenter
+	          mode={section}
+	          stationDirectory={stationDirectory}
+	          routingRules={routingRules}
+	          reports={reports}
+	          approvals={approvals}
+	          permissions={permissions}
+	          onCreateRoutingRule={onCreateRoutingRule}
+	          onToggleRoutingRule={onToggleRoutingRule}
+	          onApplyRoutingRule={onApplyRoutingRule}
+	          onQuickAction={onQuickAction}
+	        />
+	      );
+	    }
     if (section === "Escalations") {
       return (
         <AdminV2Directory
@@ -26120,6 +26285,173 @@ function AdminV2DepartmentChat({
         </aside>
       </section>
     </div>
+  );
+}
+
+function AdminV2OfficeRoutingCenter({
+  mode,
+  stationDirectory,
+  routingRules,
+  reports,
+  approvals,
+  permissions,
+  onCreateRoutingRule,
+  onToggleRoutingRule,
+  onApplyRoutingRule,
+  onQuickAction
+}: {
+  mode: Section;
+  stationDirectory: StationCard[];
+  routingRules: RoutingRule[];
+  reports: Report[];
+  approvals: Approval[];
+  permissions: Permissions;
+  onCreateRoutingRule: (rule: Omit<RoutingRule, "id" | "active" | "updatedAt" | "updatedBy">) => RoutingRule;
+  onToggleRoutingRule: (id: string) => void;
+  onApplyRoutingRule: (id: string) => void;
+  onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
+}) {
+  const [workType, setWorkType] = React.useState<RoutingRule["workType"]>("Report");
+  const [category, setCategory] = React.useState("Financial");
+  const [sourceOfficePattern, setSourceOfficePattern] = React.useState("local branch resident pastor mission station");
+  const [destinationOffice, setDestinationOffice] = React.useState("District Finance Office");
+  const [route, setRoute] = React.useState("Mission Station -> District Finance -> County Finance -> Audit Desk");
+  const [priority, setPriority] = React.useState<RoutingRule["priority"]>("High");
+  const [notice, setNotice] = React.useState("");
+  const activeRules = routingRules.filter((rule) => rule.active);
+  const parentedStations = stationDirectory.filter((station) => station.parentName || station.reportingRoute);
+  const reportRuleCoverage = reports.filter((report) => resolveWorkflowRoute(routingRules, {
+    workType: "Report",
+    category: report.type ?? report.name,
+    source: [report.owner, report.preparedBy, report.assignmentTargetName, report.path].join(" "),
+    fallback: report.path
+  }) !== report.path).length;
+  const approvalRuleCoverage = approvals.filter((approval) => resolveWorkflowRoute(routingRules, {
+    workType: "Approval",
+    category: [approval.limit, approval.request].join(" "),
+    source: [approval.delegate, approval.route, approval.request].join(" "),
+    fallback: approval.route
+  }) !== approval.route).length;
+
+  function createRule(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!permissions.canCreateOffices && !permissions.canOverride) {
+      setNotice("Routing rules require office administrator authority.");
+      return;
+    }
+    const rule = onCreateRoutingRule({
+      name: `${category} ${workType} route`,
+      sourceOfficePattern,
+      workType,
+      category,
+      destinationOffice,
+      route,
+      priority
+    });
+    setNotice(`${rule.name} created.`);
+  }
+
+  return (
+    <section className="admin-v2-routing-center">
+      <div className="admin-v2-workspace-hero">
+        <div>
+          <span>{mode === "Hierarchy" ? "Organization" : "Office setup"}</span>
+          <h2>{mode === "Hierarchy" ? "Hierarchy + Workflow Routing" : "Office Routing Center"}</h2>
+          <p>Each office keeps one structural parent, while GCOS routes reports, approvals, messages, and escalations to the correct destination by work type.</p>
+        </div>
+        <div className="admin-v2-hero-metrics">
+          <article><strong>{stationDirectory.length}</strong><span>Stations</span></article>
+          <article><strong>{activeRules.length}</strong><span>Active rules</span></article>
+          <article><strong>{reportRuleCoverage + approvalRuleCoverage}</strong><span>Routed records</span></article>
+        </div>
+      </div>
+
+      <div className="admin-v2-routing-grid">
+        <section className="admin-v2-card admin-v2-route-structure">
+          <div className="admin-v2-card-head">
+            <span>Structural Parent</span>
+            <button type="button" onClick={() => onQuickAction("Create office")}>Create office</button>
+          </div>
+          <div className="admin-v2-list">
+            {stationDirectory.slice(0, 8).map((station) => (
+              <article key={station.email}>
+                <strong>{station.title}</strong>
+                <span>{station.email}</span>
+                <small>Parent: {station.parentName ?? station.reportingRoute?.split("->")[1]?.trim() ?? "Supervising office"}</small>
+              </article>
+            ))}
+          </div>
+          <div className="admin-v2-route-note">
+            <GitBranch size={16} />
+            <span>{parentedStations.length} stations already carry parent/reporting structure.</span>
+          </div>
+        </section>
+
+        <section className="admin-v2-card admin-v2-route-rules">
+          <div className="admin-v2-card-head">
+            <span>Workflow Destinations</span>
+            <button type="button" onClick={() => onQuickAction("Validate routes")}>Validate</button>
+          </div>
+          <div className="admin-v2-list">
+            {routingRules.map((rule) => (
+              <article key={rule.id} className={!rule.active ? "is-paused" : ""}>
+                <strong>{rule.name}</strong>
+                <span>{rule.workType} / {rule.category} / {rule.destinationOffice}</span>
+                <small>{rule.route}</small>
+                <div className="admin-v2-rule-actions">
+                  <button type="button" onClick={() => onApplyRoutingRule(rule.id)}>Apply</button>
+                  <button type="button" onClick={() => onToggleRoutingRule(rule.id)}>{rule.active ? "Pause" : "Activate"}</button>
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
+
+        <section className="admin-v2-card admin-v2-route-builder">
+          <div className="admin-v2-card-head">
+            <span>Create Routing Rule</span>
+            <b>{notice || "Ready"}</b>
+          </div>
+          <form onSubmit={createRule}>
+            <label>
+              <span>Work type</span>
+              <select value={workType} onChange={(event) => setWorkType(event.target.value)}>
+                <option>Report</option>
+                <option>Approval</option>
+                <option>ChurchMail</option>
+                <option>Escalation</option>
+                <option>Task</option>
+              </select>
+            </label>
+            <label>
+              <span>Category</span>
+              <input value={category} onChange={(event) => setCategory(event.target.value)} />
+            </label>
+            <label>
+              <span>Source office keywords</span>
+              <input value={sourceOfficePattern} onChange={(event) => setSourceOfficePattern(event.target.value)} />
+            </label>
+            <label>
+              <span>Destination office</span>
+              <input value={destinationOffice} onChange={(event) => setDestinationOffice(event.target.value)} />
+            </label>
+            <label>
+              <span>Route path</span>
+              <input value={route} onChange={(event) => setRoute(event.target.value)} />
+            </label>
+            <label>
+              <span>Priority</span>
+              <select value={priority} onChange={(event) => setPriority(event.target.value as RoutingRule["priority"])}>
+                <option>Normal</option>
+                <option>High</option>
+                <option>Critical</option>
+              </select>
+            </label>
+            <button type="submit">Create routing rule</button>
+          </form>
+        </section>
+      </div>
+    </section>
   );
 }
 

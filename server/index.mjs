@@ -227,6 +227,10 @@ const routes = {
   "GET /api/report-assignments": () => ok(state.reportAssignments ?? []),
   "GET /api/report-assignments/digest": () => ok(services.reportAssignmentDigest()),
   "POST /api/report-assignments": ({ body, session }) => createdResponse(services.assignReportPack({ ...body, actor: session?.email ?? body.actor })),
+  "GET /api/routing-rules": () => ok(state.routingRules ?? []),
+  "POST /api/routing-rules": ({ body, session }) => createdResponse(services.createRoutingRule({ ...body, actor: requestActor(session, body) })),
+  "POST /api/routing-rules/:id/toggle": ({ params, body, session }) => ok(services.toggleRoutingRule(params.id, { ...body, actor: requestActor(session, body) })),
+  "POST /api/routing-rules/:id/apply": ({ params, body, session }) => ok(services.applyRoutingRule(params.id, { ...body, actor: requestActor(session, body) })),
   "POST /api/reports/:id/submit": ({ params, body }) => ok(services.submitReport(params.id, body)),
   "POST /api/reports/:id/correction": ({ params, body }) => ok(services.requestReportCorrection(params.id, body)),
   "POST /api/reports/:id/due": ({ params, body }) => ok(services.updateReportDue(params.id, body)),
@@ -4017,7 +4021,11 @@ async function loadState() {
 
 function migratePersistedState(loadedState) {
   const migratedState = JSON.parse(JSON.stringify(loadedState).replaceAll("@rmi.org", "@rmvi.org").replaceAll("@gcos.org", "@rmvi.org"));
+  const seedState = createSeedState();
   migratedState.reportAssignments ??= [];
+  migratedState.routingRules = mergeRoutingRules(migratedState.routingRules, seedState.routingRules);
+  migratedState.stations = mergeMissingByKey(migratedState.stations, seedState.stations, "email", normalizeStationEmail);
+  migratedState.offices = mergeMissingByKey(migratedState.offices, seedState.offices, "email", normalizeStationEmail);
   for (const station of migratedState.stations) station.email = normalizeStationEmail(station.email);
   for (const office of migratedState.offices) office.email = normalizeStationEmail(office.email);
   const seenStationEmails = new Set();
@@ -4027,6 +4035,36 @@ function migratePersistedState(loadedState) {
     return true;
   });
   return migratedState;
+}
+
+function mergeMissingByKey(current = [], seed = [], key, normalize = (value) => String(value ?? "")) {
+  const merged = Array.isArray(current) ? [...current] : [];
+  const seen = new Set(merged.map((item) => normalize(item?.[key])));
+  for (const seedItem of seed ?? []) {
+    const seedKey = normalize(seedItem?.[key]);
+    if (!seedKey || seen.has(seedKey)) continue;
+    merged.push(seedItem);
+    seen.add(seedKey);
+  }
+  return merged;
+}
+
+function mergeRoutingRules(current = [], seed = []) {
+  const merged = [];
+  const seen = new Set();
+  for (const item of [...(Array.isArray(current) ? current : []), ...(seed ?? [])]) {
+    const signature = [
+      item?.name,
+      item?.workType,
+      item?.category,
+      item?.destinationOffice,
+      item?.route
+    ].map((value) => String(value ?? "").toLowerCase()).join("|");
+    if (!signature.replaceAll("|", "") || seen.has(signature)) continue;
+    merged.push(item);
+    seen.add(signature);
+  }
+  return merged;
 }
 
 async function saveState() {

@@ -14,7 +14,8 @@ export const stationPasswords = {
   "local_branch_017@rmvi.org": demoStationPassword("local"),
   "finance@rmvi.org": demoStationPassword("finance"),
   "audit@rmvi.org": demoStationPassword("audit"),
-  "mission@rmvi.org": demoStationPassword("mission")
+  "mission@rmvi.org": demoStationPassword("mission"),
+  "pioneer@rmvi.org": demoStationPassword("pioneer")
 };
 
 export function normalizeStationEmail(email) {
@@ -22,6 +23,29 @@ export function normalizeStationEmail(email) {
 }
 
 export function createSeedState() {
+  const pioneerWorkflowAccess = ["ChurchMail", "Reports", "Tasks", "Archive", "Live Comms", "Approvals", "Transfers", "Personnel", "Offices", "Hierarchy", "Audit", "Escalations", "AI Desk"];
+  const pioneerOffice = office("Pioneer Office", "pioneer@rmvi.org", "International HQ", "Pioneer / Head Pastor Office", "International HQ", {
+    permissionPreset: "Executive Override",
+    reportingRoute: "Pioneer Office -> International HQ -> Archive vault",
+    workflowAccess: pioneerWorkflowAccess,
+    parentName: "International HQ"
+  });
+  Object.assign(pioneerOffice, {
+    emailVerified: true,
+    status: "Active",
+    password: demoStationPassword("pioneer")
+  });
+  const pioneerStation = station(pioneerOffice.email, "Pioneer Office Workstation", pioneerOffice.level, "Head pastor authority, executive review, doctrine, final governance oversight");
+  Object.assign(pioneerStation, {
+    nodeKind: pioneerOffice.nodeKind,
+    parentId: pioneerOffice.parentId,
+    parentName: pioneerOffice.parentName,
+    permissionPreset: pioneerOffice.permissionPreset,
+    reportingRoute: pioneerOffice.reportingRoute,
+    workflowAccess: pioneerOffice.workflowAccess,
+    status: "Active",
+    verified: true
+  });
   const riverbendOffice = office("Riverbend Area Office", "riverbend_area@rmvi.org", "Area HQ", "Area Coordination", "Buchanan District");
   const riverbendStation = station(riverbendOffice.email, `${riverbendOffice.name} Workstation`, riverbendOffice.level, `${riverbendOffice.department}, supervised by ${riverbendOffice.supervisor}`);
   Object.assign(riverbendStation, {
@@ -47,6 +71,7 @@ export function createSeedState() {
       station("finance@rmvi.org", "Finance Desk Workstation", "National HQ", "Financial reports, budgets, releases, reconciliation, audit evidence"),
       station("audit@rmvi.org", "Audit Desk Workstation", "National HQ", "Compliance review, audit packets, evidence sealing, control testing"),
       station("mission@rmvi.org", "Mission Office Workstation", "National HQ", "Mission outreach, transfers, church planting, personnel movement"),
+      pioneerStation,
       riverbendStation
     ],
     messages: [
@@ -61,6 +86,16 @@ export function createSeedState() {
       report("Construction milestone report", "District Works", "District -> County", "Overdue", "Escalated", 58, { type: "Construction", period: "May 2026", routingStage: "District correction", evidenceStatus: "Photo packet incomplete", correctionReason: "Missing site photos" })
     ],
     reportAssignments: [],
+    routingRules: [
+      routingRule("Resident Pastor administration reports", "local branch resident pastor mission station", "Report", "Administrative", "Area Office", "Local Branch -> Area Office -> District HQ", "Normal"),
+      routingRule("Resident Pastor finance reports", "local branch resident pastor mission station finance", "Report", "Financial", "District Finance Office", "Mission Station -> District Finance -> County Finance -> Audit Desk", "High"),
+      routingRule("Mission and church growth reports", "local branch resident pastor mission station mission church growth", "Report", "Mission", "Mission and Church Growth Department", "Mission Station -> Area Office -> District HQ -> Church Growth Department", "Normal"),
+      routingRule("Audit evidence packets", "all offices audit evidence compliance", "Report", "Audit", "Audit Desk", "Station Audit -> County Audit -> National Audit", "Critical"),
+      routingRule("Pioneer executive reports", "international national executive pioneer head pastor", "Report", "Executive", "Pioneer Office", "Originating Office -> National HQ -> International HQ -> Pioneer Office", "Critical"),
+      routingRule("Finance approval requests", "all offices finance budget expense release", "Approval", "Financial", "Finance Desk", "Requesting Office -> District Finance -> County Finance -> National Finance", "High"),
+      routingRule("Pioneer executive approvals", "international national executive pioneer head pastor", "Approval", "Executive", "Pioneer Office", "Originating Office -> National HQ -> International HQ -> Pioneer Office", "Critical"),
+      routingRule("Critical governance escalations", "all offices escalation critical executive", "Escalation", "Governance", "International HQ", "Originating Office -> District HQ -> National HQ -> International HQ", "Critical")
+    ],
     approvals: [
       approval("County youth program budget", "District -> County -> National", "$24,800", "Validation", "0/3"),
       approval("Area vehicle repair release", "Area -> District Finance", "$3,400", "Signature", "1/2"),
@@ -111,7 +146,7 @@ export function createSeedState() {
       transfer("Rev. Daniel Moore", "Buchanan District", "Riverbend Area Office", "Recipient acknowledgement", "Session switch pending"),
       transfer("Sis. Amelia Hart", "Local Branch 017", "County Education Desk", "Permissions migration", "Role graph update ready")
     ],
-    offices: [riverbendOffice],
+    offices: [pioneerOffice, riverbendOffice],
     documents: [
       documentRecord("Q2 governance directive.pdf", "Policy memo", "ChurchMail", "Regional HQ - West Africa", "PDF", "Archived"),
       documentRecord("Construction progress photos.zip", "Report evidence", "Report", "Buchanan District Office", "Images", "In Review"),
@@ -176,6 +211,22 @@ export function report(name, owner, path, due, state, score, metadata = {}) {
 
 export function approval(request, route, limit, state, signatures) {
   return { id: randomUUID(), request, route, limit, state, signatures };
+}
+
+export function routingRule(name, sourceOfficePattern, workType, category, destinationOffice, route, priority = "Normal", metadata = {}) {
+  return {
+    id: metadata.id ?? randomUUID(),
+    name,
+    sourceOfficePattern,
+    workType,
+    category,
+    destinationOffice,
+    route,
+    priority,
+    active: metadata.active ?? true,
+    updatedAt: metadata.updatedAt ?? new Date().toISOString(),
+    updatedBy: metadata.updatedBy
+  };
 }
 
 export function task(title, owner, assignee, priority, due, status = "Queued") {

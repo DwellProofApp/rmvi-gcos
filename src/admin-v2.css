@@ -1790,10 +1790,113 @@
   padding: 12px 14px;
 }
 
+.admin-v2-routing-center {
+  display: grid;
+  gap: 18px;
+}
+
+.admin-v2-routing-grid {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: minmax(240px, .85fr) minmax(360px, 1.2fr) minmax(280px, .95fr);
+}
+
+.admin-v2-card {
+  background: var(--v2-panel);
+  border: 1px solid var(--v2-border);
+  border-radius: 22px;
+  box-shadow: var(--v2-shadow);
+  min-width: 0;
+  padding: 18px;
+}
+
+.admin-v2-card-head,
+.admin-v2-rule-actions,
+.admin-v2-route-note {
+  align-items: center;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.admin-v2-card-head span {
+  color: var(--v2-cyan);
+  font-size: 12px;
+  font-weight: 900;
+  letter-spacing: .2em;
+  text-transform: uppercase;
+}
+
+.admin-v2-card-head b,
+.admin-v2-route-note {
+  color: var(--v2-muted);
+  font-size: 12px;
+}
+
+.admin-v2-card-head button,
+.admin-v2-rule-actions button,
+.admin-v2-route-builder button {
+  background: rgba(17, 24, 39, .72);
+  border: 1px solid var(--v2-border);
+  border-radius: 12px;
+  color: var(--v2-text);
+  cursor: pointer;
+  font-weight: 850;
+  min-height: 36px;
+  padding: 0 12px;
+}
+
+.admin-v2-route-rules .admin-v2-list article,
+.admin-v2-route-structure .admin-v2-list article {
+  align-items: start;
+  border-radius: 16px;
+  gap: 5px;
+}
+
+.admin-v2-route-rules .admin-v2-list article.is-paused {
+  opacity: .58;
+}
+
+.admin-v2-rule-actions {
+  justify-content: flex-start;
+  margin-top: 8px;
+}
+
+.admin-v2-route-builder form {
+  display: grid;
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.admin-v2-route-builder label {
+  display: grid;
+  gap: 7px;
+}
+
+.admin-v2-route-builder label span {
+  color: var(--v2-muted);
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-v2-route-builder input,
+.admin-v2-route-builder select {
+  background: rgba(3, 7, 18, .48);
+  border: 1px solid var(--v2-border);
+  border-radius: 12px;
+  color: var(--v2-text);
+  min-height: 42px;
+  padding: 0 12px;
+  width: 100%;
+}
+
 @media (max-width: 1180px) {
   .admin-v2-assignment-summary,
   .admin-v2-assignment-grid,
-  .churchmail-compose-grid {
+  .churchmail-compose-grid,
+  .admin-v2-routing-grid {
     grid-template-columns: 1fr 1fr;
   }
 }
@@ -1801,7 +1904,8 @@
 @media (max-width: 760px) {
   .admin-v2-assignment-summary,
   .admin-v2-assignment-grid,
-  .churchmail-compose-grid {
+  .churchmail-compose-grid,
+  .admin-v2-routing-grid {
     grid-template-columns: 1fr;
   }
 

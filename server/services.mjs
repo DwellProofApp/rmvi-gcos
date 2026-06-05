@@ -12,6 +12,7 @@ import {
   person,
   policy,
   report,
+  routingRule,
   liveSession,
   normalizeStationEmail,
   station,
@@ -51,6 +52,7 @@ export function createServices({ state, record, requirePermission, findById, int
       messages: scoped.messages,
       reports: scoped.reports,
       reportAssignments: scoped.reportAssignments,
+      routingRules: scoped.routingRules,
       approvals: scoped.approvals,
       tasks: scoped.tasks,
       policies: scoped.policies,
@@ -78,6 +80,7 @@ export function createServices({ state, record, requirePermission, findById, int
         messages: state.messages,
         reports: state.reports,
         reportAssignments: state.reportAssignments ?? [],
+        routingRules: state.routingRules ?? [],
         approvals: state.approvals,
         tasks: state.tasks,
         policies: state.policies,
@@ -99,6 +102,7 @@ export function createServices({ state, record, requirePermission, findById, int
       messages: messagesForStation(scope.email),
       reports: state.reports.filter((item) => recordMatchesScope(item, scope, ["name", "owner", "path", "type", "routingStage", "preparedBy", "assignedToEmail"])),
       reportAssignments: (state.reportAssignments ?? []).filter((item) => recordMatchesScope(item, scope, ["targetLabel", "targetMode", "targetOfficeId", "assignedBy", "period"])),
+      routingRules: (state.routingRules ?? []).filter((item) => item.active && recordMatchesScope(item, scope, ["name", "sourceOfficePattern", "workType", "category", "destinationOffice", "route"])),
       approvals: state.approvals.filter((item) => recordMatchesScope(item, scope, ["request", "route", "delegate", "linkedReport", "linkedTask"])),
       tasks: state.tasks.filter((item) => recordMatchesScope(item, scope, ["title", "owner", "assignee", "linkedReport", "linkedApproval", "handoffTo"])),
       policies: state.policies.filter((item) => recordMatchesScope(item, scope, ["title", "category", "owner", "summary", "distributedTo", "trainingAudience"])),
@@ -336,6 +340,37 @@ export function createServices({ state, record, requirePermission, findById, int
   function targetLabelForAssignment(body, targets) {
     if (body.targetMode === "designated-office") return targets[0]?.owner ?? "Designated office";
     return "All Resident Pastor / Local Branch offices";
+  }
+
+  function resolveWorkflowRoute(rules, input) {
+    const source = String(input.source ?? "").toLowerCase();
+    const category = String(input.category ?? "").toLowerCase();
+    const workType = String(input.workType ?? "").toLowerCase();
+    const scored = (rules ?? [])
+      .filter((rule) => rule.active && String(rule.workType ?? "").toLowerCase() === workType)
+      .map((rule) => {
+        const categoryScore = category && [rule.category, rule.name, rule.destinationOffice].join(" ").toLowerCase().includes(category) ? 4 : 0;
+        const sourceTokens = String(rule.sourceOfficePattern ?? "").toLowerCase().split(/[^a-z0-9]+/).filter((token) => token.length > 2 && token !== "all");
+        const sourceScore = String(rule.sourceOfficePattern ?? "").toLowerCase().includes("all offices")
+          ? 1
+          : sourceTokens.filter((token) => source.includes(token)).length;
+        return { rule, score: categoryScore + sourceScore };
+      })
+      .filter((item) => item.score > 0)
+      .sort((a, b) => b.score - a.score);
+    return scored[0]?.rule.route ?? input.fallback;
+  }
+
+  function routingRuleMatchesRecord(rule, record) {
+    const route = resolveWorkflowRoute([rule], {
+      workType: rule.workType,
+      category: rule.workType === "Approval" ? [record.limit, record.request].join(" ") : record.type ?? record.name,
+      source: rule.workType === "Approval"
+        ? [record.delegate, record.route, record.request].join(" ")
+        : [record.owner, record.preparedBy, record.assignmentTargetName, record.path].join(" "),
+      fallback: rule.workType === "Approval" ? record.route : record.path
+    });
+    return route === rule.route;
   }
 
   function credentialRecord(email, password) {
@@ -1982,7 +2017,13 @@ export function createServices({ state, record, requirePermission, findById, int
     },
 
     createReport(body) {
-      const created = report(body.name, body.owner ?? body.actor, body.path, body.due ?? "Draft", body.state ?? "Ready", body.score ?? 15, {
+      const resolvedPath = resolveWorkflowRoute(state.routingRules ?? [], {
+        workType: "Report",
+        category: body.type ?? body.name,
+        source: [body.owner, body.preparedBy, body.actor, body.path].join(" "),
+        fallback: body.path
+      });
+      const created = report(body.name, body.owner ?? body.actor, resolvedPath, body.due ?? "Draft", body.state ?? "Ready", body.score ?? 15, {
         type: body.type,
         period: body.period,
         routingStage: body.routingStage ?? "Drafting",
@@ -2036,7 +2077,13 @@ export function createServices({ state, record, requirePermission, findById, int
             && item.assignmentTarget === target.email
           ));
           if (duplicate) continue;
-          const created = report(template.name, target.owner, template.path ?? target.path, "Monthly", "Ready", 10, {
+          const resolvedPath = resolveWorkflowRoute(state.routingRules ?? [], {
+            workType: "Report",
+            category: template.type ?? template.name,
+            source: [target.owner, target.level, target.department, target.path].join(" "),
+            fallback: template.path ?? target.path
+          });
+          const created = report(template.name, target.owner, resolvedPath, "Monthly", "Ready", 10, {
             type: template.type,
             period: assignment.period,
             routingStage: "Assigned to office",
@@ -2081,8 +2128,67 @@ export function createServices({ state, record, requirePermission, findById, int
       };
     },
 
+    createRoutingRule(body) {
+      requirePermission(body.actor, "canCreateOffices");
+      state.routingRules ??= [];
+      const created = routingRule(
+        body.name ?? `${body.category ?? "General"} ${body.workType ?? "Workflow"} route`,
+        body.sourceOfficePattern ?? "all offices",
+        body.workType ?? "Report",
+        body.category ?? "General",
+        body.destinationOffice ?? "Supervising Office",
+        body.route ?? "Originating Office -> Supervising Office",
+        body.priority ?? "Normal",
+        { active: body.active ?? true, updatedBy: body.actor }
+      );
+      state.routingRules.unshift(created);
+      record("RoutingRuleCreated", body.actor, created.name, created.route);
+      return created;
+    },
+
+    toggleRoutingRule(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.routingRules ?? [], id);
+      item.active = typeof body.active === "boolean" ? body.active : !item.active;
+      item.updatedAt = new Date().toISOString();
+      item.updatedBy = body.actor;
+      record("RoutingRuleToggled", body.actor, item.name, item.active ? "Active" : "Paused");
+      return item;
+    },
+
+    applyRoutingRule(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.routingRules ?? [], id);
+      let updated = 0;
+      if (item.workType === "Report") {
+        for (const reportItem of state.reports) {
+          if (!routingRuleMatchesRecord(item, reportItem)) continue;
+          reportItem.path = item.route;
+          reportItem.routingStage = `${item.destinationOffice} routing`;
+          updated += 1;
+        }
+      } else if (item.workType === "Approval") {
+        for (const approvalItem of state.approvals) {
+          if (!routingRuleMatchesRecord(item, approvalItem)) continue;
+          approvalItem.route = item.route;
+          approvalItem.auditTrail = [`Routing rule applied: ${item.name}`, ...(approvalItem.auditTrail ?? [])].slice(0, 8);
+          updated += 1;
+        }
+      }
+      item.updatedAt = new Date().toISOString();
+      item.updatedBy = body.actor;
+      record("RoutingRuleApplied", body.actor, item.name, `${updated} records updated`);
+      return { rule: item, updated };
+    },
+
     createApproval(body) {
-      const created = approval(body.request, body.route, body.limit ?? "Policy check", body.state ?? "Validation", body.signatures ?? "0/2");
+      const resolvedRoute = resolveWorkflowRoute(state.routingRules ?? [], {
+        workType: "Approval",
+        category: [body.limit, body.request].join(" "),
+        source: [body.actor, body.delegate, body.route, body.request].join(" "),
+        fallback: body.route
+      });
+      const created = approval(body.request, resolvedRoute, body.limit ?? "Policy check", body.state ?? "Validation", body.signatures ?? "0/2");
       state.approvals.unshift(created);
       record("ApprovalRequested", body.actor, created.request, "Delegation check started");
       return created;
