@@ -9,6 +9,7 @@ const mutate = process.env.GCOS_PRODUCT_SMOKE_MUTATE === "1";
 const liveEmailTest = process.env.GCOS_PRODUCT_SMOKE_EMAIL_TEST === "1";
 const email = process.env.GCOS_SMOKE_EMAIL ?? "admin@rmvi.org";
 const password = process.env.GCOS_SMOKE_PASSWORD ?? "gcos-admin";
+const requestTimeoutMs = Number(process.env.GCOS_PRODUCT_SMOKE_TIMEOUT_MS ?? 15000);
 const stationLogins = [
   ["finance@rmvi.org", process.env.GCOS_FINANCE_SMOKE_PASSWORD ?? "gcos-finance"],
   ["audit@rmvi.org", process.env.GCOS_AUDIT_SMOKE_PASSWORD ?? "gcos-audit"],
@@ -307,11 +308,21 @@ async function raw(path, options = {}) {
   const maxAttempts = options.noRetry ? 1 : 3;
   let response;
   for (let attempt = 1; attempt <= maxAttempts; attempt += 1) {
-    response = await fetch(`${baseUrl}${path}`, {
-      method,
-      headers,
-      body: requestBody
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), requestTimeoutMs);
+    try {
+      response = await fetch(`${baseUrl}${path}`, {
+        method,
+        headers,
+        body: requestBody,
+        signal: controller.signal
+      });
+    } catch (error) {
+      if (error.name === "AbortError") throw new Error(`${method} ${path} timed out after ${requestTimeoutMs}ms`);
+      throw new Error(`${method} ${path} failed: ${error.message}`);
+    } finally {
+      clearTimeout(timeout);
+    }
     if (!retryStatuses.has(response.status) || attempt === maxAttempts || options.allowStatus?.includes(response.status)) break;
     await new Promise((resolve) => setTimeout(resolve, 350 * attempt));
   }
@@ -324,8 +335,10 @@ async function raw(path, options = {}) {
 
 async function check(name, fn, fix) {
   const startedAt = new Date().toISOString();
+  console.log(`… ${name}`);
   try {
     const summary = await fn();
+    console.log(`✓ ${name}: ${summary}`);
     report.checks.push({
       name,
       status: "passed",
@@ -335,6 +348,7 @@ async function check(name, fn, fix) {
       summary
     });
   } catch (error) {
+    console.log(`✕ ${name}: ${error.message}`);
     report.checks.push({
       name,
       status: "failed",
