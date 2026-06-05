@@ -750,6 +750,64 @@ body:has(.app-shell),
   color: #94a8c8 !important;
 }
 
+.admin-v2-shell *,
+.admin-v2-shell *::before,
+.admin-v2-shell *::after {
+  box-sizing: border-box;
+  min-width: 0;
+}
+
+.admin-v2-shell :is(h1, h2, h3, h4, p, span, small, strong, b, label, button, a, input, select, textarea, div) {
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-brand,
+.admin-v2-station,
+.admin-v2-page-title,
+.admin-v2-topbar,
+.admin-v2-hero,
+.admin-v2-hero > div,
+.admin-v2-workspace-intro,
+.admin-v2-panel,
+.admin-v2-detail,
+.admin-v2-table article,
+.admin-v2-list article,
+.admin-v2-record-card,
+.admin-v2-actions-row,
+.admin-v2-toolbar,
+.admin-v2-row,
+.admin-v2-kpi,
+.admin-v2-stat-strip article,
+.admin-v2-process-flow article {
+  min-width: 0 !important;
+}
+
+.admin-v2-topbar,
+.admin-v2-actions,
+.admin-v2-actions-row,
+.admin-v2-toolbar,
+.admin-v2-panel-head,
+.admin-v2-package-head,
+.admin-v2-chat-thread-head,
+.admin-v2-chat-messages article div {
+  flex-wrap: wrap !important;
+}
+
+.admin-v2-station,
+.admin-v2-brand {
+  display: grid !important;
+  gap: 5px !important;
+}
+
+.admin-v2-station strong,
+.admin-v2-station span,
+.admin-v2-station small,
+.admin-v2-brand strong,
+.admin-v2-brand small {
+  line-height: 1.25 !important;
+  white-space: normal !important;
+}
+
 .admin-v2-page-title span,
 .admin-v2-panel-head > span,
 .admin-v2-nav p,
@@ -817,6 +875,82 @@ body:has(.app-shell),
   background: linear-gradient(135deg, #00d4ff, #00a8cc) !important;
   border-color: transparent !important;
   color: #051018 !important;
+}
+
+.admin-v2-search-field,
+.admin-v2-create-form input,
+.admin-v2-connected-routes button,
+.admin-v2-assignment-grid input,
+.admin-v2-assignment-grid select,
+.admin-v2-assignment-route,
+.admin-v2-package-card,
+.admin-v2-form-stack button,
+.admin-v2-history-stack button,
+.admin-v2-history-stack article,
+.admin-v2-assignment-next,
+.admin-v2-assignment-status em,
+.admin-v2-assignment-drafts button,
+.admin-v2-assignment-next aside button,
+.churchmail-composer input,
+.churchmail-composer select,
+.churchmail-composer textarea,
+.admin-v2-user-home .admin-v2-panel,
+.admin-v2-user-mode .admin-v2-hero,
+.admin-v2-status,
+.admin-v2-empty,
+.admin-v2-empty-state {
+  background: rgba(12, 18, 32, 0.78) !important;
+  border-color: #253550 !important;
+  color: #e8f0fe !important;
+  box-shadow: none !important;
+}
+
+.admin-v2-stat-strip article,
+.admin-v2-process-flow article {
+  background:
+    linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(168, 85, 247, 0.06)),
+    rgba(12, 18, 32, 0.86) !important;
+}
+
+.admin-v2-assignment-grid label span,
+.admin-v2-package-head span,
+.admin-v2-history-stack span,
+.admin-v2-assignment-next span,
+.churchmail-composer label span,
+.churchmail-compose-actions span {
+  color: #00d4ff !important;
+}
+
+.admin-v2-status {
+  color: #94a8c8 !important;
+}
+
+.admin-v2-status.escalated,
+.admin-v2-status.blocked,
+.admin-v2-status.at-risk,
+.admin-v2-status.critical {
+  background: rgba(255, 69, 96, 0.1) !important;
+  border-color: rgba(255, 69, 96, 0.28) !important;
+  color: #ff7a8d !important;
+}
+
+.admin-v2-status.approved,
+.admin-v2-status.ready,
+.admin-v2-status.active,
+.admin-v2-status.complete,
+.admin-v2-status.archived {
+  background: rgba(0, 229, 160, 0.1) !important;
+  border-color: rgba(0, 229, 160, 0.26) !important;
+  color: #00e5a0 !important;
+}
+
+.admin-v2-status.in-review,
+.admin-v2-status.pending,
+.admin-v2-status.queued,
+.admin-v2-status.insight {
+  background: rgba(255, 184, 0, 0.1) !important;
+  border-color: rgba(255, 184, 0, 0.25) !important;
+  color: #ffcf4d !important;
 }
 
 .admin-v2-health .online,
@@ -914,6 +1048,17 @@ body:has(.app-shell),
 .admin-v2-chat-actions {
   display: grid;
   gap: 10px;
+}
+
+.admin-v2-chat-network-note {
+  background: rgba(255, 184, 0, 0.08);
+  border: 1px solid rgba(255, 184, 0, 0.22);
+  border-radius: 12px;
+  color: #ffcf4d !important;
+  font-size: 0.82rem;
+  line-height: 1.45;
+  margin-bottom: 10px;
+  padding: 10px 12px;
 }
 
 .admin-v2-chat-room-list button {

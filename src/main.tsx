@@ -2916,6 +2916,29 @@ function stationDepartment(station: StationCard) {
   return station.authority.split(",")[0]?.trim() || "Church Administration";
 }
 
+function stationChatTerms(station: StationCard) {
+  return [
+    normalizeStationEmail(station.email),
+    station.title,
+    station.level,
+    station.authority,
+    stationDepartment(station)
+  ].map((item) => item.toLowerCase()).filter(Boolean);
+}
+
+function chatRoomMatchesStation(room: DepartmentChatRoom, station: StationCard) {
+  const stationEmail = normalizeStationEmail(station.email);
+  const participantEmails = (room.participants ?? []).map(normalizeStationEmail);
+  if (stationEmail === "admin@rmvi.org" || participantEmails.includes(stationEmail)) return true;
+  const haystack = [
+    room.name,
+    room.department,
+    room.kind,
+    ...(room.participants ?? [])
+  ].join(" ").toLowerCase();
+  return stationChatTerms(station).some((term) => term.length > 3 && haystack.includes(term));
+}
+
 type WorkstationProfile = {
   key: string;
   label: string;
@@ -25794,9 +25817,9 @@ function AdminV2DepartmentChat({
   onSendChurchMail: (roomId: string) => void;
 }) {
   const normalizedStationEmail = normalizeStationEmail(station.email);
-  const isAdmin = normalizedStationEmail === "admin@rmvi.org";
-  const activeRooms = rooms.filter((room) => !room.archived && (isAdmin || (room.participants ?? []).map(normalizeStationEmail).includes(normalizedStationEmail)));
-  const visibleRooms = activeRooms.length ? activeRooms : rooms.filter((room) => !room.archived);
+  const openRooms = React.useMemo(() => rooms.filter((room) => !room.archived), [rooms]);
+  const officeRooms = React.useMemo(() => openRooms.filter((room) => chatRoomMatchesStation(room, station)), [openRooms, station]);
+  const visibleRooms = officeRooms.length ? officeRooms : openRooms;
   const [selectedRoomId, setSelectedRoomId] = React.useState(visibleRooms[0]?.id ?? "");
   const selectedRoom = rooms.find((room) => room.id === selectedRoomId) ?? visibleRooms[0];
   const roomMessages = selectedRoom
@@ -25810,7 +25833,13 @@ function AdminV2DepartmentChat({
   const unreadCount = messages.filter((message) => selectedRoom && message.roomId === selectedRoom.id && !(message.readBy ?? []).map(normalizeStationEmail).includes(normalizedStationEmail)).length;
 
   React.useEffect(() => {
-    if (!selectedRoom && visibleRooms[0]) setSelectedRoomId(visibleRooms[0].id);
+    if (!visibleRooms.length) {
+      setSelectedRoomId("");
+      return;
+    }
+    if (!selectedRoom || !visibleRooms.some((room) => room.id === selectedRoom.id)) {
+      setSelectedRoomId(visibleRooms[0].id);
+    }
   }, [selectedRoom, visibleRooms]);
 
   function submitMessage(event: React.FormEvent) {
@@ -25822,7 +25851,8 @@ function AdminV2DepartmentChat({
 
   function submitRoom(event: React.FormEvent) {
     event.preventDefault();
-    onCreateRoom({ name: roomName, department, kind: "Department", participants: participant ? [participant] : [] });
+    const participants = Array.from(new Set([normalizedStationEmail, participant ? normalizeStationEmail(participant) : ""])).filter(Boolean);
+    onCreateRoom({ name: roomName, department, kind: "Department", participants });
     setRoomName("Department coordination");
   }
 
@@ -25855,6 +25885,11 @@ function AdminV2DepartmentChat({
             <span>Rooms</span>
             <strong>{visibleRooms.length} available</strong>
           </div>
+          {!officeRooms.length && openRooms.length > 0 && (
+            <div className="admin-v2-chat-network-note">
+              Showing open network rooms. Send a message or create a department room to connect this office.
+            </div>
+          )}
           <div className="admin-v2-chat-room-list">
             {visibleRooms.map((room) => {
               const roomUnread = messages.filter((message) => message.roomId === room.id && !(message.readBy ?? []).map(normalizeStationEmail).includes(normalizedStationEmail)).length;
@@ -25879,6 +25914,7 @@ function AdminV2DepartmentChat({
             <input value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="Room name" />
             <input value={department} onChange={(event) => setDepartment(event.target.value)} placeholder="Department" />
             <select value={participant} onChange={(event) => setParticipant(event.target.value)}>
+              <option value="">Only this office</option>
               {stationDirectory.map((item) => <option key={item.email} value={item.email}>{item.email}</option>)}
             </select>
             <button className="primary" type="submit">Create room</button>
