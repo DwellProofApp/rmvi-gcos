@@ -24384,19 +24384,10 @@ function AdminV2Shell(props: AdminV2Props) {
     }
     if (section === "AI Desk") {
       return (
-        <AdminV2Directory
-          title="AI Administrative Desk"
-          description="Use approved GCOS records to prepare summaries, follow-up notes, bottleneck reviews, and briefings."
-          metrics={[
-            ["Signals", events.length],
-            ["Reports", reports.length],
-            ["Escalations", escalations.length]
-          ]}
-          actions={["Draft brief", "Summarize reports", "Review delays"]}
-          records={events.slice(0, 8).map((item, index) => {
-            const row = normalizeAdminV2Event(item, index);
-            return { title: row.event, meta: row.actor, detail: row.object, status: "Insight" };
-          })}
+        <AdminV2AIDesk
+          events={events}
+          reports={reports}
+          escalations={escalations}
           onQuickAction={onQuickAction}
         />
       );
@@ -26811,6 +26802,186 @@ function AdminV2Transfers({
             <p>No transfer selected.</p>
           )}
         </div>
+      </section>
+    </div>
+  );
+}
+
+type AdminV2InsightRecord = {
+  key: string;
+  event: string;
+  actor: string;
+  object: string;
+  severity: string;
+  duplicates: number;
+  sourceCount: number;
+  tone: string;
+};
+
+function dedupeAdminV2Insights(events: unknown[]) {
+  const groups = new Map<string, ReturnType<typeof normalizeAdminV2Event>[]>();
+  events.forEach((event, index) => {
+    const row = normalizeAdminV2Event(event, index);
+    const key = [row.event, row.actor, row.object].map((value) => String(value).trim().toLowerCase()).join("|");
+    groups.set(key, [...(groups.get(key) ?? []), row]);
+  });
+  return Array.from(groups.entries()).map<AdminV2InsightRecord>(([key, rows]) => {
+    const row = rows[0];
+    const isAi = /ai|draft|brief|summary/i.test(`${row.event} ${row.object}`);
+    const isTransfer = /transfer/i.test(`${row.event} ${row.object}`);
+    return {
+      key,
+      event: row.event,
+      actor: row.actor,
+      object: row.object,
+      severity: row.severity || "Info",
+      duplicates: Math.max(0, rows.length - 1),
+      sourceCount: rows.length,
+      tone: isAi ? "AI brief" : isTransfer ? "Transfer signal" : "Governance signal"
+    };
+  });
+}
+
+function AdminV2AIDesk({
+  events,
+  reports,
+  escalations,
+  onQuickAction
+}: {
+  events: AuditEvent[];
+  reports: Report[];
+  escalations: Escalation[];
+  onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
+}) {
+  const insights = React.useMemo(() => dedupeAdminV2Insights(events).slice(0, 12), [events]);
+  const [selectedKey, setSelectedKey] = React.useState("");
+  const [notice, setNotice] = React.useState("");
+  React.useEffect(() => {
+    if (!insights.length) {
+      setSelectedKey("");
+      return;
+    }
+    if (!insights.some((item) => item.key === selectedKey)) {
+      setSelectedKey(insights[0].key);
+    }
+  }, [insights, selectedKey]);
+  const selected = insights.find((item) => item.key === selectedKey) ?? insights[0] ?? null;
+  const duplicateCount = insights.reduce((total, item) => total + item.duplicates, 0);
+  const aiBriefCount = insights.filter((item) => item.tone === "AI brief").length;
+  const activeEscalations = escalations.filter((item) => item.status !== "Resolved").length;
+
+  function runAction(action: string, insight = selected) {
+    const record = insight ? {
+      title: insight.event,
+      meta: insight.actor,
+      detail: insight.object,
+      status: insight.tone
+    } : undefined;
+    onQuickAction(action, record);
+    setNotice(record ? `${action} started for ${record.title}.` : `${action} started. The connected workspace has been updated.`);
+  }
+
+  const briefingLines = [
+    `${reports.length} reports are available for summary and follow-up.`,
+    activeEscalations ? `${activeEscalations} escalations need leadership attention.` : "No active escalation pressure is detected.",
+    duplicateCount ? `${duplicateCount} duplicate signals were merged for a cleaner briefing.` : "No duplicate signals are currently visible."
+  ];
+
+  return (
+    <div className="admin-v2-workspace admin-v2-ai-workspace">
+      <section className="admin-v2-panel admin-v2-ai-hero">
+        <div>
+          <span>Workspace</span>
+          <h2>AI Administrative Desk</h2>
+          <p>Prepare executive briefs, summarize reports, and review operational delays without exposing repeated raw event rows.</p>
+        </div>
+        <div className="admin-v2-stat-strip">
+          <article><strong>{insights.length}</strong><span>Clean insights</span></article>
+          <article><strong>{aiBriefCount}</strong><span>AI briefs</span></article>
+          <article><strong>{reports.length}</strong><span>Reports</span></article>
+          <article><strong>{duplicateCount}</strong><span>Duplicates merged</span></article>
+        </div>
+      </section>
+
+      <section className="admin-v2-toolbar admin-v2-ai-toolbar">
+        <button className="primary" type="button" onClick={() => runAction("Draft brief")}>Draft brief</button>
+        <button type="button" onClick={() => runAction("Summarize reports")}>Summarize reports</button>
+        <button type="button" onClick={() => runAction("Review delays")}>Review delays</button>
+      </section>
+      {notice && <div className="admin-v2-live-notice" role="status">{notice}</div>}
+
+      <section className="admin-v2-ai-layout">
+        <div className="admin-v2-panel admin-v2-ai-briefing">
+          <div className="admin-v2-panel-head">
+            <span>Executive briefing</span>
+            <strong>Suggested focus</strong>
+          </div>
+          <div className="admin-v2-ai-brief-card">
+            <span>Administrative summary</span>
+            <h3>{selected?.object ?? "No active insight selected"}</h3>
+            <p>{briefingLines.join(" ")}</p>
+          </div>
+          <div className="admin-v2-ai-focus-list">
+            {briefingLines.map((line) => (
+              <article key={line}>
+                <CheckCircle2 size={16} />
+                <span>{line}</span>
+              </article>
+            ))}
+          </div>
+        </div>
+
+        <div className="admin-v2-panel admin-v2-ai-registry">
+          <div className="admin-v2-panel-head">
+            <span>Insight registry</span>
+            <strong>{insights.length} unique</strong>
+          </div>
+          <div className="admin-v2-ai-list">
+            {insights.map((insight) => (
+              <button
+                className={insight.key === selected?.key ? "selected" : ""}
+                key={insight.key}
+                type="button"
+                onClick={() => setSelectedKey(insight.key)}
+              >
+                <div>
+                  <strong>{insight.event}</strong>
+                  <span>{insight.actor}</span>
+                </div>
+                <em>{insight.tone}</em>
+                <small>{insight.object}</small>
+                {insight.duplicates > 0 && <b>{insight.sourceCount} matching signals merged</b>}
+              </button>
+            ))}
+            {!insights.length && <p className="admin-v2-empty">No AI insights are available yet.</p>}
+          </div>
+        </div>
+
+        <aside className="admin-v2-panel admin-v2-ai-inspector">
+          <div className="admin-v2-panel-head">
+            <span>Details</span>
+            <strong>{selected?.tone ?? "Insight"}</strong>
+          </div>
+          {selected ? (
+            <div className="admin-v2-ai-detail-card">
+              <span className="admin-v2-status insight">Insight</span>
+              <h3>{selected.event}</h3>
+              <p>{selected.object}</p>
+              <div className="admin-v2-audit-field-grid">
+                <article><span>Actor</span><strong>{selected.actor}</strong></article>
+                <article><span>Type</span><strong>{selected.tone}</strong></article>
+                <article><span>Signals</span><strong>{selected.sourceCount}</strong></article>
+                <article><span>Severity</span><strong>{selected.severity}</strong></article>
+              </div>
+              <div className="admin-v2-actions-row">
+                <button type="button" onClick={() => runAction("Draft brief", selected)}>Draft brief</button>
+                <button type="button" onClick={() => runAction("Summarize reports", selected)}>Summarize</button>
+              </div>
+            </div>
+          ) : (
+            <p>No insight selected.</p>
+          )}
+        </aside>
       </section>
     </div>
   );
