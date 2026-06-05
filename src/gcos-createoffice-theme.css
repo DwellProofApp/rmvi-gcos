@@ -620,3 +620,286 @@ body:has(.app-shell),
     border-radius: var(--gcos-radius) !important;
   }
 }
+
+/* Today's GCOS shell: keep sign-in separate, but force the authenticated
+   AdminV2 software back to the dark command-center palette the user selected. */
+.admin-v2-shell {
+  --v2-bg: #080c14 !important;
+  --v2-surface: #101828 !important;
+  --v2-soft: #0c1220 !important;
+  --v2-line: #1e2d45 !important;
+  --v2-line-strong: #253550 !important;
+  --v2-text: #e8f0fe !important;
+  --v2-muted: #94a8c8 !important;
+  --v2-blue: #00d4ff !important;
+  --v2-blue-soft: rgba(0, 212, 255, 0.12) !important;
+  --v2-gold: #ffb800 !important;
+  --v2-green: #00e5a0 !important;
+  --v2-red: #ff4560 !important;
+  --v2-shadow: 0 8px 48px rgba(0, 0, 0, 0.42) !important;
+  background:
+    radial-gradient(ellipse at 25% 10%, rgba(0, 212, 255, 0.08), transparent 42%),
+    radial-gradient(ellipse at 100% 90%, rgba(168, 85, 247, 0.07), transparent 45%),
+    linear-gradient(180deg, #080c14, #050810) !important;
+  color: var(--v2-text) !important;
+}
+
+.admin-v2-shell::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  background-image:
+    linear-gradient(rgba(0, 212, 255, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 212, 255, 0.035) 1px, transparent 1px);
+  background-size: 42px 42px;
+  z-index: 0;
+}
+
+.admin-v2-shell > * {
+  position: relative;
+  z-index: 1;
+}
+
+.admin-v2-sidebar,
+.admin-v2-main {
+  background: transparent !important;
+  color: var(--v2-text) !important;
+  scrollbar-color: #253550 transparent !important;
+}
+
+.admin-v2-sidebar {
+  background: rgba(16, 24, 40, 0.9) !important;
+  border-right: 1px solid #1e2d45 !important;
+}
+
+.admin-v2-brand,
+.admin-v2-station,
+.admin-v2-topbar,
+.admin-v2-hero,
+.admin-v2-panel,
+.admin-v2-workspace-intro,
+.admin-v2-module-card,
+.admin-v2-kpi,
+.admin-v2-table article,
+.admin-v2-actions label,
+.admin-v2-health,
+.admin-v2-search-results,
+.admin-v2-detail,
+.admin-v2-card,
+.admin-v2-toolbar,
+.admin-v2-process-flow article,
+.admin-v2-assignment-brief,
+.admin-v2-assignment-summary article,
+.admin-v2-list article,
+.admin-v2-record-card,
+.admin-v2-row,
+.admin-v2-live-notice {
+  background: rgba(16, 24, 40, 0.72) !important;
+  border-color: #1e2d45 !important;
+  color: #e8f0fe !important;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.22) !important;
+}
+
+.admin-v2-topbar {
+  border-radius: 0 !important;
+}
+
+.admin-v2-hero,
+.admin-v2-workspace-intro {
+  background:
+    linear-gradient(135deg, rgba(0, 212, 255, 0.08), rgba(168, 85, 247, 0.08)),
+    rgba(16, 24, 40, 0.82) !important;
+}
+
+.admin-v2-brand strong,
+.admin-v2-station strong,
+.admin-v2-panel-head strong,
+.admin-v2-detail h2,
+.admin-v2-table strong,
+.admin-v2-module-card strong,
+.admin-v2-kpi strong,
+.admin-v2-page-title h1,
+.admin-v2-hero h2,
+.admin-v2-workspace-intro h2,
+.admin-v2-shell h1,
+.admin-v2-shell h2,
+.admin-v2-shell h3,
+.admin-v2-shell b,
+.admin-v2-shell strong {
+  color: #e8f0fe !important;
+}
+
+.admin-v2-brand small,
+.admin-v2-station span,
+.admin-v2-station small,
+.admin-v2-panel-head span,
+.admin-v2-detail p,
+.admin-v2-table span,
+.admin-v2-table small,
+.admin-v2-module-card span,
+.admin-v2-module-card small,
+.admin-v2-kpi span,
+.admin-v2-page-title p,
+.admin-v2-hero p,
+.admin-v2-workspace-intro p,
+.admin-v2-shell p,
+.admin-v2-shell small,
+.admin-v2-shell label,
+.admin-v2-shell em {
+  color: #94a8c8 !important;
+}
+
+.admin-v2-page-title span,
+.admin-v2-panel-head > span,
+.admin-v2-nav p,
+.admin-v2-workspace-intro > div > span,
+.admin-v2-shell .eyebrow {
+  color: #00d4ff !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
+}
+
+.admin-v2-nav button {
+  background: rgba(12, 18, 32, 0.72) !important;
+  border-color: transparent !important;
+  color: #c7d6ee !important;
+}
+
+.admin-v2-nav button:hover,
+.admin-v2-nav button.active {
+  background: rgba(0, 212, 255, 0.12) !important;
+  border-color: rgba(0, 212, 255, 0.3) !important;
+  color: #00d4ff !important;
+  box-shadow: inset 3px 0 0 #00d4ff, 0 0 18px rgba(0, 212, 255, 0.08) !important;
+}
+
+.admin-v2-actions input,
+.admin-v2-shell input,
+.admin-v2-shell select,
+.admin-v2-shell textarea {
+  background: #0c1220 !important;
+  border-color: #253550 !important;
+  color: #e8f0fe !important;
+}
+
+.admin-v2-actions input::placeholder,
+.admin-v2-shell input::placeholder,
+.admin-v2-shell textarea::placeholder {
+  color: #4a6080 !important;
+}
+
+.admin-v2-actions button,
+.admin-v2-actions-row button,
+.admin-v2-row-actions button,
+.admin-v2-toolbar button,
+.admin-v2-inline-action,
+.admin-v2-shell button:not(.admin-v2-brand):not(.admin-v2-nav button):not(.admin-v2-scroll-tools button) {
+  background: #0c1220 !important;
+  border-color: #253550 !important;
+  color: #e8f0fe !important;
+}
+
+.admin-v2-actions button:hover,
+.admin-v2-actions-row button:hover,
+.admin-v2-row-actions button:hover,
+.admin-v2-toolbar button:hover,
+.admin-v2-inline-action:hover,
+.admin-v2-shell button:not(.admin-v2-brand):not(.admin-v2-nav button):not(.admin-v2-scroll-tools button):hover {
+  border-color: rgba(0, 212, 255, 0.45) !important;
+  color: #00d4ff !important;
+}
+
+.admin-v2-toolbar .primary,
+.admin-v2-actions-row .primary,
+.admin-v2-shell button.primary {
+  background: linear-gradient(135deg, #00d4ff, #00a8cc) !important;
+  border-color: transparent !important;
+  color: #051018 !important;
+}
+
+.admin-v2-health .online,
+.admin-v2-status.ready,
+.admin-v2-status.approved {
+  color: #00e5a0 !important;
+}
+
+.admin-v2-status.escalated,
+.admin-v2-status.critical {
+  color: #ff4560 !important;
+}
+
+.admin-v2-sidebar::-webkit-scrollbar,
+.admin-v2-main::-webkit-scrollbar,
+.admin-v2-list::-webkit-scrollbar {
+  height: 10px !important;
+  width: 10px !important;
+}
+
+.admin-v2-sidebar::-webkit-scrollbar-track,
+.admin-v2-main::-webkit-scrollbar-track,
+.admin-v2-list::-webkit-scrollbar-track {
+  background: rgba(12, 18, 32, 0.85) !important;
+}
+
+.admin-v2-sidebar::-webkit-scrollbar-thumb,
+.admin-v2-main::-webkit-scrollbar-thumb,
+.admin-v2-list::-webkit-scrollbar-thumb {
+  background: #253550 !important;
+  border: 2px solid rgba(12, 18, 32, 0.85) !important;
+  border-radius: 999px !important;
+}
+
+.admin-v2-scroll-tools {
+  position: fixed;
+  z-index: 30;
+  display: grid;
+  gap: 10px;
+}
+
+.admin-v2-scroll-tools-left {
+  bottom: 28px;
+  left: 238px;
+}
+
+.admin-v2-scroll-tools-right {
+  bottom: 28px;
+  right: 24px;
+}
+
+.admin-v2-scroll-tools button {
+  align-items: center;
+  background: rgba(12, 18, 32, 0.92) !important;
+  border: 1px solid rgba(0, 212, 255, 0.28) !important;
+  border-radius: 999px !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.28), inset 0 0 18px rgba(0, 212, 255, 0.06) !important;
+  color: #00d4ff !important;
+  cursor: pointer;
+  display: grid;
+  height: 44px;
+  justify-items: center;
+  place-items: center;
+  transition: transform 160ms ease, border-color 160ms ease, background 160ms ease;
+  width: 44px;
+}
+
+.admin-v2-scroll-tools button:hover {
+  background: rgba(0, 212, 255, 0.14) !important;
+  border-color: rgba(0, 212, 255, 0.55) !important;
+  transform: translateY(-1px);
+}
+
+@media (max-width: 860px) {
+  .admin-v2-scroll-tools-left {
+    left: 16px;
+  }
+
+  .admin-v2-scroll-tools-right {
+    right: 16px;
+  }
+
+  .admin-v2-scroll-tools {
+    bottom: 82px;
+  }
+}

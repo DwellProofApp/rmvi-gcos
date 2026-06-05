@@ -23596,6 +23596,65 @@ function normalizeAdminV2Event(event: unknown, index = 0) {
   };
 }
 
+function scrollAdminV2Panel(selector: string, direction: "up" | "down" | "top" | "bottom") {
+  const panel = document.querySelector<HTMLElement>(selector);
+  if (!panel) return;
+
+  const distance = Math.max(240, Math.round(panel.clientHeight * 0.72));
+  if (direction === "top") {
+    panel.scrollTo({ top: 0, behavior: "smooth" });
+    return;
+  }
+  if (direction === "bottom") {
+    panel.scrollTo({ top: panel.scrollHeight, behavior: "smooth" });
+    return;
+  }
+  panel.scrollBy({ top: direction === "up" ? -distance : distance, behavior: "smooth" });
+}
+
+function handleAdminV2PanelKeys(event: React.KeyboardEvent<HTMLElement>, selector: string) {
+  if (event.defaultPrevented || event.altKey || event.ctrlKey || event.metaKey) return;
+  const target = event.target as HTMLElement | null;
+  if (target?.closest("input, textarea, select, [contenteditable='true']")) return;
+
+  if (event.key === "ArrowDown" || event.key === "PageDown") {
+    event.preventDefault();
+    scrollAdminV2Panel(selector, "down");
+  } else if (event.key === "ArrowUp" || event.key === "PageUp") {
+    event.preventDefault();
+    scrollAdminV2Panel(selector, "up");
+  } else if (event.key === "Home") {
+    event.preventDefault();
+    scrollAdminV2Panel(selector, "top");
+  } else if (event.key === "End") {
+    event.preventDefault();
+    scrollAdminV2Panel(selector, "bottom");
+  }
+}
+
+function AdminV2ScrollControls() {
+  return (
+    <>
+      <div className="admin-v2-scroll-tools admin-v2-scroll-tools-left" aria-label="Navigation scroll controls">
+        <button type="button" onClick={() => scrollAdminV2Panel(".admin-v2-sidebar", "up")} aria-label="Scroll navigation up">
+          <ArrowUpFromLine size={16} />
+        </button>
+        <button type="button" onClick={() => scrollAdminV2Panel(".admin-v2-sidebar", "down")} aria-label="Scroll navigation down">
+          <ArrowDownToLine size={16} />
+        </button>
+      </div>
+      <div className="admin-v2-scroll-tools admin-v2-scroll-tools-right" aria-label="Workspace scroll controls">
+        <button type="button" onClick={() => scrollAdminV2Panel(".admin-v2-main", "up")} aria-label="Scroll workspace up">
+          <ArrowUpFromLine size={16} />
+        </button>
+        <button type="button" onClick={() => scrollAdminV2Panel(".admin-v2-main", "down")} aria-label="Scroll workspace down">
+          <ArrowDownToLine size={16} />
+        </button>
+      </div>
+    </>
+  );
+}
+
 function AdminV2Shell(props: AdminV2Props) {
   const {
     section,
@@ -23933,7 +23992,12 @@ function AdminV2Shell(props: AdminV2Props) {
 
   return (
     <main className={`admin-v2-shell ${isAdminWorkstation ? "admin-v2-admin-mode" : "admin-v2-user-mode"}`}>
-      <aside className="admin-v2-sidebar" tabIndex={0} aria-label="GCOS navigation. Use arrow keys, page up, and page down to scroll this navigation panel.">
+      <aside
+        className="admin-v2-sidebar"
+        tabIndex={0}
+        aria-label="GCOS navigation. Use arrow keys, page up, and page down to scroll this navigation panel."
+        onKeyDown={(event) => handleAdminV2PanelKeys(event, ".admin-v2-sidebar")}
+      >
         <button className="admin-v2-brand" onClick={() => openSection("Control Center")} type="button">
           <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
           <span>
@@ -23960,7 +24024,12 @@ function AdminV2Shell(props: AdminV2Props) {
           ))}
         </nav>
       </aside>
-      <section className="admin-v2-main" tabIndex={0} aria-label="GCOS workspace. Use arrow keys, page up, and page down to scroll this page.">
+      <section
+        className="admin-v2-main"
+        tabIndex={0}
+        aria-label="GCOS workspace. Use arrow keys, page up, and page down to scroll this page."
+        onKeyDown={(event) => handleAdminV2PanelKeys(event, ".admin-v2-main")}
+      >
         <header className="admin-v2-topbar">
           <div className="admin-v2-page-title">
             <span><SectionIcon size={18} /> {sectionMeta.kicker}</span>
@@ -24019,6 +24088,7 @@ function AdminV2Shell(props: AdminV2Props) {
 
         {renderContent()}
       </section>
+      <AdminV2ScrollControls />
     </main>
   );
 }
