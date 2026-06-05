@@ -2636,6 +2636,19 @@ function sectionPath(section: Section) {
   return `/app?section=${encodeURIComponent(section).replaceAll("%20", "+")}`;
 }
 
+function replaceBrowserRoute(path: string) {
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (current !== path) window.history.replaceState({}, "", path);
+}
+
+function signedOutRouteForCurrentLocation(fallbackAdmin = false) {
+  return fallbackAdmin || adminRouteRequested() || adminBoardRequested() ? "/admin#signin" : "/#signin";
+}
+
+function currentPathWithoutTrailingSlash() {
+  return window.location.pathname.replace(/\/+$/, "") || "/";
+}
+
 function inferFileType(files: string) {
   const value = files.toLowerCase();
   if (value.includes("photo") || value.includes("image")) return "Images";
@@ -3886,8 +3899,22 @@ function App() {
     setSession(null);
     setActiveSection(adminRouteRequested() ? "Admin Board" : "Control Center");
     url.searchParams.delete("logout");
-    window.history.replaceState({}, "", adminRouteRequested() ? "/admin" : "/");
+    replaceBrowserRoute(signedOutRouteForCurrentLocation(adminRouteRequested()));
   }, [setSession]);
+
+  React.useEffect(() => {
+    if (session) return;
+    const path = currentPathWithoutTrailingSlash();
+    if (path === "/admin/board") {
+      setActiveSection("Admin Board");
+      replaceBrowserRoute("/admin#signin");
+      return;
+    }
+    if (path === "/app") {
+      setActiveSection("Control Center");
+      replaceBrowserRoute("/#signin");
+    }
+  }, [session]);
 
   React.useEffect(() => {
     void refreshFromApi();
@@ -5497,19 +5524,16 @@ function App() {
     }
   }
 
-  function openAuthenticatedWorkspace(station: StationCard, nextSession: Session, landingSection: Section, options: { reload?: boolean } = {}) {
+  function openAuthenticatedWorkspace(station: StationCard, nextSession: Session, landingSection: Section) {
     const path = sectionPath(landingSection);
-    window.history.replaceState({}, "", path);
     window.localStorage.setItem("gcos.session", JSON.stringify(nextSession));
-    if (options.reload) {
-      window.location.replace(path);
-      return;
-    }
     setActiveStation(station);
     setActiveSection(landingSection);
     setSearchQuery("");
     setNotificationsOpen(false);
     setSession(nextSession);
+    replaceBrowserRoute(path);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   }
 
   function handleLogin(email: string, password: string) {
@@ -5559,6 +5583,7 @@ function App() {
       if (!isLocalPreview) {
         clearStoredSession();
         setSession(null);
+        replaceBrowserRoute(signedOutRouteForCurrentLocation(stationPermissions.canOverride));
       }
     });
     return true;
@@ -5674,7 +5699,8 @@ function App() {
     setSession(null);
     const target = permissions.canOverride || adminRouteRequested() ? "/admin#signin" : "/#signin";
     setActiveSection(target.startsWith("/admin") ? "Admin Board" : "Control Center");
-    window.location.replace(target);
+    replaceBrowserRoute(target);
+    window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   }
 
   const showAdminSignInGate = adminLandingRequested();
