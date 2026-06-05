@@ -62,6 +62,7 @@ import "./signin-overrides.css";
 import "./admin-board-overrides.css";
 import "./interior-overrides.css";
 import "./product-polish.css";
+import "./command-theme.css";
 
 type StationLevel =
   | "International HQ"

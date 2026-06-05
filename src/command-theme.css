@@ -1,0 +1,467 @@
+/* GCOS dark command-center theme
+   Restores the navy/cyan operational interface requested after the light ministry theme pass. */
+
+:root {
+  --cmd-bg: #050b16;
+  --cmd-bg-grid: rgba(20, 199, 255, 0.055);
+  --cmd-shell: #0a1221;
+  --cmd-sidebar: #111a2b;
+  --cmd-sidebar-soft: #0d1524;
+  --cmd-panel: #0d1627;
+  --cmd-panel-2: #101c30;
+  --cmd-card: #0c1424;
+  --cmd-card-2: #101b2e;
+  --cmd-line: #203551;
+  --cmd-line-strong: #2c4b71;
+  --cmd-text: #edf5ff;
+  --cmd-muted: #9fb0c8;
+  --cmd-faint: #62748f;
+  --cmd-cyan: #18d7ff;
+  --cmd-cyan-soft: rgba(24, 215, 255, 0.16);
+  --cmd-cyan-line: rgba(24, 215, 255, 0.58);
+  --cmd-green: #20e6a8;
+  --cmd-warning: #f3c75b;
+  --cmd-danger: #ff6b7a;
+  --cmd-radius: 18px;
+  --cmd-shadow: 0 24px 70px rgba(0, 0, 0, 0.34);
+}
+
+html,
+body,
+#root {
+  background: var(--cmd-bg) !important;
+  color: var(--cmd-text) !important;
+}
+
+body {
+  background:
+    linear-gradient(rgba(24, 215, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24, 215, 255, 0.045) 1px, transparent 1px),
+    radial-gradient(circle at 20% 0%, rgba(24, 215, 255, 0.08), transparent 30%),
+    radial-gradient(circle at 82% 18%, rgba(72, 70, 170, 0.16), transparent 36%),
+    var(--cmd-bg) !important;
+  background-size: 46px 46px, 46px 46px, auto, auto, auto !important;
+}
+
+.app-shell,
+.app-shell.admin-shell,
+.app-shell:not(.admin-shell) {
+  background:
+    linear-gradient(rgba(24, 215, 255, 0.045) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(24, 215, 255, 0.045) 1px, transparent 1px),
+    radial-gradient(circle at 60% 12%, rgba(32, 63, 121, 0.22), transparent 28%),
+    var(--cmd-bg) !important;
+  background-size: 44px 44px, 44px 44px, auto, auto !important;
+  color: var(--cmd-text) !important;
+}
+
+.sidebar,
+.admin-shell .sidebar,
+.app-shell:not(.admin-shell) .sidebar {
+  background: linear-gradient(180deg, #121d31 0%, #0d1727 100%) !important;
+  border-right: 1px solid var(--cmd-line) !important;
+  box-shadow: inset -1px 0 0 rgba(24, 215, 255, 0.04) !important;
+}
+
+.brand,
+.station-switcher,
+.station-directory,
+.sidebar-footer {
+  background: transparent !important;
+  border-color: transparent !important;
+}
+
+.brand strong,
+.brand span,
+.nav-label,
+.sidebar h4,
+.station-directory strong,
+.station-directory span,
+.sidebar-footer,
+.sidebar-footer * {
+  color: var(--cmd-text) !important;
+}
+
+.nav-label,
+.sidebar h4,
+.eyebrow,
+.section-banner .eyebrow,
+.panel .eyebrow,
+.subsection-title {
+  color: var(--cmd-cyan) !important;
+  letter-spacing: 0.18em !important;
+  text-transform: uppercase !important;
+  font-weight: 900 !important;
+}
+
+.nav-item,
+.sidebar button,
+.app-shell:not(.admin-shell) .nav-item {
+  background: rgba(9, 16, 31, 0.74) !important;
+  border: 1px solid rgba(32, 53, 81, 0.34) !important;
+  color: var(--cmd-muted) !important;
+  box-shadow: none !important;
+}
+
+.nav-item:hover,
+.sidebar button:hover {
+  border-color: var(--cmd-cyan-line) !important;
+  color: var(--cmd-text) !important;
+  background: rgba(16, 32, 52, 0.88) !important;
+}
+
+.nav-item.active,
+.sidebar button.active,
+.app-shell:not(.admin-shell) .nav-item.active {
+  background: linear-gradient(135deg, rgba(24, 215, 255, 0.18), rgba(24, 215, 255, 0.07)) !important;
+  border-color: var(--cmd-cyan-line) !important;
+  color: var(--cmd-text) !important;
+  box-shadow: inset 4px 0 0 var(--cmd-cyan), 0 0 32px rgba(24, 215, 255, 0.12) !important;
+}
+
+.nav-item svg,
+.sidebar button svg,
+.nav-item.active svg {
+  color: var(--cmd-muted) !important;
+  stroke: currentColor !important;
+}
+
+.nav-item.active svg {
+  color: var(--cmd-cyan) !important;
+}
+
+.main,
+.content,
+.dashboard-grid,
+.module-grid,
+.station-home,
+.admin-portal-shell {
+  background: transparent !important;
+  color: var(--cmd-text) !important;
+}
+
+.topbar,
+.user-topbar,
+.app-header,
+.section-banner,
+.station-landing,
+.station-home-hero,
+.reports-hero,
+.churchmail-hero {
+  background: rgba(14, 24, 41, 0.90) !important;
+  border: 1px solid var(--cmd-line) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  color: var(--cmd-text) !important;
+}
+
+.section-banner {
+  backdrop-filter: blur(10px);
+}
+
+.section-banner h1,
+.section-banner h2,
+.station-landing h1,
+.station-home-hero h2,
+.reports-hero h2,
+.churchmail-hero h2,
+.panel h2,
+.panel h3,
+.admin-portal-shell h1,
+.admin-portal-shell h2,
+.admin-portal-shell h3,
+.command-card strong,
+.metric-card strong,
+.stat-card strong,
+.station-title h1,
+.user-topbar h1 {
+  color: var(--cmd-text) !important;
+  text-shadow: none !important;
+}
+
+.section-banner p,
+.station-landing p,
+.station-home-hero p,
+.reports-hero p,
+.churchmail-hero p,
+.panel p,
+.panel span,
+.panel small,
+.metric-card span,
+.metric-card small,
+.command-card span,
+.command-card small,
+.station-title p,
+.user-topbar p {
+  color: var(--cmd-muted) !important;
+}
+
+.global-command-card,
+.section-banner + .metric-grid,
+.metrics,
+.metric-card,
+.command-deck,
+.command-card,
+.panel,
+.module-panel,
+.inspector-panel,
+.station-panel,
+.role-system-panel,
+.station-home-actions button,
+.admin-portal-card,
+.admin-console-panel,
+.admin-app-tile,
+.office-command-panel,
+.office-node-card,
+.office-preview-card,
+.department-chat-main,
+.department-chat-side,
+.chat-room-list,
+.chat-thread-panel,
+.report-workspace,
+.approval-workspace,
+.churchmail-workspace,
+.calendar-workspace,
+.personnel-workspace,
+.archive-workspace,
+.audit-workspace {
+  background: linear-gradient(180deg, rgba(16, 27, 46, 0.94), rgba(9, 16, 31, 0.96)) !important;
+  border: 1px solid var(--cmd-line) !important;
+  border-radius: var(--cmd-radius) !important;
+  box-shadow: var(--cmd-shadow) !important;
+  color: var(--cmd-text) !important;
+}
+
+.global-command-card,
+.station-home-hero,
+.section-banner-main,
+.command-hero,
+.office-hero-strip {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(24, 215, 255, 0.10), transparent 34%),
+    linear-gradient(135deg, rgba(18, 43, 68, 0.95), rgba(16, 18, 42, 0.96) 72%) !important;
+}
+
+.metric-card,
+.command-card,
+.stat-card,
+.section-banner-status div,
+.mini-metric-grid article,
+.office-metric,
+.chat-metrics .metric-card {
+  background: rgba(9, 16, 31, 0.82) !important;
+  border: 1px solid var(--cmd-line-strong) !important;
+  border-radius: 14px !important;
+  box-shadow: none !important;
+}
+
+.metric-card strong,
+.command-card strong,
+.stat-card strong,
+.section-banner-status strong {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace !important;
+  letter-spacing: 0.03em !important;
+}
+
+.search-box,
+.search-box input,
+.topbar-actions input,
+input,
+select,
+textarea,
+.chat-create-room input,
+.chat-create-room select,
+.chat-compose textarea {
+  background: rgba(7, 13, 27, 0.82) !important;
+  border: 1px solid var(--cmd-line-strong) !important;
+  color: var(--cmd-text) !important;
+  box-shadow: none !important;
+}
+
+input::placeholder,
+textarea::placeholder,
+.search-box input::placeholder {
+  color: var(--cmd-faint) !important;
+}
+
+button,
+.primary-action,
+.secondary-action,
+.button-row button,
+.station-form button,
+.station-inline-task button,
+.station-inbox-actions button {
+  border-radius: 10px !important;
+  font-weight: 900 !important;
+}
+
+.primary-action,
+.button-row button:first-child,
+.station-form button,
+.station-inline-task button,
+.station-inbox-actions button,
+.tabs button.active {
+  background: var(--cmd-cyan) !important;
+  border-color: var(--cmd-cyan) !important;
+  color: #04111d !important;
+  box-shadow: 0 0 24px rgba(24, 215, 255, 0.18) !important;
+}
+
+.secondary-action,
+.button-row button,
+.tabs button,
+.panel button,
+.station-home-actions button {
+  background: rgba(9, 16, 31, 0.78) !important;
+  border: 1px solid var(--cmd-line-strong) !important;
+  color: var(--cmd-text) !important;
+}
+
+.secondary-action:hover,
+.button-row button:hover,
+.tabs button:hover,
+.panel button:hover,
+.station-home-actions button:hover {
+  border-color: var(--cmd-cyan-line) !important;
+  background: rgba(24, 215, 255, 0.10) !important;
+}
+
+.status-pill,
+.badge,
+.chip,
+.pill,
+.tag,
+.section-banner-status span,
+.message-kind,
+.workflow-status {
+  background: rgba(24, 215, 255, 0.10) !important;
+  border: 1px solid rgba(24, 215, 255, 0.28) !important;
+  color: var(--cmd-cyan) !important;
+}
+
+.sync-status,
+.api-status,
+.status-ok {
+  background: rgba(32, 230, 168, 0.10) !important;
+  border-color: rgba(32, 230, 168, 0.26) !important;
+  color: var(--cmd-text) !important;
+}
+
+.sync-status svg,
+.api-status svg {
+  color: var(--cmd-green) !important;
+}
+
+table,
+.table,
+.registry-table,
+.data-table {
+  background: transparent !important;
+  color: var(--cmd-text) !important;
+}
+
+th,
+td,
+.row,
+.list-row,
+.message-row,
+.report-row,
+.approval-row,
+.task-card,
+.policy-row,
+.calendar-event,
+.person-row,
+.archive-row,
+.audit-row,
+.chat-room-button,
+.presence-row,
+.chat-message {
+  background: rgba(7, 13, 27, 0.58) !important;
+  border-color: var(--cmd-line) !important;
+  color: var(--cmd-text) !important;
+}
+
+.chat-room-button.active,
+.chat-message.mine,
+.chat-readiness-card {
+  background: linear-gradient(135deg, rgba(24, 215, 255, 0.18), rgba(8, 16, 31, 0.96)) !important;
+  border-color: var(--cmd-cyan-line) !important;
+  color: var(--cmd-text) !important;
+}
+
+.chat-thread-header,
+.chat-compose,
+.panel-header,
+.section-heading {
+  border-color: var(--cmd-line) !important;
+}
+
+.empty-state {
+  background: rgba(7, 13, 27, 0.58) !important;
+  border: 1px dashed var(--cmd-line-strong) !important;
+  color: var(--cmd-muted) !important;
+}
+
+.progress,
+.progress-track {
+  background: rgba(255, 255, 255, 0.07) !important;
+}
+
+.progress i,
+.progress-bar,
+.progress-fill {
+  background: linear-gradient(90deg, var(--cmd-cyan), #4b7dff) !important;
+}
+
+.floating-scroll-controls button,
+.scroll-button,
+.scroll-control {
+  background: rgba(8, 20, 35, 0.92) !important;
+  border: 1px solid var(--cmd-cyan-line) !important;
+  color: var(--cmd-cyan) !important;
+}
+
+a {
+  color: var(--cmd-cyan) !important;
+}
+
+svg {
+  stroke: currentColor;
+}
+
+.admin-portal-shell,
+.admin-shell .admin-portal-shell {
+  background: transparent !important;
+}
+
+.admin-portal-topbar,
+.admin-portal-hero,
+.admin-dashboard-hero {
+  background: rgba(14, 24, 41, 0.92) !important;
+  border: 1px solid var(--cmd-line) !important;
+  color: var(--cmd-text) !important;
+}
+
+.admin-portal-logo,
+.section-banner-icon,
+.command-icon {
+  background: rgba(24, 215, 255, 0.12) !important;
+  border: 1px solid rgba(24, 215, 255, 0.24) !important;
+  color: var(--cmd-cyan) !important;
+}
+
+@media (max-width: 760px) {
+  .app-shell,
+  .app-shell:not(.admin-shell),
+  .app-shell.admin-shell {
+    background: var(--cmd-bg) !important;
+  }
+
+  .topbar,
+  .user-topbar,
+  .section-banner,
+  .station-home-hero,
+  .panel {
+    border-radius: 16px !important;
+  }
+}
