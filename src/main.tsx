@@ -72,7 +72,7 @@ type StationLevel =
   | "Area HQ"
   | "Local Branch";
 
-type Section = "Control Center" | "Admin Board" | "ChurchMail" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Live Comms" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit" | "Account Settings";
+type Section = "Control Center" | "Admin Board" | "ChurchMail" | "Department Chat" | "Reports" | "Approvals" | "Tasks" | "Policies" | "Calendar" | "Personnel" | "Escalations" | "AI Desk" | "Live Comms" | "Hierarchy" | "Offices" | "Transfers" | "Archive" | "Audit" | "Account Settings";
 type MessageKind = "Directive" | "Report" | "Approval" | "Notification" | "Transfer";
 type Status = "Ready" | "In Review" | "Escalated" | "Approved" | "Queued";
 type OrgNodeKind = "Office" | "Directorate" | "Department" | "Unit" | "Staff Structure";
@@ -146,6 +146,12 @@ type GovernanceTask = { id: string; title: string; owner: string; assignee: stri
 type Policy = { id: string; title: string; category: string; owner: string; status: "Draft" | "Active" | "Review" | "Retired"; summary: string; acknowledgements: number; version?: string; reviewBy?: string; watchers?: string[]; complianceStatus?: string; complianceScore?: number; evidence?: string; distributedTo?: string; distributedAt?: string; exceptionNote?: string; exceptionExpires?: string; trainingAssigned?: boolean; trainingAudience?: string; hold?: boolean; holdReason?: string; linkedTask?: string; linkedApproval?: string; archived?: boolean; archiveReason?: string };
 type CalendarEvent = { id: string; title: string; category: string; owner: string; date: string; priority: "Low" | "Medium" | "High" | "Critical"; status: "Scheduled" | "At Risk" | "Complete"; watchers?: string[]; checkInStatus?: string; checkInBy?: string; venue?: string; agenda?: string; attendance?: number; reminderSent?: boolean; reminderAudience?: string; readiness?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type LiveSession = { id: string; title: string; host: string; sessionType: "Video Meeting" | "Office Chat" | "Broadcast" | "Approval Room" | "Report Review" | string; status: "Live" | "Queued" | "Priority" | "Archived" | "Complete" | string; linkedRecord: string; route: string; purpose: string; participants?: string[]; checkedInParticipants?: string[]; attendanceCount?: number; attendanceBuiltAt?: string; attendanceLedger?: { participant: string; role: string; present: boolean; muted: boolean; recordedAt: string }[]; quorum?: { required: number; present: number; met: boolean; checkedAt: string; checkedBy: string }; polls?: { id: string; question: string; options: string[]; votes: Record<string, string[]>; status: string; createdBy: string; createdAt: string; updatedAt?: string }[]; resolutions?: { id: string; title: string; status: string; movedBy: string; secondedBy?: string; votesFor: number; votesAgainst: number; createdAt: string; passedAt?: string; linkedApprovalId?: string }[]; notes?: string[]; transcript?: { id: string; author: string; body: string; createdAt: string }[]; decisions?: { id: string; text: string; owner: string; due: string; createdAt: string }[]; agendaItems?: string[]; agendaUpdatedAt?: string; actionItems?: { id: string; title: string; assignee: string; taskId?: string; createdAt: string }[]; extractedTaskIds?: string[]; participantRoles?: Record<string, string>; mutedParticipants?: string[]; screenShareStatus?: string; screenShareStartedAt?: string; screenShareStoppedAt?: string; screenSharedBy?: string; sharedDocuments?: { id: string; name: string; source: string; sharedBy: string; sharedAt: string }[]; recordingStatus?: string; recordingStartedAt?: string; recordingStoppedAt?: string; voiceTranscript?: string; transcriptStatus?: string; files?: string[]; createdAt?: string; updatedAt?: string; lastActionBy?: string; summaryMessageId?: string; summarySentAt?: string; reminderMessageId?: string; reminderSentAt?: string; handoffMessageId?: string; handoffSentAt?: string; handoffRoute?: string; followUpTaskId?: string; followUpLedger?: { status: string; missingParticipants: string[]; openActionItems: string[]; owner: string; builtAt: string }; calendarEventId?: string; packetDocumentId?: string; packetBuiltAt?: string; outcomeReportId?: string; outcomeReportCreatedAt?: string; minutesDocumentId?: string; minutesBuiltAt?: string; minutesMessageId?: string; minutesSentAt?: string; minutesSignatures?: { signer: string; role: string; signedAt: string; attestation: string }[]; minutesSignatureStatus?: string; sealedDocumentId?: string; sealedAt?: string; sealedBy?: string; sealReason?: string; resolutionApprovalId?: string; riskReview?: { score: number; status: string; issues: string[]; reviewedAt: string; reviewedBy: string }; riskEscalationId?: string; connectivity?: { status: string; bandwidthMode: string; lastCheckedAt: string; checkedBy: string }; fallbackChannel?: { channel: string; reason: string; activatedAt: string; activatedBy: string }; continuityAlertId?: string; offlineNotes?: { id: string; author: string; body: string; station: string; createdAt: string }[]; recoverySummary?: { status: string; summary: string; syncedAt: string; syncedBy: string }; aiBrief?: { id: string; title: string; summary: string; risks: string; nextActions: string[]; generatedAt: string; generatedBy: string }; aiBriefDocumentId?: string; playbook?: { name: string; checklist: string[]; appliedAt: string; appliedBy: string; roles?: Record<string, string> }; recurringSchedule?: { frequency: string; nextRun: string; owner: string; createdAt: string }; recurringCalendarEventId?: string; closedAt?: string; closedBy?: string; closeReason?: string; archived?: boolean; archiveReason?: string };
+type ChatPresenceStatus = "Online" | "Away" | "Offline";
+type ChatRoomKind = "Department" | "Direct" | "Operations" | "Meeting";
+type DepartmentChatRoom = { id: string; name: string; kind: ChatRoomKind | string; department: string; participants: string[]; createdBy: string; createdAt: string; lastMessageAt?: string; linkedRecord?: string; archived?: boolean; liveSessionId?: string; summaryMessageId?: string };
+type DepartmentChatMessage = { id: string; roomId: string; sender: string; body: string; createdAt: string; readBy?: string[]; pinned?: boolean; linkedReport?: string; linkedApproval?: string; linkedTask?: string; archived?: boolean };
+type ChatPresence = { email: string; status: ChatPresenceStatus | string; lastSeenAt: string; activeRoomId?: string };
+type ChatDigest = { generatedAt: string; rooms: number; messages: number; online: number; unread: number; pinned: number; nextRoom: string };
 type PersonRecord = { id: string; name: string; role: string; currentStation: string; assignedStation: string; status: "Active" | "Transfer Pending" | "Assigned" | "Inactive" | "Onboarding" | "On Leave"; clearance?: string; credentialStatus?: string; trainingStatus?: string; trainingTrack?: string; stationAccess?: string; accessStatus?: string; incidentFlag?: string; incidentSeverity?: string; linkedTask?: string; reviewStatus?: string; reviewNote?: string; archived?: boolean; archiveReason?: string };
 type Transfer = { id: string; person: string; from: string; to: string; step: string; risk: string; letterStatus?: string; letterRef?: string; scheduledFor?: string; notes?: string[]; watchers?: string[]; personnelRecord?: string; linkedTask?: string; linkedReport?: string; archived?: boolean; archiveReason?: string };
 type AuditRow = { id: string; event: string; actor: string; object: string; result: string; time: string; sealed?: boolean; verified?: boolean; chainHash?: string; verification?: string; severity?: "Info" | "Low" | "Medium" | "High" | "Critical"; category?: string; reviewer?: string; comments?: string[]; investigation?: "Open" | "Closed"; investigationReason?: string; investigationResult?: string; hold?: boolean; holdReason?: string; holdReleaseReason?: string };
@@ -1073,6 +1079,7 @@ const navItems: { icon: React.ElementType; label: Section }[] = [
   { icon: LayoutDashboard, label: "Control Center" },
   { icon: KeyRound, label: "Admin Board" },
   { icon: Mail, label: "ChurchMail" },
+  { icon: MessageSquareText, label: "Department Chat" },
   { icon: FileCheck2, label: "Reports" },
   { icon: Workflow, label: "Approvals" },
   { icon: SquareCheckBig, label: "Tasks" },
@@ -1111,6 +1118,13 @@ const sectionProfiles: Record<Section, { icon: React.ElementType; eyebrow: strin
     title: "ChurchMail Governance Inbox",
     description: "Classified official communication for directives, reports, approvals, notifications, transfers, routing, and archival traceability.",
     signal: "Classified routing"
+  },
+  "Department Chat": {
+    icon: MessageSquareText,
+    eyebrow: "Live office coordination",
+    title: "Department Chat",
+    description: "Live office-to-office rooms with presence, read status, meeting handoff, task follow-up, and ChurchMail summary routing.",
+    signal: "Presence live"
   },
   Reports: {
     icon: FileCheck2,
@@ -1366,7 +1380,7 @@ function buildReportingRoute(level: StationLevel, parentName: string) {
 }
 
 function workflowAccessForPreset(permissionPreset: PermissionPreset) {
-  const access = new Set(["ChurchMail", "Reports", "Tasks", "Archive", "Live Comms"]);
+  const access = new Set(["ChurchMail", "Department Chat", "Reports", "Tasks", "Archive", "Live Comms"]);
   if (["Department Lead", "Approver", "Office Admin", "Executive Override"].includes(permissionPreset)) {
     access.add("Approvals");
   }
@@ -2286,6 +2300,25 @@ const initialLiveSessions: LiveSession[] = [
   { id: "live-003", title: "Executive emergency briefing", host: "International Executive Workstation", sessionType: "Broadcast", status: "Priority", linkedRecord: "Construction milestone report", route: "HQ broadcast channel", purpose: "Coordinate escalation response", participants: ["international@rmvi.org", "admin@rmvi.org"], notes: ["Construction packet needs evidence confirmation"], files: [], createdAt: "08:25 PM" }
 ];
 
+const initialChatRooms: DepartmentChatRoom[] = [
+  { id: "chat-room-ops", name: "General Operations", kind: "Operations", department: "Operations", participants: ["admin@rmvi.org", "np@rmvi.org", "district_admin@rmvi.org", "local_branch_017@rmvi.org"], createdBy: "admin@rmvi.org", createdAt: "08:05 PM", lastMessageAt: "08:22 PM" },
+  { id: "chat-room-finance", name: "Finance Desk", kind: "Department", department: "Finance", participants: ["finance@rmvi.org", "audit@rmvi.org", "np@rmvi.org"], createdBy: "finance@rmvi.org", createdAt: "08:08 PM", lastMessageAt: "08:20 PM" },
+  { id: "chat-room-mission", name: "Mission Coordination", kind: "Department", department: "Mission", participants: ["mission@rmvi.org", "district_admin@rmvi.org", "local_branch_017@rmvi.org"], createdBy: "mission@rmvi.org", createdAt: "08:12 PM", lastMessageAt: "08:18 PM" }
+];
+
+const initialChatMessages: DepartmentChatMessage[] = [
+  { id: "chat-msg-001", roomId: "chat-room-ops", sender: "admin@rmvi.org", body: "Please confirm all offices can see their monthly report assignments before tomorrow's review.", createdAt: "08:14 PM", readBy: ["admin@rmvi.org", "np@rmvi.org"] },
+  { id: "chat-msg-002", roomId: "chat-room-finance", sender: "finance@rmvi.org", body: "Finance desk is ready to review the budget proposal once evidence is attached.", createdAt: "08:20 PM", readBy: ["finance@rmvi.org"], linkedReport: "Monthly Budget Proposal" },
+  { id: "chat-msg-003", roomId: "chat-room-mission", sender: "mission@rmvi.org", body: "Mission office is coordinating the church growth report route with Local Branch 017.", createdAt: "08:18 PM", readBy: ["mission@rmvi.org", "local_branch_017@rmvi.org"], linkedReport: "Monthly Church Growth Activities Report" }
+];
+
+const initialChatPresence: ChatPresence[] = [
+  { email: "admin@rmvi.org", status: "Online", lastSeenAt: "now", activeRoomId: "chat-room-ops" },
+  { email: "finance@rmvi.org", status: "Online", lastSeenAt: "2 min ago", activeRoomId: "chat-room-finance" },
+  { email: "mission@rmvi.org", status: "Away", lastSeenAt: "7 min ago", activeRoomId: "chat-room-mission" },
+  { email: "local_branch_017@rmvi.org", status: "Offline", lastSeenAt: "28 min ago" }
+];
+
 const initialPersonnel: PersonRecord[] = [
   { id: "per-001", name: "Rev. Daniel Moore", role: "District Coordinator", currentStation: "Buchanan District", assignedStation: "Riverbend Area Office", status: "Transfer Pending" },
   { id: "per-002", name: "Sis. Amelia Hart", role: "Education Desk Officer", currentStation: "Local Branch 017", assignedStation: "County Education Desk", status: "Active" },
@@ -2310,7 +2343,7 @@ const initialOffices: Office[] = [
     parentName: "Buchanan District",
     permissionPreset: "Reporter",
     reportingRoute: "Area HQ -> Buchanan District -> Supervising authority -> Archive vault",
-    workflowAccess: ["ChurchMail", "Reports", "Tasks", "Archive", "Live Comms"],
+    workflowAccess: ["ChurchMail", "Department Chat", "Reports", "Tasks", "Archive", "Live Comms"],
     password: demoStationPassword("riverbend"),
     status: "Provisioned"
   }
@@ -2736,7 +2769,7 @@ function isWorshipStation(station: StationCard) {
 function getAllowedSections(station: StationCard, permissions: Permissions): Section[] {
   if (permissions.canOverride) return navItems.map((item) => item.label);
 
-  const allowed = new Set<Section>(["Control Center", "ChurchMail", "Reports", "Tasks", "Policies", "Calendar", "Archive", "Live Comms", "Account Settings"]);
+  const allowed = new Set<Section>(["Control Center", "ChurchMail", "Department Chat", "Reports", "Tasks", "Policies", "Calendar", "Archive", "Live Comms", "Account Settings"]);
   if (permissions.canApprove || isFinanceStation(station)) allowed.add("Approvals");
   if (permissions.canExecuteTransfers || isMissionStation(station) || isPersonnelStation(station)) allowed.add("Transfers");
   if (permissions.canCreateOffices) allowed.add("Offices");
@@ -2887,6 +2920,7 @@ function getWorkstationProfile(station: StationCard, permissions: Permissions): 
       primaryTools: [
         { icon: SlidersHorizontal, label: "Admin Board", detail: "Users, offices, sessions", section: "Admin Board" },
         { icon: Building2, label: "Offices", detail: "Create and approve stations", section: "Offices" },
+        { icon: MessageSquareText, label: "Department Chat", detail: "Live office coordination", section: "Department Chat" },
         { icon: ShieldCheck, label: "Audit", detail: "Seal records and sessions", section: "Audit" },
         { icon: AlertTriangle, label: "Escalations", detail: "Executive attention queue", section: "Escalations" }
       ],
@@ -2910,6 +2944,7 @@ function getWorkstationProfile(station: StationCard, permissions: Permissions): 
       primaryTools: [
         { icon: FileBarChart2, label: "Finance Reports", detail: "Tithe, offering, budgets", section: "Reports" },
         { icon: Signature, label: "Approvals", detail: "Release and budget chains", section: "Approvals" },
+        { icon: MessageSquareText, label: "Finance Chat", detail: "Live finance coordination", section: "Department Chat" },
         { icon: Files, label: "Evidence", detail: "Receipts and deposits", section: "Archive" },
         { icon: Mail, label: "Finance Mail", detail: "Send to treasury", section: "ChurchMail" }
       ],
@@ -2956,6 +2991,7 @@ function getWorkstationProfile(station: StationCard, permissions: Permissions): 
       primaryTools: [
         { icon: Send, label: "Send Update", detail: "Outreach and testimony mail", section: "ChurchMail" },
         { icon: FileCheck2, label: "Evangelism Report", detail: "Souls reached and won", section: "Reports" },
+        { icon: MessageSquareText, label: "Mission Chat", detail: "Coordinate outreach live", section: "Department Chat" },
         { icon: Users, label: "Follow-up", detail: "Contacts and converts", section: "Personnel" },
         { icon: GitBranch, label: "Transfers", detail: "Mission movement", section: "Transfers" }
       ],
@@ -3140,6 +3176,7 @@ function getWorkstationProfile(station: StationCard, permissions: Permissions): 
       primaryTools: [
         { icon: Inbox, label: "Incoming Reports", detail: "Review submissions", section: "Reports" },
         { icon: Signature, label: "Approvals", detail: "Delegated chains", section: "Approvals" },
+        { icon: MessageSquareText, label: "Office Chat", detail: "Coordinate supervised offices", section: "Department Chat" },
         { icon: AlertTriangle, label: "Escalations", detail: "Bottleneck watch", section: "Escalations" },
         { icon: GitBranch, label: "Hierarchy", detail: "Reporting structure", section: "Hierarchy" }
       ],
@@ -3161,6 +3198,7 @@ function getWorkstationProfile(station: StationCard, permissions: Permissions): 
     defaultTaskTitle: "Prepare weekly branch update",
     primaryTools: [
       { icon: Mail, label: "Inbox", detail: "Read and reply", section: "ChurchMail" },
+      { icon: MessageSquareText, label: "Office Chat", detail: "Live department updates", section: "Department Chat" },
       { icon: FileCheck2, label: "Reports", detail: "Prepare submission", section: "Reports" },
       { icon: SquareCheckBig, label: "Tasks", detail: "Assigned work", section: "Tasks" },
       { icon: ArchiveIcon, label: "Archive", detail: "Files and evidence", section: "Archive" }
@@ -3188,6 +3226,9 @@ function App() {
   const [policies, setPolicies] = usePersistentState("gcos.policies", initialPolicies);
   const [calendarEvents, setCalendarEvents] = usePersistentState("gcos.calendarEvents", initialCalendarEvents);
   const [liveSessions, setLiveSessions] = usePersistentState("gcos.liveSessions", initialLiveSessions);
+  const [chatRooms, setChatRooms] = usePersistentState("gcos.chatRooms", initialChatRooms);
+  const [chatMessages, setChatMessages] = usePersistentState("gcos.chatMessages", initialChatMessages);
+  const [chatPresence, setChatPresence] = usePersistentState("gcos.chatPresence", initialChatPresence);
   const [personnel, setPersonnel] = usePersistentState("gcos.personnel", initialPersonnel);
   const [transfers, setTransfers] = usePersistentState("gcos.transfers", initialTransfers);
   const [offices, setOffices] = usePersistentState("gcos.offices", initialOffices);
@@ -3219,6 +3260,7 @@ function App() {
   const [policyDigest, setPolicyDigest] = React.useState<PolicyDigest | null>(null);
   const [calendarDigest, setCalendarDigest] = React.useState<CalendarDigest | null>(null);
   const [messageDigest, setMessageDigest] = React.useState<MessageDigest | null>(null);
+  const [chatDigest, setChatDigest] = React.useState<ChatDigest | null>(null);
   const [reportDigest, setReportDigest] = React.useState<ReportDigest | null>(null);
   const [approvalDigest, setApprovalDigest] = React.useState<ApprovalDigest | null>(null);
   const [aiDraftDigest, setAiDraftDigest] = React.useState<AiDraftDigest | null>(null);
@@ -3295,6 +3337,16 @@ function App() {
     };
   }, [auditRows.length, calendarEvents, offlineQueue.length, policies, scopedApprovals, scopedDocuments.length, scopedEscalations, scopedMessages, scopedPersonnel, scopedReports, scopedTasks, scopedTransfers.length]);
   const notifications = React.useMemo<NotificationItem[]>(() => [
+    ...chatMessages
+      .filter((item) => !(item.readBy ?? []).includes(activeStation.email))
+      .slice(0, 3)
+      .map((item) => ({
+        id: item.id,
+        section: "Department Chat" as Section,
+        title: chatRooms.find((room) => room.id === item.roomId)?.name ?? "Department Chat",
+        detail: `${item.sender}: ${item.body}`,
+        severity: "Info" as const
+      })),
     ...scopedEscalations
       .filter((item) => item.status !== "Resolved")
       .map((item) => ({
@@ -3381,7 +3433,7 @@ function App() {
         detail: `${item.object} - ${item.result}`,
         severity: item.event === "EscalationTriggered" ? "High" as const : "Info" as const
       }))
-  ].filter((item) => allowedSections.includes(item.section)).slice(0, 10), [allowedSections, auditRows, calendarEvents, offlineQueue, policies, scopedApprovals, scopedEscalations, scopedPersonnel, scopedTasks, scopedTransfers]);
+  ].filter((item) => allowedSections.includes(item.section)).slice(0, 10), [activeStation.email, allowedSections, auditRows, calendarEvents, chatMessages, chatRooms, offlineQueue, policies, scopedApprovals, scopedEscalations, scopedPersonnel, scopedTasks, scopedTransfers]);
   const criticalNotificationCount = notifications.filter((item) => ["Critical", "High"].includes(item.severity)).length;
 
   React.useEffect(() => {
@@ -3403,6 +3455,8 @@ function App() {
       ...policies.map((item) => ({ id: item.id, section: "Policies" as Section, title: item.title, meta: `${item.category} - ${item.owner} - ${item.summary}`, status: item.status })),
       ...calendarEvents.map((item) => ({ id: item.id, section: "Calendar" as Section, title: item.title, meta: `${item.category} - ${item.owner} - ${item.date} - ${item.priority}`, status: item.status })),
       ...liveSessions.map((item) => ({ id: item.id, section: "Live Comms" as Section, title: item.title, meta: `${item.sessionType} - ${item.host} - ${item.route} - ${item.linkedRecord}`, status: item.status })),
+      ...chatRooms.map((item) => ({ id: item.id, section: "Department Chat" as Section, title: item.name, meta: `${item.department} - ${item.participants.join(", ")}`, status: item.kind })),
+      ...chatMessages.map((item) => ({ id: item.id, section: "Department Chat" as Section, title: item.body, meta: `${item.sender} - ${item.linkedReport ?? item.linkedApproval ?? item.linkedTask ?? "Department message"}`, status: item.pinned ? "Pinned" : "Message" })),
       ...scopedPersonnel.map((item) => ({ id: item.id, section: "Personnel" as Section, title: item.name, meta: `${item.role} - ${item.currentStation} -> ${item.assignedStation}`, status: item.status })),
       ...scopedEscalations.map((item) => ({ id: item.id, section: "Escalations" as Section, title: item.item, meta: `${item.owner} - ${item.reason}`, status: item.status })),
       ...offices.map((item) => ({ id: item.id, section: "Offices" as Section, title: item.name, meta: `${item.email} - ${item.level} - ${item.supervisor}`, status: item.status })),
@@ -3416,7 +3470,7 @@ function App() {
       .filter((record) => allowedSections.includes(record.section))
       .filter((record) => [record.title, record.meta, record.status, record.section].join(" ").toLowerCase().includes(query))
       .slice(0, 8);
-  }, [allowedSections, auditRows, calendarEvents, liveSessions, offices, policies, scopedApprovals, scopedDocuments, scopedEscalations, scopedMessages, scopedPersonnel, scopedReports, scopedTasks, scopedTransfers, searchQuery]);
+  }, [allowedSections, auditRows, calendarEvents, chatMessages, chatRooms, liveSessions, offices, policies, scopedApprovals, scopedDocuments, scopedEscalations, scopedMessages, scopedPersonnel, scopedReports, scopedTasks, scopedTransfers, searchQuery]);
 
   function openSection(section: Section) {
     const nextSection = allowedSections.includes(section) ? section : "Control Center";
@@ -3448,6 +3502,9 @@ function App() {
         policies: Policy[];
         calendarEvents: CalendarEvent[];
         liveSessions: LiveSession[];
+        chatRooms: DepartmentChatRoom[];
+        chatMessages: DepartmentChatMessage[];
+        chatPresence: ChatPresence[];
         personnel: PersonRecord[];
         escalations: Escalation[];
         transfers: Transfer[];
@@ -3465,6 +3522,9 @@ function App() {
       setPolicies(data.policies ?? initialPolicies);
       setCalendarEvents(data.calendarEvents ?? initialCalendarEvents);
       setLiveSessions(data.liveSessions ?? initialLiveSessions);
+      setChatRooms(data.chatRooms ?? initialChatRooms);
+      setChatMessages(data.chatMessages ?? initialChatMessages);
+      setChatPresence(data.chatPresence ?? initialChatPresence);
       setPersonnel(data.personnel ?? initialPersonnel);
       setEscalations(data.escalations);
       setTransfers(data.transfers);
@@ -3489,6 +3549,7 @@ function App() {
       void apiRequest<PolicyDigest>("/api/policies/digest").then(setPolicyDigest).catch(() => undefined);
       void apiRequest<CalendarDigest>("/api/calendar-events/digest").then(setCalendarDigest).catch(() => undefined);
       void apiRequest<MessageDigest>("/api/messages/digest").then(setMessageDigest).catch(() => undefined);
+      void apiRequest<ChatDigest>("/api/chat/digest").then(setChatDigest).catch(() => undefined);
       void apiRequest<ReportDigest>("/api/reports/digest").then(setReportDigest).catch(() => undefined);
       void apiRequest<ApprovalDigest>("/api/approvals/digest").then(setApprovalDigest).catch(() => undefined);
       void apiRequest<AiDraftDigest>("/api/ai-drafts/digest").then(setAiDraftDigest).catch(() => undefined);
@@ -3514,6 +3575,9 @@ function App() {
         policies: Policy[];
         calendarEvents: CalendarEvent[];
         liveSessions: LiveSession[];
+        chatRooms: DepartmentChatRoom[];
+        chatMessages: DepartmentChatMessage[];
+        chatPresence: ChatPresence[];
         personnel: PersonRecord[];
         escalations: Escalation[];
         transfers: Transfer[];
@@ -3531,6 +3595,9 @@ function App() {
       setPolicies(data.policies ?? initialPolicies);
       setCalendarEvents(data.calendarEvents ?? initialCalendarEvents);
       setLiveSessions(data.liveSessions ?? initialLiveSessions);
+      setChatRooms(data.chatRooms ?? initialChatRooms);
+      setChatMessages(data.chatMessages ?? initialChatMessages);
+      setChatPresence(data.chatPresence ?? initialChatPresence);
       setPersonnel(data.personnel ?? initialPersonnel);
       setEscalations(data.escalations);
       setTransfers(data.transfers);
@@ -3649,6 +3716,160 @@ function App() {
       method: "POST",
       body: JSON.stringify(created)
     }).catch(() => undefined);
+  }
+
+  function createChatRoom(draft: { name: string; department: string; kind?: ChatRoomKind; participants: string[] }) {
+    const created: DepartmentChatRoom = {
+      id: `chat-room-${Date.now()}`,
+      name: draft.name,
+      kind: draft.kind ?? "Department",
+      department: draft.department,
+      participants: Array.from(new Set([activeStation.email, ...draft.participants])),
+      createdBy: activeStation.email,
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    setChatRooms((items) => [created, ...items]);
+    recordAudit("DepartmentChatRoomCreated", created.name, `${created.participants.length} office participants`);
+    if (!offlineMode) {
+      void apiRequest<DepartmentChatRoom>("/api/chat/rooms", {
+        method: "POST",
+        body: JSON.stringify(draft)
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function sendChatMessage(roomId: string, body: string) {
+    if (!body.trim()) return;
+    const created: DepartmentChatMessage = {
+      id: `chat-msg-${Date.now()}`,
+      roomId,
+      sender: activeStation.email,
+      body: body.trim(),
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+      readBy: [activeStation.email]
+    };
+    setChatMessages((items) => [created, ...items]);
+    setChatRooms((items) => items.map((room) => room.id === roomId ? { ...room, lastMessageAt: created.createdAt, participants: Array.from(new Set([...(room.participants ?? []), activeStation.email])) } : room));
+    recordAudit("DepartmentChatMessageSent", "Department chat", created.body.slice(0, 80));
+    if (!offlineMode) {
+      void apiRequest<DepartmentChatMessage>(`/api/chat/rooms/${roomId}/messages`, {
+        method: "POST",
+        body: JSON.stringify({ body: created.body })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function updateChatPresence(status: ChatPresenceStatus, activeRoomId?: string) {
+    const payload: ChatPresence = {
+      email: activeStation.email,
+      status,
+      activeRoomId,
+      lastSeenAt: status === "Online" ? "now" : new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    setChatPresence((items) => [payload, ...items.filter((item) => item.email !== activeStation.email)]);
+    if (!offlineMode) {
+      void apiRequest<ChatPresence>("/api/chat/presence", {
+        method: "POST",
+        body: JSON.stringify({ status, activeRoomId })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function markChatRoomRead(roomId: string) {
+    setChatMessages((items) => items.map((item) => item.roomId === roomId ? { ...item, readBy: Array.from(new Set([...(item.readBy ?? []), activeStation.email])) } : item));
+    if (!offlineMode) {
+      void apiRequest(`/api/chat/rooms/${roomId}/read`, { method: "POST", body: JSON.stringify({}) }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function pinChatMessage(id: string) {
+    setChatMessages((items) => items.map((item) => item.id === id ? { ...item, pinned: !item.pinned } : item));
+    if (!offlineMode) {
+      const target = chatMessages.find((item) => item.id === id);
+      void apiRequest<DepartmentChatMessage>(`/api/chat/messages/${id}/pin`, {
+        method: "POST",
+        body: JSON.stringify({ pinned: !target?.pinned })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function archiveChatRoom(roomId: string) {
+    setChatRooms((items) => items.map((item) => item.id === roomId ? { ...item, archived: true } : item));
+    if (!offlineMode) {
+      void apiRequest<DepartmentChatRoom>(`/api/chat/rooms/${roomId}/archive`, {
+        method: "POST",
+        body: JSON.stringify({ reason: "Archived from Department Chat" })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function createChatTask(roomId: string) {
+    const room = chatRooms.find((item) => item.id === roomId);
+    const latest = chatMessages.find((item) => item.roomId === roomId);
+    const created: GovernanceTask = {
+      id: `tsk-chat-${Date.now()}`,
+      title: `Follow up: ${room?.name ?? "Department chat"}`,
+      owner: room?.department ?? "Department Chat",
+      assignee: activeStation.email,
+      priority: "Medium",
+      due: "Today",
+      status: "Queued",
+      linkedReport: latest?.linkedReport
+    };
+    setTasks((items) => [created, ...items]);
+    if (!offlineMode) {
+      void apiRequest<GovernanceTask>(`/api/chat/rooms/${roomId}/task`, {
+        method: "POST",
+        body: JSON.stringify({ title: created.title })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function startChatMeeting(roomId: string) {
+    const room = chatRooms.find((item) => item.id === roomId);
+    const created: LiveSession = {
+      id: `live-chat-${Date.now()}`,
+      title: `${room?.name ?? "Department"} meeting`,
+      host: activeStation.title,
+      sessionType: "Department Room",
+      status: "Live",
+      linkedRecord: room?.name ?? "Department Chat",
+      route: room?.participants.join(" -> ") ?? activeStation.email,
+      purpose: "Live department coordination",
+      participants: room?.participants ?? [activeStation.email],
+      notes: [],
+      files: [],
+      createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+    };
+    setLiveSessions((items) => [created, ...items]);
+    setActiveSection("Live Comms");
+    if (!offlineMode) {
+      void apiRequest<LiveSession>(`/api/chat/rooms/${roomId}/meeting`, {
+        method: "POST",
+        body: JSON.stringify({ title: created.title })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function sendChatToChurchMail(roomId: string) {
+    const room = chatRooms.find((item) => item.id === roomId);
+    const message: Message = {
+      id: `msg-chat-${Date.now()}`,
+      kind: "Notification",
+      subject: `${room?.name ?? "Department chat"} summary`,
+      from: `${activeStation.email} -> ChurchMail`,
+      age: "now",
+      status: "Ready",
+      files: "Department chat summary"
+    };
+    setMessages((items) => [message, ...items]);
+    setActiveSection("ChurchMail");
+    if (!offlineMode) {
+      void apiRequest<Message>(`/api/chat/rooms/${roomId}/churchmail`, {
+        method: "POST",
+        body: JSON.stringify({ subject: message.subject })
+      }).then(refreshFromApi).catch(() => undefined);
+    }
   }
 
   function updateLiveSessionStatus(id: string, status: LiveSession["status"]) {
@@ -9519,6 +9740,9 @@ function App() {
             escalations={scopedEscalations}
             transfers={scopedTransfers}
             documents={scopedDocuments}
+            chatRooms={chatRooms}
+            chatMessages={chatMessages}
+            chatPresence={chatPresence}
             events={events}
             offlineQueue={offlineQueue}
             offlineConflicts={offlineConflicts}
@@ -9873,6 +10097,26 @@ function App() {
             onBuildLiveSessionPacket={buildLiveSessionPacket}
             onCreateLiveSessionOutcomeReport={createLiveSessionOutcomeReport}
             onArchiveLiveSession={archiveLiveSession}
+            onOpenSection={openSection}
+          />
+        )}
+        {effectiveSection === "Department Chat" && (
+          <DepartmentChat
+            station={activeStation}
+            rooms={chatRooms}
+            messages={chatMessages}
+            presence={chatPresence}
+            stationDirectory={stationDirectory}
+            digest={chatDigest}
+            onCreateRoom={createChatRoom}
+            onSendMessage={sendChatMessage}
+            onPresence={updateChatPresence}
+            onMarkRead={markChatRoomRead}
+            onPinMessage={pinChatMessage}
+            onArchiveRoom={archiveChatRoom}
+            onCreateTask={createChatTask}
+            onStartMeeting={startChatMeeting}
+            onSendChurchMail={sendChatToChurchMail}
             onOpenSection={openSection}
           />
         )}
@@ -10591,6 +10835,9 @@ function CommandDeck({
   escalations,
   transfers,
   documents,
+  chatRooms,
+  chatMessages,
+  chatPresence,
   offlineQueue
 }: {
   apiStatus: ApiStatus | null;
@@ -10608,6 +10855,9 @@ function CommandDeck({
   escalations: Escalation[];
   transfers: Transfer[];
   documents: DocumentRecord[];
+  chatRooms: DepartmentChatRoom[];
+  chatMessages: DepartmentChatMessage[];
+  chatPresence: ChatPresence[];
   offlineQueue: OfflineAction[];
 }) {
   const openEscalations = escalations.filter((item) => item.status !== "Resolved");
@@ -10619,6 +10869,9 @@ function CommandDeck({
   const activePersonnel = personnel.filter((item) => item.status !== "Inactive").length;
   const readyTransfers = transfers.filter((item) => item.step === "New station login ready").length;
   const archivedDocuments = documents.filter((item) => item.status === "Archived").length;
+  const activeChatRooms = chatRooms.filter((item) => !item.archived).length;
+  const onlineOffices = chatPresence.filter((item) => item.status === "Online").length;
+  const unreadChatMessages = chatMessages.filter((item) => !(item.readBy ?? []).includes(station.email)).length;
   const authorityFlags = [
     permissions.canCreateOffices && "Office admin",
     permissions.canApprove && "Approver",
@@ -10706,6 +10959,20 @@ function CommandDeck({
       tone: calendarEvents.some((item) => item.status === "At Risk") ? "risk" : upcomingEvents.length ? "queued" : "ok"
     },
     {
+      icon: MessageSquareText,
+      label: "Department Chat",
+      value: String(activeChatRooms),
+      detail: `${onlineOffices} offices online`,
+      tone: onlineOffices ? "ok" : "neutral"
+    },
+    {
+      icon: CircleDot,
+      label: "Unread Coordination",
+      value: String(unreadChatMessages),
+      detail: `${chatMessages.length} chat records`,
+      tone: unreadChatMessages ? "queued" : "ok"
+    },
+    {
       icon: Users,
       label: "Personnel",
       value: String(activePersonnel),
@@ -10744,7 +11011,7 @@ function CommandDeck({
 
   return (
     <div className="panel command-deck">
-      <PanelHeader icon={LayoutDashboard} title="Command Operations Layer" action="14 systems" />
+      <PanelHeader icon={LayoutDashboard} title="Command Operations Layer" action="16 systems" />
       <div className="command-grid">
         {cards.map(({ icon: Icon, label, value, detail, tone }) => (
           <article className={`command-card ${tone}`} key={label}>
@@ -10853,6 +11120,9 @@ function ControlCenter({
   escalations,
   transfers,
   documents,
+  chatRooms,
+  chatMessages,
+  chatPresence,
   events,
   offlineQueue,
   offlineConflicts,
@@ -10883,6 +11153,9 @@ function ControlCenter({
   escalations: Escalation[];
   transfers: Transfer[];
   documents: DocumentRecord[];
+  chatRooms: DepartmentChatRoom[];
+  chatMessages: DepartmentChatMessage[];
+  chatPresence: ChatPresence[];
   events: string[];
   offlineQueue: OfflineAction[];
   offlineConflicts: OfflineConflict[];
@@ -10919,6 +11192,9 @@ function ControlCenter({
         escalations={escalations}
         transfers={transfers}
         documents={documents}
+        chatRooms={chatRooms}
+        chatMessages={chatMessages}
+        chatPresence={chatPresence}
         offlineQueue={offlineQueue}
       />
       <CommandDispatchPanel
@@ -10938,6 +11214,7 @@ function ControlCenter({
       <HierarchyPanel compact />
       <AiPanel />
       <ChurchMailPanel messages={messages} />
+      <DepartmentChatPanel rooms={chatRooms} messages={chatMessages} presence={chatPresence} />
       <WorkflowPanel />
       <ApprovalPanel approvals={approvals} />
       <EventBusPanel events={events} />
@@ -14161,6 +14438,194 @@ function Offices({
   );
 }
 
+function DepartmentChat({
+  station,
+  rooms,
+  messages,
+  presence,
+  stationDirectory,
+  digest,
+  onCreateRoom,
+  onSendMessage,
+  onPresence,
+  onMarkRead,
+  onPinMessage,
+  onArchiveRoom,
+  onCreateTask,
+  onStartMeeting,
+  onSendChurchMail,
+  onOpenSection
+}: {
+  station: StationCard;
+  rooms: DepartmentChatRoom[];
+  messages: DepartmentChatMessage[];
+  presence: ChatPresence[];
+  stationDirectory: StationCard[];
+  digest: ChatDigest | null;
+  onCreateRoom: (draft: { name: string; department: string; kind?: ChatRoomKind; participants: string[] }) => void;
+  onSendMessage: (roomId: string, body: string) => void;
+  onPresence: (status: ChatPresenceStatus, activeRoomId?: string) => void;
+  onMarkRead: (roomId: string) => void;
+  onPinMessage: (id: string) => void;
+  onArchiveRoom: (roomId: string) => void;
+  onCreateTask: (roomId: string) => void;
+  onStartMeeting: (roomId: string) => void;
+  onSendChurchMail: (roomId: string) => void;
+  onOpenSection: (section: Section) => void;
+}) {
+  const activeRooms = rooms.filter((room) => !room.archived && (room.participants.includes(station.email) || station.email === "admin@rmvi.org"));
+  const [selectedRoomId, setSelectedRoomId] = React.useState(activeRooms[0]?.id ?? rooms[0]?.id ?? "");
+  const selectedRoom = rooms.find((room) => room.id === selectedRoomId) ?? activeRooms[0] ?? rooms[0];
+  const roomMessages = messages.filter((item) => item.roomId === selectedRoom?.id && !item.archived).sort((a, b) => a.createdAt.localeCompare(b.createdAt));
+  const unread = messages.filter((item) => selectedRoom && item.roomId === selectedRoom.id && !(item.readBy ?? []).includes(station.email)).length;
+  const [draft, setDraft] = React.useState("");
+  const [roomName, setRoomName] = React.useState("Department coordination");
+  const [department, setDepartment] = React.useState(station.level || "Operations");
+  const [participant, setParticipant] = React.useState(stationDirectory.find((item) => item.email !== station.email)?.email ?? "");
+
+  React.useEffect(() => {
+    if (!selectedRoom && activeRooms[0]) setSelectedRoomId(activeRooms[0].id);
+  }, [activeRooms, selectedRoom]);
+
+  function submitMessage(event: React.FormEvent) {
+    event.preventDefault();
+    if (!selectedRoom || !draft.trim()) return;
+    onSendMessage(selectedRoom.id, draft);
+    setDraft("");
+  }
+
+  function submitRoom(event: React.FormEvent) {
+    event.preventDefault();
+    onCreateRoom({ name: roomName, department, kind: "Department", participants: participant ? [participant] : [] });
+    setRoomName("Department coordination");
+  }
+
+  return (
+    <section className="module-grid department-chat-workspace">
+      <div className="department-chat-main">
+        <div className="section-heading">
+          <div>
+            <span className="eyebrow">Live office coordination</span>
+            <h2>Department Chat</h2>
+            <p>Office-based rooms for quick coordination, presence, live meetings, and official ChurchMail handoff.</p>
+          </div>
+          <div className="button-row">
+            <button className="primary-action" onClick={() => onPresence("Online", selectedRoom?.id)}>Go online</button>
+            <button className="secondary-action" onClick={() => onPresence("Away", selectedRoom?.id)}>Away</button>
+          </div>
+        </div>
+
+        <div className="mini-metric-grid chat-metrics">
+          <MetricCard label="Rooms" value={digest?.rooms ?? activeRooms.length} detail="active office rooms" />
+          <MetricCard label="Messages" value={digest?.messages ?? messages.length} detail="thread records" />
+          <MetricCard label="Online" value={digest?.online ?? presence.filter((item) => item.status === "Online").length} detail="office identities" />
+          <MetricCard label="Unread" value={digest?.unread ?? unread} detail="needs review" />
+        </div>
+
+        <div className="department-chat-layout">
+          <aside className="chat-room-list">
+            <div className="subsection-title">Rooms</div>
+            {activeRooms.map((room) => {
+              const roomUnread = messages.filter((item) => item.roomId === room.id && !(item.readBy ?? []).includes(station.email)).length;
+              return (
+                <button key={room.id} className={`chat-room-button ${selectedRoom?.id === room.id ? "active" : ""}`} onClick={() => setSelectedRoomId(room.id)}>
+                  <span>
+                    <strong>{room.name}</strong>
+                    <small>{room.department} / {room.participants.length} offices</small>
+                  </span>
+                  {roomUnread ? <b>{roomUnread}</b> : <CircleDot size={14} />}
+                </button>
+              );
+            })}
+
+            <form className="chat-create-room" onSubmit={submitRoom}>
+              <div className="subsection-title">Create room</div>
+              <input value={roomName} onChange={(event) => setRoomName(event.target.value)} placeholder="Room name" />
+              <input value={department} onChange={(event) => setDepartment(event.target.value)} placeholder="Department" />
+              <select value={participant} onChange={(event) => setParticipant(event.target.value)}>
+                {stationDirectory.map((item) => <option key={item.email} value={item.email}>{item.email}</option>)}
+              </select>
+              <button type="submit" className="primary-action">Create room</button>
+            </form>
+          </aside>
+
+          <div className="chat-thread-panel">
+            {selectedRoom ? (
+              <>
+                <div className="chat-thread-header">
+                  <div>
+                    <span className="eyebrow">{selectedRoom.kind}</span>
+                    <h3>{selectedRoom.name}</h3>
+                    <p>{selectedRoom.participants.join(" / ")}</p>
+                  </div>
+                  <button className="secondary-action" onClick={() => onMarkRead(selectedRoom.id)}>Mark read</button>
+                </div>
+                <div className="chat-message-list">
+                  {roomMessages.length ? roomMessages.map((item) => (
+                    <article key={item.id} className={`chat-message ${item.sender === station.email ? "mine" : ""}`}>
+                      <div>
+                        <strong>{item.sender}</strong>
+                        <small>{item.createdAt} / read by {(item.readBy ?? []).length}</small>
+                      </div>
+                      <p>{item.body}</p>
+                      <div className="chat-message-meta">
+                        {item.linkedReport && <span>Report: {item.linkedReport}</span>}
+                        {item.linkedApproval && <span>Approval: {item.linkedApproval}</span>}
+                        {item.linkedTask && <span>Task: {item.linkedTask}</span>}
+                        {item.pinned && <span>Pinned</span>}
+                        <button onClick={() => onPinMessage(item.id)}>{item.pinned ? "Unpin" : "Pin"}</button>
+                      </div>
+                    </article>
+                  )) : (
+                    <div className="empty-state">No messages yet. Send the first department update.</div>
+                  )}
+                </div>
+                <form className="chat-compose" onSubmit={submitMessage}>
+                  <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={`Write as ${station.email}`} />
+                  <button type="submit" className="primary-action"><Send size={16} /> Send</button>
+                </form>
+              </>
+            ) : (
+              <div className="empty-state">Create a room to begin live department coordination.</div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <aside className="inspector-panel department-chat-side">
+        <div className="subsection-title">Presence</div>
+        <div className="presence-list">
+          {presence.map((item) => (
+            <div key={item.email} className="presence-row">
+              <span className={`presence-dot ${String(item.status).toLowerCase()}`} />
+              <span>
+                <strong>{item.email}</strong>
+                <small>{item.status} / {item.lastSeenAt}</small>
+              </span>
+            </div>
+          ))}
+        </div>
+
+        <div className="subsection-title">Connected actions</div>
+        <div className="chat-action-stack">
+          <button className="primary-action" disabled={!selectedRoom} onClick={() => selectedRoom && onStartMeeting(selectedRoom.id)}><Video size={16} /> Start meeting</button>
+          <button className="secondary-action" disabled={!selectedRoom} onClick={() => selectedRoom && onCreateTask(selectedRoom.id)}>Create task</button>
+          <button className="secondary-action" disabled={!selectedRoom} onClick={() => selectedRoom && onSendChurchMail(selectedRoom.id)}>Send ChurchMail summary</button>
+          <button className="secondary-action" onClick={() => onOpenSection("Reports")}>Open reports</button>
+          <button className="secondary-action" disabled={!selectedRoom} onClick={() => selectedRoom && onArchiveRoom(selectedRoom.id)}>Archive room</button>
+        </div>
+
+        <div className="chat-readiness-card">
+          <span className="eyebrow">Office identity</span>
+          <h3>{station.title}</h3>
+          <p>{station.email}</p>
+          <p>Chat is tied to the permanent office identity, not a private personal account.</p>
+        </div>
+      </aside>
+    </section>
+  );
+}
+
 function LiveComms({
   station,
   offices,
@@ -15337,12 +15802,13 @@ function AdminBoard({
     { label: "Users", section: "Personnel" as Section, icon: Users, detail: `${officialStations.length} station identities`, tone: "blue" },
     { label: "Offices", section: "Offices" as Section, icon: Building2, detail: "Create nodes and workstations", tone: "gold" },
     { label: "Mail", section: "ChurchMail" as Section, icon: Mail, detail: "Official communication", tone: "blue" },
+    { label: "Department Chat", section: "Department Chat" as Section, icon: MessageSquareText, detail: "Live office coordination", tone: "blue" },
     { label: "Reports", section: "Reports" as Section, icon: FileCheck2, detail: `${reports.length} active packets`, tone: "green" },
     { label: "Approvals", section: "Approvals" as Section, icon: BadgeCheck, detail: `${openApprovals} awaiting review`, tone: "gold" },
     { label: "Audit", section: "Audit" as Section, icon: ShieldCheck, detail: `${sealedAuditRows} sealed records`, tone: "blue" },
     { label: "Archive", section: "Archive" as Section, icon: Files, detail: `${documents.length} vault documents`, tone: "green" },
     { label: "AI Desk", section: "AI Desk" as Section, icon: Sparkles, detail: "Drafts and summaries", tone: "gold" },
-    { label: "Live Comms", section: "Live Comms" as Section, icon: Video, detail: "Meetings, chat, broadcasts", tone: "blue" }
+    { label: "Live Comms", section: "Live Comms" as Section, icon: Video, detail: "Meetings and broadcasts", tone: "blue" }
   ];
 
   return (
@@ -18471,6 +18937,34 @@ function ChurchMailPanel({ messages }: { messages: Message[] }) {
         {messages.slice(0, 4).map((message) => (
           <MessageCard key={message.subject} message={message} />
         ))}
+      </div>
+    </div>
+  );
+}
+
+function DepartmentChatPanel({ rooms, messages, presence }: { rooms: DepartmentChatRoom[]; messages: DepartmentChatMessage[]; presence: ChatPresence[] }) {
+  const activeRooms = rooms.filter((room) => !room.archived);
+  const online = presence.filter((item) => item.status === "Online");
+  return (
+    <div className="panel span-4">
+      <PanelHeader icon={MessageSquareText} title="Department Chat" action={`${online.length} online`} />
+      <div className="workflow-list">
+        {activeRooms.slice(0, 4).map((room) => {
+          const latest = messages.find((message) => message.roomId === room.id);
+          return (
+            <article className="workflow-item" key={room.id}>
+              <div>
+                <strong>{room.name}</strong>
+                <span>{latest?.body ?? `${room.participants.length} offices connected`}</span>
+              </div>
+              <b>{messages.filter((message) => message.roomId === room.id).length}</b>
+              <div className="progress">
+                <i className="blue" style={{ width: `${Math.min(100, room.participants.length * 18)}%` }} />
+              </div>
+            </article>
+          );
+        })}
+        {!activeRooms.length && <div className="empty-state">No active department rooms yet.</div>}
       </div>
     </div>
   );

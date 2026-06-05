@@ -32,6 +32,11 @@ export function createSeedState() {
     reportingRoute: riverbendOffice.reportingRoute,
     workflowAccess: riverbendOffice.workflowAccess
   });
+  const chatRoomsSeed = [
+    chatRoom("General Operations", "Operations", "Operations", ["admin@rmvi.org", "np@rmvi.org", "district_admin@rmvi.org", "local_branch_017@rmvi.org"], "admin@rmvi.org", { lastMessageAt: "08:22 PM" }),
+    chatRoom("Finance Desk", "Department", "Finance", ["finance@rmvi.org", "audit@rmvi.org", "np@rmvi.org"], "finance@rmvi.org", { lastMessageAt: "08:20 PM" }),
+    chatRoom("Mission Coordination", "Department", "Mission", ["mission@rmvi.org", "district_admin@rmvi.org", "local_branch_017@rmvi.org"], "mission@rmvi.org", { lastMessageAt: "08:18 PM" })
+  ];
   return {
     stations: [
       station("admin@rmvi.org", "System Administrator Workstation", "International HQ", "Full GCOS administration, deployment control, user lifecycle, audit override"),
@@ -79,6 +84,18 @@ export function createSeedState() {
       liveSession("District reporting review", "National Presidency Workstation", "Video Meeting", "Live", "National mission activity report", "National HQ -> District HQ", "Report review"),
       liveSession("Finance approval discussion", "Finance Desk Workstation", "Approval Room", "Queued", "County youth program budget", "Finance Office -> District -> County", "Approval discussion"),
       liveSession("Executive emergency briefing", "International Executive Workstation", "Broadcast", "Priority", "Construction milestone report", "HQ broadcast channel", "Executive directive")
+    ],
+    chatRooms: chatRoomsSeed,
+    chatMessages: [
+      chatMessage(chatRoomsSeed[0].id, "admin@rmvi.org", "Please confirm all offices can see their monthly report assignments before tomorrow's review.", { readBy: ["admin@rmvi.org", "np@rmvi.org"], createdAt: "08:14 PM" }),
+      chatMessage(chatRoomsSeed[1].id, "finance@rmvi.org", "Finance desk is ready to review the budget proposal once evidence is attached.", { readBy: ["finance@rmvi.org"], linkedReport: "Monthly Budget Proposal", createdAt: "08:20 PM" }),
+      chatMessage(chatRoomsSeed[2].id, "mission@rmvi.org", "Mission office is coordinating the church growth report route with Local Branch 017.", { readBy: ["mission@rmvi.org", "local_branch_017@rmvi.org"], linkedReport: "Monthly Church Growth Activities Report", createdAt: "08:18 PM" })
+    ],
+    chatPresence: [
+      chatPresence("admin@rmvi.org", "Online", { lastSeenAt: "now", activeRoomId: chatRoomsSeed[0].id }),
+      chatPresence("finance@rmvi.org", "Online", { lastSeenAt: "2 min ago", activeRoomId: chatRoomsSeed[1].id }),
+      chatPresence("mission@rmvi.org", "Away", { lastSeenAt: "7 min ago", activeRoomId: chatRoomsSeed[2].id }),
+      chatPresence("local_branch_017@rmvi.org", "Offline", { lastSeenAt: "28 min ago" })
     ],
     personnel: [
       person("Rev. Daniel Moore", "District Coordinator", "Buchanan District", "Riverbend Area Office", "Transfer Pending"),
@@ -189,6 +206,46 @@ export function liveSession(title, host, sessionType, status, linkedRecord, rout
   };
 }
 
+export function chatRoom(name, kind, department, participants, createdBy, metadata = {}) {
+  return {
+    id: randomUUID(),
+    name,
+    kind,
+    department,
+    participants: participants.map(normalizeStationEmail),
+    createdBy: normalizeStationEmail(createdBy),
+    createdAt: metadata.createdAt ?? new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    lastMessageAt: metadata.lastMessageAt,
+    linkedRecord: metadata.linkedRecord,
+    archived: Boolean(metadata.archived)
+  };
+}
+
+export function chatMessage(roomId, sender, body, metadata = {}) {
+  return {
+    id: randomUUID(),
+    roomId,
+    sender: normalizeStationEmail(sender),
+    body,
+    createdAt: metadata.createdAt ?? new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    readBy: (metadata.readBy ?? [sender]).map(normalizeStationEmail),
+    pinned: Boolean(metadata.pinned),
+    linkedReport: metadata.linkedReport,
+    linkedApproval: metadata.linkedApproval,
+    linkedTask: metadata.linkedTask,
+    archived: Boolean(metadata.archived)
+  };
+}
+
+export function chatPresence(email, status = "Offline", metadata = {}) {
+  return {
+    email: normalizeStationEmail(email),
+    status,
+    lastSeenAt: metadata.lastSeenAt ?? new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+    activeRoomId: metadata.activeRoomId
+  };
+}
+
 export function person(name, role, currentStation, assignedStation, status = "Active") {
   return { id: randomUUID(), name, role, currentStation, assignedStation, status };
 }
@@ -216,7 +273,7 @@ export function office(name, email, level, department, supervisor, metadata = {}
     parentName,
     permissionPreset,
     reportingRoute: metadata.reportingRoute ?? [level, parentName || "Parent office", "Supervising authority", "Archive vault"].join(" -> "),
-    workflowAccess: metadata.workflowAccess ?? ["ChurchMail", "Reports", "Tasks", "Archive", "Live Comms"],
+    workflowAccess: metadata.workflowAccess ?? ["ChurchMail", "Reports", "Tasks", "Archive", "Live Comms", "Department Chat"],
     password: `gcos-${name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "")}`,
     status: "Provisioned"
   };

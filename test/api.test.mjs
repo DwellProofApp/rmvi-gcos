@@ -50,6 +50,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(status.counts.policies > 0, true);
     assert.equal(status.counts.calendarEvents > 0, true);
     assert.equal(status.counts.liveSessions > 0, true);
+    assert.equal(status.counts.chatRooms > 0, true);
+    assert.equal(status.counts.chatMessages > 0, true);
     assert.equal(status.counts.personnel > 0, true);
     assert.equal(status.counts.audit > 0, true);
 
@@ -1663,6 +1665,65 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const liveDigest = await getJson("/api/live-sessions/digest");
     assert.equal(liveDigest.total > 0, true);
     assert.equal(liveDigest.nextSession.length > 0, true);
+
+    const chatRooms = await getJson("/api/chat/rooms", nationalToken);
+    assert.equal(chatRooms.length > 0, true);
+
+    const chatPresence = await postJson("/api/chat/presence", {
+      status: "Online",
+      activeRoomId: chatRooms[0].id
+    }, nationalToken);
+    assert.equal(chatPresence.status, "Online");
+
+    const createdChatRoom = await postJson("/api/chat/rooms", {
+      name: "Automated department chat",
+      kind: "Department",
+      department: "Automation",
+      participants: ["np@rmvi.org", "finance@rmvi.org"]
+    }, nationalToken);
+    assert.equal(createdChatRoom.name, "Automated department chat");
+    assert.equal(createdChatRoom.participants.includes("np@rmvi.org"), true);
+
+    const chatMessage = await postJson(`/api/chat/rooms/${createdChatRoom.id}/messages`, {
+      body: "Automated department chat test",
+      linkedReport: "Automated mission finance report"
+    }, nationalToken);
+    assert.equal(chatMessage.body, "Automated department chat test");
+    assert.equal(chatMessage.linkedReport, "Automated mission finance report");
+
+    const pinnedChatMessage = await postJson(`/api/chat/messages/${chatMessage.id}/pin`, {
+      pinned: true
+    }, nationalToken);
+    assert.equal(pinnedChatMessage.pinned, true);
+
+    const readChatRoom = await postJson(`/api/chat/rooms/${createdChatRoom.id}/read`, {}, nationalToken);
+    assert.equal(readChatRoom.messages.length >= 1, true);
+
+    const chatTask = await postJson(`/api/chat/rooms/${createdChatRoom.id}/task`, {
+      title: "Follow up from automated department chat"
+    }, nationalToken);
+    assert.equal(chatTask.title, "Follow up from automated department chat");
+    assert.equal(chatTask.linkedChatRoomId, createdChatRoom.id);
+
+    const chatMeeting = await postJson(`/api/chat/rooms/${createdChatRoom.id}/meeting`, {
+      title: "Automated department chat meeting"
+    }, nationalToken);
+    assert.equal(chatMeeting.title, "Automated department chat meeting");
+    assert.equal(chatMeeting.participants.includes("finance@rmvi.org"), true);
+
+    const chatChurchMail = await postJson(`/api/chat/rooms/${createdChatRoom.id}/churchmail`, {
+      subject: "Automated department chat summary"
+    }, nationalToken);
+    assert.equal(chatChurchMail.subject, "Automated department chat summary");
+
+    const chatDigest = await getJson("/api/chat/digest", nationalToken);
+    assert.equal(chatDigest.rooms > 0, true);
+    assert.equal(chatDigest.online > 0, true);
+
+    const archivedChatRoom = await postJson(`/api/chat/rooms/${createdChatRoom.id}/archive`, {
+      reason: "Automated chat archive"
+    }, nationalToken);
+    assert.equal(archivedChatRoom.archived, true);
 
     const invalidLiveSession = await rawPost("/api/live-sessions", {
       title: ""

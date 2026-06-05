@@ -454,6 +454,55 @@ const validators = {
     if (body.ids !== undefined) requireStringArray(body.ids, "ids");
   },
 
+  "POST /api/chat/rooms": (body) => {
+    requireString(body.name, "name");
+    if (body.kind !== undefined) requireEnum(body.kind, ["Department", "Direct", "Operations", "Meeting"], "kind");
+    if (body.department !== undefined) requireString(body.department, "department");
+    if (body.participants !== undefined) requireStringArray(body.participants, "participants");
+    if (body.linkedRecord !== undefined) requireString(body.linkedRecord, "linkedRecord");
+  },
+
+  "POST /api/chat/rooms/:id/messages": (body) => {
+    requireString(body.body, "body");
+    if (body.linkedReport !== undefined) requireString(body.linkedReport, "linkedReport");
+    if (body.linkedApproval !== undefined) requireString(body.linkedApproval, "linkedApproval");
+    if (body.linkedTask !== undefined) requireString(body.linkedTask, "linkedTask");
+  },
+
+  "POST /api/chat/presence": (body) => {
+    requireEnum(body.status, ["Online", "Away", "Offline"], "status");
+    if (body.activeRoomId !== undefined) requireString(body.activeRoomId, "activeRoomId");
+  },
+
+  "POST /api/chat/rooms/:id/read": (body) => {
+    if (body.reader !== undefined) requireString(body.reader, "reader");
+  },
+
+  "POST /api/chat/messages/:id/pin": (body) => {
+    if (body.pinned !== undefined && typeof body.pinned !== "boolean") throw validationError("pinned must be boolean");
+  },
+
+  "POST /api/chat/rooms/:id/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/chat/rooms/:id/task": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.assignee !== undefined) requireString(body.assignee, "assignee");
+    if (body.priority !== undefined) requireEnum(body.priority, taskPriorities, "priority");
+    if (body.due !== undefined) requireString(body.due, "due");
+  },
+
+  "POST /api/chat/rooms/:id/meeting": (body) => {
+    if (body.title !== undefined) requireString(body.title, "title");
+    if (body.purpose !== undefined) requireString(body.purpose, "purpose");
+  },
+
+  "POST /api/chat/rooms/:id/churchmail": (body) => {
+    if (body.subject !== undefined) requireString(body.subject, "subject");
+    if (body.kind !== undefined) requireEnum(body.kind, messageKinds, "kind");
+  },
+
   "POST /api/reports": (body) => {
     requireString(body.name, "name");
     requireString(body.path, "path");
