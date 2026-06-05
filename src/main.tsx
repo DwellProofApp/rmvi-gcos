@@ -26387,6 +26387,8 @@ function AdminV2OfficeRoutingCenter({
     source: [approval.delegate, approval.route, approval.request].join(" "),
     fallback: approval.route
   }) !== approval.route).length;
+  const routedRecordCount = reportRuleCoverage + approvalRuleCoverage;
+  const isHierarchyMode = mode === "Hierarchy";
 
   function createRule(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -26407,17 +26409,19 @@ function AdminV2OfficeRoutingCenter({
   }
 
   return (
-    <section className="admin-v2-routing-center">
+    <section className={`admin-v2-routing-center ${isHierarchyMode ? "is-hierarchy-routing" : "is-office-routing"}`}>
       <div className="admin-v2-workspace-hero">
         <div>
-          <span>{mode === "Hierarchy" ? "Organization" : "Office setup"}</span>
-          <h2>{mode === "Hierarchy" ? "Hierarchy + Workflow Routing" : "Office Routing Center"}</h2>
-          <p>Each office keeps one structural parent, while GCOS routes reports, approvals, messages, and escalations to the correct destination by work type.</p>
+          <span>{isHierarchyMode ? "Organization" : "Office setup"}</span>
+          <h2>{isHierarchyMode ? "Hierarchy + Workflow Routing" : "Office Routing Center"}</h2>
+          <p>{isHierarchyMode
+            ? "View the permanent office structure and confirm how governance work moves through the right destination paths."
+            : "Create office identities, connect them to one structural parent, and route their reports, approvals, messages, and escalations to the correct destination."}</p>
         </div>
         <div className="admin-v2-hero-metrics">
-          <article><strong>{stationDirectory.length}</strong><span>Stations</span></article>
-          <article><strong>{activeRules.length}</strong><span>Active rules</span></article>
-          <article><strong>{reportRuleCoverage + approvalRuleCoverage}</strong><span>Routed records</span></article>
+          <article><strong>{stationDirectory.length}</strong><span>Office identities</span></article>
+          <article><strong>{activeRules.length}</strong><span>Routing rules</span></article>
+          <article><strong>{routedRecordCount}</strong><span>Routed records</span></article>
         </div>
       </div>
 
@@ -26434,9 +26438,15 @@ function AdminV2OfficeRoutingCenter({
         </article>
         <article>
           <span>Operational coverage</span>
-          <strong>{reportRuleCoverage + approvalRuleCoverage} records routed</strong>
+          <strong>{routedRecordCount} records routed</strong>
           <p>{activeRules.length} active routing rules are currently available for governance handoff.</p>
         </article>
+      </div>
+
+      <div className="admin-v2-routing-actions">
+        <button type="button" onClick={() => onQuickAction("Create office")}>Create office identity</button>
+        <button type="button" onClick={() => onQuickAction("Validate routes")}>Validate routing rules</button>
+        <button type="button" onClick={() => onQuickAction("Open routed records")}>Review routed work</button>
       </div>
 
       <div className="admin-v2-routing-grid">
@@ -26527,6 +26537,7 @@ function AdminV2OfficeRoutingCenter({
             <span>Create Routing Rule</span>
             <b>{notice || "Ready"}</b>
           </div>
+          <p className="admin-v2-route-builder-copy">Use this when one office has a fixed structural parent, but a specific type of work must move to a different reviewing office.</p>
           <form onSubmit={createRule}>
             <label>
               <span>Work type</span>
