@@ -24946,6 +24946,16 @@ function AdminV2Reports({
               : { label: "Review audit trail", detail: "This report is archived. Review the immutable audit trail when needed.", action: "audit" as const }
     : undefined;
   const visibleTemplates = templates.filter((template) => [template.name, template.type, template.path, template.description].join(" ").toLowerCase().includes(templateSearch.trim().toLowerCase())).slice(0, 18);
+  const templateGroups = visibleTemplates.reduce<{ type: string; templates: ReportTemplate[] }[]>((groups, template) => {
+    const existing = groups.find((group) => group.type === template.type);
+    if (existing) {
+      existing.templates.push(template);
+    } else {
+      groups.push({ type: template.type, templates: [template] });
+    }
+    return groups;
+  }, []);
+  const selectedReportRouteStops = splitWorkflowPath(selectedReport?.path);
   const coverage = residentPastorTargets.length
     ? Math.min(100, Math.round(((latestAssignment?.targetCount ?? 0) / residentPastorTargets.length) * 100))
     : 0;
@@ -25424,16 +25434,40 @@ function AdminV2Reports({
           <Search size={14} />
           <input value={templateSearch} onChange={(event) => setTemplateSearch(event.target.value)} placeholder="Search templates" />
         </label>
-        <div className="admin-v2-list admin-v2-template-picker">
-          {visibleTemplates.map((template) => (
-            <button type="button" key={template.id} className={selectedTemplate?.id === template.id ? "selected" : ""} onClick={() => {
-              setSelectedTemplateId(template.id);
-              setPageNotice(`${template.name} selected.`);
-            }}>
-              <strong>{template.name}</strong>
-              <span>{template.type}</span>
-              <small>{template.path}</small>
-            </button>
+        {selectedTemplate && (
+          <div className="admin-v2-template-focus">
+            <span>Selected form</span>
+            <strong>{selectedTemplate.name}</strong>
+            <small>{selectedTemplate.type}</small>
+            <div className="admin-v2-mini-route">
+              {splitWorkflowPath(selectedTemplate.path).map((stop, index, stops) => (
+                <React.Fragment key={`${stop}-${index}`}>
+                  <em>{stop}</em>
+                  {index < stops.length - 1 && <i>→</i>}
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        )}
+        <div className="admin-v2-template-library">
+          {templateGroups.map((group) => (
+            <section key={group.type} className="admin-v2-template-group">
+              <div className="admin-v2-template-group-head">
+                <span>{group.type}</span>
+                <b>{group.templates.length}</b>
+              </div>
+              <div className="admin-v2-list admin-v2-template-picker">
+                {group.templates.map((template) => (
+                  <button type="button" key={template.id} className={selectedTemplate?.id === template.id ? "selected" : ""} onClick={() => {
+                    setSelectedTemplateId(template.id);
+                    setPageNotice(`${template.name} selected.`);
+                  }}>
+                    <strong>{template.name}</strong>
+                    <small>{template.path}</small>
+                  </button>
+                ))}
+              </div>
+            </section>
           ))}
           {!visibleTemplates.length && <small>No report templates match this search.</small>}
         </div>
@@ -25442,9 +25476,22 @@ function AdminV2Reports({
         <div className="admin-v2-panel-head"><span>Steps 2-5</span><strong>{selectedReport?.name ?? "No report selected"}</strong></div>
         {selectedReport && (
           <div className="admin-v2-detail">
-            <span className={`admin-v2-status ${selectedReport.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selectedReport.type} / {selectedReport.state}</span>
-            <h2>{selectedReport.name}</h2>
-            <p>{selectedReport.path}</p>
+            <div className="admin-v2-report-focus-head">
+              <div>
+                <span className={`admin-v2-status ${selectedReport.state.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{selectedReport.state}</span>
+                <h2>{selectedReport.name}</h2>
+                <p>{selectedReport.type} report prepared for {selectedReport.owner}</p>
+              </div>
+              <strong>{selectedReport.score}%</strong>
+            </div>
+            <div className="admin-v2-report-route" aria-label="Selected report route">
+              {selectedReportRouteStops.map((stop, index) => (
+                <React.Fragment key={`${stop}-${index}`}>
+                  <span>{stop}</span>
+                  {index < selectedReportRouteStops.length - 1 && <i>→</i>}
+                </React.Fragment>
+              ))}
+            </div>
             <div className="admin-v2-report-meta">
               <article><span>Owner</span><strong>{selectedReport.owner}</strong></article>
               <article><span>Period</span><strong>{selectedReport.period ?? "Current"}</strong></article>
@@ -26476,6 +26523,10 @@ function formatAuditFieldDate(value?: string) {
     hour: "2-digit",
     minute: "2-digit"
   });
+}
+
+function splitWorkflowPath(path?: string) {
+  return String(path ?? "").split(/\s*->\s*/).map((stop) => stop.trim()).filter(Boolean);
 }
 
 function AdminV2Directory({
