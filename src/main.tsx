@@ -5542,16 +5542,16 @@ function App() {
       ...rows
     ]);
     setEvents((items) => [`Login: ${normalizedEmail}`, ...items].slice(0, 8));
+    openAuthenticatedWorkspace(station, { email: normalizedEmail, startedAt, authPending: true }, landingSection);
     void apiRequest<{ station: StationCard; token: string; expiresAt: string }>("/api/auth/login", {
       method: "POST",
       body: JSON.stringify({ email: normalizedEmail, password })
     }).then((result) => {
       const serverStation = stationDirectory.find((item) => item.email === normalizeStationEmail(result.station.email)) ?? station;
       const authenticatedSession: Session = { email: normalizedEmail, startedAt, token: result.token, expiresAt: result.expiresAt };
-      openAuthenticatedWorkspace(serverStation, authenticatedSession, landingSectionForStation(serverStation), { reload: true });
+      openAuthenticatedWorkspace(serverStation, authenticatedSession, landingSectionForStation(serverStation));
     }).catch(() => {
       if (!networkOnline || isLocalPreview || ["127.0.0.1", "localhost"].includes(window.location.hostname)) {
-        openAuthenticatedWorkspace(station, { email: normalizedEmail, startedAt, authPending: true }, landingSection, { reload: true });
         setOfflineMode(true);
         setEvents((items) => ["OfflineLogin: cached station session active", ...items].slice(0, 8));
         return;
