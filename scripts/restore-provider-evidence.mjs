@@ -7,7 +7,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT_DIR = join(ROOT, "launch-reports");
 const baseUrl = (process.env.GCOS_RESTORE_EVIDENCE_URL ?? process.env.GCOS_HEALTHCHECK_URL ?? "https://rmvi.org").replace(/\/$/, "");
 const email = process.env.GCOS_SMOKE_EMAIL ?? "admin@rmvi.org";
-const password = process.env.GCOS_SMOKE_PASSWORD ?? "gcos-admin";
+const password = requiredEnv("GCOS_SMOKE_PASSWORD");
 const projectId = process.env.GCOS_FIREBASE_PROJECT_ID ?? "rmvi-gcos";
 const namespace = process.env.GCOS_FIREBASE_NAMESPACE ?? "production";
 const bucket = process.env.GCOS_FIRESTORE_EXPORT_BUCKET ?? `gs://${projectId}-firestore-restore-drills`;
@@ -24,6 +24,12 @@ const report = {
   gcloudAvailable: commandAvailable("gcloud"),
   checks: []
 };
+
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Set ${name} before running restore provider evidence.`);
+  return value;
+}
 
 let token = "";
 

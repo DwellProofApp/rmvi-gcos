@@ -6,7 +6,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT_DIR = join(ROOT, "launch-reports");
 const baseUrl = (process.env.GCOS_ROLLOUT_FINISH_URL ?? process.env.GCOS_PRODUCT_SMOKE_URL ?? process.env.GCOS_HEALTHCHECK_URL ?? "http://127.0.0.1:8787").replace(/\/$/, "");
 const email = process.env.GCOS_SMOKE_EMAIL ?? "admin@rmvi.org";
-const password = process.env.GCOS_SMOKE_PASSWORD ?? "gcos-admin";
+const password = requiredEnv("GCOS_SMOKE_PASSWORD");
 const mutate = process.env.GCOS_ROLLOUT_FINISH_MUTATE === "1";
 const certifyCompleted = process.env.GCOS_ROLLOUT_CERTIFY_COMPLETED === "1";
 const scheduleDate = process.env.GCOS_ROLLOUT_TRAINING_DATE ?? new Date(Date.now() + 86400000).toISOString().slice(0, 10);
@@ -22,6 +22,12 @@ const report = {
 };
 
 let token = "";
+
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Set ${name} before running product rollout finish.`);
+  return value;
+}
 
 await check("admin session", async () => {
   const login = await request("/api/auth/login", {

@@ -1,4 +1,5 @@
 import { mkdir, writeFile } from "node:fs/promises";
+import { randomBytes } from "node:crypto";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,9 +7,9 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT_DIR = join(ROOT, "launch-reports");
 const baseUrl = (process.env.GCOS_CORE_ACCEPTANCE_URL ?? process.env.GCOS_SMOKE_URL ?? "http://127.0.0.1:8787").replace(/\/$/, "");
 const adminEmail = process.env.GCOS_SMOKE_EMAIL ?? "admin@rmvi.org";
-const adminPassword = process.env.GCOS_SMOKE_PASSWORD ?? "gcos-admin";
+const adminPassword = requiredEnv("GCOS_SMOKE_PASSWORD");
 const localEmail = process.env.GCOS_LOCAL_SMOKE_EMAIL ?? "local_branch_017@rmvi.org";
-const localPassword = process.env.GCOS_LOCAL_SMOKE_PASSWORD ?? "gcos-local";
+const localPassword = requiredEnv("GCOS_LOCAL_SMOKE_PASSWORD");
 const requestTimeoutMs = Number(process.env.GCOS_CORE_ACCEPTANCE_TIMEOUT_MS ?? 20000);
 const runId = `core-${Date.now().toString(36)}`;
 const createdIds = {};
@@ -55,7 +56,7 @@ await check("03 office creation is admin-only", async () => {
 });
 
 await check("04 manual office creation creates a permanent identity", async () => {
-  const password = `Gcos-${runId}-1!`;
+  const password = temporaryPassword();
   const created = await request("/api/offices", {
     method: "POST",
     body: {
@@ -119,7 +120,7 @@ await check("05 office setup fields are writable", async () => {
 
 await check("06 email verification, password rotation, and office activation", async () => {
   const id = required("officeId");
-  const password = `Gcos-${runId}-2!`;
+  const password = temporaryPassword();
   await request(`/api/offices/${id}/email/verify`, {
     method: "POST",
     body: { actor: adminEmail }
@@ -486,6 +487,16 @@ function required(key) {
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
+}
+
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Set ${name} before running core workflow acceptance.`);
+  return value;
+}
+
+function temporaryPassword() {
+  return `${randomBytes(18).toString("base64url")}Aa1!`;
 }
 
 function defaultFix(name) {

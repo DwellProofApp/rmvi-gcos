@@ -7,11 +7,11 @@ const REPORT_DIR = join(ROOT, "launch-reports");
 const baseUrl = (process.env.GCOS_ROLE_ACCEPTANCE_URL ?? process.env.GCOS_HEALTHCHECK_URL ?? "https://rmvi.org").replace(/\/$/, "");
 const requestTimeoutMs = Number(process.env.GCOS_ROLE_ACCEPTANCE_TIMEOUT_MS ?? 15000);
 const roles = [
-  { email: "admin@rmvi.org", password: process.env.GCOS_ADMIN_SMOKE_PASSWORD ?? process.env.GCOS_SMOKE_PASSWORD ?? "gcos-admin", requiresOverride: true },
-  { email: "finance@rmvi.org", password: process.env.GCOS_FINANCE_SMOKE_PASSWORD ?? "gcos-finance", focus: "Finance" },
-  { email: "mission@rmvi.org", password: process.env.GCOS_MISSION_SMOKE_PASSWORD ?? "gcos-mission", focus: "Mission" },
-  { email: "local_branch_017@rmvi.org", password: process.env.GCOS_LOCAL_SMOKE_PASSWORD ?? "gcos-local", shouldDenyOfficeCreate: true },
-  { email: "audit@rmvi.org", password: process.env.GCOS_AUDIT_SMOKE_PASSWORD ?? "gcos-audit", focus: "Audit" }
+  { email: "admin@rmvi.org", password: optionalEnv("GCOS_ADMIN_SMOKE_PASSWORD") ?? requiredEnv("GCOS_SMOKE_PASSWORD"), requiresOverride: true },
+  { email: "finance@rmvi.org", password: requiredEnv("GCOS_FINANCE_SMOKE_PASSWORD"), focus: "Finance" },
+  { email: "mission@rmvi.org", password: requiredEnv("GCOS_MISSION_SMOKE_PASSWORD"), focus: "Mission" },
+  { email: "local_branch_017@rmvi.org", password: requiredEnv("GCOS_LOCAL_SMOKE_PASSWORD"), shouldDenyOfficeCreate: true },
+  { email: "audit@rmvi.org", password: requiredEnv("GCOS_AUDIT_SMOKE_PASSWORD"), focus: "Audit" }
 ];
 
 const report = {
@@ -20,6 +20,16 @@ const report = {
   roles: [],
   checks: []
 };
+
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Set ${name} before running role acceptance.`);
+  return value;
+}
+
+function optionalEnv(name) {
+  return process.env[name] || undefined;
+}
 
 for (const role of roles) {
   console.log(`\n=== ${role.email} ===`);

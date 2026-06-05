@@ -6,7 +6,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT_DIR = join(ROOT, "launch-reports");
 const baseUrl = (process.env.GCOS_SMOKE_URL ?? process.env.GCOS_HEALTHCHECK_URL ?? "http://127.0.0.1:8787").replace(/\/$/, "");
 const email = process.env.GCOS_SMOKE_EMAIL ?? "admin@rmvi.org";
-const password = process.env.GCOS_SMOKE_PASSWORD ?? "gcos-admin";
+const password = requiredEnv("GCOS_SMOKE_PASSWORD");
 const report = {
   generatedAt: new Date().toISOString(),
   baseUrl,
@@ -15,6 +15,12 @@ const report = {
 };
 
 let token = "";
+
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Set ${name} before running runtime smoke.`);
+  return value;
+}
 
 await check("health", "GET", "/health", undefined, async (response) => {
   const body = await response.json();

@@ -8,14 +8,14 @@ const baseUrl = (process.env.GCOS_PRODUCT_SMOKE_URL ?? process.env.GCOS_SMOKE_UR
 const mutate = process.env.GCOS_PRODUCT_SMOKE_MUTATE === "1";
 const liveEmailTest = process.env.GCOS_PRODUCT_SMOKE_EMAIL_TEST === "1";
 const email = process.env.GCOS_SMOKE_EMAIL ?? "admin@rmvi.org";
-const password = process.env.GCOS_SMOKE_PASSWORD ?? "gcos-admin";
+const password = requiredEnv("GCOS_SMOKE_PASSWORD");
 const requestTimeoutMs = Number(process.env.GCOS_PRODUCT_SMOKE_TIMEOUT_MS ?? 15000);
 const stationLogins = [
-  ["finance@rmvi.org", process.env.GCOS_FINANCE_SMOKE_PASSWORD ?? "gcos-finance"],
-  ["audit@rmvi.org", process.env.GCOS_AUDIT_SMOKE_PASSWORD ?? "gcos-audit"],
-  ["mission@rmvi.org", process.env.GCOS_MISSION_SMOKE_PASSWORD ?? "gcos-mission"],
-  ["np@rmvi.org", process.env.GCOS_NATIONAL_SMOKE_PASSWORD ?? "gcos-national"],
-  ["local_branch_017@rmvi.org", process.env.GCOS_LOCAL_SMOKE_PASSWORD ?? "gcos-local"]
+  ["finance@rmvi.org", requiredEnv("GCOS_FINANCE_SMOKE_PASSWORD")],
+  ["audit@rmvi.org", requiredEnv("GCOS_AUDIT_SMOKE_PASSWORD")],
+  ["mission@rmvi.org", requiredEnv("GCOS_MISSION_SMOKE_PASSWORD")],
+  ["np@rmvi.org", requiredEnv("GCOS_NATIONAL_SMOKE_PASSWORD")],
+  ["local_branch_017@rmvi.org", requiredEnv("GCOS_LOCAL_SMOKE_PASSWORD")]
 ];
 
 const report = {
@@ -32,6 +32,12 @@ let publicStatus = null;
 const stationTokens = new Map();
 const smokeId = `product-smoke-${Date.now().toString(36)}`;
 const isLocalTarget = /^https?:\/\/(127\.0\.0\.1|localhost)(:\d+)?/i.test(baseUrl);
+
+function requiredEnv(name) {
+  const value = process.env[name];
+  if (!value) throw new Error(`Set ${name} before running product workflow smoke.`);
+  return value;
+}
 
 await check("01 platform and storage are reachable", async () => {
   const health = await request("/health", { token: "" });
