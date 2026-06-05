@@ -4059,29 +4059,65 @@ function App() {
     }
   }
 
+  function openLiveMeeting(sessionItem: LiveSession) {
+    const joinUrl = sessionItem.joinUrl || previewLiveSessionJoinUrl(sessionItem.title, sessionItem.id);
+    const meetingWindow = window.open(joinUrl, "_blank", "noopener,noreferrer");
+    if (!meetingWindow) {
+      window.location.href = joinUrl;
+    }
+  }
+
   function startChatMeeting(roomId: string) {
     const room = chatRooms.find((item) => item.id === roomId);
+    const existingSession = room?.liveSessionId ? liveSessions.find((item) => item.id === room.liveSessionId) : null;
+    if (existingSession) {
+      openLiveMeeting(existingSession);
+      return;
+    }
+    const sessionId = `live-chat-${Date.now()}`;
+    const title = `${room?.name ?? "Department"} meeting`;
+    const joinUrl = previewLiveSessionJoinUrl(title, sessionId);
+    const meetingWindow = window.open("about:blank", "_blank");
+    if (meetingWindow) {
+      meetingWindow.opener = null;
+      writeMeetingWindowMessage(meetingWindow, "Opening department meeting", "GCOS is creating the secure video room and will redirect this tab when it is ready.");
+      meetingWindow.location.href = joinUrl;
+    }
     const created: LiveSession = {
-      id: `live-chat-${Date.now()}`,
-      title: `${room?.name ?? "Department"} meeting`,
+      id: sessionId,
+      title,
       host: activeStation.title,
-      sessionType: "Department Room",
+      sessionType: "Video Meeting",
       status: "Live",
       linkedRecord: room?.name ?? "Department Chat",
       route: room?.participants.join(" -> ") ?? activeStation.email,
       purpose: "Live department coordination",
+      hostEmail: activeStation.email,
+      createdBy: activeStation.email,
+      accessMode: "Invite Only",
+      invitedOnly: true,
+      videoProvider: "jitsi",
+      joinUrl,
       participants: room?.participants ?? [activeStation.email],
       notes: [],
       files: [],
       createdAt: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
     };
     setLiveSessions((items) => [created, ...items]);
+    setChatRooms((items) => items.map((item) => item.id === roomId ? { ...item, liveSessionId: created.id } : item));
     recordAudit("DepartmentChatMeetingStarted", created.title, created.route);
     if (!offlineMode) {
       void apiRequest<LiveSession>(`/api/chat/rooms/${roomId}/meeting`, {
         method: "POST",
-        body: JSON.stringify({ title: created.title })
-      }).then(refreshFromApi).catch(() => undefined);
+        body: JSON.stringify({ id: created.id, title: created.title, joinUrl: created.joinUrl })
+      }).then((serverSession) => {
+        setLiveSessions((items) => items.map((item) => item.id === created.id ? serverSession : item));
+        setChatRooms((items) => items.map((item) => item.id === roomId ? { ...item, liveSessionId: serverSession.id } : item));
+        if (meetingWindow && serverSession.joinUrl) meetingWindow.location.href = serverSession.joinUrl;
+        void refreshFromApi();
+      }).catch(() => {
+        if (meetingWindow) meetingWindow.location.href = joinUrl;
+      });
     }
   }
 
@@ -18069,7 +18105,7 @@ function LiveComms({
     : [station.email, inviteTarget].map(normalizeStationEmail);
   const canCreateBroadcast = permissions.canOverride || permissions.canCreateOffices;
   const canCreateApprovalRoom = permissions.canOverride || permissions.canApprove;
-  const canCreateVideoMeeting = permissions.canOverride || permissions.canCreateOffices || permissions.canApprove;
+  const canCreateVideoMeeting = true;
 
   function canCreateSessionType(type: string) {
     if (/broadcast/i.test(type)) return canCreateBroadcast;
@@ -24170,6 +24206,7 @@ function AdminV2Shell(props: AdminV2Props) {
           onArchiveRoom={onArchiveChatRoom}
           onCreateTask={onCreateChatTask}
           onStartMeeting={onStartChatMeeting}
+          onOpenMeeting={openLiveMeeting}
           onSendChurchMail={onSendChatChurchMail}
         />
       );
@@ -25797,6 +25834,7 @@ function AdminV2DepartmentChat({
   onArchiveRoom,
   onCreateTask,
   onStartMeeting,
+  onOpenMeeting,
   onSendChurchMail
 }: {
   station: StationCard;
@@ -25814,6 +25852,7 @@ function AdminV2DepartmentChat({
   onArchiveRoom: (roomId: string) => void;
   onCreateTask: (roomId: string) => void;
   onStartMeeting: (roomId: string) => void;
+  onOpenMeeting: (session: LiveSession) => void;
   onSendChurchMail: (roomId: string) => void;
 }) {
   const normalizedStationEmail = normalizeStationEmail(station.email);
@@ -25822,6 +25861,9 @@ function AdminV2DepartmentChat({
   const visibleRooms = officeRooms.length ? officeRooms : openRooms;
   const [selectedRoomId, setSelectedRoomId] = React.useState(visibleRooms[0]?.id ?? "");
   const selectedRoom = rooms.find((room) => room.id === selectedRoomId) ?? visibleRooms[0];
+  const selectedRoomSession = selectedRoom?.liveSessionId
+    ? liveSessions.find((sessionItem) => sessionItem.id === selectedRoom.liveSessionId)
+    : null;
   const roomMessages = selectedRoom
     ? messages.filter((message) => message.roomId === selectedRoom.id && !message.archived).sort((a, b) => a.createdAt.localeCompare(b.createdAt))
     : [];
@@ -25875,7 +25917,13 @@ function AdminV2DepartmentChat({
       <section className="admin-v2-toolbar">
         <button className="primary" type="button" onClick={() => onPresence("Online", selectedRoom?.id)}>Go online</button>
         <button type="button" onClick={() => onPresence("Away", selectedRoom?.id)}>Set away</button>
-        <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onStartMeeting(selectedRoom.id)}>Start meeting</button>
+        <button
+          type="button"
+          disabled={!selectedRoom}
+          onClick={() => selectedRoomSession ? onOpenMeeting(selectedRoomSession) : selectedRoom && onStartMeeting(selectedRoom.id)}
+        >
+          {selectedRoomSession ? "Open meeting" : "Start meeting"}
+        </button>
         <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onSendChurchMail(selectedRoom.id)}>Send ChurchMail summary</button>
       </section>
 
@@ -25994,10 +26042,16 @@ function AdminV2DepartmentChat({
           </div>
           <div className="admin-v2-panel-head">
             <span>Connected Actions</span>
-            <strong>{liveSessions.length} sessions</strong>
+            <strong>{selectedRoomSession ? "Meeting live" : `${liveSessions.length} sessions`}</strong>
           </div>
           <div className="admin-v2-chat-actions">
-            <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onStartMeeting(selectedRoom.id)}><Video size={16} /> Start meeting</button>
+            <button
+              type="button"
+              disabled={!selectedRoom}
+              onClick={() => selectedRoomSession ? onOpenMeeting(selectedRoomSession) : selectedRoom && onStartMeeting(selectedRoom.id)}
+            >
+              <Video size={16} /> {selectedRoomSession ? "Open meeting" : "Start meeting"}
+            </button>
             <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onCreateTask(selectedRoom.id)}>Create task</button>
             <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onSendChurchMail(selectedRoom.id)}>ChurchMail summary</button>
             <button type="button" disabled={!selectedRoom} onClick={() => selectedRoom && onArchiveRoom(selectedRoom.id)}>Archive room</button>

@@ -257,9 +257,7 @@ export function createServices({ state, record, requirePermission, findById, int
     if (/approval/i.test(String(sessionType)) && !permissions.canApprove && !permissions.canOverride) {
       throw Object.assign(new Error("Approval rooms require approval authority."), { status: 403 });
     }
-    if (/video|report review/i.test(String(sessionType)) && !permissions.canApprove && !permissions.canCreateOffices && !permissions.canOverride) {
-      throw Object.assign(new Error("Video meetings require office lead, approval, or administrator authority."), { status: 403 });
-    }
+    if (/video|report review/i.test(String(sessionType))) return;
   }
 
   function canAccessLiveSession(actor, item) {
@@ -653,14 +651,17 @@ export function createServices({ state, record, requirePermission, findById, int
     async startChatMeeting(roomId, body) {
       const room = findById(state.chatRooms ?? [], roomId);
       const created = await this.createLiveSession({
+        id: body.id,
         actor: body.actor,
         title: body.title ?? `${room.name} meeting`,
         host: body.actor ?? room.createdBy,
-        sessionType: "Department Room",
+        sessionType: "Video Meeting",
         status: "Live",
         linkedRecord: room.name,
         route: room.participants.join(" -> "),
         purpose: body.purpose ?? "Live department coordination",
+        joinUrl: body.joinUrl,
+        videoProvider: body.joinUrl ? "jitsi" : undefined,
         participants: room.participants
       });
       room.liveSessionId = created.id;

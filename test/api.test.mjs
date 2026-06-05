@@ -1641,6 +1641,21 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(invalidLiveSession.status, 400);
 
+    const financeChatRoom = await postJson("/api/chat/rooms", {
+      name: "Automated finance desk room",
+      department: "Finance",
+      participants: ["finance@rmvi.org", "np@rmvi.org"]
+    }, financeToken);
+    assert.equal(financeChatRoom.name, "Automated finance desk room");
+
+    const financeChatMeeting = await postJson(`/api/chat/rooms/${financeChatRoom.id}/meeting`, {
+      title: "Automated finance department meeting"
+    }, financeToken);
+    assert.equal(financeChatMeeting.sessionType, "Video Meeting");
+    assert.equal(financeChatMeeting.status, "Live");
+    assert.equal(financeChatMeeting.participants.includes("finance@rmvi.org"), true);
+    assert.match(financeChatMeeting.joinUrl, /^https?:\/\//);
+
     const createdLiveSession = await postJson("/api/live-sessions", {
       title: "Automated district video review",
       host: "National Presidency Workstation",
