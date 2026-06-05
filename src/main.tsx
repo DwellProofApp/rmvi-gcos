@@ -10597,6 +10597,7 @@ function App() {
         onArchiveChatRoom={archiveChatRoom}
         onCreateChatTask={createChatTask}
         onStartChatMeeting={startChatMeeting}
+        onOpenChatMeeting={openLiveMeeting}
         onSendChatChurchMail={sendChatToChurchMail}
         onQuickAction={handleAdminV2QuickAction}
         onOpenSearchResult={openSearchResult}
@@ -23855,6 +23856,7 @@ type AdminV2Props = {
   onArchiveChatRoom: (roomId: string) => void;
   onCreateChatTask: (roomId: string) => void;
   onStartChatMeeting: (roomId: string) => void;
+  onOpenChatMeeting: (session: LiveSession) => void;
   onSendChatChurchMail: (roomId: string) => void;
   onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 };
@@ -23996,6 +23998,7 @@ function AdminV2Shell(props: AdminV2Props) {
     onArchiveChatRoom,
     onCreateChatTask,
     onStartChatMeeting,
+    onOpenChatMeeting,
     onSendChatChurchMail,
     onQuickAction
   } = props;
@@ -24206,7 +24209,7 @@ function AdminV2Shell(props: AdminV2Props) {
           onArchiveRoom={onArchiveChatRoom}
           onCreateTask={onCreateChatTask}
           onStartMeeting={onStartChatMeeting}
-          onOpenMeeting={openLiveMeeting}
+          onOpenMeeting={onOpenChatMeeting}
           onSendChurchMail={onSendChatChurchMail}
         />
       );
