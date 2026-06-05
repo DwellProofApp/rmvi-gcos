@@ -26367,6 +26367,14 @@ function AdminV2OfficeRoutingCenter({
   const [notice, setNotice] = React.useState("");
   const activeRules = routingRules.filter((rule) => rule.active);
   const parentedStations = stationDirectory.filter((station) => station.parentName || station.reportingRoute);
+  const primaryStation = parentedStations[0] ?? stationDirectory[0];
+  const primaryStationRoute = splitWorkflowPath(primaryStation?.reportingRoute ?? `${primaryStation?.title ?? "Office"} -> Supervising office`);
+  const routeGroups = routingRules.reduce<Record<string, RoutingRule[]>>((groups, rule) => {
+    const key = rule.workType;
+    groups[key] = [...(groups[key] ?? []), rule];
+    return groups;
+  }, {});
+  const routePreviewStops = splitWorkflowPath(route);
   const reportRuleCoverage = reports.filter((report) => resolveWorkflowRoute(routingRules, {
     workType: "Report",
     category: report.type ?? report.name,
@@ -26413,18 +26421,55 @@ function AdminV2OfficeRoutingCenter({
         </div>
       </div>
 
+      <div className="admin-v2-routing-overview">
+        <article>
+          <span>Structure model</span>
+          <strong>One parent per office</strong>
+          <p>Permanent office identities report to a structural supervisor for accountability, transfers, and succession history.</p>
+        </article>
+        <article>
+          <span>Workflow model</span>
+          <strong>Multiple destinations by work type</strong>
+          <p>Reports, approvals, messages, tasks, and escalations can route to the office responsible for that category of work.</p>
+        </article>
+        <article>
+          <span>Operational coverage</span>
+          <strong>{reportRuleCoverage + approvalRuleCoverage} records routed</strong>
+          <p>{activeRules.length} active routing rules are currently available for governance handoff.</p>
+        </article>
+      </div>
+
       <div className="admin-v2-routing-grid">
         <section className="admin-v2-card admin-v2-route-structure">
           <div className="admin-v2-card-head">
             <span>Structural Parent</span>
             <button type="button" onClick={() => onQuickAction("Create office")}>Create office</button>
           </div>
+          {primaryStation && (
+            <div className="admin-v2-structure-focus">
+              <div>
+                <span>Selected office</span>
+                <strong>{primaryStation.title}</strong>
+                <small>{primaryStation.email}</small>
+              </div>
+              <div className="admin-v2-route-chipline" aria-label="Selected office structural route">
+                {primaryStationRoute.map((stop, index) => (
+                  <React.Fragment key={`${stop}-${index}`}>
+                    <span>{stop}</span>
+                    {index < primaryStationRoute.length - 1 && <i />}
+                  </React.Fragment>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="admin-v2-list">
             {stationDirectory.slice(0, 8).map((station) => (
               <article key={station.email}>
-                <strong>{station.title}</strong>
-                <span>{station.email}</span>
-                <small>Parent: {station.parentName ?? station.reportingRoute?.split("->")[1]?.trim() ?? "Supervising office"}</small>
+                <div>
+                  <strong>{station.title}</strong>
+                  <span>{station.email}</span>
+                </div>
+                <small>{station.parentName ?? station.reportingRoute?.split("->")[1]?.trim() ?? "Supervising office"}</small>
               </article>
             ))}
           </div>
@@ -26439,17 +26484,40 @@ function AdminV2OfficeRoutingCenter({
             <span>Workflow Destinations</span>
             <button type="button" onClick={() => onQuickAction("Validate routes")}>Validate</button>
           </div>
-          <div className="admin-v2-list">
-            {routingRules.map((rule) => (
-              <article key={rule.id} className={!rule.active ? "is-paused" : ""}>
-                <strong>{rule.name}</strong>
-                <span>{rule.workType} / {rule.category} / {rule.destinationOffice}</span>
-                <small>{rule.route}</small>
-                <div className="admin-v2-rule-actions">
-                  <button type="button" onClick={() => onApplyRoutingRule(rule.id)}>Apply</button>
-                  <button type="button" onClick={() => onToggleRoutingRule(rule.id)}>{rule.active ? "Pause" : "Activate"}</button>
+          <div className="admin-v2-route-group-list">
+            {Object.entries(routeGroups).map(([group, rules]) => (
+              <div className="admin-v2-route-group" key={group}>
+                <div className="admin-v2-route-group-head">
+                  <strong>{group}</strong>
+                  <span>{rules.length} rules</span>
                 </div>
-              </article>
+                {rules.map((rule) => {
+                  const stops = splitWorkflowPath(rule.route);
+                  return (
+                    <article key={rule.id} className={!rule.active ? "is-paused" : ""}>
+                      <div className="admin-v2-rule-title">
+                        <div>
+                          <strong>{rule.name}</strong>
+                          <span>{rule.category} / {rule.destinationOffice}</span>
+                        </div>
+                        <em>{rule.priority}</em>
+                      </div>
+                      <div className="admin-v2-route-chipline" aria-label={`${rule.name} route`}>
+                        {stops.map((stop, index) => (
+                          <React.Fragment key={`${rule.id}-${stop}-${index}`}>
+                            <span>{stop}</span>
+                            {index < stops.length - 1 && <i />}
+                          </React.Fragment>
+                        ))}
+                      </div>
+                      <div className="admin-v2-rule-actions">
+                        <button type="button" onClick={() => onApplyRoutingRule(rule.id)}>Apply route</button>
+                        <button type="button" onClick={() => onToggleRoutingRule(rule.id)}>{rule.active ? "Pause" : "Activate"}</button>
+                      </div>
+                    </article>
+                  );
+                })}
+              </div>
             ))}
           </div>
         </section>
@@ -26494,6 +26562,19 @@ function AdminV2OfficeRoutingCenter({
                 <option>Critical</option>
               </select>
             </label>
+            <div className="admin-v2-rule-preview">
+              <span>Route preview</span>
+              <strong>{category} {workType}</strong>
+              <div className="admin-v2-route-chipline">
+                {routePreviewStops.map((stop, index) => (
+                  <React.Fragment key={`${stop}-${index}`}>
+                    <span>{stop}</span>
+                    {index < routePreviewStops.length - 1 && <i />}
+                  </React.Fragment>
+                ))}
+              </div>
+              <small>Destination: {destinationOffice}</small>
+            </div>
             <button type="submit">Create routing rule</button>
           </form>
         </section>

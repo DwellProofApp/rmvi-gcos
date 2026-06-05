@@ -2101,10 +2101,60 @@
   gap: 18px;
 }
 
+.admin-v2-routing-overview {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.admin-v2-routing-overview article,
+.admin-v2-structure-focus,
+.admin-v2-rule-preview {
+  background:
+    linear-gradient(135deg, rgba(34, 211, 238, .08), transparent 42%),
+    rgba(15, 23, 42, .58);
+  border: 1px solid rgba(125, 211, 252, .18);
+  border-radius: 18px;
+  min-width: 0;
+  padding: 16px;
+}
+
+.admin-v2-routing-overview article span,
+.admin-v2-structure-focus span,
+.admin-v2-rule-preview > span {
+  color: var(--v2-cyan);
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .16em;
+  text-transform: uppercase;
+}
+
+.admin-v2-routing-overview article strong,
+.admin-v2-structure-focus strong,
+.admin-v2-rule-preview strong {
+  color: var(--v2-text);
+  display: block;
+  font-size: 18px;
+  letter-spacing: -.02em;
+  margin-top: 8px;
+}
+
+.admin-v2-routing-overview article p,
+.admin-v2-structure-focus small,
+.admin-v2-rule-preview small {
+  color: var(--v2-muted);
+  display: block;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 8px 0 0;
+}
+
 .admin-v2-routing-grid {
   display: grid;
   gap: 18px;
-  grid-template-columns: minmax(240px, .85fr) minmax(360px, 1.2fr) minmax(280px, .95fr);
+  grid-template-columns: minmax(260px, .9fr) minmax(420px, 1.25fr) minmax(300px, .92fr);
+  align-items: start;
 }
 
 .admin-v2-card {
@@ -2123,6 +2173,12 @@
   display: flex;
   gap: 10px;
   justify-content: space-between;
+}
+
+.admin-v2-structure-focus {
+  display: grid;
+  gap: 14px;
+  margin: 14px 0;
 }
 
 .admin-v2-card-head span {
@@ -2159,13 +2215,153 @@
   gap: 5px;
 }
 
+.admin-v2-route-structure .admin-v2-list article {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.admin-v2-route-structure .admin-v2-list article strong,
+.admin-v2-route-rules .admin-v2-list article strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-route-structure .admin-v2-list article span {
+  color: var(--v2-muted);
+  display: block;
+  font-size: 12px;
+  margin-top: 4px;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-route-structure .admin-v2-list article small {
+  align-items: center;
+  background: rgba(34, 211, 238, .08);
+  border: 1px solid rgba(34, 211, 238, .14);
+  border-radius: 999px;
+  color: #bae6fd;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 850;
+  justify-self: start;
+  line-height: 1.2;
+  max-width: 100%;
+  min-height: 26px;
+  overflow-wrap: anywhere;
+  padding: 5px 9px;
+}
+
 .admin-v2-route-rules .admin-v2-list article.is-paused {
   opacity: .58;
+}
+
+.admin-v2-route-group-list {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  max-height: 64vh;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.admin-v2-route-group {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-v2-route-group-head,
+.admin-v2-rule-title {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.admin-v2-route-group-head {
+  background: rgba(148, 163, 184, .08);
+  border: 1px solid rgba(148, 163, 184, .12);
+  border-radius: 14px;
+  padding: 10px 12px;
+}
+
+.admin-v2-route-group-head strong {
+  color: var(--v2-text);
+  font-size: 13px;
+}
+
+.admin-v2-route-group-head span,
+.admin-v2-rule-title span {
+  color: var(--v2-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-route-group article {
+  background: rgba(15, 23, 42, .56);
+  border: 1px solid rgba(148, 163, 184, .16);
+  border-radius: 16px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.admin-v2-rule-title > div {
+  min-width: 0;
+}
+
+.admin-v2-rule-title strong {
+  color: var(--v2-text);
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-rule-title em {
+  background: rgba(250, 204, 21, .12);
+  border: 1px solid rgba(250, 204, 21, .24);
+  border-radius: 999px;
+  color: #fde68a;
+  flex: 0 0 auto;
+  font-size: 11px;
+  font-style: normal;
+  font-weight: 900;
+  padding: 5px 9px;
+  text-transform: uppercase;
+}
+
+.admin-v2-route-chipline {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+
+.admin-v2-route-chipline span {
+  background: rgba(2, 6, 23, .42);
+  border: 1px solid rgba(125, 211, 252, .16);
+  border-radius: 999px;
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  max-width: 100%;
+  overflow-wrap: anywhere;
+  padding: 7px 10px;
+}
+
+.admin-v2-route-chipline i {
+  background: rgba(34, 211, 238, .48);
+  display: inline-block;
+  flex: 0 0 auto;
+  height: 1px;
+  width: 18px;
 }
 
 .admin-v2-rule-actions {
   justify-content: flex-start;
   margin-top: 8px;
+  flex-wrap: wrap;
 }
 
 .admin-v2-route-builder form {
@@ -2198,11 +2394,21 @@
   width: 100%;
 }
 
+.admin-v2-rule-preview {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-v2-rule-preview strong {
+  margin-top: 0;
+}
+
 @media (max-width: 1180px) {
   .admin-v2-assignment-summary,
   .admin-v2-assignment-grid,
   .churchmail-compose-grid,
-  .admin-v2-routing-grid {
+  .admin-v2-routing-grid,
+  .admin-v2-routing-overview {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -2215,7 +2421,8 @@
   .admin-v2-assignment-summary,
   .admin-v2-assignment-grid,
   .churchmail-compose-grid,
-  .admin-v2-routing-grid {
+  .admin-v2-routing-grid,
+  .admin-v2-routing-overview {
     grid-template-columns: 1fr;
   }
 
