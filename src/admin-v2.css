@@ -1150,6 +1150,169 @@
   padding: 0 12px;
 }
 
+.admin-v2-report-inbox {
+  background:
+    linear-gradient(135deg, rgba(15, 47, 107, .06), rgba(214, 166, 43, .08)),
+    #fff;
+}
+
+.admin-v2-report-inbox-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.admin-v2-report-inbox-column {
+  background: rgba(248, 250, 252, .84);
+  border: 1px solid var(--v2-line);
+  border-radius: 16px;
+  display: grid;
+  gap: 10px;
+  min-width: 0;
+  padding: 12px;
+}
+
+.admin-v2-report-inbox-head {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.admin-v2-report-inbox-head span,
+.admin-v2-review-signoff-panel span {
+  color: var(--v2-blue);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-v2-report-inbox-head strong {
+  color: var(--v2-text);
+  font-size: 24px;
+  letter-spacing: -.04em;
+}
+
+.admin-v2-report-inbox-head small {
+  color: var(--v2-muted);
+  line-height: 1.35;
+}
+
+.admin-v2-report-inbox-stack {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-v2-report-inbox-stack button {
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, .24);
+  border-radius: 12px;
+  color: var(--v2-text);
+  cursor: pointer;
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  padding: 10px;
+  text-align: left;
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+.admin-v2-report-inbox-stack button:hover,
+.admin-v2-report-inbox-stack button.selected {
+  border-color: rgba(70, 95, 255, .42);
+  box-shadow: 0 14px 30px rgba(15, 23, 42, .08);
+  transform: translateY(-1px);
+}
+
+.admin-v2-report-inbox-stack button.selected {
+  background: #eef4ff;
+}
+
+.admin-v2-report-inbox-stack strong,
+.admin-v2-report-inbox-stack span,
+.admin-v2-report-inbox-stack small {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-report-inbox-stack strong {
+  font-size: 13px;
+  line-height: 1.2;
+}
+
+.admin-v2-report-inbox-stack span,
+.admin-v2-report-inbox-stack small,
+.admin-v2-report-inbox-stack p {
+  color: var(--v2-muted);
+  font-size: 12px;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.admin-v2-review-signoff-panel {
+  align-items: center;
+  background:
+    linear-gradient(135deg, rgba(15, 47, 107, .08), rgba(70, 95, 255, .08)),
+    rgba(255, 255, 255, .9);
+  border: 1px solid rgba(148, 163, 184, .24);
+  border-radius: 16px;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.admin-v2-review-signoff-panel > div:first-child {
+  display: grid;
+  gap: 5px;
+  min-width: 0;
+}
+
+.admin-v2-review-signoff-panel strong {
+  color: var(--v2-text);
+  font-size: 16px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-review-signoff-panel p {
+  color: var(--v2-muted);
+  line-height: 1.4;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 9px;
+  justify-content: flex-end;
+}
+
+.admin-v2-review-actions button {
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, .32);
+  border-radius: 12px;
+  color: var(--v2-text);
+  cursor: pointer;
+  font: inherit;
+  font-weight: 850;
+  min-height: 38px;
+  padding: 0 12px;
+}
+
+.admin-v2-review-actions button:nth-child(2) {
+  background: var(--v2-blue);
+  border-color: var(--v2-blue);
+  color: #fff;
+}
+
+.admin-v2-review-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}
+
 .admin-v2-report-route {
   background: #f8fafc;
   border: 1px solid var(--v2-line);
@@ -1990,7 +2153,9 @@
   .admin-v2-assignment-next,
   .admin-v2-package-row,
   .admin-v2-assignment-grid,
-  .admin-v2-workflow-status {
+  .admin-v2-workflow-status,
+  .admin-v2-report-inbox-grid,
+  .admin-v2-review-signoff-panel {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -2011,9 +2176,16 @@
   .admin-v2-package-row,
   .admin-v2-assignment-grid,
   .admin-v2-assignment-summary,
+  .admin-v2-report-inbox-grid,
+  .admin-v2-review-signoff-panel,
   .admin-v2-report-meta,
   .admin-v2-workflow-status {
     grid-template-columns: 1fr;
+  }
+
+  .admin-v2-review-actions {
+    display: grid;
+    justify-content: stretch;
   }
 
   .admin-v2-report-focus-head {

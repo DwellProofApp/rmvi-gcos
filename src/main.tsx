@@ -24940,6 +24940,36 @@ function AdminV2Reports({
     return groups;
   }, []);
   const selectedReportRouteStops = splitWorkflowPath(selectedReport?.path);
+  const reportInboxBuckets = React.useMemo(() => {
+    const activeReports = reports.filter((report) => !report.archived);
+    return [
+      {
+        key: "needs-evidence",
+        label: "Needs Evidence",
+        detail: "Drafts missing workbook, signature, or evidence packet.",
+        reports: activeReports.filter((report) => !/attached|bundled|verified|archived/i.test(report.evidenceStatus ?? ""))
+      },
+      {
+        key: "ready-submit",
+        label: "Ready to Submit",
+        detail: "Evidence is attached and the report can move upward.",
+        reports: activeReports.filter((report) => /attached|bundled|verified|archived/i.test(report.evidenceStatus ?? "") && !report.submittedAt && report.state !== "Approved")
+      },
+      {
+        key: "review",
+        label: "Review & Sign-off",
+        detail: "Reports already submitted or waiting on approval action.",
+        reports: activeReports.filter((report) => report.submittedAt || report.state === "In Review" || report.state === "Escalated")
+      },
+      {
+        key: "archive",
+        label: "Archive Ready",
+        detail: "Approved reports ready for permanent records.",
+        reports: activeReports.filter((report) => report.state === "Approved")
+      }
+    ];
+  }, [reports]);
+  const reportInboxTotal = reportInboxBuckets.reduce((total, bucket) => total + bucket.reports.length, 0);
   const coverage = residentPastorTargets.length
     ? Math.min(100, Math.round(((latestAssignment?.targetCount ?? 0) / residentPastorTargets.length) * 100))
     : 0;
@@ -25242,6 +25272,57 @@ function AdminV2Reports({
         <button onClick={() => runSelectedReportAction("packet")} disabled={!selectedReport} type="button">Build packet</button>
       </section>
       {pageNotice && <div className="admin-v2-live-notice" role="status">{pageNotice}</div>}
+      <section className="admin-v2-panel admin-v2-report-inbox">
+        <div className="admin-v2-panel-head">
+          <span>Report Inbox</span>
+          <strong>{reportInboxTotal} actionable reports</strong>
+        </div>
+        <div className="admin-v2-report-inbox-grid">
+          {reportInboxBuckets.map((bucket) => (
+            <article key={bucket.key} className="admin-v2-report-inbox-column">
+              <div className="admin-v2-report-inbox-head">
+                <span>{bucket.label}</span>
+                <strong>{bucket.reports.length}</strong>
+                <small>{bucket.detail}</small>
+              </div>
+              <div className="admin-v2-report-inbox-stack">
+                {bucket.reports.slice(0, 4).map((report) => (
+                  <button
+                    className={selectedReport?.id === report.id ? "selected" : ""}
+                    key={report.id}
+                    type="button"
+                    onClick={() => {
+                      setSelectedReportId(report.id);
+                      setPageNotice(`${report.name} opened from the report inbox.`);
+                      window.setTimeout(() => document.querySelector(".admin-v2-report-workspace")?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
+                    }}
+                  >
+                    <strong>{report.name}</strong>
+                    <span>{report.owner}</span>
+                    <small>{report.period ?? "Current"} / {report.state}</small>
+                  </button>
+                ))}
+                {!bucket.reports.length && <p>No reports in this lane.</p>}
+              </div>
+            </article>
+          ))}
+        </div>
+        {selectedReport && (
+          <div className="admin-v2-review-signoff-panel">
+            <div>
+              <span>Review & sign-off</span>
+              <strong>{selectedReport.name}</strong>
+              <p>{selectedReport.owner} / {selectedReport.path}</p>
+            </div>
+            <div className="admin-v2-review-actions">
+              <button type="button" onClick={() => runSelectedReportAction("review")} disabled={selectedReportIsApproved || selectedReportIsArchived}>Start review</button>
+              <button type="button" onClick={() => runSelectedReportAction("verify")} disabled={selectedReportIsApproved || selectedReportIsArchived}>{selectedReportIsApproved ? "Approved" : "Approve"}</button>
+              <button type="button" onClick={openSelectedReportApprovalRoute}>Approval packet</button>
+              <button type="button" onClick={() => runSelectedReportAction("archive")} disabled={!selectedReportIsApproved || selectedReportIsArchived}>{selectedReportIsArchived ? "Archived" : "Archive"}</button>
+            </div>
+          </div>
+        )}
+      </section>
       <section className="admin-v2-panel resident-report-assignment">
         <div className="admin-v2-panel-head">
           <span>Monthly Assignment Center</span>
