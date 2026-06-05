@@ -25928,16 +25928,29 @@ function AdminV2DepartmentChat({
                 <div>
                   <span>{selectedRoom.kind}</span>
                   <h3>{selectedRoom.name}</h3>
-                  <p>{(selectedRoom.participants ?? []).join(" / ")}</p>
+                  <p>{selectedRoom.department} coordination room for {(selectedRoom.participants ?? []).length} office{(selectedRoom.participants ?? []).length === 1 ? "" : "s"}.</p>
                 </div>
                 <button type="button" onClick={() => onMarkRead(selectedRoom.id)}>Mark read</button>
+              </div>
+              <div className="admin-v2-chat-room-context">
+                <span>Participants</span>
+                <div>
+                  {(selectedRoom.participants ?? []).map((participantEmail) => (
+                    <b className={normalizeStationEmail(participantEmail) === normalizedStationEmail ? "active" : ""} key={participantEmail}>
+                      {participantEmail}
+                    </b>
+                  ))}
+                </div>
               </div>
               <div className="admin-v2-chat-messages">
                 {roomMessages.length ? roomMessages.map((message) => (
                   <article className={normalizeStationEmail(message.sender) === normalizedStationEmail ? "mine" : ""} key={message.id}>
-                    <div>
-                      <strong>{message.sender}</strong>
-                      <small>{message.createdAt} / read by {(message.readBy ?? []).length}</small>
+                    <div className="admin-v2-chat-message-head">
+                      <span className="admin-v2-chat-sender-mark">{message.sender.slice(0, 2).toUpperCase()}</span>
+                      <div>
+                        <strong>{message.sender}</strong>
+                        <small>{message.createdAt} / read by {(message.readBy ?? []).length}</small>
+                      </div>
                     </div>
                     <p>{message.body}</p>
                     <footer>
@@ -25951,7 +25964,10 @@ function AdminV2DepartmentChat({
                 )) : <div className="admin-v2-empty-state">No messages yet. Send the first department update.</div>}
               </div>
               <form className="admin-v2-chat-compose" onSubmit={submitMessage}>
-                <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder={`Write as ${station.email}`} />
+                <label>
+                  <span>Message as {station.email}</span>
+                  <textarea value={draft} onChange={(event) => setDraft(event.target.value)} placeholder="Write a department update, handoff note, or meeting decision." />
+                </label>
                 <button className="primary" type="submit"><Send size={16} /> Send</button>
               </form>
             </>
