@@ -1484,7 +1484,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Service group closeout",
     approvalLimit: "Pastor in Charge acknowledgement",
     description: "Weekly report for sanctuary, restroom, compound, waste, chair arrangement, facility damage, and stewardship prayer duties.",
-    checklist: ["Sanctuary cleaned", "Restrooms sanitized", "Trash disposed", "Damaged facilities reported", "Prayer and fasting observed"]
+    checklist: ["Sanctuary cleaned", "Restrooms sanitized", "Trash disposed", "Damaged facilities reported", "Prayer and fasting observed"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-kingdom-harvesters",
@@ -1498,7 +1499,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Evangelism review",
     approvalLimit: "Area evangelism acknowledgement",
     description: "Weekly evangelism record for outreach locations, souls reached, souls won, phone contacts, materials distributed, and follow-up calls.",
-    checklist: ["Outreach locations", "Souls reached", "Souls won", "Phone numbers collected", "Follow-up calls completed"]
+    checklist: ["Outreach locations", "Souls reached", "Souls won", "Phone numbers collected", "Follow-up calls completed"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-choir",
@@ -1512,7 +1514,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Music ministry review",
     approvalLimit: "Music Pastor acknowledgement",
     description: "Choir ministry report for praise and worship service, song preparation, monthly declaration alignment, rehearsal, harmony, instruments, and spiritual discipline.",
-    checklist: ["Songs prepared", "Services ministered", "Rehearsals held", "Instrument needs", "Prayer and fasting observed"]
+    checklist: ["Songs prepared", "Services ministered", "Rehearsals held", "Instrument needs", "Prayer and fasting observed"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-ushering",
@@ -1526,7 +1529,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Ushering review",
     approvalLimit: "Pastor in Charge acknowledgement",
     description: "Operational report for seating, visitor welcome, service order, latecomer support, queues, communion flow, and sanctuary order.",
-    checklist: ["Seats arranged", "Visitors welcomed", "Latecomers assisted", "Queues managed", "Order issues reported"]
+    checklist: ["Seats arranged", "Visitors welcomed", "Latecomers assisted", "Queues managed", "Order issues reported"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-technical-sound",
@@ -1540,7 +1544,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Technical review",
     approvalLimit: "Technical lead acknowledgement",
     description: "Sound operations report for microphones, mixers, speakers, monitors, power, troubleshooting, equipment storage, and service support.",
-    checklist: ["Equipment tested", "Sound quality confirmed", "Faults reported", "Power issues noted", "Equipment stored safely"]
+    checklist: ["Equipment tested", "Sound quality confirmed", "Faults reported", "Power issues noted", "Equipment stored safely"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-media",
@@ -1554,7 +1559,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Media review",
     approvalLimit: "Media lead approval",
     description: "Media operations report for cameras, projectors, screens, scriptures, lyrics, announcements, recordings, livestream, editing, passwords, and archives.",
-    checklist: ["Media operated", "Announcements displayed", "Recordings archived", "Livestream status", "Password/content protection"]
+    checklist: ["Media operated", "Announcements displayed", "Recordings archived", "Livestream status", "Password/content protection"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-kingdom-officers",
@@ -1568,7 +1574,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Visitor follow-up review",
     approvalLimit: "Discipleship desk acknowledgement",
     description: "Visitor and new convert care report for welcome forms, discipleship class reminders, counseling days, hospitality, encouragement, prayer, and confidentiality.",
-    checklist: ["Visitor forms collected", "New converts called", "Discipleship reminders sent", "Counseling days shared", "Confidential records protected"]
+    checklist: ["Visitor forms collected", "New converts called", "Discipleship reminders sent", "Counseling days shared", "Confidential records protected"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-protocol",
@@ -1582,7 +1589,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Protocol review",
     approvalLimit: "Pastor in Charge acknowledgement",
     description: "Protocol and safety report for welcoming environment, movement control, property safety, vehicle parking, suspicious activity, and incident reporting.",
-    checklist: ["Service movement managed", "Vehicles assisted", "Incidents reported", "Suspicious activity checked", "Order maintained"]
+    checklist: ["Service movement managed", "Vehicles assisted", "Incidents reported", "Suspicious activity checked", "Order maintained"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-general-maintenance",
@@ -1596,7 +1604,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Maintenance review",
     approvalLimit: "Works desk acknowledgement",
     description: "Maintenance report for electrical appliances, wiring, lights, generators, air conditioners, plumbing, carpentry, inspections, repairs, and safety.",
-    checklist: ["Electrical issues", "Generator status", "Cooling systems", "Building inspection", "Major damages reported"]
+    checklist: ["Electrical issues", "Generator status", "Cooling systems", "Building inspection", "Major damages reported"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-armour-bearers",
@@ -1610,7 +1619,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Leadership movement review",
     approvalLimit: "Pastor in Charge acknowledgement",
     description: "Leadership support report for order around leadership, visiting ministers, guest reception, access control, safety, and immediate service needs.",
-    checklist: ["Leadership movement supported", "Guests received", "Access controlled", "Safety measures coordinated", "Support needs logged"]
+    checklist: ["Leadership movement supported", "Guests received", "Access controlled", "Safety measures coordinated", "Support needs logged"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   },
   {
     id: "tpl-service-census",
@@ -1624,7 +1634,8 @@ const missionServiceGroupReportTemplates: ReportTemplate[] = [
     routingStage: "Attendance validation",
     approvalLimit: "Assistant Resident Pastor acknowledgement",
     description: "Attendance and census report for all services, events, programs, attendance accuracy, trend notes, and planning data.",
-    checklist: ["Total attendance", "Event or service name", "Attendance register", "Trend notes", "Submitted to growth department"]
+    checklist: ["Total attendance", "Event or service name", "Attendance register", "Trend notes", "Submitted to growth department"],
+    sourceFiles: ["Service Group Function -Mission Station 2026.docx"]
   }
 ];
 
@@ -1718,6 +1729,21 @@ const residentPastorMonthlyReportTemplates: ReportTemplate[] = [
     description: "Monthly narrative report letter summarizing financial performance, church growth, attendance, activities, challenges, and pastoral recommendations.",
     checklist: ["Opening summary", "Financial overview", "Church growth summary", "Monthly activities", "Challenges and needs", "Recommendations"],
     sourceFiles: ["January 2026 Reports.docx"]
+  },
+  {
+    id: "tpl-resident-pastor-lcmb-governance",
+    type: "Resident Pastor Monthly",
+    name: "LCMB Monthly Governance and Board Minutes Report",
+    owner: "Local Church Management Board",
+    due: "Monthly",
+    period: "Current month",
+    path: "Mission Station LCMB -> Resident Pastor -> Mission Office -> Area Office",
+    evidenceStatus: "Board minutes, decision register, and policy compliance notes pending",
+    routingStage: "LCMB monthly board review",
+    approvalLimit: "Resident Pastor and Mission Office acknowledgement",
+    description: "Monthly Local Church Management Board report covering meeting minutes, decisions, policy compliance, accountability matters, annual-goal progress, and recommendations to the Mission Office.",
+    checklist: ["Meeting date and attendance", "Board decisions", "Policy compliance", "Operational goals progress", "Financial and operational records", "Recommendations to Mission Office"],
+    sourceFiles: ["LCMB FUNCTION FINAL.docx"]
   }
 ];
 
