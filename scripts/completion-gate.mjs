@@ -7,6 +7,8 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const REPORT_DIR = join(ROOT, "launch-reports");
 const liveUrl = (process.env.GCOS_COMPLETION_URL ?? process.env.GCOS_PRODUCT_SMOKE_URL ?? process.env.GCOS_HEALTHCHECK_URL ?? "https://rmvi.org").replace(/\/$/, "");
 const mutate = process.env.GCOS_COMPLETION_MUTATE === "1";
+const emailTest = process.env.GCOS_COMPLETION_EMAIL_TEST === "1" || process.env.GCOS_PRODUCT_SMOKE_EMAIL_TEST === "1";
+const emailTo = process.env.GCOS_COMPLETION_EMAIL_TO ?? process.env.GCOS_PRODUCT_SMOKE_EMAIL_TO;
 const checks = [
   {
     name: "Build web application",
@@ -40,7 +42,9 @@ const checks = [
     command: "npm run product:smoke",
     env: {
       GCOS_PRODUCT_SMOKE_URL: liveUrl,
-      ...(mutate ? { GCOS_PRODUCT_SMOKE_MUTATE: "1" } : {})
+      ...(mutate ? { GCOS_PRODUCT_SMOKE_MUTATE: "1" } : {}),
+      ...(emailTest ? { GCOS_PRODUCT_SMOKE_EMAIL_TEST: "1" } : {}),
+      ...(emailTo ? { GCOS_PRODUCT_SMOKE_EMAIL_TO: emailTo } : {})
     }
   }
 ];
@@ -49,6 +53,8 @@ const report = {
   generatedAt: new Date().toISOString(),
   liveUrl,
   mode: mutate ? "full-live-mutation" : "read-only-live",
+  emailTest,
+  emailTo: emailTo ?? null,
   checks: []
 };
 
@@ -126,7 +132,7 @@ function nextActions(result) {
   }
   if (result.status === "passed-with-email-test-skipped") {
     return [
-      "Run live email delivery with GCOS_PRODUCT_SMOKE_EMAIL_TEST=1 after choosing the destination inbox.",
+      "Run live email delivery with GCOS_COMPLETION_EMAIL_TEST=1 after choosing the destination inbox.",
       "Record final launch signoff and restore evidence."
     ];
   }
