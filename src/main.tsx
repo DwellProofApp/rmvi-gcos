@@ -2756,6 +2756,17 @@ function getInitialSection(): Section {
   return isSection(section) ? section : "Control Center";
 }
 
+function sectionFromCurrentLocation(): Section {
+  if (adminBoardRequested()) return "Admin Board";
+  const path = currentPathWithoutTrailingSlash();
+  if (path === "/admin") return "Admin Board";
+  if (path === "/app") {
+    const section = new URLSearchParams(window.location.search).get("section");
+    return isSection(section) ? section : "Control Center";
+  }
+  return "Control Center";
+}
+
 function requestedWorkspaceSection(): Section {
   if (adminRouteRequested()) return "Admin Board";
   return getInitialSection();
@@ -2778,7 +2789,18 @@ function sectionPath(section: Section) {
 
 function replaceBrowserRoute(path: string) {
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
-  if (current !== path) window.history.replaceState({}, "", path);
+  if (current !== path) {
+    window.history.replaceState({}, "", path);
+    window.dispatchEvent(new Event("gcos:routechange"));
+  }
+}
+
+function pushBrowserRoute(path: string) {
+  const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+  if (current !== path) {
+    window.history.pushState({}, "", path);
+    window.dispatchEvent(new Event("gcos:routechange"));
+  }
 }
 
 function signedOutRouteForCurrentLocation(fallbackAdmin = false) {
@@ -3835,11 +3857,34 @@ function App() {
     if (!session || adminLandingRequested() || userLandingRequested()) return;
     if (!allowedSections.includes(activeSection)) {
       setActiveSection("Control Center");
-      window.history.replaceState({}, "", sectionPath("Control Center"));
+      replaceBrowserRoute(sectionPath("Control Center"));
     }
   }, [activeSection, allowedSections, session]);
 
   const effectiveSection: Section = allowedSections.includes(activeSection) ? activeSection : "Control Center";
+
+  React.useEffect(() => {
+    if (!session) return;
+    const syncSectionFromUrl = () => {
+      if (adminLandingRequested() || userLandingRequested()) return;
+      const requested = sectionFromCurrentLocation();
+      const nextSection = allowedSections.includes(requested)
+        ? requested
+        : allowedSections.includes("Control Center")
+          ? "Control Center"
+          : allowedSections[0] ?? "Control Center";
+      setActiveSection((current) => current === nextSection ? current : nextSection);
+    };
+    syncSectionFromUrl();
+    window.addEventListener("popstate", syncSectionFromUrl);
+    window.addEventListener("hashchange", syncSectionFromUrl);
+    window.addEventListener("gcos:routechange", syncSectionFromUrl);
+    return () => {
+      window.removeEventListener("popstate", syncSectionFromUrl);
+      window.removeEventListener("hashchange", syncSectionFromUrl);
+      window.removeEventListener("gcos:routechange", syncSectionFromUrl);
+    };
+  }, [allowedSections, session]);
 
   const searchResults = React.useMemo(() => {
     const records: SearchResult[] = [
@@ -3870,7 +3915,7 @@ function App() {
   function openSection(section: Section) {
     const nextSection = allowedSections.includes(section) ? section : "Control Center";
     setActiveSection(nextSection);
-    window.history.pushState({}, "", sectionPath(nextSection));
+    pushBrowserRoute(sectionPath(nextSection));
   }
 
   function openSearchResult(result: SearchResult) {
@@ -4120,7 +4165,7 @@ function App() {
 
   React.useEffect(() => {
     if (!session || adminLandingRequested() || userLandingRequested()) return;
-    window.history.replaceState({}, "", sectionPath(effectiveSection));
+    replaceBrowserRoute(sectionPath(effectiveSection));
   }, [effectiveSection, session]);
 
   function recordAudit(event: string, object: string, result: string) {
@@ -5850,7 +5895,7 @@ function App() {
       setSession({ email: normalizedEmail, startedAt, authPending: true });
       setActiveStation(createdStation);
       setActiveSection("Control Center");
-      window.history.replaceState({}, "", sectionPath("Control Center"));
+      replaceBrowserRoute(sectionPath("Control Center"));
     }
     setAuditRows((rows) => [
       {
