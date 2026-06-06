@@ -1967,6 +1967,60 @@ export function createServices({ state, record, requirePermission, findById, int
       return item;
     },
 
+    readMessage(id, body) {
+      const item = findById(state.messages, id);
+      const reader = normalizeStationEmail(body.actor ?? body.reader);
+      item.readBy = Array.from(new Set([...(item.readBy ?? []), reader]));
+      item.readAt ??= {};
+      item.readAt[reader] = new Date().toISOString();
+      record("ChurchMailRead", reader, item.subject, "Recipient opened message");
+      return this.messageReceipt(id, body);
+    },
+
+    acknowledgeMessage(id, body) {
+      const item = findById(state.messages, id);
+      const actor = normalizeStationEmail(body.actor ?? body.reader);
+      item.readBy = Array.from(new Set([...(item.readBy ?? []), actor]));
+      item.readAt ??= {};
+      item.readAt[actor] = new Date().toISOString();
+      item.acknowledgedBy = Array.from(new Set([...(item.acknowledgedBy ?? []), actor]));
+      item.acknowledgementLog = [
+        {
+          actor,
+          acknowledgedAt: new Date().toISOString(),
+          note: body.note ?? "Message acknowledged"
+        },
+        ...(item.acknowledgementLog ?? [])
+      ];
+      item.status = "Approved";
+      record("ChurchMailAcknowledged", actor, item.subject, body.note ?? "Recipient acknowledgement recorded");
+      return this.messageReceipt(id, body);
+    },
+
+    messageReceipt(id, body = {}) {
+      const item = findById(state.messages, id);
+      const explicitRecipients = messageRecipients(item).map(normalizeStationEmail);
+      const recipients = explicitRecipients.length
+        ? explicitRecipients
+        : messageRouteIsBroadcast(item)
+          ? state.stations.map((stationItem) => normalizeStationEmail(stationItem.email)).filter((email) => email !== normalizeStationEmail(item.from))
+          : [];
+      const readBy = (item.readBy ?? []).map(normalizeStationEmail);
+      const acknowledgedBy = (item.acknowledgedBy ?? []).map(normalizeStationEmail);
+      return {
+        generatedAt: new Date().toISOString(),
+        generatedBy: normalizeStationEmail(body.actor ?? "system"),
+        message: item,
+        recipients,
+        delivery: item.delivery ?? null,
+        readBy,
+        acknowledgedBy,
+        unreadRecipients: recipients.filter((recipient) => !readBy.includes(recipient)),
+        pendingAcknowledgement: recipients.filter((recipient) => !acknowledgedBy.includes(recipient)),
+        acknowledgementLog: item.acknowledgementLog ?? []
+      };
+    },
+
     watchMessage(id, body) {
       const item = findById(state.messages, id);
       const watcher = body.watcher ?? body.actor ?? "Watcher";
@@ -2003,6 +2057,8 @@ export function createServices({ state, record, requirePermission, findById, int
       const approved = state.messages.filter((item) => item.status === "Approved");
       const archived = state.messages.filter((item) => item.archived);
       const watched = state.messages.filter((item) => item.watchers?.length);
+      const read = state.messages.filter((item) => item.readBy?.length);
+      const acknowledged = state.messages.filter((item) => item.acknowledgedBy?.length);
       return {
         generatedAt: new Date().toISOString(),
         total: state.messages.length,
@@ -2012,6 +2068,8 @@ export function createServices({ state, record, requirePermission, findById, int
         approved: approved.length,
         archived: archived.length,
         watched: watched.length,
+        read: read.length,
+        acknowledged: acknowledged.length,
         nextMessage: escalated[0]?.subject ?? review[0]?.subject ?? ready[0]?.subject ?? state.messages[0]?.subject ?? "No messages"
       };
     },

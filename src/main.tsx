@@ -88,7 +88,8 @@ type PermissionPreset = "Reporter" | "Department Lead" | "Approver" | "Office Ad
 type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string; nodeKind?: OrgNodeKind; parentId?: string; parentName?: string; permissionPreset?: PermissionPreset; reportingRoute?: string; workflowAccess?: string[] };
 type StationAuth = { email: string; status: string; failedAttempts: number; lockedUntil?: string; mfaRequired?: boolean; forceReset?: boolean; updatedAt?: string; updatedBy?: string; lastLoginAt?: string; lastFailedAt?: string };
 type StationAuthDigest = { generatedAt: string; total: number; locked: number; mfaRequired: number; resetRequired: number; failedAttempts: number; nextCredential: string };
-type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; to?: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[]; recipients?: string[]; body?: string; linkedLiveSession?: string; linkedReport?: string; delivery?: { provider?: string; status?: string; mode?: string; messageId?: string; recipients?: string[]; updatedAt?: string; error?: string } };
+type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; to?: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[]; recipients?: string[]; readBy?: string[]; readAt?: Record<string, string>; acknowledgedBy?: string[]; acknowledgementLog?: { actor: string; acknowledgedAt: string; note?: string }[]; body?: string; linkedLiveSession?: string; linkedReport?: string; delivery?: { provider?: string; status?: string; mode?: string; messageId?: string; recipients?: string[]; updatedAt?: string; error?: string } };
+type MessageReceipt = { generatedAt: string; generatedBy: string; message: Message; recipients: string[]; delivery?: Message["delivery"] | null; readBy: string[]; acknowledgedBy: string[]; unreadRecipients: string[]; pendingAcknowledgement: string[]; acknowledgementLog: { actor: string; acknowledgedAt: string; note?: string }[] };
 type Report = {
   id: string;
   name: string;
@@ -5846,7 +5847,25 @@ function App() {
   function acknowledgeMessage(id: string) {
     const message = messages.find((item) => item.id === id);
     if (!message) return;
-    updateMessageStatus(id, "Approved", "EmailAcknowledged");
+    const actor = activeStation.email;
+    const acknowledgedAt = new Date().toISOString();
+    setMessages((items) => items.map((item) => item.id === id ? {
+      ...item,
+      status: "Approved",
+      readBy: Array.from(new Set([...(item.readBy ?? []), actor])),
+      readAt: { ...(item.readAt ?? {}), [actor]: acknowledgedAt },
+      acknowledgedBy: Array.from(new Set([...(item.acknowledgedBy ?? []), actor])),
+      acknowledgementLog: [{ actor, acknowledgedAt, note: "Message acknowledged" }, ...(item.acknowledgementLog ?? [])]
+    } : item));
+    recordAudit("ChurchMailAcknowledged", message.subject, "Recipient acknowledgement recorded");
+    if (!offlineMode) {
+      void apiRequest<MessageReceipt>(`/api/messages/${id}/acknowledge`, {
+        method: "POST",
+        body: JSON.stringify({ note: "Message acknowledged from ChurchMail" })
+      }).then((receipt) => {
+        setMessages((items) => items.map((item) => item.id === id ? receipt.message : item));
+      }).catch(() => undefined);
+    }
   }
 
   function updateMessageStatus(id: string, status: Status, event = "EmailStatusUpdated") {
@@ -10802,6 +10821,7 @@ function App() {
         setSearchQuery={setSearchQuery}
         onLogout={handleLogout}
         onSendChurchMail={sendChurchMail}
+        onAcknowledgeChurchMail={acknowledgeMessage}
         onCreateReport={createReportDraft}
         onSubmitReport={submitReport}
         onReviewReport={reviewReport}
@@ -24067,6 +24087,7 @@ type AdminV2Props = {
   onOpenSearchResult: (result: SearchResult) => void;
   onLogout: () => void;
   onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
+  onAcknowledgeChurchMail: (id: string) => void;
   onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => Report;
   onSubmitReport: (id: string) => void;
   onReviewReport: (id: string) => void;
@@ -24216,6 +24237,7 @@ function AdminV2Shell(props: AdminV2Props) {
     onOpenSearchResult,
     onLogout,
     onSendChurchMail,
+    onAcknowledgeChurchMail,
     onCreateReport,
     onSubmitReport,
     onReviewReport,
@@ -24304,7 +24326,7 @@ function AdminV2Shell(props: AdminV2Props) {
       );
     }
     if (section === "ChurchMail") {
-      return <AdminV2Mail messages={messages} station={station} stationDirectory={churchMailRecipientDirectory} onSendChurchMail={onSendChurchMail} onQuickAction={onQuickAction} />;
+      return <AdminV2Mail messages={messages} station={station} stationDirectory={churchMailRecipientDirectory} onSendChurchMail={onSendChurchMail} onAcknowledgeChurchMail={onAcknowledgeChurchMail} onQuickAction={onQuickAction} />;
     }
     if (section === "Personnel") {
       return (
@@ -26235,12 +26257,14 @@ function AdminV2Mail({
   station,
   stationDirectory,
   onSendChurchMail,
+  onAcknowledgeChurchMail,
   onQuickAction
 }: {
   messages: Message[];
   station: StationCard;
   stationDirectory: StationCard[];
   onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
+  onAcknowledgeChurchMail: (id: string) => void;
   onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 }) {
   const [composerOpen, setComposerOpen] = React.useState(false);
@@ -26254,6 +26278,7 @@ function AdminV2Mail({
   const [composeFeedback, setComposeFeedback] = React.useState("");
   const [activeMailbox, setActiveMailbox] = React.useState("inbox");
   const [selectedMessageId, setSelectedMessageId] = React.useState(messages[0]?.id ?? "");
+  const [localReadMessageIds, setLocalReadMessageIds] = React.useState<string[]>([]);
   const audienceOptions = [
     { value: "all", label: "Everyone on GCOS", recipients: stationDirectory.map((item) => item.email), route: "All Active GCOS Accounts" },
     { value: "national-regional", label: "National and Regional offices", recipients: stationDirectory.filter((item) => /national|regional|international/i.test(String(item.level))).map((item) => item.email), route: "All National and Regional Offices" },
@@ -26280,6 +26305,13 @@ function AdminV2Mail({
     return inboxMessages.includes(message);
   });
   const selected = visibleMessages.find((message) => message.id === selectedMessageId) ?? visibleMessages[0] ?? messages[0];
+  const selectedRecipients = selected ? (selected.recipients ?? selected.delivery?.recipients ?? []).map(normalizeStationEmail) : [];
+  const selectedReadBy = selected ? Array.from(new Set([...(selected.readBy ?? []).map(normalizeStationEmail), ...(localReadMessageIds.includes(selected.id) ? [stationEmail] : [])])) : [];
+  const selectedAcknowledgedBy = selected ? (selected.acknowledgedBy ?? []).map(normalizeStationEmail) : [];
+  const selectedUnreadCount = selectedRecipients.length ? selectedRecipients.filter((email) => !selectedReadBy.includes(email)).length : 0;
+  const selectedPendingAckCount = selectedRecipients.length ? selectedRecipients.filter((email) => !selectedAcknowledgedBy.includes(email)).length : 0;
+  const selectedIsRead = selected ? selectedReadBy.includes(stationEmail) : false;
+  const selectedIsAcknowledged = selected ? selectedAcknowledgedBy.includes(stationEmail) : false;
   const mailboxItems = [
     { id: "inbox", label: "Inbox", count: inboxMessages.length },
     { id: "sent", label: "Sent", count: sentMessages.length },
@@ -26360,6 +26392,20 @@ function AdminV2Mail({
     onQuickAction(action, selectedRecord);
     setComposeFeedback(selected ? `${feedback}: ${selected.subject}` : feedback);
   }
+  function markSelectedRead() {
+    if (!selected) return;
+    setLocalReadMessageIds((ids) => Array.from(new Set([...ids, selected.id])));
+    void apiRequest<MessageReceipt>(`/api/messages/${selected.id}/read`, {
+      method: "POST",
+      body: JSON.stringify({ note: "Message opened in ChurchMail" })
+    }).catch(() => undefined);
+    setComposeFeedback(`${selected.subject} marked as read.`);
+  }
+  function acknowledgeSelected() {
+    if (!selected) return;
+    onAcknowledgeChurchMail(selected.id);
+    setComposeFeedback(`${selected.subject} acknowledged by ${station.email}.`);
+  }
 
   return (
     <div className="admin-v2-workspace">
@@ -26373,7 +26419,7 @@ function AdminV2Mail({
           <article><strong>{inboxMessages.length}</strong><span>Inbox</span></article>
           <article><strong>{sentMessages.length}</strong><span>Sent</span></article>
           <article><strong>{messages.filter((item) => item.status === "Escalated").length}</strong><span>Escalated</span></article>
-          <article><strong>{stationDirectory.length}</strong><span>Recipients</span></article>
+          <article><strong>{messages.filter((item) => (item.acknowledgedBy ?? []).length).length}</strong><span>Acknowledged</span></article>
         </div>
       </section>
       <section className="admin-v2-toolbar">
@@ -26465,6 +26511,7 @@ function AdminV2Mail({
               </div>
               <small>{message.kind} / {(message.delivery?.status ?? message.status)} / {(message.recipients ?? []).length || "station"} recipient{((message.recipients ?? []).length === 1) ? "" : "s"}</small>
               <span className={`admin-v2-status ${message.status.toLowerCase().replace(/[^a-z0-9]+/g, "-")}`}>{message.status}</span>
+              {!(message.readBy ?? []).map(normalizeStationEmail).includes(stationEmail) && !localReadMessageIds.includes(message.id) && !isSentByStation(message) && <b className="admin-v2-unread-dot">Unread</b>}
             </article>
           ))}
           {visibleMessages.length === 0 && <div className="admin-v2-empty-state">No messages in this mailbox yet.</div>}
@@ -26480,7 +26527,20 @@ function AdminV2Mail({
           <span>To: {selected.to ?? selected.route ?? "Governance communication"}</span>
           <span>Recipients: {(selected.recipients ?? selected.delivery?.recipients ?? []).join(", ") || "Station route"}</span>
           <span>Delivery: {selected.delivery?.provider ? `${selected.delivery.provider} / ${selected.delivery.status}` : "Internal GCOS record"}</span>
+          <div className="admin-v2-report-meta">
+            <article><span>Read by</span><strong>{selectedReadBy.length}</strong></article>
+            <article><span>Acknowledged</span><strong>{selectedAcknowledgedBy.length}</strong></article>
+            <article><span>Unread</span><strong>{selectedUnreadCount}</strong></article>
+            <article><span>Pending ack</span><strong>{selectedPendingAckCount}</strong></article>
+          </div>
+          {selected.acknowledgementLog?.length ? (
+            <div className="admin-v2-audit-mini">
+              {selected.acknowledgementLog.slice(0, 4).map((entry) => <span key={`${entry.actor}-${entry.acknowledgedAt}`}>{entry.actor} acknowledged {formatAuditFieldDate(entry.acknowledgedAt)}</span>)}
+            </div>
+          ) : null}
           <div className="admin-v2-actions-row">
+            <button disabled={selectedIsRead} onClick={markSelectedRead} type="button">{selectedIsRead ? "Read" : "Mark read"}</button>
+            <button disabled={selectedIsAcknowledged} onClick={acknowledgeSelected} type="button">{selectedIsAcknowledged ? "Acknowledged" : "Acknowledge"}</button>
             <button onClick={() => runSelectedMessageAction("Route message", "Message route updated")} type="button">Route</button>
             <button onClick={() => runSelectedMessageAction("Create report from message", "Report created from message")} type="button">Create report</button>
             <button onClick={() => runSelectedMessageAction("Request approval from message", "Approval requested from message")} type="button">Request approval</button>

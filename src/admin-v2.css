@@ -662,6 +662,18 @@
   white-space: normal;
 }
 
+.admin-v2-unread-dot {
+  background: #0f5bd7;
+  border-radius: 999px;
+  color: #fff;
+  font-size: 10px;
+  font-weight: 900;
+  justify-self: end;
+  letter-spacing: .08em;
+  padding: 5px 8px;
+  text-transform: uppercase;
+}
+
 .admin-v2-record-main {
   display: grid;
   gap: 4px;

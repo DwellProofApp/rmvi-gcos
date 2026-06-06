@@ -425,6 +425,16 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/messages/:id/read": (body) => {
+    if (body.reader !== undefined) requireString(body.reader, "reader");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
+  "POST /api/messages/:id/acknowledge": (body) => {
+    if (body.reader !== undefined) requireString(body.reader, "reader");
+    if (body.note !== undefined) requireString(body.note, "note");
+  },
+
   "POST /api/messages/:id/watch": (body) => {
     if (body.watcher !== undefined) requireString(body.watcher, "watcher");
   },

@@ -763,6 +763,31 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     }, nationalToken);
     assert.equal(createdMessage.subject, "Automated API test notice");
 
+    const recipientMessage = await postJson("/api/messages", {
+      kind: "Directive",
+      subject: "Automated recipient receipt notice",
+      from: "np@rmvi.org",
+      to: "Local and Finance offices",
+      status: "Ready",
+      files: "No attachments",
+      recipients: ["local_branch_017@rmvi.org", "finance@rmvi.org"]
+    }, nationalToken);
+    const localInbox = await getJson("/api/messages", localToken);
+    assert.equal(localInbox.some((message) => message.id === recipientMessage.id), true);
+    const readReceipt = await postJson(`/api/messages/${recipientMessage.id}/read`, {
+      note: "Local branch opened the directive"
+    }, localToken);
+    assert.equal(readReceipt.readBy.includes("local_branch_017@rmvi.org"), true);
+    assert.equal(readReceipt.unreadRecipients.includes("finance@rmvi.org"), true);
+    const ackReceipt = await postJson(`/api/messages/${recipientMessage.id}/acknowledge`, {
+      note: "Finance acknowledges receipt"
+    }, financeToken);
+    assert.equal(ackReceipt.message.status, "Approved");
+    assert.equal(ackReceipt.acknowledgedBy.includes("finance@rmvi.org"), true);
+    assert.equal(ackReceipt.pendingAcknowledgement.includes("local_branch_017@rmvi.org"), true);
+    const finalReceipt = await getJson(`/api/messages/${recipientMessage.id}/receipt`, nationalToken);
+    assert.equal(finalReceipt.acknowledgementLog.some((entry) => entry.actor === "finance@rmvi.org"), true);
+
     const reviewedMessage = await postJson(`/api/messages/${createdMessage.id}/status`, {
       status: "In Review"
     }, nationalToken);
@@ -818,6 +843,8 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(messageDigest.total > 0, true);
     assert.equal(messageDigest.approved >= 1, true);
     assert.equal(messageDigest.watched >= 1, true);
+    assert.equal(messageDigest.read >= 1, true);
+    assert.equal(messageDigest.acknowledged >= 1, true);
 
     const snapshot = await getJson("/api/export", nationalToken);
     assert.equal(snapshot.exportedBy, "np@rmvi.org");
