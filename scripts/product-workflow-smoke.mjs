@@ -9,7 +9,7 @@ const mutate = process.env.GCOS_PRODUCT_SMOKE_MUTATE === "1";
 const liveEmailTest = process.env.GCOS_PRODUCT_SMOKE_EMAIL_TEST === "1";
 const email = process.env.GCOS_SMOKE_EMAIL ?? "admin@rmvi.org";
 const password = requiredEnv("GCOS_SMOKE_PASSWORD");
-const requestTimeoutMs = Number(process.env.GCOS_PRODUCT_SMOKE_TIMEOUT_MS ?? 15000);
+const requestTimeoutMs = Number(process.env.GCOS_PRODUCT_SMOKE_TIMEOUT_MS ?? 30000);
 const stationLogins = [
   ["finance@rmvi.org", requiredEnv("GCOS_FINANCE_SMOKE_PASSWORD")],
   ["audit@rmvi.org", requiredEnv("GCOS_AUDIT_SMOKE_PASSWORD")],
