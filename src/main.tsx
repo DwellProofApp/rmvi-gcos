@@ -1,4 +1,5 @@
 import React from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import {
   Activity,
@@ -5736,11 +5737,13 @@ function App() {
   function openAuthenticatedWorkspace(station: StationCard, nextSession: Session, landingSection: Section) {
     const path = sectionPath(landingSection);
     window.localStorage.setItem("gcos.session", JSON.stringify(nextSession));
-    setActiveStation(station);
-    setActiveSection(landingSection);
-    setSearchQuery("");
-    setNotificationsOpen(false);
-    setSession(nextSession);
+    flushSync(() => {
+      setActiveStation(station);
+      setActiveSection(landingSection);
+      setSearchQuery("");
+      setNotificationsOpen(false);
+      setSession(nextSession);
+    });
     replaceBrowserRoute(path);
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   }
@@ -5947,9 +5950,10 @@ function App() {
 
   const showAdminSignInGate = adminLandingRequested();
   const showUserSignInGate = userLandingRequested();
+  const sessionCanOpenWorkspace = Boolean(session && !sessionExpired(session) && (session.token || session.authPending || isLocalPreview));
 
-  React.useEffect(() => {
-    if ((!showAdminSignInGate && !showUserSignInGate) || !session) return;
+  React.useLayoutEffect(() => {
+    if ((!showAdminSignInGate && !showUserSignInGate) || !session || !sessionCanOpenWorkspace) return;
     const normalizedEmail = normalizeStationEmail(session.email);
     const station = stationDirectory.find((item) => item.email === normalizedEmail);
     if (station && (session.token || session.authPending)) {
@@ -5960,9 +5964,9 @@ function App() {
     clearStoredSession();
     setSession(null);
     setActiveSection(showAdminSignInGate ? "Admin Board" : "Control Center");
-  }, [session, setSession, showAdminSignInGate, showUserSignInGate, stationDirectory]);
+  }, [session, sessionCanOpenWorkspace, setSession, showAdminSignInGate, showUserSignInGate, stationDirectory]);
 
-  if (!session || showAdminSignInGate || showUserSignInGate) {
+  if (!session || !sessionCanOpenWorkspace) {
     return <LoginScreen stationDirectory={stationDirectory} pwa={pwa} onLogin={handleLogin} onCreateAccount={createAccount} />;
   }
 
