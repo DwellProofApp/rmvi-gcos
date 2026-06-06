@@ -2008,3 +2008,277 @@ body:has(.app-shell),
     grid-template-columns: 1fr;
   }
 }
+
+/* Final authenticated workspace design audit:
+   remove leftover white panels from Reports and the operational rooms. */
+.admin-v2-shell,
+.app-shell.workstation-admin:not(.admin-shell) {
+  --gcos-final-bg: #050913;
+  --gcos-final-panel: rgba(10, 16, 29, 0.96);
+  --gcos-final-panel-2: rgba(13, 21, 38, 0.94);
+  --gcos-final-panel-3: rgba(17, 27, 48, 0.92);
+  --gcos-final-line: rgba(112, 139, 184, 0.24);
+  --gcos-final-line-strong: rgba(0, 212, 255, 0.34);
+  --gcos-final-text: #f5f8ff;
+  --gcos-final-muted: #a9bad5;
+  --gcos-final-dim: #7d91b4;
+  --gcos-final-cyan: #00d4ff;
+  --gcos-final-gold: #e7c76a;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-panel,
+  .admin-v2-workspace-intro,
+  .admin-v2-report-inbox,
+  .admin-v2-report-inbox-column,
+  .admin-v2-review-signoff-panel,
+  .admin-v2-assignment-brief,
+  .admin-v2-assignment-summary article,
+  .admin-v2-assignment-grid,
+  .admin-v2-assignment-route,
+  .admin-v2-package-card,
+  .admin-v2-history-stack article,
+  .admin-v2-report-workspace,
+  .admin-v2-template-picker,
+  .admin-v2-report-form,
+  .admin-v2-report-queue,
+  .admin-v2-connected-routes,
+  .admin-v2-evidence-panel,
+  .admin-v2-review-panel,
+  .admin-v2-workflow-status,
+  .admin-v2-next-step-card,
+  .admin-v2-detail,
+  .admin-v2-table,
+  .admin-v2-list,
+  .admin-v2-registry,
+  .admin-v2-inspector,
+  .admin-v2-card,
+  .admin-v2-empty-state
+) {
+  background:
+    radial-gradient(circle at 10% 0%, rgba(0, 212, 255, 0.06), transparent 32%),
+    linear-gradient(180deg, var(--gcos-final-panel), rgba(6, 11, 21, 0.96)) !important;
+  border: 1px solid var(--gcos-final-line) !important;
+  box-shadow: 0 22px 54px rgba(0, 0, 0, 0.28) !important;
+  color: var(--gcos-final-text) !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-process-flow article,
+  .admin-v2-stat-strip article,
+  .admin-v2-report-inbox-stack button,
+  .admin-v2-template-picker button,
+  .admin-v2-report-queue button,
+  .admin-v2-form-stack button,
+  .admin-v2-history-stack button,
+  .admin-v2-assignment-drafts button,
+  .admin-v2-connected-routes button,
+  .admin-v2-report-meta article,
+  .admin-v2-workflow-status article,
+  .admin-v2-review-comment,
+  .admin-v2-evidence-file,
+  .admin-v2-route-card,
+  .admin-v2-record-row,
+  .admin-v2-list button,
+  .admin-v2-registry button,
+  .admin-v2-card button:not(.primary)
+) {
+  background: linear-gradient(180deg, var(--gcos-final-panel-2), rgba(8, 14, 26, 0.95)) !important;
+  border: 1px solid rgba(112, 139, 184, 0.2) !important;
+  border-radius: 16px !important;
+  box-shadow: none !important;
+  color: var(--gcos-final-text) !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-report-inbox-stack button:hover,
+  .admin-v2-report-inbox-stack button.selected,
+  .admin-v2-template-picker button:hover,
+  .admin-v2-template-picker button.selected,
+  .admin-v2-report-queue button:hover,
+  .admin-v2-report-queue button.selected,
+  .admin-v2-history-stack button:hover,
+  .admin-v2-history-stack button.selected,
+  .admin-v2-connected-routes button:hover,
+  .admin-v2-list button:hover,
+  .admin-v2-registry button:hover
+) {
+  background:
+    linear-gradient(135deg, rgba(0, 212, 255, 0.16), rgba(231, 199, 106, 0.08)),
+    var(--gcos-final-panel-3) !important;
+  border-color: var(--gcos-final-line-strong) !important;
+  transform: translateY(-1px);
+}
+
+.admin-v2-shell :is(
+  .admin-v2-panel-head,
+  .admin-v2-report-inbox-head,
+  .admin-v2-review-signoff-panel,
+  .admin-v2-toolbar,
+  .admin-v2-process-flow
+) {
+  align-items: center !important;
+  gap: 12px !important;
+}
+
+.admin-v2-shell .admin-v2-report-inbox-grid {
+  align-items: stretch !important;
+  gap: 14px !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+}
+
+.admin-v2-shell .admin-v2-report-inbox-column {
+  align-content: start !important;
+  display: grid !important;
+  gap: 12px !important;
+  min-height: 220px !important;
+  padding: 15px !important;
+}
+
+.admin-v2-shell .admin-v2-report-inbox-head {
+  border-bottom: 1px solid rgba(112, 139, 184, 0.18) !important;
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  padding-bottom: 12px !important;
+}
+
+.admin-v2-shell .admin-v2-report-inbox-head small {
+  grid-column: 1 / -1 !important;
+}
+
+.admin-v2-shell .admin-v2-report-inbox-stack {
+  display: grid !important;
+  gap: 10px !important;
+}
+
+.admin-v2-shell .admin-v2-report-inbox-stack button {
+  align-items: start !important;
+  display: grid !important;
+  gap: 5px !important;
+  min-height: 96px !important;
+  padding: 12px !important;
+  text-align: left !important;
+}
+
+.admin-v2-shell .admin-v2-review-signoff-panel {
+  display: grid !important;
+  grid-template-columns: minmax(0, 1fr) auto !important;
+  margin-top: 14px !important;
+  padding: 16px !important;
+}
+
+.admin-v2-shell .admin-v2-review-actions {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 8px !important;
+  justify-content: flex-end !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-panel-head strong,
+  .admin-v2-workspace-intro h2,
+  .admin-v2-report-inbox-stack strong,
+  .admin-v2-review-signoff-panel strong,
+  .admin-v2-process-flow span,
+  .admin-v2-stat-strip strong,
+  .admin-v2-assignment-summary strong,
+  .admin-v2-detail h2,
+  .admin-v2-card h2,
+  h2,
+  h3
+) {
+  color: var(--gcos-final-text) !important;
+  overflow-wrap: anywhere !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-panel-head span,
+  .admin-v2-workspace-intro > div > span,
+  .admin-v2-report-inbox-head span,
+  .admin-v2-review-signoff-panel span,
+  .admin-v2-process-flow strong
+) {
+  color: var(--gcos-final-cyan) !important;
+  font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace !important;
+  letter-spacing: 0.12em !important;
+  text-transform: uppercase !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-workspace-intro p,
+  .admin-v2-report-inbox-head small,
+  .admin-v2-report-inbox-stack span,
+  .admin-v2-report-inbox-stack small,
+  .admin-v2-report-inbox-stack p,
+  .admin-v2-review-signoff-panel p,
+  .admin-v2-process-flow small,
+  .admin-v2-assignment-brief p,
+  .admin-v2-detail p,
+  .admin-v2-card p,
+  small,
+  p
+) {
+  color: var(--gcos-final-muted) !important;
+  line-height: 1.5 !important;
+  overflow-wrap: anywhere !important;
+}
+
+.admin-v2-shell :is(input, select, textarea, .admin-v2-search-field) {
+  background: rgba(5, 9, 19, 0.94) !important;
+  border: 1px solid rgba(112, 139, 184, 0.26) !important;
+  color: var(--gcos-final-text) !important;
+}
+
+.admin-v2-shell :is(input::placeholder, textarea::placeholder) {
+  color: var(--gcos-final-dim) !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-toolbar button,
+  .admin-v2-review-actions button,
+  .admin-v2-actions-row button,
+  .admin-v2-connected-routes button,
+  .admin-v2-assignment-grid button
+) {
+  background: rgba(8, 14, 26, 0.95) !important;
+  border: 1px solid rgba(112, 139, 184, 0.28) !important;
+  border-radius: 12px !important;
+  color: var(--gcos-final-text) !important;
+  font-weight: 900 !important;
+}
+
+.admin-v2-shell :is(
+  .admin-v2-toolbar .primary,
+  .admin-v2-toolbar button:first-child,
+  .admin-v2-review-actions button:first-child
+) {
+  background: linear-gradient(135deg, #00d4ff, #20a8ff) !important;
+  border-color: rgba(0, 212, 255, 0.58) !important;
+  color: #04101f !important;
+}
+
+.admin-v2-shell :is(button:disabled, .admin-v2-review-actions button:disabled) {
+  cursor: not-allowed !important;
+  opacity: 0.56 !important;
+}
+
+@media (max-width: 1180px) {
+  .admin-v2-shell .admin-v2-report-inbox-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+  }
+}
+
+@media (max-width: 760px) {
+  .admin-v2-shell .admin-v2-report-inbox-grid,
+  .admin-v2-shell .admin-v2-review-signoff-panel {
+    grid-template-columns: 1fr !important;
+  }
+
+  .admin-v2-shell .admin-v2-review-actions {
+    justify-content: stretch !important;
+  }
+
+  .admin-v2-shell .admin-v2-review-actions button {
+    flex: 1 1 150px !important;
+  }
+}
