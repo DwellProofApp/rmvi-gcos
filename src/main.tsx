@@ -5700,57 +5700,90 @@ function App() {
     window.requestAnimationFrame(() => window.scrollTo({ top: 0, behavior: "auto" }));
   }
 
-  function handleLogin(email: string, password: string) {
+  function validateLocalStationLogin(email: string, password: string) {
     const normalizedEmail = normalizeStationEmail(email);
     const station = stationDirectory.find((item) => item.email === normalizedEmail);
     const officePassword = offices.find((office) => office.email === normalizedEmail)?.password;
     const expectedPassword = stationPasswordOverrides[normalizedEmail] ?? seedStationPasswords[normalizedEmail] ?? officePassword;
     if (!station || expectedPassword !== password) {
-      return false;
+      return { ok: false, message: "Station credentials were not accepted." };
     }
     if (["Pending Approval", "Suspended", "Locked", "Rejected", "Deleted"].includes(station.status ?? "")) {
-      return false;
+      return { ok: false, message: "This station is not active yet." };
     }
     const stationPermissions = getPermissions(station);
     if (adminRouteRequested() && !stationPermissions.canOverride) {
-      return false;
+      return { ok: false, message: "This account is not authorized for the admin board." };
     }
+    return { ok: true, station, permissions: stationPermissions };
+  }
 
+  async function handleLogin(email: string, password: string): Promise<AuthActionResult> {
+    const normalizedEmail = normalizeStationEmail(email);
     const startedAt = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const landingSection = landingSectionForStation(station);
-    setAuditRows((rows) => [
-      {
-        id: `aud-${Date.now()}`,
-        event: "Login",
-        actor: normalizedEmail,
-        object: station.title,
-        result: "Allowed",
-        time: startedAt
-      },
-      ...rows
-    ]);
-    setEvents((items) => [`Login: ${normalizedEmail}`, ...items].slice(0, 8));
-    openAuthenticatedWorkspace(station, { email: normalizedEmail, startedAt, authPending: true }, landingSection);
-    void apiRequest<{ station: StationCard; token: string; expiresAt: string }>("/api/auth/login", {
-      method: "POST",
-      body: JSON.stringify({ email: normalizedEmail, password })
-    }).then((result) => {
-      const serverStation = stationDirectory.find((item) => item.email === normalizeStationEmail(result.station.email)) ?? station;
-      const authenticatedSession: Session = { email: normalizedEmail, startedAt, token: result.token, expiresAt: result.expiresAt };
-      openAuthenticatedWorkspace(serverStation, authenticatedSession, landingSectionForStation(serverStation));
-    }).catch(() => {
-      if (!networkOnline || isLocalPreview || ["127.0.0.1", "localhost"].includes(window.location.hostname)) {
-        setOfflineMode(true);
-        setEvents((items) => ["OfflineLogin: cached station session active", ...items].slice(0, 8));
-        return;
-      }
-      if (!isLocalPreview) {
+    const allowPreviewFallback = !networkOnline || isLocalPreview || ["127.0.0.1", "localhost"].includes(window.location.hostname);
+
+    try {
+      const result = await apiRequest<{ station: StationCard; token: string; expiresAt: string }>("/api/auth/login", {
+        method: "POST",
+        body: JSON.stringify({ email: normalizedEmail, password })
+      });
+      const resultEmail = normalizeStationEmail(result.station.email);
+      const serverStation = stationDirectory.find((item) => item.email === resultEmail) ?? {
+        ...result.station,
+        email: resultEmail,
+        icon: resolveStationIcon(result.station)
+      };
+      const serverPermissions = getPermissions(serverStation);
+      if (adminRouteRequested() && !serverPermissions.canOverride) {
         clearStoredSession();
         setSession(null);
-        replaceBrowserRoute(signedOutRouteForCurrentLocation(stationPermissions.canOverride));
+        return { ok: false, message: "This account is not authorized for the admin board." };
       }
-    });
-    return true;
+      const authenticatedSession: Session = { email: normalizedEmail, startedAt, token: result.token, expiresAt: result.expiresAt };
+      openAuthenticatedWorkspace(serverStation, authenticatedSession, landingSectionForStation(serverStation));
+      setAuditRows((rows) => [
+        {
+          id: `aud-${Date.now()}`,
+          event: "Login",
+          actor: normalizedEmail,
+          object: serverStation.title,
+          result: "Allowed",
+          time: startedAt
+        },
+        ...rows
+      ]);
+      setEvents((items) => [`Login: ${normalizedEmail}`, ...items].slice(0, 8));
+      return { ok: true };
+    } catch {
+      if (allowPreviewFallback) {
+        const localValidation = validateLocalStationLogin(normalizedEmail, password);
+        if (!localValidation.ok || !localValidation.station) {
+          return { ok: false, message: localValidation.message };
+        }
+        const station = localValidation.station;
+        const landingSection = landingSectionForStation(station);
+        setOfflineMode(true);
+        openAuthenticatedWorkspace(station, { email: normalizedEmail, startedAt, authPending: true }, landingSection);
+        setAuditRows((rows) => [
+          {
+            id: `aud-${Date.now()}`,
+            event: "Login",
+            actor: normalizedEmail,
+            object: station.title,
+            result: "Offline fallback",
+            time: startedAt
+          },
+          ...rows
+        ]);
+        setEvents((items) => ["OfflineLogin: cached station session active", ...items].slice(0, 8));
+        return { ok: true, message: "Offline cached station session opened." };
+      }
+      clearStoredSession();
+      setSession(null);
+      replaceBrowserRoute(signedOutRouteForCurrentLocation(adminRouteRequested()));
+      return { ok: false, message: "Live sign-in did not complete. Check the password and try again." };
+    }
   }
 
   function createAccount(account: CreateAccountInput): AuthActionResult {
@@ -11600,7 +11633,7 @@ function LoginScreen({
 }: {
   stationDirectory: StationCard[];
   pwa: ReturnType<typeof usePwaInstallPrompt>;
-  onLogin: (email: string, password: string) => boolean;
+  onLogin: (email: string, password: string) => Promise<AuthActionResult>;
   onCreateAccount: (account: CreateAccountInput) => AuthActionResult;
 }) {
   const isAdminPortal = adminRouteRequested();
@@ -11616,6 +11649,7 @@ function LoginScreen({
   const [error, setError] = React.useState("");
   const [notice, setNotice] = React.useState("");
   const [downloadNotice, setDownloadNotice] = React.useState("");
+  const [signingIn, setSigningIn] = React.useState(false);
   const selectedStation = stationDirectory.find((station) => station.email === email) ?? {
     email,
     title: "Manual Station Sign-In",
@@ -11625,11 +11659,19 @@ function LoginScreen({
   };
   const StationIcon = resolveStationIcon(selectedStation);
 
-  function submit(event: React.FormEvent<HTMLFormElement>) {
+  async function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (authMode === "signin") {
-      const ok = onLogin(email, password);
-      setError(ok ? "" : "Station credentials were not accepted.");
+      setSigningIn(true);
+      setError("");
+      setNotice("");
+      try {
+        const result = await onLogin(email, password);
+        setError(result.ok ? "" : result.message ?? "Station credentials were not accepted.");
+        setNotice(result.ok && result.message ? result.message : "");
+      } finally {
+        setSigningIn(false);
+      }
       return;
     }
 
@@ -12026,9 +12068,9 @@ function LoginScreen({
             {error && <div className="login-error">{error}</div>}
             {notice && <div className="login-notice">{notice}</div>}
 
-            <button type="submit">
+            <button type="submit" disabled={signingIn}>
               {authMode === "create" ? <Plus size={16} /> : <LockKeyhole size={16} />}
-              {authMode === "create" ? "Request account approval" : "Sign in to workstation"}
+              {authMode === "create" ? "Request account approval" : signingIn ? "Signing in..." : "Sign in to workstation"}
             </button>
             {isLocalPreview && authMode === "create" && (
               <button className="secondary-auth-action" type="button" onClick={openDemoAccount}>
