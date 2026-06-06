@@ -626,7 +626,15 @@ const server = createServer(async (request, response) => {
     const body = session ? { ...requestBody, actor: requestActor(session, requestBody) } : { ...requestBody, clientIp: clientIp(request) };
     const payload = await match.handler({ body, params: match.params, session });
     if (payload?.raw) return sendRaw(response, payload);
-    if (request.method !== "GET") await saveState();
+    if (request.method !== "GET") {
+      if (pathname === "/api/auth/login") {
+        void saveState().catch((error) => {
+          console.error("Background login persistence failed:", error);
+        });
+      } else {
+        await saveState();
+      }
+    }
     return send(response, payload);
   } catch (error) {
     if (error instanceof HttpError || Number.isInteger(error.status)) {
