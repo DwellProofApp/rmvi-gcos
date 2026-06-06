@@ -17,6 +17,38 @@
   </head>
   <body>
     <div id="root"></div>
+    <script>
+      window.__GCOS_BOOT_STARTED_AT__ = Date.now();
+      window.__GCOS_BOOT_RECOVERED__ = false;
+      window.setTimeout(function () {
+        var root = document.getElementById("root");
+        var hasRendered = root && root.childElementCount > 0;
+        if (hasRendered || window.__GCOS_BOOT_RECOVERED__) return;
+        var lastRecovery = Number(window.sessionStorage.getItem("gcos.boot-recovery") || "0");
+        if (lastRecovery && Date.now() - lastRecovery < 60000) {
+          if (root) {
+            root.innerHTML = '<main style="min-height:100vh;display:grid;place-items:center;background:#07111f;color:#e8f0ff;font-family:Inter,system-ui,sans-serif;padding:24px;"><section style="max-width:560px;border:1px solid rgba(129,160,205,.35);border-radius:18px;padding:28px;background:#101b2f;"><p style="margin:0 0 8px;color:#18d8ff;text-transform:uppercase;letter-spacing:.16em;font-size:12px;">RMVI GCOS</p><h1 style="margin:0 0 12px;font-size:28px;">The app did not finish opening.</h1><p style="margin:0 0 18px;color:#b9c7df;line-height:1.55;">Please check the connection, then open rmvi.org again. If this remains on screen, clear this site data once and sign in again.</p><a style="display:inline-flex;padding:12px 16px;border-radius:12px;background:#18d8ff;color:#07111f;text-decoration:none;font-weight:800;" href="/admin#signin">Open sign in</a></section></main>';
+          }
+          return;
+        }
+        window.__GCOS_BOOT_RECOVERED__ = true;
+        try {
+          window.sessionStorage.removeItem("gcos.sw-reload-pending");
+          window.sessionStorage.setItem("gcos.boot-recovery", String(Date.now()));
+          if (navigator.serviceWorker && navigator.serviceWorker.getRegistrations) {
+            navigator.serviceWorker.getRegistrations().then(function (registrations) {
+              return Promise.all(registrations.map(function (registration) { return registration.unregister(); }));
+            }).finally(function () {
+              window.location.replace(window.location.pathname + window.location.search + window.location.hash);
+            });
+            return;
+          }
+        } catch (error) {
+          console.warn("GCOS boot recovery could not clear service worker state", error);
+        }
+        window.location.reload();
+      }, 4500);
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

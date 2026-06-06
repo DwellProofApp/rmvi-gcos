@@ -27982,7 +27982,62 @@ function registerServiceWorker() {
   });
 }
 
+class GcosErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: unknown) {
+    console.error("GCOS failed to render", error);
+  }
+
+  recover() {
+    const session = window.localStorage.getItem("gcos.session");
+    window.localStorage.clear();
+    if (session) window.localStorage.setItem("gcos.session", session);
+    window.sessionStorage.removeItem("gcos.sw-reload-pending");
+    window.location.reload();
+  }
+
+  render() {
+    if (!this.state.hasError) return this.props.children;
+
+    return (
+      <main className="login-shell public-software-gateway admin-login-gateway">
+        <section className="login-panel">
+          <div className="login-intro admin-access-hero">
+            <div className="download-hero-copy">
+              <div className="login-emblem">
+                <img src={CHURCH_LOGO_SRC} alt="The Lion of the Tribe of Judah church logo" />
+              </div>
+              <div>
+                <h1>GCOS needs to refresh this workstation.</h1>
+                <p>The app detected an old local shell or saved workstation state from a previous build. Refreshing will keep your signed-in session and reload the current live version.</p>
+              </div>
+              <div className="login-actions">
+                <button type="button" onClick={() => this.recover()}>
+                  Refresh GCOS
+                </button>
+                <a href="/admin#signin">Return to sign in</a>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    );
+  }
+}
+
 registerServiceWorker();
 window.sessionStorage.removeItem("gcos.sw-reload-pending");
 
-createRoot(document.getElementById("root")!).render(<App />);
+createRoot(document.getElementById("root")!).render(
+  <GcosErrorBoundary>
+    <App />
+  </GcosErrorBoundary>
+);
