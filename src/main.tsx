@@ -10786,6 +10786,8 @@ function App() {
         onReviewReport={reviewReport}
         onVerifyReport={verifyReport}
         onArchiveReport={archiveReportRecord}
+        onRequestReportCorrection={requestReportCorrection}
+        onUpdateReportDetails={updateReportDetails}
         onUpdateReportScore={updateReportScore}
         onMarkReportEvidence={markReportEvidence}
         onArchiveEvidence={archiveReportEvidence}
@@ -24049,6 +24051,8 @@ type AdminV2Props = {
   onReviewReport: (id: string) => void;
   onVerifyReport: (id: string) => void;
   onArchiveReport: (id: string) => void;
+  onRequestReportCorrection: (id: string) => void;
+  onUpdateReportDetails: (id: string, details: Pick<Report, "preparedBy" | "attestation" | "approvalLimit" | "reportFields" | "templateChecklist">) => void;
   onUpdateReportScore: (id: string, score: number) => void;
   onMarkReportEvidence: (id: string) => void;
   onArchiveEvidence: (id: string) => void;
@@ -24196,6 +24200,8 @@ function AdminV2Shell(props: AdminV2Props) {
     onReviewReport,
     onVerifyReport,
     onArchiveReport,
+    onRequestReportCorrection,
+    onUpdateReportDetails,
     onUpdateReportScore,
     onMarkReportEvidence,
 	    onBuildGovernancePacket,
@@ -24252,6 +24258,8 @@ function AdminV2Shell(props: AdminV2Props) {
           onReviewReport={onReviewReport}
           onVerifyReport={onVerifyReport}
           onArchiveReport={onArchiveReport}
+          onRequestReportCorrection={onRequestReportCorrection}
+          onUpdateReportDetails={onUpdateReportDetails}
           onUpdateReportScore={onUpdateReportScore}
           onMarkReportEvidence={onMarkReportEvidence}
           onArchiveEvidence={props.onArchiveEvidence}
@@ -24843,6 +24851,8 @@ function AdminV2Reports({
   onReviewReport,
   onVerifyReport,
   onArchiveReport,
+  onRequestReportCorrection,
+  onUpdateReportDetails,
   onUpdateReportScore,
   onMarkReportEvidence,
   onArchiveEvidence,
@@ -24862,6 +24872,8 @@ function AdminV2Reports({
   onReviewReport: (id: string) => void;
   onVerifyReport: (id: string) => void;
   onArchiveReport: (id: string) => void;
+  onRequestReportCorrection: (id: string) => void;
+  onUpdateReportDetails: (id: string, details: Pick<Report, "preparedBy" | "attestation" | "approvalLimit" | "reportFields" | "templateChecklist">) => void;
   onUpdateReportScore: (id: string, score: number) => void;
   onMarkReportEvidence: (id: string) => void;
   onArchiveEvidence: (id: string) => void;
@@ -24877,6 +24889,10 @@ function AdminV2Reports({
   const [selectedReportId, setSelectedReportId] = React.useState(reports[0]?.id ?? "");
   const [selectedAssignmentId, setSelectedAssignmentId] = React.useState(reportAssignments[0]?.id ?? "");
   const [pageNotice, setPageNotice] = React.useState("");
+  const [reportFormFields, setReportFormFields] = React.useState<Record<string, string>>({});
+  const [reportEvidenceNote, setReportEvidenceNote] = React.useState("");
+  const [reportReviewComment, setReportReviewComment] = React.useState("");
+  const [reportCorrectionNote, setReportCorrectionNote] = React.useState("");
   const previousFocusedAssignmentId = React.useRef<string | undefined>(undefined);
   const previousAssignmentCount = React.useRef(reportAssignments.length);
   const monthlyTemplates = templates.filter((template) => template.type === "Resident Pastor Monthly");
@@ -24940,6 +24956,11 @@ function AdminV2Reports({
     return groups;
   }, []);
   const selectedReportRouteStops = splitWorkflowPath(selectedReport?.path);
+  const selectedReportTemplate = selectedReport ? templates.find((template) => template.id === selectedReport.templateId) : undefined;
+  const selectedReportFormEntries = Object.entries(reportFormFields);
+  const selectedReportFormComplete = selectedReportFormEntries.length
+    ? Math.round((completedReportFields(reportFormFields) / selectedReportFormEntries.length) * 100)
+    : selectedReport?.score ?? 0;
   const reportInboxBuckets = React.useMemo(() => {
     const activeReports = reports.filter((report) => !report.archived);
     return [
@@ -24993,6 +25014,20 @@ function AdminV2Reports({
   React.useEffect(() => {
     if (!reports.some((report) => report.id === selectedReportId)) setSelectedReportId(reports[0]?.id ?? "");
   }, [reports, selectedReportId]);
+  React.useEffect(() => {
+    if (!selectedReport) {
+      setReportFormFields({});
+      setReportEvidenceNote("");
+      setReportReviewComment("");
+      setReportCorrectionNote("");
+      return;
+    }
+    const fallbackTemplate = templates.find((template) => template.id === selectedReport.templateId) ?? selectedTemplate ?? templates[0];
+    setReportFormFields(Object.keys(selectedReport.reportFields ?? {}).length ? selectedReport.reportFields! : defaultReportFields(fallbackTemplate));
+    setReportEvidenceNote(selectedReport.evidenceStatus ?? "");
+    setReportReviewComment(selectedReport.reviewNote ?? "");
+    setReportCorrectionNote(selectedReport.correctionReason ?? "");
+  }, [selectedReport?.id, selectedTemplate?.id, templates]);
   React.useEffect(() => {
     const focusReportId = window.sessionStorage.getItem("gcos.reports.focusId");
     if (!focusReportId) return;
@@ -25077,6 +25112,30 @@ function AdminV2Reports({
       setPageNotice(`${selectedReport.name} archived. Opening Archive so the record can be reviewed.`);
       onOpenSection("Archive");
     }
+  }
+  function saveSelectedReportForm() {
+    if (!selectedReport) return;
+    const checklist = selectedReport.templateChecklist?.length
+      ? selectedReport.templateChecklist
+      : Object.keys(reportFormFields);
+    onUpdateReportDetails(selectedReport.id, {
+      preparedBy: selectedReport.preparedBy ?? selectedReport.owner,
+      attestation: selectedReport.attestation ?? "Prepared for RMVI supervisory review.",
+      approvalLimit: selectedReport.approvalLimit ?? selectedReportTemplate?.approvalLimit ?? "Delegated review",
+      reportFields: reportFormFields,
+      templateChecklist: checklist
+    });
+    setPageNotice(`${selectedReport.name} official form saved with ${completedReportFields(reportFormFields)}/${Object.keys(reportFormFields).length} sections completed.`);
+  }
+  function saveSelectedEvidenceNote() {
+    if (!selectedReport) return;
+    onMarkReportEvidence(selectedReport.id);
+    setPageNotice(`${selectedReport.name} evidence note recorded: ${reportEvidenceNote || "Evidence marked attached."}`);
+  }
+  function requestSelectedReportCorrection() {
+    if (!selectedReport) return;
+    onRequestReportCorrection(selectedReport.id);
+    setPageNotice(`${selectedReport.name} returned for correction${reportCorrectionNote ? `: ${reportCorrectionNote}` : "."}`);
   }
   function openSelectedReportChurchMailRoute() {
     if (selectedReport) {
@@ -25582,6 +25641,67 @@ function AdminV2Reports({
                 <button className="primary" type="button" onClick={runSelectedReportNextStep}>{selectedReportNextStep.label}</button>
               </div>
             )}
+            <div className="admin-v2-official-report-form">
+              <div className="admin-v2-form-panel-head">
+                <div>
+                  <span>Official report form</span>
+                  <strong>{completedReportFields(reportFormFields)}/{selectedReportFormEntries.length || 0} sections completed</strong>
+                </div>
+                <b>{selectedReportFormComplete}%</b>
+              </div>
+              <div className="admin-v2-report-section-list">
+                {selectedReportFormEntries.map(([section, value], index) => (
+                  <label key={section}>
+                    <span>{String(index + 1).padStart(2, "0")} / {section}</span>
+                    <textarea
+                      value={value}
+                      onChange={(event) => setReportFormFields((fields) => ({ ...fields, [section]: event.target.value }))}
+                      placeholder={`Enter ${section.toLowerCase()} details`}
+                    />
+                  </label>
+                ))}
+                {!selectedReportFormEntries.length && <p>No form sections are attached to this report yet.</p>}
+              </div>
+              <button type="button" className="primary" onClick={saveSelectedReportForm}>Save report form</button>
+            </div>
+            <div className="admin-v2-report-review-grid">
+              <section>
+                <div className="admin-v2-form-panel-head compact">
+                  <div>
+                    <span>Evidence panel</span>
+                    <strong>{selectedReportHasEvidence ? "Evidence attached" : "Evidence needed"}</strong>
+                  </div>
+                </div>
+                <label>
+                  <span>Evidence note</span>
+                  <textarea value={reportEvidenceNote} onChange={(event) => setReportEvidenceNote(event.target.value)} placeholder="Record workbook names, photo packets, signatures, or evidence still needed." />
+                </label>
+                <button type="button" onClick={saveSelectedEvidenceNote}>Mark evidence attached</button>
+              </section>
+              <section>
+                <div className="admin-v2-form-panel-head compact">
+                  <div>
+                    <span>Supervisor review</span>
+                    <strong>{selectedReport.state}</strong>
+                  </div>
+                </div>
+                <label>
+                  <span>Review comment</span>
+                  <textarea value={reportReviewComment} onChange={(event) => setReportReviewComment(event.target.value)} placeholder="Add a supervisory review note, correction request, or approval guidance." />
+                </label>
+                <label>
+                  <span>Correction request</span>
+                  <textarea value={reportCorrectionNote} onChange={(event) => setReportCorrectionNote(event.target.value)} placeholder="Explain what the office must correct before resubmitting." />
+                </label>
+                <div className="admin-v2-actions-row">
+                  <button type="button" onClick={() => {
+                    onReviewReport(selectedReport.id);
+                    setPageNotice(`${selectedReport.name} opened for supervisory review${reportReviewComment ? `: ${reportReviewComment}` : "."}`);
+                  }}>Open review</button>
+                  <button type="button" onClick={requestSelectedReportCorrection}>Request correction</button>
+                </div>
+              </section>
+            </div>
             <div className="admin-v2-actions-row">
               <button onClick={() => runSelectedReportAction("review")} disabled={selectedReportIsApproved || selectedReportIsArchived} type="button">Review</button>
               <button onClick={() => runSelectedReportAction("verify")} disabled={selectedReportIsApproved || selectedReportIsArchived} type="button">{selectedReportIsApproved ? "Verified" : "Verify"}</button>

@@ -1313,6 +1313,110 @@
   opacity: .55;
 }
 
+.admin-v2-official-report-form,
+.admin-v2-report-review-grid section {
+  background: rgba(248, 250, 252, .9);
+  border: 1px solid var(--v2-line);
+  border-radius: 16px;
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+  padding: 14px;
+}
+
+.admin-v2-form-panel-head {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.admin-v2-form-panel-head.compact {
+  align-items: start;
+}
+
+.admin-v2-form-panel-head > div {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.admin-v2-form-panel-head span,
+.admin-v2-report-section-list label span,
+.admin-v2-report-review-grid label span {
+  color: var(--v2-blue);
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.admin-v2-form-panel-head strong {
+  color: var(--v2-text);
+  font-size: 15px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-form-panel-head b {
+  align-items: center;
+  background: #0f2f6b;
+  border-radius: 14px;
+  color: #fff;
+  display: inline-flex;
+  flex: 0 0 auto;
+  font-size: 17px;
+  min-height: 46px;
+  padding: 0 12px;
+}
+
+.admin-v2-report-section-list {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-v2-report-section-list label,
+.admin-v2-report-review-grid label {
+  display: grid;
+  gap: 7px;
+  min-width: 0;
+}
+
+.admin-v2-report-section-list textarea,
+.admin-v2-report-review-grid textarea {
+  background: #fff;
+  border: 1px solid rgba(148, 163, 184, .28);
+  border-radius: 12px;
+  color: var(--v2-text);
+  font: inherit;
+  line-height: 1.45;
+  min-height: 96px;
+  min-width: 0;
+  padding: 11px;
+  resize: vertical;
+  width: 100%;
+}
+
+.admin-v2-report-section-list textarea:focus,
+.admin-v2-report-review-grid textarea:focus {
+  border-color: rgba(70, 95, 255, .5);
+  box-shadow: 0 0 0 3px rgba(70, 95, 255, .12);
+  outline: none;
+}
+
+.admin-v2-official-report-form > button,
+.admin-v2-report-review-grid section > button {
+  justify-self: start;
+}
+
+.admin-v2-report-review-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr);
+}
+
 .admin-v2-report-route {
   background: #f8fafc;
   border: 1px solid var(--v2-line);
@@ -2155,6 +2259,7 @@
   .admin-v2-assignment-grid,
   .admin-v2-workflow-status,
   .admin-v2-report-inbox-grid,
+  .admin-v2-report-review-grid,
   .admin-v2-review-signoff-panel {
     grid-template-columns: 1fr 1fr;
   }
@@ -2177,6 +2282,8 @@
   .admin-v2-assignment-grid,
   .admin-v2-assignment-summary,
   .admin-v2-report-inbox-grid,
+  .admin-v2-report-section-list,
+  .admin-v2-report-review-grid,
   .admin-v2-review-signoff-panel,
   .admin-v2-report-meta,
   .admin-v2-workflow-status {
