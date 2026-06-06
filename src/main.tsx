@@ -53,6 +53,7 @@ import {
   Terminal,
   TimerReset,
   Upload,
+  UserCheck,
   Users,
   Video,
   Workflow,
@@ -89,7 +90,7 @@ type PermissionPreset = "Reporter" | "Department Lead" | "Approver" | "Office Ad
 type StationCard = { id?: string; email: string; title: string; level: StationLevel | string; authority: string; icon?: React.ElementType; status?: string; verified?: boolean; watchers?: string[]; mirrorOf?: string; nodeKind?: OrgNodeKind; parentId?: string; parentName?: string; permissionPreset?: PermissionPreset; reportingRoute?: string; workflowAccess?: string[] };
 type StationAuth = { email: string; status: string; failedAttempts: number; lockedUntil?: string; mfaRequired?: boolean; forceReset?: boolean; updatedAt?: string; updatedBy?: string; lastLoginAt?: string; lastFailedAt?: string };
 type StationAuthDigest = { generatedAt: string; total: number; locked: number; mfaRequired: number; resetRequired: number; failedAttempts: number; nextCredential: string };
-type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; to?: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[]; recipients?: string[]; readBy?: string[]; readAt?: Record<string, string>; acknowledgedBy?: string[]; acknowledgementLog?: { actor: string; acknowledgedAt: string; note?: string }[]; body?: string; linkedLiveSession?: string; linkedReport?: string; delivery?: { provider?: string; status?: string; mode?: string; messageId?: string; recipients?: string[]; updatedAt?: string; error?: string } };
+type Message = { id: string; kind: MessageKind; subject: string; from: string; age: string; status: Status; files: string; fileNames?: string[]; to?: string; route?: string; priority?: "Low" | "Medium" | "High" | "Critical"; archived?: boolean; watchers?: string[]; recipients?: string[]; readBy?: string[]; readAt?: Record<string, string>; acknowledgedBy?: string[]; acknowledgementLog?: { actor: string; acknowledgedAt: string; note?: string }[]; body?: string; linkedLiveSession?: string; linkedReport?: string; delivery?: { provider?: string; status?: string; mode?: string; messageId?: string; recipients?: string[]; updatedAt?: string; error?: string } };
 type MessageReceipt = { generatedAt: string; generatedBy: string; message: Message; recipients: string[]; delivery?: Message["delivery"] | null; readBy: string[]; acknowledgedBy: string[]; unreadRecipients: string[]; pendingAcknowledgement: string[]; acknowledgementLog: { actor: string; acknowledgedAt: string; note?: string }[] };
 type Report = {
   id: string;
@@ -211,7 +212,7 @@ type OfflineAction = AuditRow & { queuedAt: string; syncStatus?: "Queued" | "Syn
 type OfflineSyncRecord = { id: string; status: "Synced" | "Deferred" | "Conflict"; count: number; detail: string; at: string };
 type OfflineConflict = { id: string; object: string; count: number; latestEvent: string; priority: "Review" | "High" };
 type Session = { email: string; startedAt: string; token?: string; expiresAt?: string; authPending?: boolean };
-type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; nodeKind?: OrgNodeKind; parentId?: string; parentName?: string; permissionPreset?: PermissionPreset; reportingRoute?: string; workflowAccess?: string[]; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
+type Office = { id: string; name: string; email: string; level: StationLevel; department: string; supervisor: string; password: string; status: string; nodeKind?: OrgNodeKind; parentId?: string; parentName?: string; permissionPreset?: PermissionPreset; reportingRoute?: string; workflowAccess?: string[]; holderName?: string; holderEmail?: string; holderRole?: string; holderAssignedAt?: string; emailVerified?: boolean; watchers?: string[]; notes?: string[]; capacity?: number; complianceStatus?: string; archived?: boolean; archiveReason?: string };
 type RoutingRule = {
   id: string;
   name: string;
@@ -7670,7 +7671,7 @@ function App() {
     setActiveSection("Archive");
   }
 
-  function sendChurchMail(message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) {
+  function sendChurchMail(message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[]; fileNames?: string[] }) {
     const status: Status = offlineMode ? "Queued" : "Ready";
     const newMessage: Message = {
       id: `msg-${Date.now()}`,
@@ -7682,6 +7683,7 @@ function App() {
       age: "now",
       status,
       files: message.files || "No attachments",
+      fileNames: message.fileNames,
       body: message.body,
       priority: message.priority,
       recipients: message.recipients
@@ -8715,6 +8717,25 @@ function App() {
       void apiRequest<Office>(`/api/offices/${id}/station/activate`, {
         method: "POST",
         body: JSON.stringify({})
+      }).then(refreshFromApi).catch(() => undefined);
+    }
+  }
+
+  function assignOfficeHolder(id: string, holder: { holderName: string; holderEmail: string; holderRole: string }) {
+    const office = offices.find((item) => item.id === id);
+    if (!office) return;
+    const assignedAt = new Date().toISOString();
+    setOffices((items) => items.map((item) => item.id === id ? {
+      ...item,
+      ...holder,
+      holderAssignedAt: assignedAt,
+      notes: [`${activeStation.email}: Assigned ${holder.holderName} as ${holder.holderRole}.`, ...(item.notes ?? [])].slice(0, 10)
+    } : item));
+    recordAudit("OfficeHolderAssigned", office.name, `${holder.holderName} / ${holder.holderRole}`);
+    if (!offlineMode) {
+      void apiRequest<Office>(`/api/offices/${id}/holder`, {
+        method: "POST",
+        body: JSON.stringify({ ...holder, actor: activeStation.email })
       }).then(refreshFromApi).catch(() => undefined);
     }
   }
@@ -11522,7 +11543,7 @@ function App() {
             onRefreshDigest={refreshHierarchyDigest}
           />
         )}
-        {effectiveSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} onActivateOffice={activateOffice} onSuspendOffice={suspendOffice} onRotatePassword={rotateOfficePassword} onActivateStation={activateOfficeStation} onUpdateDepartment={updateOfficeDepartment} onUpdateLevel={updateOfficeLevel} onVerifyEmail={verifyOfficeEmail} onWatchOffice={watchOffice} onNoteOffice={noteOffice} onUpdateCapacity={updateOfficeCapacity} onReviewCompliance={reviewOfficeCompliance} onArchiveOffice={archiveOffice} onBulkActivate={bulkActivateOffices} onRefreshDigest={refreshOfficeDigest} digest={officeDigest} />}
+        {effectiveSection === "Offices" && <Offices offices={offices} stationDirectory={stationDirectory} permissions={permissions} onCreateOffice={createOffice} onUpdateOfficeSupervisor={updateOfficeSupervisor} onUpdateOfficeStatus={updateOfficeStatus} onActivateOffice={activateOffice} onSuspendOffice={suspendOffice} onRotatePassword={rotateOfficePassword} onActivateStation={activateOfficeStation} onAssignHolder={assignOfficeHolder} onUpdateDepartment={updateOfficeDepartment} onUpdateLevel={updateOfficeLevel} onVerifyEmail={verifyOfficeEmail} onWatchOffice={watchOffice} onNoteOffice={noteOffice} onUpdateCapacity={updateOfficeCapacity} onReviewCompliance={reviewOfficeCompliance} onArchiveOffice={archiveOffice} onBulkActivate={bulkActivateOffices} onRefreshDigest={refreshOfficeDigest} digest={officeDigest} />}
         {effectiveSection === "Transfers" && (
           <Transfers
             transfers={scopedTransfers}
@@ -18057,6 +18078,7 @@ function Offices({
   onSuspendOffice,
   onRotatePassword,
   onActivateStation,
+  onAssignHolder,
   onUpdateDepartment,
   onUpdateLevel,
   onVerifyEmail,
@@ -18079,6 +18101,7 @@ function Offices({
   onSuspendOffice: (id: string) => void;
   onRotatePassword: (id: string) => void;
   onActivateStation: (id: string) => void;
+  onAssignHolder: (id: string, holder: { holderName: string; holderEmail: string; holderRole: string }) => void;
   onUpdateDepartment: (id: string) => void;
   onUpdateLevel: (id: string) => void;
   onVerifyEmail: (id: string) => void;
@@ -18101,6 +18124,11 @@ function Offices({
   const [permissionPreset, setPermissionPreset] = React.useState<PermissionPreset>("Office Admin");
   const [levelFilter, setLevelFilter] = React.useState<StationLevel | "All levels">("All levels");
   const [feedback, setFeedback] = React.useState("");
+  const [selectedOfficeId, setSelectedOfficeId] = React.useState(offices[0]?.id ?? "");
+  const selectedOffice = offices.find((office) => office.id === selectedOfficeId) ?? offices[0];
+  const [holderName, setHolderName] = React.useState("");
+  const [holderEmail, setHolderEmail] = React.useState("");
+  const [holderRole, setHolderRole] = React.useState("Office holder");
   const filteredOffices = React.useMemo(() => (
     offices.filter((office) => !office.archived && (levelFilter === "All levels" || office.level === levelFilter))
   ), [levelFilter, offices]);
@@ -18128,6 +18156,15 @@ function Offices({
       permissions: permissionLabels.join(", ")
     };
   }), [officeEmailSet, stationDirectory]);
+  React.useEffect(() => {
+    if (!selectedOfficeId && offices[0]?.id) setSelectedOfficeId(offices[0].id);
+    if (selectedOfficeId && !offices.some((office) => office.id === selectedOfficeId)) setSelectedOfficeId(offices[0]?.id ?? "");
+  }, [offices, selectedOfficeId]);
+  React.useEffect(() => {
+    setHolderName(selectedOffice?.holderName ?? "");
+    setHolderEmail(selectedOffice?.holderEmail ?? "");
+    setHolderRole(selectedOffice?.holderRole ?? selectedOffice?.department ?? "Office holder");
+  }, [selectedOffice?.id]);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -18200,10 +18237,10 @@ function Offices({
             <span>Office</span><span>Email</span><span>Level</span><span>Supervisor</span><span>Status</span>
           </div>
           {filteredOffices.map((office) => (
-            <div className="table-row" key={office.id}>
+            <div className={`table-row ${selectedOffice?.id === office.id ? "selected" : ""}`} key={office.id} onClick={() => setSelectedOfficeId(office.id)}>
               <strong>
                 {office.name}
-                <small>{office.nodeKind ?? "Office"} - {office.department}</small>
+                <small>{office.nodeKind ?? "Office"} - {office.department}{office.holderName ? ` - Holder: ${office.holderName}` : ""}</small>
               </strong>
               <span>{office.email}</span>
               <span>{office.level}</span>
@@ -18335,6 +18372,55 @@ function Offices({
           <span>Dashboard, inbox, reporting route, workflow access, permission profile, station email, analytics panel, audit ledger registration.</span>
           <span>Default departments are templates only. Create AI Research Unit, Legal Affairs, RMVI Television, or any future structure from this same control.</span>
         </div>
+      </div>
+
+      <div className="panel module-side office-holder-panel">
+        <PanelHeader icon={UserCheck} title="Assign Office Holder" action={selectedOffice ? selectedOffice.status : "Select"} />
+        <p className="panel-note">The office account stays permanent. Assign or replace the person currently serving in that office, then rotate access when needed.</p>
+        {selectedOffice ? (
+          <form className="office-form" onSubmit={(event) => {
+            event.preventDefault();
+            if (!permissions.canCreateOffices) {
+              setFeedback("Office holder assignment requires office administrator authority.");
+              return;
+            }
+            onAssignHolder(selectedOffice.id, {
+              holderName: holderName.trim() || "Assigned office holder",
+              holderEmail: holderEmail.trim(),
+              holderRole: holderRole.trim() || "Office holder"
+            });
+            setFeedback(`${holderName || "Office holder"} assigned to ${selectedOffice.name}.`);
+          }}>
+            <label>
+              <span>Office</span>
+              <select value={selectedOffice.id} onChange={(event) => setSelectedOfficeId(event.target.value)}>
+                {activeOffices.map((office) => <option key={office.id} value={office.id}>{office.name} / {office.email}</option>)}
+              </select>
+            </label>
+            <label>
+              <span>Person serving this office</span>
+              <input value={holderName} onChange={(event) => setHolderName(event.target.value)} placeholder="Full name" />
+            </label>
+            <label>
+              <span>Person email or phone</span>
+              <input value={holderEmail} onChange={(event) => setHolderEmail(event.target.value)} placeholder="Optional contact" />
+            </label>
+            <label>
+              <span>Office role</span>
+              <input value={holderRole} onChange={(event) => setHolderRole(event.target.value)} placeholder="Resident Pastor, Finance Officer..." />
+            </label>
+            <div className="provision-summary compact">
+              <strong>{selectedOffice.email}</strong>
+              <span>Current holder: {selectedOffice.holderName ?? "Not assigned"}</span>
+              <span>Role: {selectedOffice.holderRole ?? selectedOffice.department}</span>
+            </div>
+            <button disabled={!permissions.canCreateOffices} type="submit"><UserCheck size={15} /> Assign holder</button>
+            <button disabled={!permissions.canCreateOffices} type="button" onClick={() => onRotatePassword(selectedOffice.id)}><RefreshCw size={15} /> Rotate password</button>
+            <button disabled={!permissions.canCreateOffices} type="button" onClick={() => onActivateStation(selectedOffice.id)}><RadioTower size={15} /> Activate workstation</button>
+          </form>
+        ) : (
+          <div className="empty-state">Create or select an office before assigning a holder.</div>
+        )}
       </div>
     </section>
   );
@@ -24243,7 +24329,7 @@ type AdminV2Props = {
   searchResults: SearchResult[];
   onOpenSearchResult: (result: SearchResult) => void;
   onLogout: () => void;
-  onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
+  onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[]; fileNames?: string[] }) => void;
   onAcknowledgeChurchMail: (id: string) => void;
   onCreateReport: (report: Omit<Report, "id" | "state" | "score">) => Report;
   onSubmitReport: (id: string) => void;
@@ -25196,6 +25282,13 @@ function AdminV2Reports({
   const [reportEvidenceNote, setReportEvidenceNote] = React.useState("");
   const [reportReviewComment, setReportReviewComment] = React.useState("");
   const [reportCorrectionNote, setReportCorrectionNote] = React.useState("");
+  const [customReportOpen, setCustomReportOpen] = React.useState(false);
+  const [customReportName, setCustomReportName] = React.useState("Project progress report");
+  const [customReportType, setCustomReportType] = React.useState("Project");
+  const [customReportOwner, setCustomReportOwner] = React.useState(stationDirectory[0]?.title ?? "Reporting Office");
+  const [customReportPath, setCustomReportPath] = React.useState("Local Branch -> Area Office -> District HQ");
+  const [customReportPeriod, setCustomReportPeriod] = React.useState("Current");
+  const [customReportEvidence, setCustomReportEvidence] = React.useState("Evidence pending");
   const previousFocusedAssignmentId = React.useRef<string | undefined>(undefined);
   const previousAssignmentCount = React.useRef(reportAssignments.length);
   const monthlyTemplates = templates.filter((template) => template.type === "Resident Pastor Monthly");
@@ -25408,6 +25501,33 @@ function AdminV2Reports({
     });
     setSelectedReportId(created.id);
     setPageNotice(`${selectedTemplate.name} draft created and added to the report queue.`);
+  }
+  function createCustomReportDraft(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const created = onCreateReport({
+      name: customReportName.trim() || "Untitled report",
+      owner: customReportOwner.trim() || "Reporting Office",
+      path: customReportPath.trim() || "Office -> Supervising Office",
+      due: "Draft",
+      type: customReportType.trim() || "General",
+      period: customReportPeriod.trim() || "Current",
+      routingStage: "Custom draft",
+      evidenceStatus: customReportEvidence.trim() || "Evidence pending",
+      preparedBy: customReportOwner.trim() || "Reporting Office",
+      attestation: "Prepared for RMVI supervisory review.",
+      approvalLimit: "Supervisor review",
+      reportFields: {
+        Summary: "",
+        "Work completed": "",
+        "Needs or blockers": "",
+        "Evidence notes": customReportEvidence.trim() || ""
+      },
+      templateChecklist: ["Summary", "Work completed", "Needs or blockers", "Evidence notes"]
+    });
+    setSelectedReportId(created.id);
+    setCustomReportOpen(false);
+    setPageNotice(`${created.name} custom report created. Open the official form below to complete it.`);
+    window.setTimeout(() => document.querySelector(".admin-v2-report-workspace")?.scrollIntoView({ behavior: "smooth", block: "center" }), 120);
   }
   function runSelectedReportAction(action: "save" | "evidence" | "packet" | "review" | "verify" | "submit" | "archive") {
     if (!selectedReport) return;
@@ -25796,11 +25916,47 @@ function AdminV2Reports({
       </section>
       <section className="admin-v2-toolbar">
         <button className="primary" onClick={createSelectedTemplateDraft} type="button">Create selected report</button>
+        <button onClick={() => setCustomReportOpen((open) => !open)} type="button">Create custom report</button>
         <button onClick={() => runSelectedReportAction("save")} disabled={!selectedReport} type="button">Save selected draft</button>
         <button onClick={() => runSelectedReportAction("evidence")} disabled={!selectedReport} type="button">Attach evidence</button>
         <button onClick={() => runSelectedReportAction("packet")} disabled={!selectedReport} type="button">Build packet</button>
       </section>
       {pageNotice && <div className="admin-v2-live-notice" role="status">{pageNotice}</div>}
+      {customReportOpen && (
+        <section className="admin-v2-panel admin-v2-custom-report-panel">
+          <div className="admin-v2-panel-head">
+            <span>Custom report</span>
+            <strong>Project or non-template report</strong>
+          </div>
+          <form className="admin-v2-create-form" onSubmit={createCustomReportDraft}>
+            <label>
+              <span>Report title</span>
+              <input value={customReportName} onChange={(event) => setCustomReportName(event.target.value)} placeholder="Example: Building project update" />
+            </label>
+            <label>
+              <span>Report category</span>
+              <input value={customReportType} onChange={(event) => setCustomReportType(event.target.value)} placeholder="Project, Mission, Finance, Incident..." />
+            </label>
+            <label>
+              <span>Prepared by / owner</span>
+              <input value={customReportOwner} onChange={(event) => setCustomReportOwner(event.target.value)} />
+            </label>
+            <label>
+              <span>Routing path</span>
+              <input value={customReportPath} onChange={(event) => setCustomReportPath(event.target.value)} placeholder="Office -> Supervisor -> Archive" />
+            </label>
+            <label>
+              <span>Reporting period</span>
+              <input value={customReportPeriod} onChange={(event) => setCustomReportPeriod(event.target.value)} />
+            </label>
+            <label>
+              <span>Evidence status</span>
+              <input value={customReportEvidence} onChange={(event) => setCustomReportEvidence(event.target.value)} />
+            </label>
+            <button className="primary" type="submit">Create custom report draft</button>
+          </form>
+        </section>
+      )}
       <section className="admin-v2-panel admin-v2-report-inbox">
         <div className="admin-v2-panel-head">
           <span>Report Inbox</span>
@@ -26303,7 +26459,7 @@ function AdminV2Approvals({
   }, []);
   const selected = approvals.find((approval) => approval.id === selectedApprovalId) ?? approvals[0];
   const approvalStages = [
-    ["Request", "Approval is created from a report, budget, transfer, policy, or direct admin action."],
+    ["Request", "Any office can submit a request for funds, permission, review, correction, transfer, project work, or executive decision."],
     ["Validation", "GCOS checks the amount, office authority, required evidence, and route."],
     ["Signature", "Required offices sign in order until the chain is complete."],
     ["Execution", "Approved work is released, routed, or marked complete."],
@@ -26373,8 +26529,8 @@ function AdminV2Approvals({
       <section className="admin-v2-panel admin-v2-workspace-intro">
         <div>
           <span>Workspace</span>
-          <h2>Approval Engine</h2>
-          <p>Review authority limits, signature progress, delegation, routing, and execution readiness in one calm approval workspace.</p>
+          <h2>Request & Approval Queue</h2>
+          <p>Submit a request, then track review, signatures, decision, execution, and audit history from one workspace.</p>
         </div>
         <div className="admin-v2-stat-strip">
           <article><strong>{approvals.filter((item) => item.state !== "Approved").length}</strong><span>Open</span></article>
@@ -26400,7 +26556,7 @@ function AdminV2Approvals({
           }}
           type="button"
         >
-          Create approval
+          Submit request
         </button>
         <button onClick={() => { onQuickAction("Digest"); setNotice("Approval digest refreshed from the live workflow status."); }} type="button">Digest</button>
         <button onClick={() => { selected ? runSelectedAction("sign") : onQuickAction("Review signatures"); }} type="button">Review signatures</button>
@@ -26422,9 +26578,9 @@ function AdminV2Approvals({
           </div>
         )}
         <form className="admin-v2-create-form" id="admin-v2-create-approval" onSubmit={createApproval}>
-          <strong>Create approval</strong>
+          <strong>Make a request</strong>
           <label>
-            <span>Request</span>
+            <span>What are you requesting?</span>
             <input value={request} onChange={(event) => setRequest(event.target.value)} />
           </label>
           <label>
@@ -26432,14 +26588,14 @@ function AdminV2Approvals({
             <input value={route} onChange={(event) => setRoute(event.target.value)} />
           </label>
           <label>
-            <span>Authority limit</span>
+            <span>Amount, authority, or reason</span>
             <input value={limit} onChange={(event) => setLimit(event.target.value)} />
           </label>
           <label>
             <span>Delegate</span>
             <input value={delegate} onChange={(event) => setDelegate(event.target.value)} placeholder="Optional" />
           </label>
-          <button className="primary" type="submit">Create and validate</button>
+          <button className="primary" type="submit">Submit request for review</button>
         </form>
       </section>
       <section className="admin-v2-panel wide">
@@ -26523,7 +26679,7 @@ function AdminV2Mail({
   messages: Message[];
   station: StationCard;
   stationDirectory: StationCard[];
-  onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[] }) => void;
+  onSendChurchMail: (message: Pick<Message, "kind" | "subject" | "files"> & { to: string; body?: string; priority?: Message["priority"]; recipients?: string[]; fileNames?: string[] }) => void;
   onAcknowledgeChurchMail: (id: string) => void;
   onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 }) {
@@ -26535,6 +26691,7 @@ function AdminV2Mail({
   const [composeSubject, setComposeSubject] = React.useState("Executive governance directive");
   const [composeBody, setComposeBody] = React.useState("Please review this directive and acknowledge receipt through ChurchMail.");
   const [composeFiles, setComposeFiles] = React.useState("No attachments");
+  const [composeFileNames, setComposeFileNames] = React.useState<string[]>([]);
   const [composeFeedback, setComposeFeedback] = React.useState("");
   const [activeMailbox, setActiveMailbox] = React.useState("inbox");
   const [selectedMessageId, setSelectedMessageId] = React.useState(messages[0]?.id ?? "");
@@ -26641,12 +26798,14 @@ function AdminV2Mail({
       subject: composeSubject,
       body: composeBody,
       files: composeFiles,
+      fileNames: composeFileNames,
       priority: composePriority,
       recipients
     });
     setComposeFeedback(`Message sent to ${recipients.length || selectedAudience.recipients.length} recipient${(recipients.length || selectedAudience.recipients.length) === 1 ? "" : "s"}.`);
     setActiveMailbox("sent");
     setComposerOpen(false);
+    setComposeFileNames([]);
   }
   function runSelectedMessageAction(action: string, feedback: string) {
     onQuickAction(action, selectedRecord);
@@ -26735,10 +26894,32 @@ function AdminV2Mail({
               <span>Message</span>
               <textarea value={composeBody} onChange={(event) => setComposeBody(event.target.value)} required />
             </label>
-            <label className="churchmail-compose-subject">
-              <span>Attachment note</span>
-              <input value={composeFiles} onChange={(event) => setComposeFiles(event.target.value)} />
-            </label>
+            <div className="churchmail-attachment-picker">
+              <div>
+                <span>Attachments</span>
+                <strong>{composeFileNames.length ? `${composeFileNames.length} selected` : composeFiles}</strong>
+                <small>Attach photos, PDFs, Word documents, Excel workbooks, or evidence packets.</small>
+              </div>
+              <label className="file-action">
+                <Files size={15} />
+                <span>Choose files</span>
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf,.doc,.docx,.xls,.xlsx,.csv,.png,.jpg,.jpeg,.webp,.txt,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/*"
+                  onChange={(event) => {
+                    const names = Array.from(event.currentTarget.files ?? []).map((file) => file.name);
+                    setComposeFileNames(names);
+                    setComposeFiles(names.length ? names.join(", ") : "No attachments");
+                  }}
+                />
+              </label>
+            </div>
+            {composeFileNames.length > 0 && (
+              <div className="churchmail-attachment-list">
+                {composeFileNames.map((name) => <span key={name}>{name}</span>)}
+              </div>
+            )}
             <div className="churchmail-compose-actions">
               <span>{Math.max(0, selectedAudience.recipients.filter((email) => email !== station.email).length)} active recipient{Math.max(0, selectedAudience.recipients.filter((email) => email !== station.email).length) === 1 ? "" : "s"} selected</span>
               <button type="button" onClick={() => setComposerOpen(false)}>Cancel</button>
@@ -26787,6 +26968,7 @@ function AdminV2Mail({
           <span>To: {selected.to ?? selected.route ?? "Governance communication"}</span>
           <span>Recipients: {(selected.recipients ?? selected.delivery?.recipients ?? []).join(", ") || "Station route"}</span>
           <span>Delivery: {selected.delivery?.provider ? `${selected.delivery.provider} / ${selected.delivery.status}` : "Internal GCOS record"}</span>
+          <span>Attachments: {selected.fileNames?.length ? selected.fileNames.join(", ") : selected.files}</span>
           <div className="admin-v2-report-meta">
             <article><span>Read by</span><strong>{selectedReadBy.length}</strong></article>
             <article><span>Acknowledged</span><strong>{selectedAcknowledgedBy.length}</strong></article>

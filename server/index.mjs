@@ -470,6 +470,7 @@ const routes = {
   "POST /api/offices/:id/suspend": async ({ params, body }) => ok(await services.suspendOffice(params.id, body)),
   "POST /api/offices/:id/password/rotate": async ({ params, body }) => ok(await services.rotateOfficePassword(params.id, body)),
   "POST /api/offices/:id/station/activate": async ({ params, body }) => ok(await services.activateOfficeStation(params.id, body)),
+  "POST /api/offices/:id/holder": ({ params, body }) => ok(services.assignOfficeHolder(params.id, body)),
   "POST /api/offices/:id/department": ({ params, body }) => ok(services.updateOfficeDepartment(params.id, body)),
   "POST /api/offices/:id/level": ({ params, body }) => ok(services.updateOfficeLevel(params.id, body)),
   "POST /api/offices/:id/email/verify": ({ params, body }) => ok(services.verifyOfficeEmail(params.id, body)),

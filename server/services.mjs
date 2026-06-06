@@ -4103,6 +4103,25 @@ export function createServices({ state, record, requirePermission, findById, int
       return item;
     },
 
+    assignOfficeHolder(id, body) {
+      requirePermission(body.actor, "canCreateOffices");
+      const item = findById(state.offices, id);
+      item.holderName = body.holderName ?? item.holderName ?? "Assigned office holder";
+      item.holderEmail = body.holderEmail ?? item.holderEmail ?? "";
+      item.holderRole = body.holderRole ?? item.holderRole ?? "Office holder";
+      item.holderAssignedAt = new Date().toISOString();
+      item.notes = [
+        `${body.actor}: Assigned ${item.holderName} as ${item.holderRole}.`,
+        ...(item.notes ?? [])
+      ].slice(0, 10);
+      const stationRecord = state.stations.find((entry) => entry.email === item.email);
+      if (stationRecord) {
+        stationRecord.authority = `${item.department}, held by ${item.holderName}`;
+      }
+      record("OfficeHolderAssigned", body.actor, item.name, `${item.holderName} / ${item.holderRole}`);
+      return item;
+    },
+
     updateOfficeDepartment(id, body) {
       requirePermission(body.actor, "canCreateOffices");
       const item = findById(state.offices, id);

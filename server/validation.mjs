@@ -1418,6 +1418,12 @@ const validators = {
 
   "POST /api/offices/:id/email/verify": () => {},
 
+  "POST /api/offices/:id/holder": (body) => {
+    if (body.holderName !== undefined) requireString(body.holderName, "holderName");
+    if (body.holderEmail !== undefined) requireString(body.holderEmail, "holderEmail");
+    if (body.holderRole !== undefined) requireString(body.holderRole, "holderRole");
+  },
+
   "POST /api/offices/:id/watch": (body) => {
     if (body.watcher !== undefined) requireString(body.watcher, "watcher");
   },
