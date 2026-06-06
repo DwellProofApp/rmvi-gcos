@@ -24961,6 +24961,27 @@ function AdminV2Reports({
   const selectedReportFormComplete = selectedReportFormEntries.length
     ? Math.round((completedReportFields(reportFormFields) / selectedReportFormEntries.length) * 100)
     : selectedReport?.score ?? 0;
+  const selectedReportSubmittedAt = formatAuditFieldDate(selectedReport?.submittedAt) ?? "Not submitted";
+  const selectedReportApprovedBy = selectedReport?.approvedBy ?? (selectedReportIsApproved ? "System Administrator Workstation" : "Pending");
+  const selectedReportNextOffice = selectedReportRouteStops[selectedReportIsSubmitted ? Math.min(1, selectedReportRouteStops.length - 1) : 0] ?? selectedReport?.owner ?? "Supervising office";
+  const selectedReportReceipt = selectedReport
+    ? [
+      { label: "Report ID", value: selectedReport.id },
+      { label: "Submitted", value: selectedReportSubmittedAt },
+      { label: "Review office", value: selectedReportNextOffice },
+      { label: "Approval", value: selectedReportApproval?.state ?? selectedReport.state },
+      { label: "Approved by", value: selectedReportApprovedBy },
+      { label: "Archive", value: selectedReportIsArchived ? "Archived" : selectedReportIsApproved ? "Ready to archive" : "Ready after approval" }
+    ]
+    : [];
+  const selectedReportPacketChecks = selectedReport
+    ? [
+      { label: "Official form", value: `${completedReportFields(reportFormFields)}/${selectedReportFormEntries.length || 0} sections`, done: selectedReportFormComplete >= 100 },
+      { label: "Evidence", value: selectedReportHasEvidence ? "Attached" : "Needed", done: selectedReportHasEvidence },
+      { label: "Approval packet", value: selectedReportApproval?.state ?? (selectedReportIsApproved ? "Approved" : "Not created"), done: Boolean(selectedReportApproval) || selectedReportIsApproved },
+      { label: "Archive packet", value: selectedReportIsArchived ? "Archived" : "Pending handoff", done: selectedReportIsArchived }
+    ]
+    : [];
   const reportInboxBuckets = React.useMemo(() => {
     const activeReports = reports.filter((report) => !report.archived);
     return [
@@ -25215,6 +25236,113 @@ function AdminV2Reports({
     }));
     setPageNotice(`${selectedReport.name} audit trail opened.`);
     onOpenSection("Audit");
+  }
+  function selectedReportPacketText() {
+    if (!selectedReport) return "";
+    const fieldLines = Object.entries(reportFormFields).map(([section, value]) => `- ${section}: ${value || "Draft"}`);
+    return [
+      "RMVI GCOS OFFICIAL REPORT PACKET",
+      "",
+      `Report: ${selectedReport.name}`,
+      `Report ID: ${selectedReport.id}`,
+      `Type: ${selectedReport.type ?? "Report"}`,
+      `Owner: ${selectedReport.owner}`,
+      `Prepared by: ${selectedReport.preparedBy ?? selectedReport.owner}`,
+      `Period: ${selectedReport.period ?? "Current"}`,
+      `Route: ${selectedReport.path}`,
+      `Stage: ${selectedReport.routingStage ?? selectedReport.state}`,
+      `Submitted: ${selectedReportSubmittedAt}`,
+      `Approved by: ${selectedReportApprovedBy}`,
+      `Evidence: ${selectedReport.evidenceStatus ?? (reportEvidenceNote || "Evidence pending")}`,
+      `Approval: ${selectedReportApproval?.state ?? selectedReport.state}`,
+      `Archive: ${selectedReportIsArchived ? "Archived" : "Pending"}`,
+      "",
+      "Official Form",
+      fieldLines.length ? fieldLines.join("\n") : "- No form sections attached",
+      "",
+      "Supervisor Notes",
+      reportReviewComment || selectedReport.reviewNote || "No review note recorded.",
+      "",
+      "Correction Notes",
+      reportCorrectionNote || selectedReport.correctionReason || "No correction request recorded.",
+      "",
+      "Attestation",
+      selectedReport.attestation ?? "Prepared for RMVI supervisory review."
+    ].join("\n");
+  }
+  function downloadSelectedReportPacketCsv() {
+    if (!selectedReport) return;
+    const rows = [
+      ["Field", "Value"],
+      ...selectedReportReceipt.map((item) => [item.label, item.value]),
+      ["Owner", selectedReport.owner],
+      ["Prepared By", selectedReport.preparedBy ?? selectedReport.owner],
+      ["Period", selectedReport.period ?? "Current"],
+      ["Route", selectedReport.path],
+      ["Evidence", selectedReport.evidenceStatus ?? (reportEvidenceNote || "Evidence pending")],
+      ["Review Note", reportReviewComment || selectedReport.reviewNote || ""],
+      ["Correction Note", reportCorrectionNote || selectedReport.correctionReason || ""],
+      ...Object.entries(reportFormFields).map(([section, value]) => [`Section: ${section}`, value || "Draft"])
+    ];
+    const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
+    const url = window.URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `${selectedReport.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "report"}-packet.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+    setPageNotice(`${selectedReport.name} CSV packet exported.`);
+  }
+  function openSelectedReportPrintView() {
+    if (!selectedReport) return;
+    const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[character] ?? character));
+    const packet = selectedReportPacketText().split("\n").map((line) => `<p>${escapeHtml(line) || "&nbsp;"}</p>`).join("");
+    const printWindow = window.open("", "_blank", "width=900,height=760");
+    if (!printWindow) {
+      setPageNotice("Print preview was blocked by the browser. Allow popups for GCOS and try again.");
+      return;
+    }
+    printWindow.document.write(`<!doctype html><html><head><title>${escapeHtml(selectedReport.name)} packet</title><style>
+      body{font-family:Inter,Arial,sans-serif;background:#f8fafc;color:#0f172a;margin:0;padding:32px}
+      main{background:white;border:1px solid #d8e0ec;border-radius:18px;box-shadow:0 18px 60px rgba(15,23,42,.12);padding:32px;max-width:820px;margin:auto}
+      h1{font-size:26px;margin:0 0 6px} h2{font-size:14px;letter-spacing:.14em;text-transform:uppercase;color:#0f5bd7;margin:0 0 24px}
+      p{font-size:13px;line-height:1.55;margin:0 0 5px;white-space:pre-wrap} .actions{margin-top:24px}
+      button{background:#0f5bd7;border:0;border-radius:12px;color:white;font-weight:800;padding:12px 16px}
+      @media print{body{background:white;padding:0} main{box-shadow:none;border:0}.actions{display:none}}
+    </style></head><body><main><h2>RMVI GCOS Official Report Packet</h2><h1>${escapeHtml(selectedReport.name)}</h1>${packet}<div class="actions"><button onclick="window.print()">Print packet</button></div></main></body></html>`);
+    printWindow.document.close();
+    printWindow.focus();
+    setPageNotice(`${selectedReport.name} print preview opened.`);
+  }
+  function archiveSelectedReportPacket() {
+    if (!selectedReport) return;
+    window.sessionStorage.setItem("gcos.archive.prefill", JSON.stringify({
+      title: `${selectedReport.name} official report packet`,
+      meta: selectedReport.type ?? "Report packet",
+      detail: `${selectedReport.owner} / ${selectedReport.period ?? "Current"} / ${selectedReport.state}`,
+      status: selectedReportIsArchived ? "Archived" : selectedReportIsApproved ? "Ready" : "Pending approval",
+      sourceReportId: selectedReport.id,
+      body: selectedReportPacketText()
+    }));
+    if (selectedReportIsApproved && !selectedReportIsArchived) onArchiveReport(selectedReport.id);
+    setPageNotice(`${selectedReport.name} archive packet prepared.`);
+    onOpenSection("Archive");
+  }
+  function sendSelectedReportCopy() {
+    if (!selectedReport) return;
+    window.sessionStorage.setItem("gcos.churchmail.compose", JSON.stringify({
+      kind: "Report",
+      audience: "route",
+      priority: selectedReport.state === "Escalated" ? "High" : "Medium",
+      subject: `${selectedReport.name} official report packet`,
+      body: selectedReportPacketText(),
+      files: "Official report packet generated in GCOS",
+      linkedReport: selectedReport.id
+    }));
+    setPageNotice(`${selectedReport.name} ChurchMail copy prepared.`);
+    onOpenSection("ChurchMail");
   }
   function runSelectedReportNextStep() {
     if (!selectedReportNextStep) return;
@@ -25701,6 +25829,41 @@ function AdminV2Reports({
                   <button type="button" onClick={requestSelectedReportCorrection}>Request correction</button>
                 </div>
               </section>
+            </div>
+            <div className="admin-v2-report-official-record">
+              <div className="admin-v2-record-preview-head">
+                <div>
+                  <span>Official record packet</span>
+                  <strong>{selectedReport.name}</strong>
+                  <p>Receipt, export, archive, and communication handoff for the selected report.</p>
+                </div>
+                <b>{selectedReportIsArchived ? "Archived" : selectedReportIsApproved ? "Archive ready" : "In progress"}</b>
+              </div>
+              <div className="admin-v2-report-receipt-grid" aria-label="Report submission receipt">
+                {selectedReportReceipt.map((item) => (
+                  <article key={item.label}>
+                    <span>{item.label}</span>
+                    <strong>{item.value}</strong>
+                  </article>
+                ))}
+              </div>
+              <div className="admin-v2-report-packet-list" aria-label="Archive packet readiness">
+                {selectedReportPacketChecks.map((item) => (
+                  <article className={item.done ? "complete" : ""} key={item.label}>
+                    <i />
+                    <div>
+                      <span>{item.label}</span>
+                      <strong>{item.value}</strong>
+                    </div>
+                  </article>
+                ))}
+              </div>
+              <div className="admin-v2-report-export-actions">
+                <button type="button" onClick={openSelectedReportPrintView}>Print preview</button>
+                <button type="button" onClick={downloadSelectedReportPacketCsv}>Export CSV</button>
+                <button type="button" onClick={archiveSelectedReportPacket}>Archive packet</button>
+                <button type="button" onClick={sendSelectedReportCopy}>Send ChurchMail copy</button>
+              </div>
             </div>
             <div className="admin-v2-actions-row">
               <button onClick={() => runSelectedReportAction("review")} disabled={selectedReportIsApproved || selectedReportIsArchived} type="button">Review</button>
