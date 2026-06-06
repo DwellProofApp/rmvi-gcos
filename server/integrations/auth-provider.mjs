@@ -55,15 +55,25 @@ export function createAuthProvider() {
 
   async function signInWithFirebasePassword(email, password) {
     if (!firebaseWebApiKey) return { ok: false, provider: "firebase", mode: "web-api-key-missing" };
-    const response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseWebApiKey}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({
-        email: normalizeStationEmail(email),
-        password: String(password ?? ""),
-        returnSecureToken: true
-      })
-    });
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    let response;
+    try {
+      response = await fetch(`https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${firebaseWebApiKey}`, {
+        method: "POST",
+        signal: controller.signal,
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          email: normalizeStationEmail(email),
+          password: String(password ?? ""),
+          returnSecureToken: true
+        })
+      });
+    } catch (error) {
+      return { ok: false, provider: "firebase", error: error?.name === "AbortError" ? "Firebase sign-in timed out" : "Firebase sign-in unavailable" };
+    } finally {
+      clearTimeout(timeout);
+    }
     const body = await response.json().catch(() => ({}));
     if (!response.ok) return { ok: false, provider: "firebase", error: body?.error?.message ?? "Firebase sign-in failed" };
     return {

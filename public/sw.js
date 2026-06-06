@@ -1,4 +1,4 @@
-const CACHE_VERSION = "rmvi-gcos-offline-v6";
+const CACHE_VERSION = "rmvi-gcos-offline-v7";
 const APP_SHELL = [
   "/",
   "/app",
@@ -62,7 +62,7 @@ self.addEventListener("fetch", (event) => {
   if (url.origin !== self.location.origin) return;
 
   if (request.mode === "navigate") {
-    event.respondWith(networkFirst(request, "/"));
+    event.respondWith(navigationFirst(request));
     return;
   }
 
@@ -108,5 +108,21 @@ async function networkFirst(request, shellFallback = "/offline.html") {
     const cached = await caches.match(request);
     if (cached) return cached;
     return caches.match(shellFallback);
+  }
+}
+
+async function navigationFirst(request) {
+  try {
+    const response = await fetch(request, { cache: "no-store" });
+    if (response.ok) {
+      const cache = await caches.open(CACHE_VERSION);
+      await cache.put("/", response.clone());
+    }
+    return response;
+  } catch {
+    const cache = await caches.open(CACHE_VERSION);
+    const shell = await cache.match("/") || await caches.match("/");
+    if (shell) return shell;
+    return caches.match("/offline.html");
   }
 }

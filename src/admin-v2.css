@@ -554,6 +554,59 @@
   padding: 10px 12px;
 }
 
+.admin-v2-acceptance-pass {
+  background: rgba(2, 6, 23, 0.28);
+  border: 1px solid rgba(34, 211, 238, 0.16);
+  border-radius: 16px;
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+  padding: 14px;
+}
+
+.admin-v2-acceptance-pass > div {
+  align-items: center;
+  display: flex;
+  gap: 12px;
+  justify-content: space-between;
+  min-width: 0;
+}
+
+.admin-v2-acceptance-pass > div span {
+  color: #22d3ee;
+  font-size: 0.72rem;
+  font-weight: 950;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+
+.admin-v2-acceptance-pass > div strong {
+  color: #f8fbff;
+}
+
+.admin-v2-acceptance-pass article {
+  align-items: start;
+  background: rgba(15, 23, 42, 0.64);
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 12px;
+  display: grid;
+  gap: 10px;
+  grid-template-columns: auto minmax(0, 1fr);
+  padding: 11px 12px;
+}
+
+.admin-v2-acceptance-pass article b {
+  color: #fde68a;
+  font-size: 0.78rem;
+  letter-spacing: 0.12em;
+}
+
+.admin-v2-acceptance-pass article span {
+  color: #dbeafe;
+  line-height: 1.42;
+  overflow-wrap: anywhere;
+}
+
 .admin-v2-workspace-intro {
   align-items: center;
   display: grid;

@@ -5171,10 +5171,14 @@ export function createServices({ state, record, requirePermission, findById, int
         record("LoginBlocked", normalizedEmail, normalizedEmail, "Station credential locked");
         return { unauthorized: true, error: "Station credential locked" };
       }
-      const providerVerification = await integrations.auth?.verifyPassword?.(normalizedEmail, body.password);
       const authStatus = integrations.auth?.status?.() ?? { provider: "local", localFallback: true };
       const localFallbackAllowed = authStatus.provider !== "firebase" || authStatus.localFallback;
-      const passwordVerified = providerVerification?.ok || (localFallbackAllowed && passwordMatches(body.password, credential));
+      const localPasswordVerified = localFallbackAllowed && passwordMatches(body.password, credential);
+      let providerVerification = null;
+      if (!localPasswordVerified) {
+        providerVerification = await integrations.auth?.verifyPassword?.(normalizedEmail, body.password);
+      }
+      const passwordVerified = localPasswordVerified || providerVerification?.ok;
       if (!passwordVerified) {
         credential.failedAttempts = (credential.failedAttempts ?? 0) + 1;
         credential.lastFailedAt = new Date().toISOString();

@@ -2968,6 +2968,7 @@ function getSessionToken() {
 
 function clearStoredSession() {
   window.localStorage.removeItem("gcos.session");
+  window.sessionStorage.removeItem("gcos.sw-reload-pending");
 }
 
 function sessionExpired(session: Session | null) {
@@ -24859,6 +24860,22 @@ function AdminV2Overview({
             <span key={action}>{action}</span>
           ))}
         </div>
+        <div className="admin-v2-acceptance-pass" aria-label="Final launch acceptance checklist">
+          <div>
+            <span>Launch acceptance</span>
+            <strong>{finalProductCompletion?.acceptancePass?.length ?? 0} checks</strong>
+          </div>
+          {(finalProductCompletion?.acceptancePass ?? [
+            "Connect the live Resend key and send one real ChurchMail delivery test.",
+            "Run acceptance from admin, finance, mission, local branch, and audit accounts.",
+            "Review mobile install on one iPhone/iPad and one Android device."
+          ]).slice(0, 5).map((item, index) => (
+            <article key={item}>
+              <b>{String(index + 1).padStart(2, "0")}</b>
+              <span>{item}</span>
+            </article>
+          ))}
+        </div>
       </section>
       <section className="admin-v2-panel span-8">
         <div className="admin-v2-panel-head">
@@ -27842,12 +27859,39 @@ function AdminV2Directory({
   );
 }
 
-if ("serviceWorker" in navigator) {
+function registerServiceWorker() {
+  if (!("serviceWorker" in navigator)) return;
+
+  let refreshing = false;
+  navigator.serviceWorker.addEventListener("controllerchange", () => {
+    if (refreshing) return;
+    refreshing = true;
+    if (window.sessionStorage.getItem("gcos.sw-reload-pending") === "1") return;
+    window.sessionStorage.setItem("gcos.sw-reload-pending", "1");
+    window.location.reload();
+  });
+
   window.addEventListener("load", () => {
     navigator.serviceWorker.register("/sw.js").then((registration) => {
+      const activateWaitingWorker = () => {
+        if (registration.waiting) registration.waiting.postMessage({ type: "SKIP_WAITING" });
+      };
+      activateWaitingWorker();
+      registration.addEventListener("updatefound", () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener("statechange", () => {
+          if (worker.state === "installed" && navigator.serviceWorker.controller) {
+            worker.postMessage({ type: "SKIP_WAITING" });
+          }
+        });
+      });
       registration.update().catch(() => undefined);
     }).catch(() => undefined);
   });
 }
+
+registerServiceWorker();
+window.sessionStorage.removeItem("gcos.sw-reload-pending");
 
 createRoot(document.getElementById("root")!).render(<App />);
