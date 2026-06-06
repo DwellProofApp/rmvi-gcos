@@ -421,6 +421,139 @@
 .admin-v2-panel.span-12 { grid-column: span 12; }
 .admin-v2-panel.wide { min-width: 0; }
 
+.admin-v2-final-completion {
+  background:
+    radial-gradient(circle at top left, rgba(6, 182, 212, 0.14), transparent 34%),
+    linear-gradient(135deg, rgba(15, 23, 42, 0.98), rgba(17, 24, 39, 0.96));
+  border-color: rgba(34, 211, 238, 0.24);
+  color: #f8fbff;
+}
+
+.admin-v2-final-completion .admin-v2-panel-head {
+  border-color: rgba(148, 163, 184, 0.22);
+}
+
+.admin-v2-final-completion .admin-v2-panel-head strong {
+  color: #f8fbff;
+  text-transform: capitalize;
+}
+
+.admin-v2-completion-layout {
+  display: grid;
+  gap: 16px;
+  grid-template-columns: minmax(240px, 0.72fr) minmax(0, 1.28fr);
+}
+
+.admin-v2-completion-score {
+  background: rgba(2, 6, 23, 0.38);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 16px;
+  display: grid;
+  gap: 10px;
+  padding: 18px;
+}
+
+.admin-v2-completion-score > span {
+  color: #22d3ee;
+  font-size: clamp(2.2rem, 5vw, 4rem);
+  font-weight: 950;
+  letter-spacing: -0.06em;
+  line-height: 0.95;
+}
+
+.admin-v2-completion-score strong {
+  color: #f8fbff;
+  font-size: 1rem;
+}
+
+.admin-v2-completion-score p,
+.admin-v2-completion-modules small,
+.admin-v2-completion-next span {
+  color: #b8c7dc;
+  line-height: 1.45;
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-completion-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.admin-v2-completion-actions button {
+  background: rgba(34, 211, 238, 0.14);
+  border: 1px solid rgba(34, 211, 238, 0.36);
+  border-radius: 12px;
+  color: #e0faff;
+  cursor: pointer;
+  font-weight: 850;
+  min-height: 40px;
+  padding: 0 12px;
+}
+
+.admin-v2-completion-actions button:last-child {
+  background: #22d3ee;
+  color: #06121f;
+}
+
+.admin-v2-completion-modules {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.admin-v2-completion-modules article {
+  background: rgba(15, 23, 42, 0.7);
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 14px;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  min-width: 0;
+  padding: 14px;
+}
+
+.admin-v2-completion-modules article strong {
+  color: #f8fbff;
+  display: block;
+  overflow-wrap: anywhere;
+}
+
+.admin-v2-completion-modules article span {
+  color: #22d3ee;
+  display: block;
+  font-size: 0.76rem;
+  font-weight: 800;
+  margin-top: 3px;
+  overflow-wrap: anywhere;
+  text-transform: uppercase;
+}
+
+.admin-v2-completion-modules article b {
+  color: #fde68a;
+  font-size: 1.18rem;
+}
+
+.admin-v2-completion-modules article small {
+  grid-column: 1 / -1;
+}
+
+.admin-v2-completion-next {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  margin-top: 14px;
+}
+
+.admin-v2-completion-next span {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
 .admin-v2-workspace-intro {
   align-items: center;
   display: grid;
@@ -3443,7 +3576,8 @@
   .admin-v2-assignment-grid,
   .churchmail-compose-grid,
   .admin-v2-routing-grid,
-  .admin-v2-routing-overview {
+  .admin-v2-routing-overview,
+  .admin-v2-completion-layout {
     grid-template-columns: 1fr 1fr;
   }
 
@@ -3472,7 +3606,10 @@
   .admin-v2-assignment-grid,
   .churchmail-compose-grid,
   .admin-v2-routing-grid,
-  .admin-v2-routing-overview {
+  .admin-v2-routing-overview,
+  .admin-v2-completion-layout,
+  .admin-v2-completion-modules,
+  .admin-v2-completion-next {
     grid-template-columns: 1fr;
   }
 

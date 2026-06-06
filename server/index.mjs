@@ -112,6 +112,8 @@ const routes = {
   "POST /api/ops/final-production-finish/archive": async ({ body, session }) => createdResponse(await archiveFinalProductionFinishBoard(body, session.email)),
   "GET /api/admin/recovery-plan": async ({ session }) => ok(await adminRecoveryPlan(session?.email ?? "system")),
   "POST /api/admin/recovery-plan/archive": async ({ body, session }) => createdResponse(await archiveAdminRecoveryPlan(body, session.email)),
+  "GET /api/product/final-completion": async ({ session }) => ok(await finalProductCompletion(session?.email ?? "system")),
+  "POST /api/product/final-completion/archive": async ({ body, session }) => createdResponse(await archiveFinalProductCompletion(body, session.email)),
   "GET /api/project/completion": async () => ok(await projectCompletionReport()),
   "GET /api/enterprise/completion": async () => ok(await enterpriseCompletionReport()),
   "GET /api/rollout/readiness": async () => ok(await rolloutReadinessReport()),
@@ -1729,6 +1731,191 @@ async function projectCompletionReport() {
       ]
       : ["Run the release commands and record launch signoff."]
   };
+}
+
+function finalProductModule(id, name, checks, owner, nextAction) {
+  const score = scoreChecks(checks);
+  return {
+    id,
+    name,
+    owner,
+    score,
+    status: score === 100 ? "ready" : score >= 67 ? "usable" : "needs-attention",
+    evidence: checks.map((check) => ({
+      name: check.name,
+      ok: Boolean(check.ok),
+      detail: check.detail
+    })),
+    nextAction: score === 100 ? "Keep monitoring this area during launch." : nextAction
+  };
+}
+
+async function finalProductCompletion(actor = "system") {
+  const [status, launch, project, enterprise, rollout, signoff, monitor] = await Promise.all([
+    Promise.resolve(operationalStatus({ includeSessions: false })),
+    launchReadiness(),
+    projectCompletionReport(),
+    enterpriseCompletionReport(),
+    rolloutReadinessReport(),
+    launchSignoffMatrix(),
+    operationalMonitor()
+  ]);
+  const messagesWithRecipients = state.messages.filter((item) => {
+    const recipients = [
+      ...(Array.isArray(item.recipients) ? item.recipients : []),
+      ...(Array.isArray(item.delivery?.recipients) ? item.delivery.recipients : []),
+      item.to,
+      item.routeTo
+    ].filter(Boolean);
+    return recipients.length > 0;
+  });
+  const acknowledgedMessages = state.messages.filter((item) => (item.acknowledgedBy ?? []).length > 0);
+  const submittedReports = state.reports.filter((item) => item.submittedAt || /submitted|review|approved/i.test(String(item.routingStage ?? item.state ?? "")));
+  const approvedReports = state.reports.filter((item) => item.state === "Approved" || item.approvedAt);
+  const archivedReports = state.reports.filter((item) => item.archived || item.archiveDocumentId || /archived/i.test(String(item.routingStage ?? "")));
+  const approvedApprovals = state.approvals.filter((item) => item.state === "Approved" || item.approvedAt || /approved/i.test(String(item.execution ?? "")));
+  const completedApprovals = state.approvals.filter((item) => /executed|complete|approved|archived/i.test([item.state, item.execution, item.auditStatus].filter(Boolean).join(" ")));
+  const activeOffices = state.offices.filter((item) => /active|ready|provisioned/i.test(String(item.status ?? "")));
+  const verifiedOffices = state.offices.filter((item) => item.emailVerifiedAt || /verified|active|ready/i.test(String(item.emailStatus ?? item.status ?? "")));
+  const liveMeetings = (state.liveSessions ?? []).filter((item) => item.joinUrl || /live|queued/i.test(String(item.status ?? "")));
+  const activeChatRooms = (state.chatRooms ?? []).filter((item) => !item.archived);
+  const archivedDocuments = state.documents.filter((item) => /archived|sealed|verified/i.test(String(item.status ?? "")));
+  const verifiedDocuments = state.documents.filter((item) => item.verified || item.chainHash || item.fileHash);
+  const auditDigest = services.auditDigest();
+  const evidence = evidenceVaultDigest();
+  const security = securityControlsDigest();
+  const modules = [
+    finalProductModule("identity", "Office identity and sign-in", [
+      { name: "station-accounts", ok: state.stations.length >= 7, detail: `${state.stations.length} station accounts available` },
+      { name: "office-nodes", ok: state.offices.length > 0, detail: `${state.offices.length} office identities in registry` },
+      { name: "credential-controls", ok: Object.keys(state.authCredentials ?? {}).length >= 7, detail: `${Object.keys(state.authCredentials ?? {}).length} credential records` },
+      { name: "active-office-setup", ok: activeOffices.length > 0, detail: `${activeOffices.length} offices are active, ready, or provisioned` }
+    ], "System Administrator", "Finish verifying station emails and office holder assignments."),
+    finalProductModule("churchmail", "ChurchMail recipient loop", [
+      { name: "messages", ok: state.messages.length > 0, detail: `${state.messages.length} ChurchMail messages` },
+      { name: "recipient-routing", ok: messagesWithRecipients.length > 0, detail: `${messagesWithRecipients.length} messages have recipient routing` },
+      { name: "delivery-provider", ok: status.integrations.email.ready || state.messages.some((item) => /sent|queued/i.test(String(item.delivery?.status ?? item.status ?? ""))), detail: `${status.integrations.email.provider} / ${status.integrations.email.ready ? "ready" : "pending"}` },
+      { name: "read-acknowledgement", ok: acknowledgedMessages.length > 0, detail: `${acknowledgedMessages.length} acknowledged messages` }
+    ], "ChurchMail", "Send one live message to a chosen rmvi.org inbox and acknowledge it from the recipient account."),
+    finalProductModule("reports", "Report submission and archive loop", [
+      { name: "templates", ok: state.reports.length > 0 || (state.reportAssignments ?? []).length > 0, detail: `${state.reports.length} reports and ${(state.reportAssignments ?? []).length} monthly assignments` },
+      { name: "submitted", ok: submittedReports.length > 0, detail: `${submittedReports.length} submitted or in-review reports` },
+      { name: "approved", ok: approvedReports.length > 0, detail: `${approvedReports.length} approved reports` },
+      { name: "archived", ok: archivedReports.length > 0 || state.documents.some((item) => /report/i.test(item.classification)), detail: `${archivedReports.length} archived reports and ${state.documents.filter((item) => /report/i.test(item.classification)).length} report documents` }
+    ], "Reports", "Run one local-branch report through submit, approval, and archive using real office accounts."),
+    finalProductModule("approvals", "Approval decisions and history", [
+      { name: "approval-requests", ok: state.approvals.length > 0, detail: `${state.approvals.length} approval requests` },
+      { name: "approved-decisions", ok: approvedApprovals.length > 0, detail: `${approvedApprovals.length} approved requests` },
+      { name: "signature-or-execution", ok: completedApprovals.length > 0, detail: `${completedApprovals.length} decisions with execution or completion state` },
+      { name: "audit-records", ok: state.audit.some((item) => /approval/i.test(item.event)), detail: `${state.audit.filter((item) => /approval/i.test(item.event)).length} approval audit rows` }
+    ], "Approvals", "Complete one approval with approve, sign, execute, and visible history."),
+    finalProductModule("live-comms", "Live meetings and department chat", [
+      { name: "video-sessions", ok: (state.liveSessions ?? []).length > 0, detail: `${(state.liveSessions ?? []).length} live session records` },
+      { name: "join-links", ok: liveMeetings.length > 0, detail: `${liveMeetings.length} sessions have live or queued room access` },
+      { name: "department-rooms", ok: activeChatRooms.length > 0, detail: `${activeChatRooms.length} active department chat rooms` },
+      { name: "chat-messages", ok: (state.chatMessages ?? []).length > 0, detail: `${(state.chatMessages ?? []).length} department chat messages` }
+    ], "Live Communications", "Start one department meeting from chat and verify another office can open the same room."),
+    finalProductModule("office-routing", "Office routing and supervision", [
+      { name: "routing-rules", ok: (state.routingRules ?? []).length > 0, detail: `${(state.routingRules ?? []).length} workflow routing rules` },
+      { name: "active-rules", ok: (state.routingRules ?? []).some((item) => item.active), detail: `${(state.routingRules ?? []).filter((item) => item.active).length} active routing rules` },
+      { name: "verified-offices", ok: verifiedOffices.length > 0 || state.stations.length >= 7, detail: `${verifiedOffices.length} verified offices and ${state.stations.length} stations` },
+      { name: "parent-structure", ok: state.stations.some((item) => item.parentName || item.reportingRoute) || state.offices.some((item) => item.parentName || item.reportingRoute), detail: "Structural parent and reporting route metadata present" }
+    ], "Office Registry", "Finish assigning parent offices and workflow destinations for each department."),
+    finalProductModule("archive-audit", "Archive, evidence, and audit", [
+      { name: "documents", ok: archivedDocuments.length > 0, detail: `${archivedDocuments.length} archived or sealed documents` },
+      { name: "verified-records", ok: verifiedDocuments.length > 0 || evidence.verified > 0, detail: `${verifiedDocuments.length} verified documents, ${evidence.verified} verified evidence records` },
+      { name: "audit-ledger", ok: state.audit.length > 0, detail: `${state.audit.length} audit rows` },
+      { name: "retention-policy", ok: String(AUDIT_RETENTION_POLICY).toLowerCase() === "immutable" || auditDigest.sealed > 0 || auditDigest.verified > 0, detail: `${AUDIT_RETENTION_POLICY || "retention not set"} / ${auditDigest.sealed} sealed / ${auditDigest.verified} verified` }
+    ], "Audit", "Record final signoff evidence and verify one audit row or evidence packet."),
+    finalProductModule("security-production", "Security and production readiness", [
+      { name: "security-controls", ok: security.total >= 6, detail: `${security.total} security controls tracked` },
+      { name: "launch-mvp", ok: launch.mvpScore >= 95, detail: `MVP launch score ${launch.mvpScore}%` },
+      { name: "production-score", ok: launch.productionScore >= 80, detail: `Production score ${launch.productionScore}%` },
+      { name: "signoff", ok: signoff.overallScore >= 67, detail: `Launch signoff score ${signoff.overallScore}%` }
+    ], "Operations", "Close remaining production secrets, restore evidence, and deployment signoff items."),
+    finalProductModule("rollout", "Rollout and acceptance", [
+      { name: "project-score", ok: project.moduleScore >= 90, detail: `Project module score ${project.moduleScore}%` },
+      { name: "enterprise-score", ok: enterprise.overallScore >= 67, detail: `Enterprise score ${enterprise.overallScore}%` },
+      { name: "rollout-score", ok: rollout.overallScore >= 50, detail: `Rollout score ${rollout.overallScore}%` },
+      { name: "monitor", ok: monitor.score > 0, detail: `Operations monitor ${monitor.score}% / ${monitor.status}` }
+    ], "Launch Team", "Run acceptance from admin, finance, mission, local branch, and audit accounts.")
+  ];
+  const overallScore = Math.round(modules.reduce((sum, module) => sum + module.score, 0) / modules.length);
+  const ready = modules.filter((module) => module.score === 100).length;
+  const usable = modules.filter((module) => module.score >= 67).length;
+  const blockers = modules
+    .filter((module) => module.score < 67)
+    .map((module) => `${module.name}: ${module.nextAction}`);
+  const attention = modules
+    .filter((module) => module.score < 100)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 5)
+    .map((module) => module.nextAction);
+  return {
+    generatedAt: new Date().toISOString(),
+    generatedBy: actor,
+    product: "Remedy Movement International GCOS",
+    domain: DOMAIN,
+    status: overallScore >= 95 ? "launch-ready" : overallScore >= 80 ? "acceptance-ready" : "completion-build",
+    overallScore,
+    ready,
+    usable,
+    total: modules.length,
+    modules,
+    blockers,
+    nextActions: attention.length ? attention : ["Archive the final product completion packet and run user acceptance from each office account."],
+    acceptancePass: [
+      "Admin signs in, creates/assigns office work, and verifies audit trail.",
+      "Local branch submits a monthly report with evidence.",
+      "Supervising office reviews, approves, and archives the report.",
+      "ChurchMail is sent, read, and acknowledged by a recipient office.",
+      "Live Comms meeting opens from the department chat room."
+    ],
+    releaseCommands: [
+      "npm run build",
+      "npm test",
+      "npm run internal:audit",
+      "npm run completion:gate",
+      "npm run launch:verify:live"
+    ],
+    sourceScores: {
+      project: project.moduleScore,
+      mvp: launch.mvpScore,
+      production: launch.productionScore,
+      enterprise: enterprise.overallScore,
+      rollout: rollout.overallScore,
+      signoff: signoff.overallScore,
+      monitor: monitor.score
+    }
+  };
+}
+
+async function archiveFinalProductCompletion(body, actor) {
+  requirePermission(actor, "canApprove");
+  const completion = await finalProductCompletion(actor);
+  const now = new Date().toISOString();
+  const document = documentRecord(`RMVI GCOS final product completion ${now.slice(0, 10)}.json`, "Final product completion packet", "Audit", actor, "JSON", completion.status === "launch-ready" ? "Verified" : "Archived");
+  const bytes = Buffer.from(`${JSON.stringify(completion, null, 2)}\n`, "utf8");
+  const hash = hashBuffer(bytes);
+  document.fileHash = hash;
+  document.fileSize = bytes.length;
+  document.contentType = "application/json";
+  document.verified = completion.status === "launch-ready";
+  document.verificationNote = body.reason ?? `${completion.ready}/${completion.total} modules ready at ${completion.overallScore}%`;
+  document.custodian = actor;
+  document.custodyAt = now;
+  document.chainHash = hash;
+  document.extractedText = [
+    `Final product status: ${completion.status}`,
+    `Overall score: ${completion.overallScore}%`,
+    `Ready modules: ${completion.ready}/${completion.total}`,
+    `Usable modules: ${completion.usable}/${completion.total}`,
+    `Next actions: ${completion.nextActions.join("; ") || "none"}`
+  ].join("\n");
+  document.extractedAt = now;
+  state.documents.unshift(document);
+  record("FinalProductCompletionArchived", actor, document.name, `${completion.overallScore}% / ${completion.status}`);
+  return { completion, document, documents: state.documents };
 }
 
 async function enterpriseCompletionReport() {

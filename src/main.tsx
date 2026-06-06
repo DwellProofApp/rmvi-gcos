@@ -667,6 +667,31 @@ type RolloutReadiness = {
   blockers: string[];
   nextActions: string[];
 };
+type FinalProductCompletion = {
+  generatedAt: string;
+  generatedBy: string;
+  product: string;
+  domain: string;
+  status: string;
+  overallScore: number;
+  ready: number;
+  usable: number;
+  total: number;
+  modules: {
+    id: string;
+    name: string;
+    owner: string;
+    score: number;
+    status: string;
+    evidence: { name: string; ok: boolean; detail: string }[];
+    nextAction: string;
+  }[];
+  blockers: string[];
+  nextActions: string[];
+  acceptancePass: string[];
+  releaseCommands: string[];
+  sourceScores: Record<string, number>;
+};
 type StationTrainingRecord = {
   email: string;
   title: string;
@@ -3634,6 +3659,7 @@ function App() {
   const [approvalDigest, setApprovalDigest] = React.useState<ApprovalDigest | null>(null);
   const [aiDraftDigest, setAiDraftDigest] = React.useState<AiDraftDigest | null>(null);
   const [chatDigest, setChatDigest] = React.useState<ChatDigest | null>(null);
+  const [finalProductCompletion, setFinalProductCompletion] = React.useState<FinalProductCompletion | null>(null);
   const stationDirectory = React.useMemo<StationCard[]>(() => {
     const directory = new Map<string, StationCard>();
     stations.filter((station) => station.status !== "Deleted").forEach((station) => {
@@ -3913,6 +3939,7 @@ function App() {
       void apiRequest<TransferDigest>("/api/transfers/digest").then(setTransferDigest).catch(() => undefined);
       void apiRequest<OfficeDigest>("/api/offices/digest").then(setOfficeDigest).catch(() => undefined);
       void apiRequest<HierarchyDigest>("/api/hierarchy/digest").then(setHierarchyDigest).catch(() => undefined);
+      void apiRequest<FinalProductCompletion>("/api/product/final-completion").then(setFinalProductCompletion).catch(() => undefined);
       void apiRequest<AuditDigest>("/api/audit/digest").then(setAuditDigest).catch(() => undefined);
       void apiRequest<EventDigest>("/api/events/digest").then(setEventDigest).catch(() => undefined);
       void apiRequest<ReadinessDigest>("/api/readiness/digest").then(setReadinessDigest).catch(() => undefined);
@@ -3934,6 +3961,22 @@ function App() {
     } catch {
       setApiStatusError("API unavailable");
     }
+  }
+
+  function refreshFinalProductCompletion() {
+    void apiRequest<FinalProductCompletion>("/api/product/final-completion").then(setFinalProductCompletion).catch(() => undefined);
+  }
+
+  function archiveFinalProductCompletion() {
+    void apiRequest<{ completion: FinalProductCompletion; document: DocumentRecord; documents: DocumentRecord[] }>("/api/product/final-completion/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "Final GCOS product completion packet archived from Control Center." })
+    }).then((result) => {
+      setFinalProductCompletion(result.completion);
+      setDocuments(result.documents);
+      recordAudit("FinalProductCompletionArchived", result.document.name, `${result.completion.overallScore}% ${result.completion.status}`);
+      refreshAuditDigest();
+    }).catch(() => undefined);
   }
 
   async function resetWorkstationData() {
@@ -10813,6 +10856,7 @@ function App() {
         chatMessages={chatMessages}
         chatPresence={chatPresence}
         chatDigest={chatDigest}
+        finalProductCompletion={finalProductCompletion}
         events={events}
         apiStatus={apiStatus}
         offlineMode={offlineMode}
@@ -10851,6 +10895,8 @@ function App() {
         onStartChatMeeting={startChatMeeting}
         onOpenChatMeeting={openLiveMeeting}
         onSendChatChurchMail={sendChatToChurchMail}
+        onRefreshFinalProductCompletion={refreshFinalProductCompletion}
+        onArchiveFinalProductCompletion={archiveFinalProductCompletion}
         onQuickAction={handleAdminV2QuickAction}
         onOpenSearchResult={openSearchResult}
         searchResults={searchResults}
@@ -21417,6 +21463,7 @@ function Audit({
   const [projectCompletion, setProjectCompletion] = React.useState<ProjectCompletion | null>(null);
   const [enterpriseCompletion, setEnterpriseCompletion] = React.useState<EnterpriseCompletion | null>(null);
   const [rolloutReadiness, setRolloutReadiness] = React.useState<RolloutReadiness | null>(null);
+  const [finalProductCompletion, setFinalProductCompletion] = React.useState<FinalProductCompletion | null>(null);
   const [stationTraining, setStationTraining] = React.useState<StationTrainingRollout | null>(null);
   const [trainingNotice, setTrainingNotice] = React.useState("");
   const [finalProductionFinish, setFinalProductionFinish] = React.useState<FinalProductionFinish | null>(null);
@@ -21481,6 +21528,7 @@ function Audit({
     void apiRequest<ProjectCompletion>("/api/project/completion").then(setProjectCompletion).catch(() => undefined);
     void apiRequest<EnterpriseCompletion>("/api/enterprise/completion").then(setEnterpriseCompletion).catch(() => undefined);
     void apiRequest<RolloutReadiness>("/api/rollout/readiness").then(setRolloutReadiness).catch(() => undefined);
+    void apiRequest<FinalProductCompletion>("/api/product/final-completion").then(setFinalProductCompletion).catch(() => undefined);
     void apiRequest<StationTrainingRollout>("/api/rollout/station-training").then(setStationTraining).catch(() => undefined);
     void apiRequest<FinalProductionFinish>("/api/ops/final-production-finish").then(setFinalProductionFinish).catch(() => undefined);
   }, []);
@@ -21706,6 +21754,22 @@ function Audit({
 
   function refreshRolloutReadiness() {
     void apiRequest<RolloutReadiness>("/api/rollout/readiness").then(setRolloutReadiness).catch(() => undefined);
+  }
+
+  function refreshFinalProductCompletion() {
+    void apiRequest<FinalProductCompletion>("/api/product/final-completion").then(setFinalProductCompletion).catch(() => undefined);
+  }
+
+  function archiveFinalProductCompletion() {
+    void apiRequest<{ completion: FinalProductCompletion; document: DocumentRecord; documents: DocumentRecord[] }>("/api/product/final-completion/archive", {
+      method: "POST",
+      body: JSON.stringify({ reason: "Final GCOS product completion packet archived from Control Center." })
+    }).then((result) => {
+      setFinalProductCompletion(result.completion);
+      setDocuments(result.documents);
+      recordAudit("FinalProductCompletionArchived", result.document.name, `${result.completion.overallScore}% ${result.completion.status}`);
+      onRefreshAuditDigest();
+    }).catch(() => undefined);
   }
 
   function refreshStationTraining() {
@@ -24077,6 +24141,7 @@ type AdminV2Props = {
   chatMessages: DepartmentChatMessage[];
   chatPresence: ChatPresence[];
   chatDigest: ChatDigest | null;
+  finalProductCompletion: FinalProductCompletion | null;
   events: AuditEvent[];
   apiStatus: ApiStatus | null;
   offlineMode: boolean;
@@ -24117,6 +24182,8 @@ type AdminV2Props = {
   onStartChatMeeting: (roomId: string) => void;
   onOpenChatMeeting: (session: LiveSession) => void;
   onSendChatChurchMail: (roomId: string) => void;
+  onRefreshFinalProductCompletion: () => void;
+  onArchiveFinalProductCompletion: () => void;
   onQuickAction: (action: string, record?: { title: string; meta: string; detail: string; status: string }) => void;
 };
 
@@ -24227,6 +24294,7 @@ function AdminV2Shell(props: AdminV2Props) {
     chatMessages,
     chatPresence,
     chatDigest,
+    finalProductCompletion,
     events,
     apiStatus,
     offlineMode,
@@ -24266,6 +24334,8 @@ function AdminV2Shell(props: AdminV2Props) {
     onStartChatMeeting,
     onOpenChatMeeting,
     onSendChatChurchMail,
+    onRefreshFinalProductCompletion,
+    onArchiveFinalProductCompletion,
     onQuickAction
   } = props;
 
@@ -24531,8 +24601,11 @@ function AdminV2Shell(props: AdminV2Props) {
           escalations={escalations}
           transfers={transfers}
           documents={documents}
+          finalProductCompletion={finalProductCompletion}
           events={events}
           openSection={openSection}
+          onRefreshFinalProductCompletion={onRefreshFinalProductCompletion}
+          onArchiveFinalProductCompletion={onArchiveFinalProductCompletion}
         />
       ) : (
         <AdminV2UserOverview
@@ -24693,7 +24766,37 @@ function AdminV2Kpi({ label, value, tone }: { label: string; value: number | str
   );
 }
 
-function AdminV2Overview({ messages, reports, approvals, tasks, policies, calendarEvents, escalations, transfers, documents, events, openSection }: any) {
+function AdminV2Overview({
+  messages,
+  reports,
+  approvals,
+  tasks,
+  policies,
+  calendarEvents,
+  escalations,
+  transfers,
+  documents,
+  finalProductCompletion,
+  events,
+  openSection,
+  onRefreshFinalProductCompletion,
+  onArchiveFinalProductCompletion
+}: {
+  messages: Message[];
+  reports: Report[];
+  approvals: Approval[];
+  tasks: GovernanceTask[];
+  policies: Policy[];
+  calendarEvents: CalendarEvent[];
+  escalations: Escalation[];
+  transfers: Transfer[];
+  documents: DocumentRecord[];
+  finalProductCompletion: FinalProductCompletion | null;
+  events: AuditEvent[];
+  openSection: (section: Section) => void;
+  onRefreshFinalProductCompletion: () => void;
+  onArchiveFinalProductCompletion: () => void;
+}) {
   const cards = [
     { label: "ChurchMail", value: messages.length, detail: "official communications", section: "ChurchMail" as Section, icon: Mail },
     { label: "Reports", value: reports.filter((item: Report) => item.state !== "Approved").length, detail: "active report packets", section: "Reports" as Section, icon: FileText },
@@ -24706,8 +24809,57 @@ function AdminV2Overview({ messages, reports, approvals, tasks, policies, calend
     { label: "Transfer records", value: transfers.length, section: "Transfers" as Section, icon: ArrowUpFromLine },
     { label: "Archive records", value: documents.length, section: "Archive" as Section, icon: ArchiveIcon }
   ];
+  const completionModules = finalProductCompletion?.modules ?? [];
+  const weakestModules = completionModules
+    .filter((module) => module.score < 100)
+    .sort((a, b) => a.score - b.score)
+    .slice(0, 4);
   return (
     <div className="admin-v2-grid">
+      <section className="admin-v2-panel span-12 admin-v2-final-completion">
+        <div className="admin-v2-panel-head">
+          <span>Final Product Completion</span>
+          <strong>{finalProductCompletion ? `${finalProductCompletion.overallScore}% ${finalProductCompletion.status.replace(/-/g, " ")}` : "Checking"}</strong>
+        </div>
+        <div className="admin-v2-completion-layout">
+          <div className="admin-v2-completion-score">
+            <span>{finalProductCompletion?.overallScore ?? 0}%</span>
+            <strong>{finalProductCompletion?.ready ?? 0}/{finalProductCompletion?.total ?? 0} modules ready</strong>
+            <p>{finalProductCompletion?.usable ?? 0} modules are usable. This board is built from live GCOS records, not static demo text.</p>
+            <div className="admin-v2-completion-actions">
+              <button type="button" onClick={onRefreshFinalProductCompletion}>Refresh completion</button>
+              <button type="button" onClick={onArchiveFinalProductCompletion}>Archive final packet</button>
+            </div>
+          </div>
+          <div className="admin-v2-completion-modules">
+            {(weakestModules.length ? weakestModules : completionModules.slice(0, 4)).map((module) => (
+              <article key={module.id}>
+                <div>
+                  <strong>{module.name}</strong>
+                  <span>{module.owner}</span>
+                </div>
+                <b>{module.score}%</b>
+                <small>{module.nextAction}</small>
+              </article>
+            ))}
+            {!completionModules.length && (
+              <article>
+                <div>
+                  <strong>Completion report loading</strong>
+                  <span>GCOS product readiness</span>
+                </div>
+                <b>0%</b>
+                <small>Refresh the completion board after the API finishes loading.</small>
+              </article>
+            )}
+          </div>
+        </div>
+        <div className="admin-v2-completion-next">
+          {(finalProductCompletion?.nextActions ?? ["Run the final completion check after the API loads."]).slice(0, 3).map((action) => (
+            <span key={action}>{action}</span>
+          ))}
+        </div>
+      </section>
       <section className="admin-v2-panel span-8">
         <div className="admin-v2-panel-head">
           <span>Executive Activity</span>

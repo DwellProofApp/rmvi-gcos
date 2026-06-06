@@ -162,6 +162,10 @@ const validators = {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },
 
+  "POST /api/product/final-completion/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/integrations/email/activation-packet/archive": (body) => {
     if (body.reason !== undefined) requireString(body.reason, "reason");
   },

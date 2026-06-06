@@ -82,6 +82,16 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.equal(completion.releaseCommands.includes("npm run release:check"), true);
     assert.equal(completion.smokeUrls.includes("https://rmvi.org/health"), true);
 
+    const finalProductCompletion = await getJson("/api/product/final-completion");
+    assert.equal(finalProductCompletion.product, "Remedy Movement International GCOS");
+    assert.equal(finalProductCompletion.domain, "rmvi.org");
+    assert.equal(finalProductCompletion.modules.some((module) => module.id === "churchmail"), true);
+    assert.equal(finalProductCompletion.modules.some((module) => module.id === "reports"), true);
+    assert.equal(finalProductCompletion.modules.some((module) => module.id === "office-routing"), true);
+    assert.equal(finalProductCompletion.overallScore > 0, true);
+    assert.equal(finalProductCompletion.releaseCommands.includes("npm run completion:gate"), true);
+    assert.equal(finalProductCompletion.acceptancePass.length >= 5, true);
+
     const enterpriseCompletion = await getJson("/api/enterprise/completion");
     assert.equal(enterpriseCompletion.project, "Remedy Movement International GCOS");
     assert.equal(enterpriseCompletion.tracks.length, 12);
@@ -139,6 +149,14 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     assert.match(login.token, /^gcos\./);
     assert.equal(Boolean(login.expiresAt), true);
     const nationalToken = login.token;
+
+    const archivedFinalCompletion = await postJson("/api/product/final-completion/archive", {
+      reason: "Automated final product completion packet"
+    }, nationalToken);
+    assert.equal(archivedFinalCompletion.completion.product, "Remedy Movement International GCOS");
+    assert.equal(archivedFinalCompletion.document.classification, "Final product completion packet");
+    assert.match(archivedFinalCompletion.document.fileHash, /^sha256:/);
+    assert.equal(archivedFinalCompletion.documents.some((document) => document.id === archivedFinalCompletion.document.id), true);
 
     const statusAfterLogin = await getJson("/api/status");
     assert.equal(statusAfterLogin.sessions.active, 1);
