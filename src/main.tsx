@@ -27994,6 +27994,11 @@ class GcosErrorBoundary extends React.Component<{ children: React.ReactNode }, {
 
   componentDidCatch(error: unknown) {
     console.error("GCOS failed to render", error);
+    const lastRecovery = Number(window.sessionStorage.getItem("gcos.error-auto-recovery") || "0");
+    if (!lastRecovery || Date.now() - lastRecovery > 120000) {
+      window.sessionStorage.setItem("gcos.error-auto-recovery", String(Date.now()));
+      window.setTimeout(() => this.recover(), 800);
+    }
   }
 
   recover() {
@@ -28001,7 +28006,10 @@ class GcosErrorBoundary extends React.Component<{ children: React.ReactNode }, {
     window.localStorage.clear();
     if (session) window.localStorage.setItem("gcos.session", session);
     window.sessionStorage.removeItem("gcos.sw-reload-pending");
-    window.location.reload();
+    const registrationsPromise = navigator.serviceWorker?.getRegistrations?.() ?? Promise.resolve([]);
+    registrationsPromise
+      .then((registrations) => Promise.all(registrations.map((registration) => registration.unregister())))
+      .finally(() => window.location.reload());
   }
 
   render() {
@@ -28017,7 +28025,7 @@ class GcosErrorBoundary extends React.Component<{ children: React.ReactNode }, {
               </div>
               <div>
                 <h1>GCOS needs to refresh this workstation.</h1>
-                <p>The app detected an old local shell or saved workstation state from a previous build. Refreshing will keep your signed-in session and reload the current live version.</p>
+                <p>The app detected an old local shell or saved workstation state from a previous build. GCOS is refreshing automatically and will keep your signed-in session.</p>
               </div>
               <div className="login-actions">
                 <button type="button" onClick={() => this.recover()}>
