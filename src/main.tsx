@@ -152,6 +152,27 @@ type ReportAssignment = {
   targetCount: number;
   generatedReportIds: string[];
 };
+type ReportOfficialPacket = {
+  generatedAt: string;
+  generatedBy: string;
+  reportId: string;
+  title: string;
+  report: Report;
+  receipt: {
+    reportId: string;
+    submittedAt?: string | null;
+    reviewOffice: string;
+    approvalState: string;
+    approvedBy?: string | null;
+    archiveState: string;
+  };
+  routeStops: string[];
+  fields: { index: number; section: string; value: string }[];
+  checks: { label: string; status: string; complete: boolean; detail: string }[];
+  text: string;
+  csv?: string;
+  filename?: string;
+};
 type Approval = {
   id: string;
   request: string;
@@ -25270,8 +25291,39 @@ function AdminV2Reports({
       selectedReport.attestation ?? "Prepared for RMVI supervisory review."
     ].join("\n");
   }
-  function downloadSelectedReportPacketCsv() {
+  function downloadCsvFile(filename: string, csv: string) {
+    const url = window.URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    window.URL.revokeObjectURL(url);
+  }
+  async function loadSelectedOfficialPacket() {
+    if (!selectedReport || !window.navigator.onLine) return undefined;
+    try {
+      return await apiRequest<ReportOfficialPacket>(`/api/reports/${selectedReport.id}/official-packet`);
+    } catch {
+      return undefined;
+    }
+  }
+  async function downloadSelectedReportPacketCsv() {
     if (!selectedReport) return;
+    if (window.navigator.onLine) {
+      try {
+        const exported = await apiRequest<ReportOfficialPacket>(`/api/reports/${selectedReport.id}/official-packet/export`, {
+          method: "POST",
+          body: JSON.stringify({ format: "csv", reason: "Exported from Reports workspace" })
+        });
+        downloadCsvFile(exported.filename ?? "report-packet.csv", exported.csv ?? selectedReportPacketText());
+        setPageNotice(`${selectedReport.name} official packet exported from GCOS records.`);
+        return;
+      } catch {
+        setPageNotice("Server export was unavailable, so GCOS prepared a local CSV export.");
+      }
+    }
     const rows = [
       ["Field", "Value"],
       ...selectedReportReceipt.map((item) => [item.label, item.value]),
@@ -25285,20 +25337,15 @@ function AdminV2Reports({
       ...Object.entries(reportFormFields).map(([section, value]) => [`Section: ${section}`, value || "Draft"])
     ];
     const csv = rows.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(",")).join("\n");
-    const url = window.URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
-    const link = document.createElement("a");
-    link.href = url;
-    link.download = `${selectedReport.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "report"}-packet.csv`;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    window.URL.revokeObjectURL(url);
+    downloadCsvFile(`${selectedReport.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "report"}-packet.csv`, csv);
     setPageNotice(`${selectedReport.name} CSV packet exported.`);
   }
-  function openSelectedReportPrintView() {
+  async function openSelectedReportPrintView() {
     if (!selectedReport) return;
+    const officialPacket = await loadSelectedOfficialPacket();
     const escapeHtml = (value: string) => value.replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "\"": "&quot;", "'": "&#39;" }[character] ?? character));
-    const packet = selectedReportPacketText().split("\n").map((line) => `<p>${escapeHtml(line) || "&nbsp;"}</p>`).join("");
+    const packetText = officialPacket?.text ?? selectedReportPacketText();
+    const packet = packetText.split("\n").map((line) => `<p>${escapeHtml(line) || "&nbsp;"}</p>`).join("");
     const printWindow = window.open("", "_blank", "width=900,height=760");
     if (!printWindow) {
       setPageNotice("Print preview was blocked by the browser. Allow popups for GCOS and try again.");
@@ -25314,10 +25361,23 @@ function AdminV2Reports({
     </style></head><body><main><h2>RMVI GCOS Official Report Packet</h2><h1>${escapeHtml(selectedReport.name)}</h1>${packet}<div class="actions"><button onclick="window.print()">Print packet</button></div></main></body></html>`);
     printWindow.document.close();
     printWindow.focus();
-    setPageNotice(`${selectedReport.name} print preview opened.`);
+    setPageNotice(`${selectedReport.name} print preview opened${officialPacket ? " from official packet data" : ""}.`);
   }
-  function archiveSelectedReportPacket() {
+  async function archiveSelectedReportPacket() {
     if (!selectedReport) return;
+    if (window.navigator.onLine) {
+      try {
+        await apiRequest<{ report: Report; document: DocumentRecord; packet: ReportOfficialPacket }>(`/api/reports/${selectedReport.id}/official-packet/archive`, {
+          method: "POST",
+          body: JSON.stringify({ reason: "Official report packet archived from Reports workspace" })
+        });
+        setPageNotice(`${selectedReport.name} official report packet archived in GCOS records.`);
+        onOpenSection("Archive");
+        return;
+      } catch {
+        setPageNotice("Server archive was unavailable, so GCOS prepared a local archive handoff.");
+      }
+    }
     window.sessionStorage.setItem("gcos.archive.prefill", JSON.stringify({
       title: `${selectedReport.name} official report packet`,
       meta: selectedReport.type ?? "Report packet",

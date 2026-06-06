@@ -984,6 +984,26 @@ test("GCOS API supports auth, mutations, persistence, and reset", async () => {
     const approvedPacketReport = reportsAfterPacketApproval.find((item) => item.id === packetReport.id);
     assert.equal(approvedPacketReport.state, "Approved");
     assert.equal(approvedPacketReport.routingStage, "Approved through approval engine");
+    const officialPacketPreview = await getJson(`/api/reports/${packetReport.id}/official-packet`, nationalToken);
+    assert.equal(officialPacketPreview.reportId, packetReport.id);
+    assert.equal(officialPacketPreview.receipt.approvalState, "Approved");
+    assert.equal(officialPacketPreview.text.includes("RMVI GCOS OFFICIAL REPORT PACKET"), true);
+    assert.equal(officialPacketPreview.checks.some((check) => check.label === "Approval" && check.complete), true);
+    const exportedPacket = await postJson(`/api/reports/${packetReport.id}/official-packet/export`, {
+      format: "csv",
+      reason: "Automated packet export"
+    }, nationalToken);
+    assert.equal(exportedPacket.filename.endsWith("-packet.csv"), true);
+    assert.equal(exportedPacket.csv.includes("Automated bundled governance report"), true);
+    assert.equal(exportedPacket.csv.includes("Approved"), true);
+    const archivedOfficialPacket = await postJson(`/api/reports/${packetReport.id}/official-packet/archive`, {
+      reason: "Automated official packet archive"
+    }, nationalToken);
+    assert.equal(archivedOfficialPacket.report.archived, true);
+    assert.equal(archivedOfficialPacket.report.routingStage, "Official packet archived");
+    assert.equal(archivedOfficialPacket.document.linkedReport, packetReport.id);
+    assert.equal(archivedOfficialPacket.document.classification, "Official report archive packet");
+    assert.equal(archivedOfficialPacket.packet.receipt.archiveState, "Archived");
 
     const bulkReport = await postJson("/api/reports", {
       name: "Automated bulk workflow report",

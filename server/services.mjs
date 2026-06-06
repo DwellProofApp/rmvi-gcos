@@ -3243,6 +3243,127 @@ export function createServices({ state, record, requirePermission, findById, int
       return { report: item, approval: packetApproval, document: packetDocument, escalation: packetEscalation };
     },
 
+    officialReportPacket(id, body = {}) {
+      const item = findById(state.reports, id);
+      const linkedApproval = state.approvals.find((approvalItem) => approvalItem.linkedReport === item.id);
+      const linkedDocuments = state.documents.filter((documentItem) => documentItem.linkedReport === item.id);
+      const routeStops = String(item.path ?? "").split("->").map((part) => part.trim()).filter(Boolean);
+      const reportFields = Object.entries(item.reportFields ?? {}).map(([section, value], index) => ({
+        index: index + 1,
+        section,
+        value: String(value ?? "").trim() || "Draft"
+      }));
+      const completedFields = reportFields.filter((field) => field.value !== "Draft").length;
+      const submittedAt = item.submittedAt ?? null;
+      const approvedBy = item.approvedBy ?? (item.state === "Approved" ? body.actor ?? "System Administrator Workstation" : null);
+      const checks = [
+        { label: "Official form", status: reportFields.length && completedFields === reportFields.length ? "Complete" : "In progress", complete: Boolean(reportFields.length && completedFields === reportFields.length), detail: `${completedFields}/${reportFields.length} sections` },
+        { label: "Evidence", status: /attached|bundled|verified|archived/i.test(item.evidenceStatus ?? "") ? "Attached" : "Needed", complete: /attached|bundled|verified|archived/i.test(item.evidenceStatus ?? ""), detail: item.evidenceStatus ?? "Evidence pending" },
+        { label: "Approval", status: linkedApproval?.state ?? item.state, complete: item.state === "Approved" || linkedApproval?.state === "Approved", detail: linkedApproval?.request ?? "Approval packet not created" },
+        { label: "Archive", status: item.archived ? "Archived" : item.state === "Approved" ? "Ready" : "Pending", complete: Boolean(item.archived), detail: linkedDocuments.find((documentItem) => documentItem.classification === "Official report archive packet")?.name ?? "Archive packet pending" }
+      ];
+      const text = [
+        "RMVI GCOS OFFICIAL REPORT PACKET",
+        "",
+        `Report: ${item.name}`,
+        `Report ID: ${item.id}`,
+        `Type: ${item.type ?? "Report"}`,
+        `Owner: ${item.owner}`,
+        `Prepared by: ${item.preparedBy ?? item.owner}`,
+        `Period: ${item.period ?? "Current"}`,
+        `Route: ${item.path}`,
+        `Stage: ${item.routingStage ?? item.state}`,
+        `Submitted: ${submittedAt ?? "Not submitted"}`,
+        `Approved by: ${approvedBy ?? "Pending"}`,
+        `Evidence: ${item.evidenceStatus ?? "Evidence pending"}`,
+        `Approval: ${linkedApproval?.state ?? item.state}`,
+        `Archive: ${item.archived ? "Archived" : "Pending"}`,
+        "",
+        "Official Form",
+        reportFields.length ? reportFields.map((field) => `- ${field.section}: ${field.value}`).join("\n") : "- No form sections attached",
+        "",
+        "Review Note",
+        item.reviewNote ?? "No review note recorded.",
+        "",
+        "Correction Note",
+        item.correctionReason ?? "No correction request recorded.",
+        "",
+        "Attestation",
+        item.attestation ?? "Prepared for RMVI supervisory review."
+      ].join("\n");
+      return {
+        generatedAt: new Date().toISOString(),
+        generatedBy: body.actor ?? "system",
+        reportId: item.id,
+        title: item.name,
+        report: item,
+        receipt: {
+          reportId: item.id,
+          submittedAt,
+          reviewOffice: routeStops[1] ?? routeStops[0] ?? item.owner,
+          approvalState: linkedApproval?.state ?? item.state,
+          approvedBy,
+          archiveState: item.archived ? "Archived" : item.state === "Approved" ? "Ready to archive" : "Ready after approval"
+        },
+        routeStops,
+        fields: reportFields,
+        checks,
+        linkedApproval,
+        linkedDocuments,
+        text
+      };
+    },
+
+    exportReportPacket(id, body = {}) {
+      const packet = this.officialReportPacket(id, body);
+      const rows = [
+        ["Field", "Value"],
+        ["Report ID", packet.receipt.reportId],
+        ["Report", packet.title],
+        ["Owner", packet.report.owner],
+        ["Period", packet.report.period ?? "Current"],
+        ["Route", packet.report.path],
+        ["Submitted", packet.receipt.submittedAt ?? "Not submitted"],
+        ["Review Office", packet.receipt.reviewOffice],
+        ["Approval", packet.receipt.approvalState],
+        ["Approved By", packet.receipt.approvedBy ?? "Pending"],
+        ["Archive", packet.receipt.archiveState],
+        ...packet.fields.map((field) => [`Section: ${field.section}`, field.value])
+      ];
+      const csv = rows.map((row) => row.map((cell) => `"${String(cell ?? "").replaceAll("\"", "\"\"")}"`).join(",")).join("\n");
+      record("ReportPacketExported", body.actor, packet.title, body.format ?? "csv");
+      return {
+        ...packet,
+        format: body.format ?? "csv",
+        filename: `${packet.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "report"}-packet.csv`,
+        csv
+      };
+    },
+
+    archiveReportPacket(id, body = {}) {
+      const item = findById(state.reports, id);
+      const packet = this.officialReportPacket(id, body);
+      const existingDocument = state.documents.find((documentItem) => documentItem.linkedReport === item.id && documentItem.classification === "Official report archive packet");
+      const archivedDocument = existingDocument ?? documentRecord(
+        `${item.name} official report packet.txt`,
+        "Official report archive packet",
+        "Report",
+        item.owner,
+        "Text",
+        "Archived"
+      );
+      archivedDocument.linkedReport = item.id;
+      archivedDocument.body = packet.text;
+      archivedDocument.verified = item.verified || item.state === "Approved";
+      archivedDocument.chainHash = `report-packet-${item.id}-${Date.now()}`;
+      archivedDocument.archiveReason = body.reason ?? "Official report packet archived";
+      if (!existingDocument) state.documents.unshift(archivedDocument);
+      item.archived = true;
+      item.routingStage = "Official packet archived";
+      record("ReportOfficialPacketArchived", body.actor, item.name, archivedDocument.name);
+      return { report: item, document: archivedDocument, packet: this.officialReportPacket(id, body) };
+    },
+
     watchReport(id, body) {
       const item = findById(state.reports, id);
       const watcher = body.watcher ?? body.actor ?? "Watcher";

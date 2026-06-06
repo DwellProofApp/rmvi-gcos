@@ -518,6 +518,15 @@ const validators = {
     if (body.escalate !== undefined && typeof body.escalate !== "boolean") throw validationError("escalate must be boolean");
   },
 
+  "POST /api/reports/:id/official-packet/export": (body) => {
+    if (body.format !== undefined) requireEnum(body.format, ["csv", "text", "json"], "format");
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
+  "POST /api/reports/:id/official-packet/archive": (body) => {
+    if (body.reason !== undefined) requireString(body.reason, "reason");
+  },
+
   "POST /api/reports/:id/watch": (body) => {
     if (body.watcher !== undefined) requireString(body.watcher, "watcher");
   },
