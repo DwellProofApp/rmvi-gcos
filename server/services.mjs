@@ -5171,9 +5171,7 @@ export function createServices({ state, record, requirePermission, findById, int
         record("LoginBlocked", normalizedEmail, normalizedEmail, "Station credential locked");
         return { unauthorized: true, error: "Station credential locked" };
       }
-      const authStatus = integrations.auth?.status?.() ?? { provider: "local", localFallback: true };
-      const localFallbackAllowed = authStatus.provider !== "firebase" || authStatus.localFallback;
-      const localPasswordVerified = localFallbackAllowed && passwordMatches(body.password, credential);
+      const localPasswordVerified = passwordMatches(body.password, credential);
       let providerVerification = null;
       if (!localPasswordVerified) {
         providerVerification = await integrations.auth?.verifyPassword?.(normalizedEmail, body.password);
@@ -5212,11 +5210,13 @@ export function createServices({ state, record, requirePermission, findById, int
         foundStation.identityProvider = providerVerification.provider;
         foundStation.identityUid = providerVerification.uid;
       }
-      const providerToken = await integrations.auth?.issueToken?.(foundStation.email, {
-        stationId: foundStation.id,
-        stationLevel: foundStation.level,
-        stationEmail: foundStation.email
-      });
+      const providerToken = providerVerification?.ok
+        ? await integrations.auth?.issueToken?.(foundStation.email, {
+            stationId: foundStation.id,
+            stationLevel: foundStation.level,
+            stationEmail: foundStation.email
+          })
+        : null;
       record("Login", body.email, foundStation.title, "Allowed");
       return { station: foundStation, credential: publicCredential(credential), providerToken, token: `demo.${Buffer.from(body.email).toString("base64url")}` };
     }
